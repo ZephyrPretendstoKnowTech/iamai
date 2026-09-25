@@ -2,6 +2,12 @@
 export const READINESS_THRESHOLD_MFA_PERCENT = 90
 export const READINESS_THRESHOLD_ADMINS_PERCENT = 100
 export const READINESS_THRESHOLD_DEVICES_PERCENT = 80
+/**
+ * Require MFA to Register a Device waits for everyone it covers (owner decision 4,
+ * Phase 2e): it is created On, and anyone without a method its strength accepts
+ * cannot join or register a device once it is. The passkey campaign gets them ready.
+ */
+export const READINESS_EVERYONE_GOALS: ReadonlySet<string> = new Set(['device-registration-mfa'])
 
 export const BREAK_GLASS_DRILL_DAYS = 90
 

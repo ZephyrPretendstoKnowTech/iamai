@@ -495,7 +495,7 @@
       ],
       "correctionModules": 5,
       "requiredBindings": 6,
-      "optionalBindings": 9,
+      "optionalBindings": 8,
       "verifiedSourceCount": 15,
       "packageSpecificMicrosoftSources": 15,
       "sharedPrimitivesReused": 3,
@@ -2847,11 +2847,9 @@
       "binding": "evidence.enrollmentWorkflows",
       "requiredBy": [],
       "optionalBy": [
-        "s-goal-device-registration-mfa",
         "s-goal-intune-enrollment-reauth"
       ],
       "packages": [
-        "s-goal-device-registration-mfa",
         "s-goal-intune-enrollment-reauth"
       ],
       "type": "object|string",

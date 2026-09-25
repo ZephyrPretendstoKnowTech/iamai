@@ -3,6 +3,7 @@
 // transitive prerequisite, the two account checks, and a policy waiting on an
 // exclusions group the scan found but nobody confirmed.
 import { test } from 'node:test'
+import { everyoneGate } from '../../copy/reasons.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { stepById } from '../../content/content.ts'
@@ -191,8 +192,9 @@ test('a readiness threshold stated as a percentage also states the reading behin
       // An enforced policy is not waiting for the number, so it states the floor
       // alone; the count is the finished-rollout card's (enforced-readiness).
       // The admin card's count is its value, and its sentence names the admins
-      // short instead (walk list 4.x item 42).
-      if (/^admin/.test(gate.measure)) continue
+      // short instead (walk list 4.x item 42); so does a gate on everyone it
+      // covers (Require MFA to Register a Device, Phase 2e).
+      if (everyoneGate(gate)) continue
       assert.ok(said.includes(line), `${name}/${step.id}: the reading is not said`)
     }
   }
@@ -248,6 +250,9 @@ test('every readiness gate holding a step names what moves the number', () => {
       // it says which step was considered, why it falls short, and what the
       // reader can do instead — including deciding the accounts are not in use,
       // which is the only way out where the work cannot be done at all.
+      // A gate on everyone it covers names each person short with their next step
+      // (Phase 2e), which is what moves its number.
+      if (gate.routeShortfall !== undefined && everyoneGate(gate)) continue
       if (gate.routeShortfall !== undefined) {
         assert.equal(gate.route, undefined, `${name}/${step.id}: names a campaign and says it will not work`)
         assert.ok(said.includes(gate.routeShortfall), `${name}/${step.id}: the shortfall is on the gate and not in the sentence — ${said}`)
@@ -381,7 +386,8 @@ test('a readiness the scan could only put a floor under says the floor, and says
       assert.doesNotMatch(said, /not measured/, `${name}/${step.id}: ${said}`)
       // An enforced policy is not waiting for the number, so it states the floor
       // alone; the count is the finished-rollout card's (enforced-readiness).
-      if (step.state.lifecycle !== 'enforced') assert.ok(said.includes(step.readiness.lines[0] ?? '#'), `${name}/${step.id}: the reading is not said`)
+      // A gate on everyone it covers names the people instead (Phase 2e).
+      if (step.state.lifecycle !== 'enforced' && !everyoneGate(gate)) assert.ok(said.includes(step.readiness.lines[0] ?? '#'), `${name}/${step.id}: the reading is not said`)
       // And it changes no gate: the number is still unknown, which is what holds
       // enforcement, so the step is no nearer being allowed to enforce.
       assert.equal(step.readiness.percent, null, `${name}/${step.id}`)
@@ -531,12 +537,12 @@ test('a readiness number is labelled by the strength its policies require, so tw
   const deviceTile = gateTile(bodies.get(device.id))!
   const registerTile = gateTile(bodies.get('s-goal-register-info-protected'))!
   assert.doesNotMatch(deviceTile.value, /MFA-ready/, 'a strength-bound number labelled as plain MFA')
-  assert.match(deviceTile.value, /ready for Modern MFA \+ TAP$/)
+  // It waits for everyone it covers (Phase 2e), so its card counts the people with a method it accepts.
+  assert.match(deviceTile.value, /^\d+ of \d+ people have a method it accepts$/)
   assert.match(registerTile.value, /MFA-ready$/, 'the plain-MFA policy keeps its words')
-  assert.notEqual(deviceTile.value.replace(/^(At least )?\d+% /, ''), registerTile.value.replace(/^(At least )?\d+% /, ''), 'two requirements under one label')
   // The row's reason states the same measure.
   const binding = device.blockers.find((b) => b.kind === 'readiness' && b.label === 'readiness')?.binding
-  assert.match(String(binding), /^when Modern MFA \+ TAP readiness reaches 90%/)
+  assert.match(String(binding), /^when Modern MFA \+ TAP readiness reaches 100%/)
   // The admins' policy keeps "phishing-resistant" where it requires Phishing-resistant MFA...
   // The admins' card counts admins with a method the policy accepts, whatever it requires (walk list 4.x item 42).
   assert.match(gateTile(bodies.get('s-goal-admins-phishing-resistant'))!.value, /^\d+ of \d+ admins? ha(?:s|ve) a method it accepts$/)

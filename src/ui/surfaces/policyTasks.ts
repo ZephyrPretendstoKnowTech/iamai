@@ -24,6 +24,7 @@
 //
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
+import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
@@ -48,7 +49,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import type { OwnCard } from './prepareSteps.ts'
 import { factSentence } from './policyFact.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
-import { readinessFamilyOf } from '../../copy/reasons.ts'
+import { everyoneGate, readinessFamilyOf } from '../../copy/reasons.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 
 /** The mail accounts' task words (docs/plans/step-redundancy-analysis.md finding 6; walk list 4.x item 36). */
@@ -332,7 +333,7 @@ function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string;
   }
   if (gateHolds) {
     const admins = readinessFamilyOf(gate) === 'admin'
-    out.push(admins ? { wait: WAITS.admins, after: WAITS.adminsAfter } : { wait: fillText(WAITS.readiness, gate), after: fillText(WAITS.readinessAfter, gate) })
+    out.push(admins ? { wait: WAITS.admins, after: WAITS.adminsAfter } : everyoneGate(gate) ? { wait: WAITS.everyone, after: WAITS.everyoneAfter } : { wait: fillText(WAITS.readiness, gate), after: fillText(WAITS.readinessAfter, gate) })
   }
   return out
 }
@@ -412,7 +413,12 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const creates = members.filter((m) => m.create !== null)
   // What the create needs first (the authentication context it targets), only while the policy is still to be made.
   const toCreate = members.some((m) => !m.exists)
-  tasks.push(task('create', 'create', [...input.before, ...(toCreate ? input.extras?.createFirst ?? [] : []), ...creates.flatMap((m) => createLines(m.create!.body, ctx, { name: (m.name && m.createName && m.name.toLowerCase() === m.createName.toLowerCase() ? m.name : m.createName) ?? (m.name || String(m.create!.body.displayName ?? '')), baseline: m.create!.baseline }))], toCreate))
+  // Created On (roadmap/evidenceStrategy.ts stepCreatedOn; Phase 2e): the create
+  // turns the policy on, so it is the step's one task, and whatever holds a
+  // turn-on holds it (below).
+  const createdOnStep = stepCreatedOn(step)
+  const createSteps = [...input.before, ...(toCreate ? input.extras?.createFirst ?? [] : []), ...creates.flatMap((m) => createLines(m.create!.body, ctx, { name: (m.name && m.createName && m.name.toLowerCase() === m.createName.toLowerCase() ? m.name : m.createName) ?? (m.name || String(m.create!.body.displayName ?? '')), baseline: m.create!.baseline }))]
+  tasks.push(task('create', createdOnStep ? 'createOn' : 'create', createSteps, toCreate))
   // A policy the tenant switched off goes back through Report-only, whatever
   // else the step waits on: Report-only denies nobody (owner, 2026-09-23). The
   // step's tracking names each one (operations.ts switchedOffPolicies).
@@ -438,8 +444,11 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // board shows as much as the plan's own enforce waits.
   const holds = waits.length > 0 || policyHold(step) === 'prerequisite-unmet' || SAFETY_HOLDS.has(reason ?? '')
   const turnOnHeld = holds && members.some((m) => !m.on) && (waits.length > 0 || input.contract.milestone.label !== '')
-  const heldLine = waits.length > 0 ? fillText(app.plan.enforceOutstanding, { items: list(waits.map((w) => w.wait)) }) : input.contract.milestone.label
-  tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
+  const heldLine = waits.length > 0 ? fillText(createdOnStep ? app.plan.createOutstanding : app.plan.enforceOutstanding, { items: list(waits.map((w) => w.wait)) }) : input.contract.milestone.label
+  if (createdOnStep) {
+    // Held, the create hands over what it waits for and no line that turns it on.
+    if (turnOnHeld) tasks[0] = { ...tasks[0], steps: [...input.before, heldLine] }
+  } else tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
   // What the step's package says comes after the policy is On, in every state:
   // the PIM role settings that make role activation ask for the context.
   for (const after of input.extras?.after ?? []) if (after.steps.length > 0) tasks.push({ id: after.id, accountId: null, title: after.title, targetUpn: null, required: after.required, readinessKey: '', evidence: null, actionLabel: after.title, steps: after.steps })

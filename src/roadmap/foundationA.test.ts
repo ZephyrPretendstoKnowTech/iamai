@@ -18,12 +18,13 @@
 // family, the floor or the step's population for an open policy fails them
 // without anybody having to notice the new line.
 import { test } from 'node:test'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { accountApplicability, awaitsOwnObject, effectOf, emergencyExposureOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import { accountApplicability, awaitsOwnObject, effectOf, emergencyExposureOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason, validOperations } from './operations.ts'
 import { analysisUnknown, canDenyAccess, effectsOf, familyReading, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
 import { batchClassOf, buildSchedule, dependencyGraph, observationDaysFor } from './schedule.ts'
 import { eventsFor, nobodyAffected, noticeDaysFor } from './timing.ts'
@@ -36,8 +37,13 @@ import { activePeopleIds } from '../derive/population.ts'
 import { notPeopleIds } from '../derive/sets.ts'
 
 /** What the step's own policies ask for, read the way generate.ts reads it. */
+/** What the step's policies will ask of people: its operations, or, for a policy created On whose create readiness still holds (Phase 2e), the policy it will create. */
+function plannedEffectsForTest(step: Step) {
+  return stepCreatedOn(step) && unavailableReason(step) === 'readiness-unmet' ? validOperations(step.action).map((o) => effectOf(o.body)) : stepEffects(step)
+}
+
 function grantOfStepForTest(step: Step): 'mfa' | 'phishingResistant' | 'block' | 'compliantDevice' | 'compliantApplication' | 'approvedApplication' | 'passwordChange' | null {
-  const effects = stepEffects(step)
+  const effects = plannedEffectsForTest(step)
   if (effects.some((e) => e.blocks)) return 'block'
   for (const e of effects) {
     for (const r of e.requirements) {
@@ -233,7 +239,9 @@ test('every generated manager note is what the operation establishes, and the go
   const named = new Set(Object.values(MANAGER_BY_GOAL).map((f) => f()))
   for (const { f, r } of runs) {
     for (const s of openPolicies(r.steps)) {
-      const effects = stepEffects(s)
+      // A policy created On whose create readiness still holds (Phase 2e) runs
+      // nothing yet; its note is about the policy it will create.
+      const effects = plannedEffectsForTest(s)
       const expected = effects.length === 0 ? null : controlNoteFor(policySemantics(effects), grantOfStepForTest(s))
       if (expected !== null) {
         assert.equal(s.forManager, expected, `${f.name} ${s.id}: the note is the one its own policy earns`)

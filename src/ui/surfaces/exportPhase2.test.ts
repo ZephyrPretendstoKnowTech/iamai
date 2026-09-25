@@ -668,7 +668,8 @@ test('the calendar and the plan file list steps in the board\'s order, each numb
     // The calendar: one entry per dated row, in the board's order, each titled after its number.
     const ics = buildIcs(page.r.steps, 'Tenant', 'plan', page.view, page.cleanup, order).replace(/\r\n /g, '')
     const events = ics.split('BEGIN:VEVENT').slice(1).map((e) => ({ id: /UID:plan-(.+)@iamai/.exec(e)![1], summary: /SUMMARY:(.*)/.exec(e)![1] }))
-    assert.ok(events.length >= 3, `${name}: the premise: the calendar books several rows`)
+    // Two on midflight since Phase 2e: its User Action creates, which were report-only creation days, wait undated.
+    assert.ok(events.length >= 2, `${name}: the premise: the calendar books several rows (${events.length})`)
     assert.deepEqual(events.map((e) => e.id), expected.filter((id) => events.some((e) => e.id === id)), `${name}: the calendar lists its entries in another order than the board`)
     for (const e of events) assert.ok(e.summary.startsWith(`${order.numberOf(e.id)} `), `${name}/${e.id}: the calendar entry is not numbered as the board numbers it: ${e.summary}`)
     // Unordered, the calendar is what it was: the engine's order, no numbers.

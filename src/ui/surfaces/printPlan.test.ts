@@ -157,11 +157,11 @@ test('no at-pace finish is stated from a rollout that placed none of the held wo
   assert.equal(line.includes('at pace'), false, `the cover states an at-pace finish: ${line}`)
   assert.ok(line.endsWith('cannot finish until the held steps'), line)
   // A rollout that did place held work keeps its estimate: the demo's is the
-  // weeks two changes prompting the same people take (four since Phase 2a, when
-  // Require MFA to Register a Device, no longer held on an unmapped group, is placed).
+  // weeks its change windows take (three since Phase 2e: Require MFA to Register a
+  // Device is created On, and its create waits for everyone it covers to be ready).
   const demo = plan('demo')
   assert.ok(planFinish(demo.steps, demo.schedule.cleanup?.end ?? null).held, 'the premise: the demo holds required work')
-  assert.ok(demo.schedule.estimate && demo.schedule.estimate.weeks === 4, `the demo lost its estimate: ${JSON.stringify(demo.schedule.estimate)}`)
+  assert.ok(demo.schedule.estimate && demo.schedule.estimate.weeks === 3, `the demo lost its estimate: ${JSON.stringify(demo.schedule.estimate)}`)
   // The Plan's tile and its tip read the board's forecast instead (owner,
   // 2026-09-23; derive/estimatedFinish.test.ts): a date from the first scan on,
   // and the step that sets it, never "Nothing is left to schedule." over held work.

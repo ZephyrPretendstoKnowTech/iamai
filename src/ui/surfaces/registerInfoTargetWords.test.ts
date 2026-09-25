@@ -19,7 +19,10 @@ const GRANT = 'Grant → '
 
 function opened(f: ReturnType<typeof fixture>) {
   const r = runFixture(f, {}, null, f.snapshot.asOf)
-  const step = r.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  const held = r.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  // Created On since Phase 2e, its create waits on what its turn-on waits on (MFA
+  // readiness, Configure Passkey Authentication); these are its target's words, read once those are met.
+  const step = { ...held, action: { ...held.action, readinessGate: undefined, enforceWaitsOn: [] }, blockers: [] }
   const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming } as never
   return { step, ctx }

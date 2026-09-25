@@ -215,10 +215,12 @@ test('a change that turns a policy on has no day of its own on a waiting lane, a
 // same kind - never "Finish the steps this one waits on first." above an
 // Implementation region still offering the create.
 test('the opened step of a held create still says to create the policy in report-only, without the day', () => {
-  const f = withDirectionApproved(curatedFixture('demo-week2'))
+  // small, settled: Require Phishing-Resistant MFA for Admins. It was the registration
+  // policy on week two, which is created On since Phase 2e, so its create waits with its turn-on.
+  const f = withFoundationSettled(fixture('small'))
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
-  const step = r.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const gate = step.action.readinessGate!
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
   const lane = laneViewFor(step, board)

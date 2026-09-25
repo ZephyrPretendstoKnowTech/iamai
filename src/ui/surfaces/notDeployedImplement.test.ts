@@ -19,6 +19,8 @@ import { stepBodyOf } from './stepBody.ts'
 // ready-to-enforce before the policy has been deployed at all, and an artifact
 // saying something the screen does not.
 import { test } from 'node:test'
+import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import assert from 'node:assert/strict'
 // The canonical cases here run on the curated baseline (fixtures/index.ts
 // `curatedFixture`): the same tenant, with the six source groups this baseline's
@@ -318,6 +320,11 @@ test('004.14: across every fixture, a forecast enforcement never becomes an acti
       // of a date, so only a row that is a date is checked, and the only date it
       // may be is the report-only deployment.
       const row = rowWhen(st)
+      // A User Action policy is created On (Phase 2e): its create is its turn-on, and the row dates that.
+      if (stepCreatedOn(st)) {
+        if (DATE.test(row)) assert.equal(row, absoluteDate(scheduleOf(st).at ?? ''), `${f.name}/${st.id}: the row dates something other than the create`)
+        continue
+      }
       if (t.at !== null) assert.notEqual(row, absoluteDate(t.at), `${f.name}/${st.id}: the row dates the forecast enforcement`)
       if (DATE.test(row)) assert.equal(row, absoluteDate(st.reportOnlyAt ?? ''), `${f.name}/${st.id}: the row dates something other than the report-only deployment`)
     }

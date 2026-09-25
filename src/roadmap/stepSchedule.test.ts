@@ -18,7 +18,8 @@ import type { Schedule } from './schedule.ts'
 import type { Step } from './types.ts'
 
 const SOURCE = BASELINE_MAPPINGS_KEY
-const DEVICE_REGISTRATION = 's-goal-device-registration-mfa'
+/** A create only a readiness threshold holds, on small: every admin's method (4.3). */
+const GATED_CREATE = 's-goal-admins-phishing-resistant'
 const EXCLUSIONS = 's-prereq-exclusion-group'
 const DAY = 86_400_000
 
@@ -93,8 +94,11 @@ test('every dated row falls inside its phase, every phase spans its rows, a wait
 })
 
 test('readiness gates enforcement, not creation: a create only a threshold holds keeps its report-only day, and enforcement stays gated below the threshold with no day, ring or wave', () => {
-  const r = runFixture(omitted(fixture('demo')))
-  const step = r.steps.find((s) => s.id === DEVICE_REGISTRATION)!
+  // small: Require Phishing-Resistant MFA for Admins waits for every admin's method.
+  // It was Require MFA to Register a Device on the demo, which is created On since
+  // Phase 2e, so its create waits with its turn-on (roadmap/userActionCreatedOn.test.ts).
+  const r = runFixture(fixture('small'))
+  const step = r.steps.find((s) => s.id === GATED_CREATE)!
   assert.equal(holdOf(step)?.kind, 'readiness', 'the premise: a readiness threshold holds it')
   assert.ok(step.action.readinessGate, 'the premise: it names the threshold')
   const s = step.scheduled!
@@ -104,7 +108,7 @@ test('readiness gates enforcement, not creation: a create only a threshold holds
   assert.equal(s.at, step.reportOnlyAt, 'the day is the day the plan creates it')
   assert.equal(s.wave, 0, 'creation is Preparation work')
   assert.ok(r.schedule.phases![0].stepIds.includes(step.id))
-  // The plan's foundation is unsettled on the demo's first visit and withdraws
+  // The plan's foundation is unsettled on small and withdraws
   // the create with it (roadmap/holds.ts waitsOnFoundation), so the milestone is
   // that wait. With it cleared, the threshold is what is left, and the milestone
   // is the day the plan creates the policy.
@@ -116,8 +120,8 @@ test('readiness gates enforcement, not creation: a create only a threshold holds
 
   // Enforcement stays gated below the threshold: no enforcement day, ring or wave.
   {
-    const r = runFixture(omitted(fixture('demo')))
-    const step = r.steps.find((s) => s.id === DEVICE_REGISTRATION)!
+    const r = runFixture(fixture('small'))
+    const step = r.steps.find((s) => s.id === GATED_CREATE)!
     assert.ok(isHeld(step))
     assert.equal(step.events, null, 'no enforcement event')
     assert.deepEqual(step.rings, [], 'no rings')
@@ -173,8 +177,9 @@ test('moving the plan start moves every phase with it, and the first deployment 
   for (const p of b.schedule.phases!) assert.ok(t(p.start) >= t(b.schedule.start), `phase ${p.wave} starts before the plan`)
 
   // The first deployment is respected: nothing is created in report-only before it, and the phases still hold their rows.
+  // (small: the demo's first visit has no report-only create left to date since Phase 2e.)
   {
-    const f = omitted(fixture('demo'))
+    const f = fixture('small')
     const first = '2026-09-02T12:00:00.000Z'
     const r = runFixture(f, { firstDeployment: first })
     assert.deepEqual(violations(r.steps, r.schedule), [])

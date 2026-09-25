@@ -41,6 +41,7 @@ import type { Step } from './types.ts'
 import { heldForReview, workflowReviewIsCurrent } from './lifecycle.ts'
 import { awaitsOwnObject, createHeldOnReadiness, enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 
 export type HoldKind = 'unavailable' | 'readiness' | 'prerequisite' | 'decision' | 'conflict' | 'review' | 'evidence'
@@ -96,8 +97,9 @@ export function holdOf(step: Step): Hold | null {
   // A compliant-device create the readiness threshold holds with its turn-on
   // (operations.ts createHeldOnReadiness): nothing about the policy is
   // unwritable, the threshold is all that holds it, and it is counted and
-  // worded as a readiness wait like the turn-on it waits with.
-  if (policy && createHeldOnReadiness(step)) return { kind: 'readiness' }
+  // worded as a readiness wait like the turn-on it waits with. So is the create
+  // of a policy created On (evidenceStrategy.ts stepCreatedOn; Phase 2e), which is its turn-on.
+  if (policy && (createHeldOnReadiness(step) || (stepCreatedOn(step) && unavailableReason(step) === 'readiness-unmet'))) return { kind: 'readiness' }
   // An object the step makes itself is its own next task, and that is work the
   // plan schedules now, not a hold (Stage 3: the countries policy creates the
   // countries location, then its policy). Its policy still cannot be written

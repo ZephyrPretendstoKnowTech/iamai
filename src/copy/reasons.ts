@@ -140,6 +140,15 @@ export function readinessFamilyOf(gate: { measure: string; family?: string }): s
 }
 
 /**
+ * A gate that waits for every person it counts, said as those people and named
+ * one by one, never as a percentage: the admin gate, and any gate at 100%
+ * (Require MFA to Register a Device, owner decision 4, Phase 2e).
+ */
+export function everyoneGate(gate: { measure: string; family?: string; threshold?: string }): boolean {
+  return readinessFamilyOf(gate) === 'admin' || gate.threshold === '100%'
+}
+
+/**
  * The measure a readiness threshold is stated against: its family's words, or,
  * where its policies require an authentication strength those words do not say
  * (roadmap/readiness.ts strengthMeasuredOf), that strength by name. The gate

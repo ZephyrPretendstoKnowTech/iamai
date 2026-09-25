@@ -135,6 +135,7 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
     // An update opens the tenant's own policy, by the name the tenant knows it by.
     portalOpen: (shared.portalOpen as string).replace('{policy}', openName ?? policyName),
     reportOnlyLine: shared.reportOnlyLine as string,
+    createOnLine: shared.createOnLine as string,
     changeUntouched: shared.changeUntouched as string,
     ...(names.withholdTurnOn ? {} : { enableLine: shared.enableLine as string }),
     exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', exclusionsGroup),

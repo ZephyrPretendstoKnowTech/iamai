@@ -23,7 +23,7 @@ function answeredWeekTwo() {
 }
 // Until the plan's foundation is settled every policy step is held (roadmap/foundations.ts),
 // so the sweep carries a settled plan too, or half the executability answers are the gate's.
-const PLANS = [...NAMES.map((name) => ({ name: name as string, steps: runFixture(fixture(name)).steps })), { name: 'demo-week2-answered', steps: runFixture(answeredWeekTwo()).steps }, { name: 'demo-week2-settled', steps: runFixture(withRecoveryTested(withFoundationSettled(answeredWeekTwo()))).steps }, { name: 'demo-week2-settled-unanswered', steps: runFixture(withRecoveryTested(withFoundationSettled(fixture('demo-week2')))).steps }]
+const PLANS = [...NAMES.map((name) => ({ name: name as string, steps: runFixture(fixture(name)).steps })), { name: 'demo-week2-answered', steps: runFixture(answeredWeekTwo()).steps }, { name: 'demo-week2-settled', steps: runFixture(withRecoveryTested(withFoundationSettled(answeredWeekTwo()))).steps }, { name: 'demo-week2-settled-unanswered', steps: runFixture(withRecoveryTested(withFoundationSettled(fixture('demo-week2')))).steps }, { name: 'small-settled', steps: runFixture(withFoundationSettled(fixture('small'))).steps }]
 const all = (): { name: string; step: Step }[] => PLANS.flatMap((p) => p.steps.map((step) => ({ name: p.name, step })))
 const find = (name: string, id: string): Step => PLANS.find((p) => p.name === name)!.steps.find((s) => s.id === id || s.goalId === id)!
 
@@ -50,7 +50,8 @@ test('every step’s executability is the one answer: its action is current and 
 })
 
 test('readiness holds enforcement and not report-only creation; a missing object, a decision and a contradictory source hold the action itself', () => {
-  // A readiness-gated create: executable now, not enforceable.
+  // A readiness-gated create: executable now, not enforceable (small settled: Require
+  // Phishing-Resistant MFA for Admins; the registration policy is created On since Phase 2e).
   const gated = all().find(({ step }) => nextSafeAction(step).kind === 'create-report-only' && step.state.condition === 'blocked' && nextSafeAction(step).executable)
   assert.ok(gated, 'no create held only by readiness in the fixtures')
   assert.deepEqual([nextSafeAction(gated.step).executable, nextSafeAction(gated.step).enforceable], [true, false])

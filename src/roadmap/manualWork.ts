@@ -29,15 +29,15 @@ function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
 }
 
 const POLICY_WORKFLOWS: Record<string, string> = {
-  's-goal-register-info-protected': 'Security Information Registration Workflow',
   's-goal-guests-mfa': 'Guest Sign-In and Collaboration Workflow',
-  's-goal-device-registration-mfa': 'Registration or Join Workflow and Client',
   's-goal-intune-enrollment-reauth': 'Enrollment Workflow and Client',
   's-goal-pim-activation-reauth': 'Role Activation Tested',
   's-goal-user-risk-medium': 'Medium-Risk Password Recovery Workflow',
   's-goal-service-accounts-trusted-network': 'Service Job Tested',
 }
-// Use Separate Accounts for Admin Work is not among them: the scan decides it,
+// Nor the two User Action policies (Protect Sign-in Method Registration, Require
+// MFA to Register a Device): they are created On with no registration test
+// (owner decision 3, Phase 2e). Use Separate Accounts for Admin Work is not among them: the scan decides it,
 // and it records nothing (walk list item 1; generate.ts). Nor is Block Device
 // Code Sign-in: an enforced policy that matches completes it from the scan
 // (walk list 4.x item 3). Block Legacy Authentication's mail half is the sign-in

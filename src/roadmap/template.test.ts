@@ -3,6 +3,7 @@
 // baseline policy would, and every placeholder either resolves from the
 // assumptions or names the Wave 0 step that creates the missing object.
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
+import { createdOn } from './evidenceStrategy.ts'
 import { REVIEWED_SOURCES, inBaselineConflict } from './baselineConflict.ts'
 import { test } from 'node:test'
 import { PINNED_GOAL_MAP, goalInMap } from './goalMap.ts'
@@ -61,7 +62,8 @@ test('item 12: every goal × implementation renders Do it in report-only with a 
       const grants = (parsed.grantControls?.builtInControls?.length ?? 0) + (parsed.grantControls?.authenticationStrength ? 1 : 0)
       const sessions = Object.values(parsed.sessionControls ?? {}).filter((v) => v && typeof v === 'object' && (v as { isEnabled?: boolean }).isEnabled === true).length
       assert.ok(grants + sessions >= 1, `${goal.id}: at least one grant or session control`)
-      assert.equal(parsed.state, 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only`)
+      // A User Action policy is created On (Phase 2e, roadmap/evidenceStrategy.ts createdOn).
+      assert.equal(parsed.state, createdOn(parsed) ? 'enabled' : 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only, or On for a User Action`)
       assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
       assert.match(powershellFor([{ sourceName: goal.id, memberKey: goal.id, mode: 'create', policyId: null, body: parsed }]), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
     }

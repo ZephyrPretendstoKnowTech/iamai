@@ -8,6 +8,7 @@
 // optional change freeze). Waves are read back off the ring dates for the
 // Timeline. Done steps consume no time. Pure.
 import { BANDS, OBSERVATION_DAYS, OBSERVATION_DAYS_ZERO, bandForActiveUsers } from './constants.ts'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import type { SizeBand } from './constants.ts'
 import { ringBandFor } from './rings.ts'
 import { waitingOnSetup as waitingOnSetupQ } from '../derive/sets.ts'
@@ -671,15 +672,18 @@ export function buildSchedule(
       // Day 0 closed (review-08 C2, prompt 40 §21).
       // The shared creation day above: one batch, no enforcement window.
       const creation = creationDay
-      if (s.kind === 'create') reportOnlyAt[s.id] = creation
+      // A policy created On has no report-only day: its create is its turn-on,
+      // placed as one (evidenceStrategy.ts stepCreatedOn; Phase 2e).
+      const inReportOnly = s.kind === 'create' && !stepCreatedOn(s)
+      if (inReportOnly) reportOnlyAt[s.id] = creation
       // The step's own window, not the plan's longest (prompt 42 §1): a block
       // on a flow nobody uses waits three days, not seven.
       const ownObservationEnd = addDays(observationStart, observationDaysFor(s))
       // Never on the day Day 0 closes, nor before it (review-08 C2, prompt 40
       // §21): the foundation work has to be finished, not finishing.
       const afterDay0 = day0Days > 0 ? addDays(day0End, 1) : anchor
-      let earliest = max(s.kind === 'create' ? ownObservationEnd : creation, afterDay0)
-      const reason: { kind: ConstraintKind; ref: string | null } = { kind: s.kind === 'create' ? 'rings' : 'none', ref: null }
+      let earliest = max(inReportOnly ? ownObservationEnd : creation, afterDay0)
+      const reason: { kind: ConstraintKind; ref: string | null } = { kind: inReportOnly ? 'rings' : 'none', ref: null }
       // Phase order (ux-review-07 §3): phases begin in order, so a step starts no
       // earlier than the FIRST start of any lower phase. The map is named for
       // what it holds; it was called latestStartByPhase and stores the minimum.

@@ -42,6 +42,8 @@ export type PortalContext = {
   enableLine?: string
   /** shared.reportOnlyLine, resolved — `Enable policy: Report-only → Create`. */
   reportOnlyLine: string
+  /** shared.createOnLine — a User Action policy is created On (evidenceStrategy.ts createdOn; Phase 2e). */
+  createOnLine?: string
   /** shared.exclusionsLine, resolved with the exclusions group's name. */
   exclusionsLine: string
   /** Recognised groups, so an exclude of one is labelled, not left as an id. */
@@ -378,7 +380,8 @@ export function portalLines(f: PolicyFacts, ctx: PortalContext, opts: { mode?: P
   const grant = grantLine(f, ctx, opts.grantOverride)
   if (grant) out.push(grant)
   out.push(...sessionLines(f))
-  out.push(ctx.reportOnlyLine)
+  // The create's own state: a User Action policy is created On (Phase 2e).
+  out.push(f.state === 'enabled' && ctx.createOnLine ? ctx.createOnLine : ctx.reportOnlyLine)
   return out
 }
 

@@ -313,7 +313,8 @@ export function createLines(policy: Record<string, unknown>, ctx: ProcedureConte
     openLine(null),
     fill(PROCEDURE.name, { name: opts.name }),
     ...annotated,
-    PROCEDURE.create,
+    // A User Action policy is created On (roadmap/evidenceStrategy.ts createdOn): the body says which.
+    policy.state === 'enabled' ? PROCEDURE.createOn : PROCEDURE.create,
     PROCEDURE.scan,
   ]
 }

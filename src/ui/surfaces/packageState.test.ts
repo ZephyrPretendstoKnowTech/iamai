@@ -57,7 +57,10 @@ test('the package state precedence: set aside, then a contradictory source, a qu
   assert.equal(stateOf(pilotStepAt(base, 'readyToEnforce')), 'readyToEnforce')
   assert.equal(stateOf(pilotStepAt(base, 'reportOnly')), 'reportOnly')
   assert.equal(stateOf(pilotStepAt(base, 'missing')), 'missing')
-  // The owner's one held case: a held, undeployed policy whose next action is its report-only creation is Missing.
+  // The owner's one held case: a held, undeployed policy whose next action is its
+  // report-only creation is Missing (library.test.ts: Require Phishing-Resistant MFA
+  // for Admins). The pilot is a User Action policy, created On since Phase 2e: its
+  // create is its turn-on, so held it is Blocked.
   const held = {
     ...pilotStepAt(base, 'missing'),
     blockers: [{ kind: 'readiness', label: 'mfa-readiness', binding: 'when MFA readiness reaches 90% (now 5%)' }],
@@ -65,7 +68,7 @@ test('the package state precedence: set aside, then a contradictory source, a qu
     state: { ...pilotStepAt(base, 'missing').state, condition: 'blocked' },
     status: 'blocked',
   } as unknown as Step
-  assert.equal(stateOf(held), 'missing')
+  assert.equal(stateOf(held), 'blocked')
 })
 
 test('a correction owed is Partial whatever the stage, and is never hidden behind Report-only or Enforced', () => {

@@ -44,7 +44,9 @@ test('the floor step\'s What to do is the template through the translator: the u
   // offers its instructions (stepJson.ts implementationOffered).
   const f = fixture('demo-week2')
   const r = runFixture(f)
-  const reg = r.steps.find((s) => s.goalId === 'register-info-protected')!
+  const held = r.steps.find((s) => s.goalId === 'register-info-protected')!
+  // Created On since Phase 2e, MFA readiness holds its create; read once that is met.
+  const reg = { ...held, action: { ...held.action, readinessGate: undefined, enforceWaitsOn: [] } }
   const names = (id: string): string => r.input.names!.label(id)
   // The floor step's own resolved template, read off the step like any policy step.
   const lines = stepPortalLines(reg, { nameOf: names, policyName: reg.naming?.proposed ?? reg.title })
@@ -54,7 +56,7 @@ test('the floor step\'s What to do is the template through the translator: the u
   assert.match(text, /Exclude → Groups: Core - Exclusions/, 'the exclusion is the group')
   for (const id of f.mapping.breakGlassUserIds) assert.ok(!text.includes(names(id)), 'never an emergency account by name')
   assert.doesNotMatch(text, /\{[a-zA-Z]+\}|__IAMAI|urn:user:/, 'no raw placeholder or URN')
-  assert.match(text, /Report-only/, 'ends in report-only')
+  assert.match(text, /Enable policy: On → Create\.$/, 'created On: a User Action policy (Phase 2e)')
 })
 
 // ---- Task 025: the floor set, proved against a supplied active baseline ----

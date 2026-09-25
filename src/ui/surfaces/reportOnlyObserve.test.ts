@@ -43,7 +43,7 @@ const fixture = (name: Parameters<typeof curatedFixture>[0]): ReturnType<typeof 
 import { cleanReportOnly } from '../../roadmap/fixtures/records.ts'
 import { readBackPlacement } from '../../roadmap/schedule.ts'
 import { planFinish } from '../../derive/finish.ts'
-import { enforcesOnRun, implementationOffered, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { enforcesOnRun, implementationOffered, operationsOf, policyHold, unavailableReason, validOperations } from '../../roadmap/operations.ts'
 import { enforcementTiming, enforcementUnearned, settleForecast, statedEnforcement } from '../../roadmap/forecast.ts'
 import { artifactIdOf } from '../../roadmap/observation.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
@@ -212,14 +212,17 @@ function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
     return { step, ctx, steps: r.steps, snapshot, view: (x: Step) => stepExportView(x, ctx), run: r }
   }
   const due = asCase(runFixture({ ...f, groups, mapping }, { snapshot: withStrength, viability }), f.snapshot)
-  const op = operationsOf(due.step).find((o) => o.mode === 'create')
+  // The create the step declares: created On since Phase 2e, so what holds its
+  // turn-on holds it too, and it is read here as declared.
+  const op = validOperations(due.step.action).find((o) => o.mode === 'create')
   assert.ok(op, `${PREREQ_STEP_ID} is no longer a policy the plan would create`)
   const at = new Date(Date.parse(f.snapshot.asOf) - days * 86_400_000).toISOString()
   const policyId = 'e5d0d3c6-0b6e-4a2e-9a3f-9c4b7a1d0006'
   const people = (f.snapshot.users ?? []).slice(0, 20).map((u) => String(u.id))
   const snapshot = {
     ...withStrength,
-    config: { ...withStrength.config, caPolicies: { ...withStrength.config.caPolicies!, rows: [...(withStrength.config.caPolicies?.rows ?? []), { id: policyId, createdDateTime: at, modifiedDateTime: at, ...(op!.body as Record<string, unknown>) }] } },
+    // Found in Report-only: a copy somebody made that way, which the plan watches and then turns on.
+    config: { ...withStrength.config, caPolicies: { ...withStrength.config.caPolicies!, rows: [...(withStrength.config.caPolicies?.rows ?? []), { id: policyId, createdDateTime: at, modifiedDateTime: at, ...(op!.body as Record<string, unknown>), state: 'enabledForReportingButNotEnforced' }] } },
     evidencePolicyResults: [
       ...(f.snapshot.evidencePolicyResults ?? []),
       cleanReportOnly({ policyId, displayName: String((op!.body as Record<string, unknown>).displayName), people, asOf: f.snapshot.asOf, firstReportOnlyAt: at }),
@@ -654,23 +657,23 @@ test('005.11: no fixture hands over an enforcement while its policy is still in 
 
 // ---- 15. and the held instruction is the one that would undo the protection ----
 
-test('005.15: device-registration guidance keeps the replacement enforced before retiring the legacy setting', () => {
+test('005.15: device-registration guidance sets the legacy setting to No with the create, which turns the policy on', () => {
   const { due, observing } = observingWithAPrerequisite()
   const cs = contentStepFor(due.step) as Record<string, any>
   const before = ((cs.whatToDo ?? {}).before ?? []).join(' ')
-  // mfa-everyone-spec.md §3 B3/B4: the line now says what leaving the tenant-wide
-  // setting at Yes costs, and names it as ms-device-settings does — but the order it
-  // guards is unchanged: prepare and enforce the replacement first, set the setting
-  // to No on that day, then test.
+  // mfa-everyone-spec.md §3 B3/B4: the line says what leaving the tenant-wide
+  // setting at Yes costs, and names it as ms-device-settings does. Since Phase 2e
+  // (owner decision 3) the policy is created On, so the setting goes to No in that
+  // same change, and nothing is tested after it.
   assert.match(before, /Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced/)
-  assert.match(before, /Prepare and validate the policy first; on the day it is enforced.*set that setting to No, then test/)
+  assert.match(before, /Set that setting to No when you create the policy\.$/)
   const text = stepBodyOf(due.step, due.ctx).artifacts.find(a => a.id === 'portal')!.text()
-  assert.match(text, /legacy device-registration MFA|legacy.*setting/i)
-  assert.match(text, /Report-only/)
+  assert.match(text, /legacy device-registration MFA|legacy.*setting|Require multifactor authentication to register or join devices/i)
+  // A copy found in Report-only is watched on its configuration, and no registration test is recorded.
   assert.equal(observing.step.tracking!.evidenceStrategy, 'configuration')
   assert.equal(observing.step.tracking!.failures, null, 'report-only does not prove this unsupported User Action workflow')
-  assert.ok(observing.step.manualReview?.fields?.length, 'the workflow has a scoped result to record')
-  assert.equal(observing.step.state.satisfied, false, 'configuration alone does not complete the workflow')
+  assert.equal(observing.step.manualReview?.fields?.length ?? 0, 0, 'no registration test to record (owner decision 3)')
+  assert.equal(observing.step.state.satisfied, false, 'in Report-only it is not yet delivered')
 })
 
 // ---- 16, 17. the plan carries no placement for the step, and its exported conclusions are not the step's ----

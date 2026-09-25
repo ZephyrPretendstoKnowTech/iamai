@@ -18,6 +18,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import type { Condition } from './lifecycle.ts'
 import { nextMilestone, workflowReviewIsCurrent } from './lifecycle.ts'
 import { waitsOnFoundation } from './holds.ts'
@@ -80,7 +81,8 @@ export function executableNow(step: Step): boolean {
  * - `resolve-source`: the baseline contradicts itself; nothing is written.
  * - `decide`: a person's answer comes first; nothing is written.
  * - `prepare`: a step that makes or configures what a policy needs.
- * - `create-report-only`: a policy IAMAI writes lands in report-only.
+ * - `create-report-only`: a policy IAMAI writes lands in report-only, save a
+ *   User Action policy, created On: its create is `enforce` (evidenceStrategy.ts stepCreatedOn).
  * - `correct`: an existing policy's settings are brought to the plan.
  * - `observe`: a report-only policy is verified and watched.
  * - `enforce`: the policy is turned on.
@@ -115,13 +117,15 @@ export function nextSafeAction(step: Step): SafeAction {
   const blockedBy = unavailable ?? (implementationIsCurrent(step) ? hold : s.condition)
   if (step.kind !== 'create' && step.kind !== 'adjust') return { kind: 'prepare', executable, blockedBy, enforceable: false }
   const ops = result.kind === 'implementable' || result.kind === 'held' ? result.operations : validOperations(step.action)
-  const kind: SafeActionKind = ops.some((o) => o.mode === 'create')
+  const kind: SafeActionKind = stepCreatedOn(step)
+    ? 'enforce'
+    : ops.some((o) => o.mode === 'create')
     ? 'create-report-only'
     : ops.some((o) => o.mode === 'update' && !submitsEnforcementOnly(o))
       ? 'correct'
       : s.lifecycle === 'ready-to-enforce'
         ? 'enforce'
         : 'observe'
-  const enforceable = kind === 'enforce' && executable && hold === null && ops.some(submitsEnforcement)
+  const enforceable = kind === 'enforce' && executable && hold === null && ops.some((o) => submitsEnforcement(o) || (o.mode === 'create' && enforcesOnRun(o)))
   return { kind, executable, blockedBy, enforceable }
 }

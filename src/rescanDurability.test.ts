@@ -17,6 +17,7 @@
 // with one thing changed between them, every subject chosen by asking a
 // production authority a question rather than by naming an object.
 import { test } from 'node:test'
+import { stepCreatedOn } from './roadmap/evidenceStrategy.ts'
 import { holdOf } from './roadmap/holds.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -330,17 +331,21 @@ test('043.7: a blocker that appears stops the step, and one that clears releases
   // what changes is whether the step has an implementation to offer at all,
   // plus the Preparation step that would make the object.
   const cleared = transition('prerequisiteCleared')
-  const released = cleared.b.steps.filter((s) => implementationOffered(s) && stepIn(cleared.control, s.id) !== null && !implementationOffered(stepIn(cleared.control, s.id)!))
-  assert.ok(released.length > 0, 'the prerequisite object exists and nothing in the plan became offerable')
+  // Released from the missing object. A User Action policy is created On (Phase
+  // 2e), so the readiness that holds its turn-on can still hold its create; the
+  // object is no longer what withholds it.
+  const released = cleared.b.steps.filter((s) => stepIn(cleared.control, s.id) !== null && unavailableReason(stepIn(cleared.control, s.id)!) === 'missing-object' && unavailableReason(s) !== 'missing-object')
+  assert.ok(released.length > 0, 'the prerequisite object exists and nothing in the plan was released from it')
   for (const s of released) {
-    assert.equal(unavailableReason(s), null, `${s.id}: offered and still naming a reason it cannot be written`)
-    assert.equal(unavailableReason(stepIn(cleared.control, s.id)!), 'missing-object', `${s.id}: the case is not about a missing object`)
+    assert.ok(unavailableReason(s) === null || (stepCreatedOn(s) && unavailableReason(s) === 'readiness-unmet'), `${s.id}: released and still naming a reason it cannot be written (${unavailableReason(s)})`)
+    if (unavailableReason(s) === null) assert.equal(implementationOffered(s), true, `${s.id}: released and not offered`)
     assert.equal(s.blockers.some((x) => x.kind === 'step'), false, `${s.id}: released and still held by the step that would make the object`)
   }
   assert.ok(cleared.control.steps.some((s) => !s.state.satisfied && stepIn(cleared.b, s.id)?.state.satisfied), 'the observed prerequisite is retained as completed')
 
   const appeared = transition('prerequisiteAppeared')
-  const held = appeared.b.steps.filter((s) => !implementationOffered(s) && stepIn(appeared.control, s.id) !== null && implementationOffered(stepIn(appeared.control, s.id)!))
+  // Held on the missing object, from whatever held it before (a policy created On may already have waited on readiness, Phase 2e).
+  const held = appeared.b.steps.filter((s) => unavailableReason(s) === 'missing-object' && stepIn(appeared.control, s.id) !== null && unavailableReason(stepIn(appeared.control, s.id)!) !== 'missing-object')
   assert.ok(held.length > 0, 'the object a step needed went missing and the step stayed offerable')
   for (const s of held) {
     assert.equal(unavailableReason(s), 'missing-object', `${s.id}: unavailable for a reason other than the object that went missing`)

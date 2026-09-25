@@ -3,11 +3,11 @@
 This file is authored source. Render/extract only blocks selected by `META.json`. Do not select content by Markdown heading text.
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-# Create the policy in Report-only
+# Create the policy, turned on
 
-Create this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.
+Create this policy On. Microsoft does not evaluate a User Action policy in Report-only, so a report-only week would show nothing, and the plan creates it only once everyone it covers has a method its strength accepts. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.
 
-Leave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on. Until it reads **No**, Microsoft does not properly enforce a Conditional Access policy that uses this User Action, so what people meet at the join is still the old setting.
+Set the tenant-wide legacy device-registration MFA setting to **No** in the same change. Until it reads **No**, Microsoft does not properly enforce a Conditional Access policy that uses this User Action, so what people meet at the join is still the old setting.
 
 1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.
 2. Select **New policy** and enter the IAMAI-resolved policy name.
@@ -16,11 +16,12 @@ Leave the tenant-wide legacy device-registration MFA setting unchanged while thi
 5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place. **Require multifactor authentication** and **Require authentication strength** are the only controls this User Action offers; the rest are greyed out.
    Whatever the strength allows, **Windows Hello for Business** and a **device-bound passkey** cannot answer this policy: both need the device to be registered already, and at this moment it is not. Check that the people who register devices hold something else the strength accepts.
 6. Leave other conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the baseline policy also sets no device-platform, location, risk, or authentication-flow conditions.
-7. Set **Enable policy** to **Report-only**. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
+7. Set **Enable policy** to **On**. This policy is created On: Microsoft does not evaluate User Actions in Report-only. The script for this step creates it On.
 8. Create the policy.
-9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.
+9. Go to **Entra ID > Devices > Overview > Device settings** and set **Require multifactor authentication to register or join devices with Microsoft Entra** to **No**.
+10. Rescan IAMAI.
 
-Done when IAMAI rescans the newly created policy and finds the intended scope, exclusions, the resolved authentication strength, and Report-only state.
+Done when IAMAI rescans the newly created policy and finds the intended scope, exclusions, the resolved authentication strength, and On state.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template","moduleRole":"sharedBefore"}
@@ -93,15 +94,12 @@ Done when IAMAI reads the same policy ID and the selected difference(s) are clea
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-# Validate before enforcement
+# Before it is turned on
 
-Keep the policy in Report-only while you review the evidence listed for this step. Do not recreate it.
+Keep the policy in Report-only until IAMAI says it can be turned on. Do not recreate it.
 
-1. Use IAMAI's current evidence to identify known device-registration and enrollment workflows that still need validation.
-2. Use IAMAI's MFA Readiness evidence to identify affected users who cannot currently satisfy MFA; do not expect Report-only User Action telemetry to prove this.
-3. Validate known enrollment workflows directly where practical, including Windows Configuration Designer bulk enrollment when it is used.
-4. Record any workflow that needs an approved exclusion or a different enrollment method as unresolved; do not invent the exception here.
-5. Rescan IAMAI after the evidence or owner decision changes.
+1. Use IAMAI's MFA Readiness evidence to identify people it covers who do not yet hold a method its strength accepts; do not expect Report-only User Action telemetry to show them.
+2. Rescan IAMAI after the evidence or owner decision changes.
 
 Microsoft does **not** evaluate User Action policies in Report-only mode. An empty or quiet Report-only result does not prove this policy is safe to enforce.
 @@IAMAI-END
@@ -109,7 +107,7 @@ Microsoft does **not** evaluate User Action policies in Report-only mode. An emp
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 # Enforce the resolved policy
 
-Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan. Before this change, validate the enrollment workflows and resolve any external-authentication-method incompatibility. The legacy device-registration MFA setting and the policy state change together in this controlled change.
+Verify the same policy and its prerequisites, set it to On, then rescan. Before this change, resolve any external-authentication-method incompatibility. The legacy device-registration MFA setting and the policy state change together in this controlled change.
 
 1. Go to **Microsoft Entra admin center > Entra ID > Devices > Overview > Device settings**.
 2. Confirm **Require multifactor authentication to register or join devices with Microsoft Entra** is **No**. If it is Yes, set it to No as part of this controlled enforcement change.
@@ -124,18 +122,17 @@ Do not turn it on unless all of these are true now:
 
 If any one of them is not true, leave the policy in Report-only. Set **Enable policy** from **Report-only** to **On**. Do not change scope, exclusions, User Action, or grant.
 5. Save the policy.
-6. Verify after the change: a controlled device registration or join succeeds with the required authentication strength, and the identified enrollment workflows still work. Report-only did not evaluate this User Action, so these tests are the first evidence of the registration experience.
-7. Rescan IAMAI.
+6. Rescan IAMAI.
 
-If a required enrollment workflow fails, return the same policy to **Report-only** and restore the prior tenant-wide device-registration MFA setting if this rollout changed it from Yes to No.
+If device registration fails unexpectedly, return the same policy to **Report-only** and restore the prior tenant-wide device-registration MFA setting if this rollout changed it from Yes to No.
 
-Done when a later scan shows the same policy ID On. Verify after the change: the legacy device-registration MFA setting is No, controlled registration succeeds with the required authentication strength, and required enrollment workflows pass.
+Done when a later scan shows the same policy ID On and the legacy device-registration MFA setting is No.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"/identity/conditionalAccess/policies"}
 {
   "displayName": {{json:policy.target.displayName}},
-  "state": "enabledForReportingButNotEnforced",
+  "state": "enabled",
   "conditions": {
     "users": {
       "includeUsers": ["All"],
@@ -223,7 +220,7 @@ Done when a later scan shows the same policy ID On. Verify after the change: the
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify","Enforce"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify","Enforce"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","Correct","Verify","Enforce"]},"LegacyDeviceMfaToggleConfirmedNo":{"switch":true,"prerequisite":"legacy-device-mfa-toggle","modes":["Enforce"]},"EnrollmentWorkflowsValidated":{"switch":true,"prerequisite":"enrollment-workflows","modes":["Enforce"]},"ExternalAuthenticationCompatibilityResolved":{"switch":true,"prerequisite":"external-auth-methods","modes":["Enforce"]}}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify","Enforce"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify","Enforce"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","Correct","Verify","Enforce"]},"LegacyDeviceMfaToggleConfirmedNo":{"switch":true,"prerequisite":"legacy-device-mfa-toggle","modes":["Enforce"]},"ExternalAuthenticationCompatibilityResolved":{"switch":true,"prerequisite":"external-auth-methods","modes":["Enforce"]}}}}
 # This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Require MFA to Register a Device
 # Required module: Microsoft.Graph.Authentication
@@ -248,7 +245,6 @@ param(
     [string[]] $Corrections,
 
     [switch] $LegacyDeviceMfaToggleConfirmedNo,
-    [switch] $EnrollmentWorkflowsValidated,
     [switch] $ExternalAuthenticationCompatibilityResolved
 )
 
@@ -325,7 +321,7 @@ switch ($Mode) {
 
         $body = @{
             displayName = $PolicyDisplayName
-            state = 'enabledForReportingButNotEnforced'
+            state = 'enabled'
             conditions = @{
                 users = @{ includeUsers=@('All'); excludeUsers=@(); includeGroups=@(); excludeGroups=@($ExcludeGroupIds); includeRoles=@(); excludeRoles=@() }
                 applications = @{ includeApplications=@(); excludeApplications=@(); includeUserActions=@('urn:user:registerdevice') }
@@ -336,8 +332,8 @@ switch ($Mode) {
         $created = Invoke-MgGraphRequest -Method POST -Uri $BaseUri -Body ($body | ConvertTo-Json -Depth 20) -ContentType 'application/json'
         if (-not $created.id) { throw 'Microsoft Graph did not return a policy ID.' }
         $after = Get-PolicyById $created.id
-        Assert-CanonicalPolicy -Policy $after -ExpectedExcludeGroupIds $ExcludeGroupIds -ExpectedState 'enabledForReportingButNotEnforced'
-        Write-Host "Created policy ID $($created.id) in Report-only. Rescan IAMAI."
+        Assert-CanonicalPolicy -Policy $after -ExpectedExcludeGroupIds $ExcludeGroupIds -ExpectedState 'enabled'
+        Write-Host "Created policy ID $($created.id) On. Set the legacy device-registration MFA setting to No if it is not already, then rescan IAMAI."
     }
 
     'Correct' {
@@ -379,12 +375,11 @@ switch ($Mode) {
         Connect-IAMAIContext @('Policy.Read.All')
         $p = Get-PolicyById $PolicyId
         Assert-CanonicalPolicy -Policy $p -ExpectedExcludeGroupIds $ExcludeGroupIds -ExpectedState 'enabledForReportingButNotEnforced'
-        Write-Host 'Canonical Report-only configuration verified. User Actions are not evaluated by Report-only; complete direct workflow validation before enforcement.'
+        Write-Host 'Canonical Report-only configuration verified. User Actions are not evaluated by Report-only.'
     }
 
     'Enforce' {
         if (-not $LegacyDeviceMfaToggleConfirmedNo) { throw 'Enforcement stopped: confirm the legacy device-registration MFA toggle is No.' }
-        if (-not $EnrollmentWorkflowsValidated) { throw 'Enforcement stopped: enrollment workflows are not validated.' }
         if (-not $ExternalAuthenticationCompatibilityResolved) { throw 'Enforcement stopped: external-authentication-method compatibility is unresolved.' }
         Assert-ExcludeIds $ExcludeGroupIds
         Connect-IAMAIContext @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess')
@@ -393,14 +388,14 @@ switch ($Mode) {
         Invoke-MgGraphRequest -Method PATCH -Uri "$BaseUri/$PolicyId" -Body (@{state='enabled'} | ConvertTo-Json) -ContentType 'application/json' | Out-Null
         $after = Get-PolicyById $PolicyId
         Assert-CanonicalPolicy -Policy $after -ExpectedExcludeGroupIds $ExcludeGroupIds -ExpectedState 'enabled'
-        Write-Host "Policy ID $PolicyId is enabled. Perform controlled registration/enrollment tests and rescan IAMAI."
+        Write-Host "Policy ID $PolicyId is enabled. Rescan IAMAI."
     }
 }
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 STATE
-This state creates the Conditional Access policy that requires the resolved authentication strength for Microsoft Entra device registration or join, initially in Report-only.
+This state creates the Conditional Access policy that requires the resolved authentication strength for Microsoft Entra device registration or join, turned on: Microsoft does not evaluate User Action policies in Report-only, so the plan creates it On once everyone it covers has a method its strength accepts.
 
 AUTHENTICATION STRENGTH
 The authentication strength this policy requires, as IAMAI resolved it for this tenant, is {{authStrength.target.displayName}} (`{{authStrength.target.id}}`). Do not substitute a different or weaker strength.
@@ -412,13 +407,13 @@ TENANT CONTEXT
 - Affected people count: {{people.affected.count}} [omit when unavailable]
 
 INTENDED POLICY
-All users; the resolved exclusions; User Action `urn:user:registerdevice`; no cloud-app, location, platform, device/filter, risk, or authentication-flow condition; the resolved authentication strength {{authStrength.target.displayName}}; no session controls; Report-only.
+All users; the resolved exclusions; User Action `urn:user:registerdevice`; no cloud-app, location, platform, device/filter, risk, or authentication-flow condition; the resolved authentication strength {{authStrength.target.displayName}}; no session controls; On.
 
 SCOPE LIMIT
 The policy applies when someone registers or joins a device. Registration or join does not make a device compliant or authorize all access.
 
 PREREQUISITES
-The target name and exclusions above are the ones IAMAI resolved for this tenant. The policy is not created until every one of them is resolved; an exclusion still waiting on an answer about the baseline's own groups is not resolved yet. Enforcement has separate human checks for the legacy device-registration MFA setting and enrollment workflows.
+The target name and exclusions above are the ones IAMAI resolved for this tenant. The policy is not created until every one of them is resolved; an exclusion still waiting on an answer about the baseline's own groups is not resolved yet. The legacy device-registration MFA setting is set to No in the same change.
 
 IMPLEMENTATION OPTIONS
 Use only the Entra steps, the JSON request or the PowerShell script in Create mode that IAMAI shows for this step. Do not create a duplicate if a matching policy is discovered; rescan IAMAI instead.
@@ -427,13 +422,13 @@ DO NOT CHANGE
 Do not add device state/filter, Client apps, location, or cloud-application scope. Do not change the resolved authentication strength.
 
 VERIFICATION
-Read back the created policy, confirm the intended settings in Report-only, then rescan IAMAI.
+Read back the created policy, confirm the intended settings and that it is On, then rescan IAMAI.
 
 ROLLBACK / SAFE RECOVERY
-If creation is wrong, keep the policy non-enforcing and correct the same policy; do not turn it On while differences remain.
+If creation is wrong or registration fails unexpectedly, set the same policy to Report-only, correct it, and restore the prior legacy device-registration MFA setting if this change moved it from Yes to No.
 
 KNOWN UNKNOWNS
-Microsoft does not evaluate User Action policies in Report-only, so Report-only results do not show the registration experience. Enrollment workflows that IAMAI has not observed remain unknown.
+Microsoft does not evaluate User Action policies in Report-only, which is why this policy is created On.
 
 MICROSOFT REFERENCES
 - Require multifactor authentication for device registration: https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-registration
@@ -495,29 +490,28 @@ The authentication strength this policy requires, as IAMAI resolved it for this 
 TENANT CONTEXT
 - Policy ID: {{policy.current.id}}
 - Current device-registration evidence: {{evidence.deviceRegistration}} [omit when unavailable]
-- Enrollment-workflow evidence: {{evidence.enrollmentWorkflows}} [omit when unavailable]
 - Current blockers: {{dependencies.blockers}} [omit when unavailable]
 
 PREREQUISITES
-Identify and validate actual registration/enrollment workflows. If Windows Configuration Designer bulk enrollment is used, account for Microsoft's package_{GUID} MFA limitation through an already-approved exception or a deliberate workflow decision.
+If Windows Configuration Designer bulk enrollment is used, account for Microsoft's package_{GUID} MFA limitation through an already-approved exception or a deliberate workflow decision.
 
 DO NOT CHANGE
-Do not turn the policy On solely because report-only logs are quiet. Do not invent exclusions for an unvalidated workflow.
+Do not turn the policy On solely because report-only logs are quiet. Do not invent exclusions.
 
 VERIFICATION
-Use controlled workflow tests and IAMAI evidence; rescan after evidence changes.
+Use IAMAI evidence; rescan after evidence changes.
 
 MICROSOFT REFERENCES
 - Analyze Conditional Access policy impact: https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-report-only
 - Bulk enrollment for Windows devices: https://learn.microsoft.com/en-us/intune/intune-service/enrollment/windows-bulk-enroll
 
 NEXT STEP
-Separate confirmed evidence from unknowns, identify the workflow validation that remains, and explain what would make enforcement safe.
+Separate confirmed evidence from unknowns, and explain what would make enforcement safe.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 STATE
-This state changes only the verified policy's state from Report-only to On, after the human enforcement checks pass. Report-only configuration checks did not show the actual registration experience, because Microsoft does not evaluate User Action policies in Report-only.
+This state changes only the verified policy's state from Report-only to On, after the enforcement checks pass. Microsoft does not evaluate User Action policies in Report-only.
 
 AUTHENTICATION STRENGTH
 The authentication strength this policy requires, as IAMAI resolved it for this tenant, is {{authStrength.target.displayName}} (`{{authStrength.target.id}}`). Do not substitute a different or weaker strength.
@@ -525,10 +519,8 @@ The authentication strength this policy requires, as IAMAI resolved it for this 
 TENANT CONTEXT
 - Policy ID: {{policy.current.id}}
 - Resolved exclusions: {{policy.target.excludeGroups}}
-- Enrollment-workflow evidence: {{evidence.enrollmentWorkflows}} [omit when unavailable]
 
 PREREQUISITES
-- Enrollment workflows are validated or have owner-approved resolution.
 - External-authentication-method compatibility is resolved for affected users.
 - The tenant-wide device-registration MFA setting is No before the policy is turned On; if it is Yes, it is set to No as part of this controlled change, and a person confirms the value.
 
@@ -539,10 +531,10 @@ DO NOT CHANGE
 Do not change users, exclusions, User Action, conditions, or grant during enforcement. Do not create a duplicate policy.
 
 VERIFICATION
-Read back the same policy ID, perform a controlled device registration/join test plus required enrollment workflow tests, and rescan IAMAI.
+Read back the same policy ID and rescan IAMAI.
 
 ROLLBACK / SAFE RECOVERY
-If registration/enrollment fails unexpectedly, return the same policy to Report-only. If this rollout changed the legacy device-registration MFA toggle from Yes to No, restore its prior value while the CA policy is non-enforcing, then isolate the failure.
+If device registration fails unexpectedly, return the same policy to Report-only. If this rollout changed the legacy device-registration MFA toggle from Yes to No, restore its prior value while the CA policy is non-enforcing, then isolate the failure.
 
 MICROSOFT REFERENCES
 - Require multifactor authentication for device registration: https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-registration
@@ -550,7 +542,7 @@ MICROSOFT REFERENCES
 - Troubleshoot Conditional Access authentication strengths: https://learn.microsoft.com/en-us/entra/identity/authentication/troubleshoot-authentication-strengths
 
 NEXT STEP
-Explain the enforcement sequence, the registration and enrollment tests afterwards, and the recovery action. Keep registration and join separate from device compliance and access authorization.
+Explain the enforcement sequence and the recovery action. Keep registration and join separate from device compliance and access authorization.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.users.pre-enforcement","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users","communicationTrigger":"before-enforcement","purpose":"pre-change-notice"}
@@ -610,33 +602,6 @@ IT
       ]
     },
     {
-      "id": "readiness.enrollment-workflows",
-      "gate": "Enrollment workflows",
-      "sourceType": "tenant-evidence",
-      "optionalInput": "evidence.enrollmentWorkflows",
-      "confirms": ["enrollment-workflows"],
-      "rules": [
-        {
-          "if": { "confirmed": "enrollment-workflows" },
-          "when": "all known affected workflows have validated resolution",
-          "result": "Ready",
-          "line": "Known device-registration and enrollment workflows are validated."
-        },
-        {
-          "if": { "present": "evidence.enrollmentWorkflows" },
-          "when": "a known workflow is unvalidated or incompatible",
-          "result": "Review required",
-          "line": "Validate the identified registration/enrollment workflow before enforcement."
-        },
-        {
-          "if": { "absent": "evidence.enrollmentWorkflows" },
-          "when": "IAMAI has no usable workflow evidence",
-          "result": "Unknown",
-          "line": "IAMAI cannot prove unobserved enrollment workflows are safe."
-        }
-      ]
-    },
-    {
       "id": "readiness.enforcement-settings",
       "gate": "Enforcement checks",
       "sourceType": "microsoft-rule",
@@ -646,7 +611,7 @@ IT
           "if": { "all": [{ "state": ["missing", "partial", "reportOnly", "readyToEnforce"] }, { "not": { "all": [{ "confirmed": "legacy-device-mfa-toggle" }, { "confirmed": "external-auth-methods" }] } }] },
           "when": "state is missing, partial, or reportOnly",
           "result": "Review required",
-          "line": "Confirm the required method, enrollment paths and legacy device-registration MFA setting before the controlled change."
+          "line": "Confirm the required method and the legacy device-registration MFA setting before the controlled change."
         },
         {
           "if": { "all": [{ "confirmed": "legacy-device-mfa-toggle" }, { "confirmed": "external-auth-methods" }] },
@@ -658,9 +623,9 @@ IT
     }
   ],
   "conclusions": {
-    "safeToCreateOrCorrect": "Ready to create in Report-only, or correct the existing policy, when the exclusions and policy ID are resolved.",
-    "safeToObserve": "Continue direct workflow validation; Report-only does not evaluate this User Action.",
-    "safeToEnforce": "Enforce only after enrollment workflows pass, external-authentication compatibility is resolved, and the legacy device-registration MFA toggle is confirmed No."
+    "safeToCreateOrCorrect": "Ready to create On once everyone it covers has a method its strength accepts, or to correct the existing policy, when the exclusions and policy ID are resolved.",
+    "safeToObserve": "Report-only does not evaluate this User Action; its configuration is what IAMAI checks.",
+    "safeToEnforce": "Enforce only after external-authentication compatibility is resolved and the legacy device-registration MFA toggle is confirmed No."
   },
   "conclusionByState": {
     "missing": "safeToCreateOrCorrect",
@@ -676,10 +641,10 @@ IT
         "Use tenant evidence for the resolved exclusions and the current policy, and the pinned member's required authentication strength, resolved to this tenant's own strength."
       ],
       "stillNeedsAttention": [
-        "Render unresolved enrollment-workflow evidence and the mandatory human pre-enforcement checks only when applicable."
+        "Render the mandatory human pre-enforcement checks only when applicable."
       ],
       "unknownCannotProve": [
-        "Report-only cannot prove User Action impact; unobserved enrollment workflows remain unknown."
+        "Report-only cannot prove User Action impact, which is why the policy is created On."
       ],
       "whyItMatters": "Enforcement can block device registration or break enrollment flows that cannot satisfy MFA.",
       "nextSafeAction": "Use the state-specific projection in META.json.",
@@ -887,10 +852,10 @@ IT
         "Confirm the policy is scoped to Register or join devices and verify its configuration by stable-ID read-back instead of relying on Report-only evaluation."
       ],
       "fix": [
-        "Use controlled workflow validation and existing tenant evidence to establish readiness; leave the policy Report-only until those checks are complete."
+        "Use existing tenant evidence, such as MFA Readiness, to establish readiness; leave the policy Report-only until IAMAI says it can be turned on."
       ],
       "then": [
-        "Record the workflow evidence and rescan IAMAI."
+        "Rescan IAMAI."
       ],
       "sources": [
         "ms-report-only"

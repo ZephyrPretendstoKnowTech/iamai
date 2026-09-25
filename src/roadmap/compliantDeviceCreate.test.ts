@@ -6,6 +6,7 @@
 // the device readiness that already gates its turn-on (`Action.readinessGate`),
 // and states why; every other create is unchanged and stays creatable early.
 import { test } from 'node:test'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
@@ -35,9 +36,10 @@ function run(f: Fixture) {
 }
 
 /** The report-only creates the plan offers today, each with its day. */
+/** The report-only creates the board offers now; a User Action policy is created On and dated as the turn-on it is (Phase 2e). */
 function creates(f: Fixture) {
   const { r, label } = run(f)
-  return r.steps.filter((s) => label(s) === 'Ready · Create').map((s) => ({ id: s.id, at: scheduleOf(s).at }))
+  return r.steps.filter((s) => label(s) === 'Ready · Create' && !stepCreatedOn(s)).map((s) => ({ id: s.id, at: scheduleOf(s).at }))
 }
 
 test('demo: the managed-device create waits on device readiness and says why; once readiness is met it is Ready · Create', () => {

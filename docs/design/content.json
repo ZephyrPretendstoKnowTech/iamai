@@ -133,6 +133,8 @@
       "day": "1 day",
       "days": "{n} days",
       "create": "Set **Enable policy** to **Report-only** and select **Create**.",
+      "$commentCreateOn": "A User Action policy is created On (owner decision 3, Phase 2e; roadmap/evidenceStrategy.ts createdOn): Microsoft does not evaluate it in report-only.",
+      "createOn": "Set **Enable policy** to **On** and select **Create**.",
       "turnOn": "Set **Enable policy** to **On** and select **Save**.",
       "reportOnly": "Set **Enable policy** to **Report-only** and select **Save**.",
       "save": "Select **Save**.",
@@ -165,6 +167,8 @@
       "tasks": {
         "create": "Create the policy in Report-only",
         "createMany": "Create the policies in Report-only",
+        "createOn": "Create the policy, turned on",
+        "createOnMany": "Create the policies, turned on",
         "correct": "Correct the policy",
         "correctMany": "Correct the policies",
         "reportOnly": "Set the policy to Report-only",
@@ -198,6 +202,8 @@
         "blockedAnyAfter": "report-only blocks no one",
         "admins": "every admin to have a method it accepts",
         "adminsAfter": "every admin has a method it accepts",
+        "everyone": "everyone it covers to have a method it accepts",
+        "everyoneAfter": "everyone it covers has a method it accepts",
         "readiness": "{measure} to reach {threshold}",
         "readinessAfter": "{measure} reaches {threshold}"
       }
@@ -216,6 +222,8 @@
     "enableLine": "Enable policy: On → Save.",
     "exclusionsLine": "Users → Exclude → Groups: {exclusionsGroup}.",
     "reportOnlyLine": "Enable policy: Report-only → Create.",
+    "$commentCreateOnLine": "reportOnlyLine for a User Action policy, which is created On (Phase 2e; roadmap/evidenceStrategy.ts createdOn).",
+    "createOnLine": "Enable policy: On → Create.",
     "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Consolidate Overlapping Policies (Cleanup) reviews whether the older ones can be retired once it is enforced.",
     "whoUnresolved": "IAMAI could not finish this line from what it read, so it is not saying either way. Check this one in Entra yourself.",
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
@@ -432,6 +440,7 @@
         "prepareScheduledOther": "Create the policy in report-only on {date}.",
         "prepare": "Make the object this step names.",
         "deploy": "Create the policy in Report-only.",
+        "deployOn": "Create the policy, turned on.",
         "correct": "Correct the identified settings, then rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save.",
         "review": "Keep the policy in Report-only, find out what changed on it and why, then rescan.",
         "correctManual": "Correct the policy in the Entra admin center ({fields}), then scan again.",
@@ -974,6 +983,7 @@
         "reportOnly": "Report-only until {date}",
         "$commentRowWords": "Row sub-lines a wait writes for itself (planLanes.ts; walk list 4.x item 27, owner 2026-09-24): the admin readiness threshold as the admins it counts, and a policy that reaches the emergency accounts as the group it does not exclude.",
         "readinessAdmins": "When every admin has a method it accepts ({ready} of {total})",
+        "readinessEveryone": "When everyone it covers has a method it accepts ({ready} of {total})",
         "notExcluded": "Doesn't exclude {group}",
         "waiting": "After prerequisites",
         "review": "After review",
@@ -2060,6 +2070,9 @@
         "readinessHeld": "It stays until {measure} reaches {threshold} ({value} today).",
         "$commentReadinessHeldAdmin": "readinessHeld on the admin policy, whose gate is every admin (walk list 4.x item 44): the admins' own count (roadmap/methodReadiness.ts).",
         "readinessHeldAdmin": "It stays until every admin has a method it accepts ({ready} of {total} today).",
+        "$commentReadinessHeldOn": "A policy created On (Phase 2e) is turned on by its create, so the create is what waits.",
+        "readinessHeldOn": "It is created On, so creating it waits until {measure} reaches {threshold} ({value} today).",
+        "readinessHeldOnEveryone": "It is created On, so creating it waits until everyone it covers has a method it accepts ({ready} of {total} today).",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",
@@ -2169,6 +2182,7 @@
           "methodGate": {
             "$comment": "The Threshold card on a step whose turn-on waits on people's methods (mfa, admin and guest gates; stepContract.ts methodGateSentence). Owner, 2026-09-24 (walk list 4.x items 42, 48): the admin gate counts admins and names up to five of those short, with what each needs; every other method gate keeps its percentage and states the engine's count line (engine.readiness.methodLine). Both end on the step that gets them ready, and link to it. It replaced \"Enforcement waits for {measure} to reach {threshold}; it is {value} today.\" and \"…; it waits on X, which is where to start\" on these gates: the row and the value state the threshold.",
             "adminValue": "{ready} of {total} admins have a method it accepts",
+            "everyoneValue": "{ready} of {total} people have a method it accepts",
             "needs": "{names} needs a passkey, security key or Windows Hello.",
             "needMany": "{names} need a passkey, security key or Windows Hello.",
             "needListed": "{n} admins need a passkey, security key or Windows Hello; MFA Readiness lists them.",
@@ -3319,6 +3333,8 @@
         "noOperationDisabled": "A policy for this step already exists in {tenant} and is switched off, so there is nothing for IAMAI to create. Set Enable policy to Report-only in the Entra admin center, not On: IAMAI watches it there, and this step says when it can be turned on. Scan again once it is in Report-only.",
         "$commentEnforceOutstanding": "Owner, 2026-09-24 (walk list 4.x items 17 and 44): the turn-on task's one line while the plan's own prerequisites hold it (ui/surfaces/policyTasks.ts policyProcedureOf). It read \"Stop: {items} is not finished, and this policy is part of it\", and the policy is not part of that step; it stood inside a checklist the two-line turn-on no longer has.",
         "enforceOutstanding": "Wait for {items}; leave this policy in Report-only until then.",
+        "$commentCreateOutstanding": "enforceOutstanding on a policy created On (Phase 2e): there is no Report-only policy to leave, so the create is what waits.",
+        "createOutstanding": "Wait for {items} before you create it.",
         "$commentSecurityDefaultsCoexistPointer": "It ended \"and this is the step that turns them off\", which reads as the way out. On the tenant where it fired the plan's own MFA policy was still held below its threshold, and turning security defaults off then removes the MFA they require from everybody (Sam D2). The step turns them off only once the replacements can go On in the same change window, and the line says that instead.",
         "$commentSecurityDefaultsNeverOn": "Turn Off Security Defaults read Completed on a tenant whose security defaults were already off when this plan first scanned it: a row claiming work nobody did (roadmap-flow V1 decision 6, Stage 3). The plan records the day a scan first read them on (PlanDecisions.securityDefaultsSeenOnAt); where there is none the step does not apply, and this is the reason the Doesn't apply here footer states for it. The scan says so, not a person, so it is drawn without the you-said prefix (pages.plan.footer.doesntApplyScanRow).",
         "securityDefaultsNeverOn": "Security defaults are already off."
@@ -5399,8 +5415,7 @@
       "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "The intended registration and recovery paths work for remote users and new starters."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -5469,13 +5484,7 @@
           ]
         }
       },
-      "aiFocus": "Explain the actual resolved location and grant, including the no-trusted-network fallback. Report-only evidence alone may not establish registration behavior.",
-      "whatToDo": {
-        "verification": [
-          "Test security-info registration and recovery for the office, remote-user and new-starter paths this tenant uses. Confirm the actual device network and required authentication satisfy the policy.",
-          "Record the representative account, registration/recovery path, date and outcome."
-        ]
-      }
+      "aiFocus": "Explain the actual resolved location and grant, including the no-trusted-network fallback."
     },
     {
       "id": "block-legacy-auth",
@@ -6396,7 +6405,7 @@
       "kind": "policy",
       "title": "Require MFA to Register a Device",
       "changeLine": null,
-      "why": "Requiring MFA when a device is registered or joined helps protect that setup step from password-only misuse. Check enrollment workflows so the requirement does not prevent legitimate setup.",
+      "why": "Requiring MFA when a device is registered or joined helps protect that setup step from password-only misuse.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-registration"
       },
@@ -6411,18 +6420,14 @@
       "whatToDo": {
         "lead": null,
         "before": [
-          "While Entra ID → Devices → Overview → Device Settings → Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced. Prepare and validate the policy first; on the day it is enforced for the intended registration or join scope, set that setting to No, then test the relevant enrollment paths and rescan."
-        ],
-        "verification": [
-          "Use a representative account to register or join a device through each enrollment method this tenant uses. Confirm the applied Conditional Access policy and that the required MFA succeeds.",
-          "Record the tested account, enrollment path, date and result. Confirm the replacement policy is enforced before recording that the legacy device-registration MFA toggle is disabled."
+          "While Entra ID → Devices → Overview → Device Settings → Require multifactor authentication to register or join devices with Microsoft Entra ID is Yes, this policy is not properly enforced. Set that setting to No when you create the policy."
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant}, requiring MFA to register a device, with the exclusions group applied and pilot validation complete.",
+      "doneEnd": "The policy is enforced in {tenant}, requiring MFA to register a device, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "The legacy device-registration MFA setting is No, and the registration or join workflows you rely on succeed."
+        "The legacy device-registration MFA setting is No."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -7940,6 +7945,7 @@
       "kind": "policy",
       "$comment": "Phase 2c (owner, 2026-09-24): Jon's RiskyUsers-RegisterSecurityInfo, a P2 control the plan had no step for, after Remediate High-Risk Users.",
       "title": "Block Risky Users From Registering Sign-in Methods",
+      "licence": "Microsoft Entra ID P2",
       "changeLine": null,
       "why": "An attacker who takes over an account tries to register a sign-in method of their own. Blocking registration while Identity Protection flags the account as risky stops that.",
       "learn": {

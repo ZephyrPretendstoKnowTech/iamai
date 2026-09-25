@@ -84,6 +84,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // draft add under the day they name. It is composed at render time from the
   // step's lifecycle, and the review page has no lifecycle to read.
   '.shared.commsForecastNote',
+  '.shared.createOnLine',
   '.shared.enableLine',
   '.shared.syncRoleNote',
   // What a claim leaves behind when the tenant's values cannot complete it (R4,

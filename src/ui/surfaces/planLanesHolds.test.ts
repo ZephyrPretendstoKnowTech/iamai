@@ -4,7 +4,7 @@
 // input; the engine's lane is the judgment (RUN-CONTEXT-A decision 1).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, withExternalMfa } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { holdOf } from '../../roadmap/holds.ts'
@@ -249,8 +249,14 @@ test('every held or queued row names what it is waiting for, and never just repe
   assert.equal(named.get('s-ladder-operator-passkey'), 'After Configure Passkey Authentication')
   // A Direction question nobody has answered names the answer, not the step asking it.
   assert.equal(named.get('s-goal-geo-restriction'), directionWords.waiting)
-  // A hold that is a fact about the tenant names the fact.
-  assert.equal(named.get('s-goal-service-accounts-trusted-network'), 'Baseline references an unmapped group')
+  // A hold that is a fact about the tenant names the fact: on mid with an external
+  // MFA provider, Remediate High-Risk Users waits on Jon's EAM population (Phase 2c).
+  {
+    const run = runFixture(withExternalMfa(fixture('mid')))
+    const titleOf = (id: string): string | null => run.steps.find((s) => s.id === id)?.title ?? null
+    const reading = laneReadings(run.steps).get('s-goal-user-risk')!
+    assert.equal(laneViewOf(reading, titleOf).waitingFor, 'Baseline references an unmapped group')
+  }
   // A step whose conditional input is answered on a Direction step waits on
   // that answer, as every such step does (walk list 4.x item 6).
   assert.equal(named.get('s-goal-guests-mfa'), directionWords.waiting)

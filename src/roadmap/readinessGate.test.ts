@@ -1,5 +1,6 @@
 import { readyEvidence } from './fixtures/readyEvidence.ts'
 import { recoveryAccountBasis } from './cleanupDone.ts'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 // The readiness prerequisite, as an implementation fact.
 //
 // The plan names a threshold and tells the operator to wait for it: "when device
@@ -180,16 +181,24 @@ test('1–3: device readiness 29% against the 80% the step asks for withholds th
 
 // ---- 2b: a create is always a report-only preparation ----
 
-test('2b: a new policy is always a report-only preparation, so a readiness hold never withholds one', () => {
+test('2b: a new policy is always a report-only preparation, so a readiness hold never withholds one; a User Action policy is created On, and its gate holds its create', () => {
   // Every policy IAMAI writes lands in report-only (generate.ts buildCreateAction),
   // which is why a create is never held: the whole of the plan's own work would
-  // otherwise stop at the threshold it exists to reach.
+  // otherwise stop at the threshold it exists to reach. Save a User Action policy
+  // (Phase 2e, owner decision 3): created On, its create is its enforcement.
   let creates = 0
+  let createdOn = 0
   for (const name of ['small', 'getiamai', 'mid', 'large', 'demo', 'demo-week2', 'hostile'] as const) {
     for (const s of runFixture(fixture(name)).steps) {
       if (!s.action.readinessGate) continue
       for (const o of s.action.resolution?.policies ?? []) {
         if (o.mode !== 'create') continue
+        if (stepCreatedOn(s)) {
+          createdOn += 1
+          assert.equal((o.body as Row).state, 'enabled', `${name}/${s.id}: a User Action policy is created On`)
+          assert.equal(enforcesOnRun(o), true, `${name}/${s.id}: so its create is the enforcement the gate holds`)
+          continue
+        }
         creates += 1
         assert.equal((o.body as Row).state, 'enabledForReportingButNotEnforced', `${name}/${s.id}: a create lands in report-only`)
         assert.equal(enforcesOnRun(o), false, `${name}/${s.id}: so it is never an enforcement`)
@@ -197,6 +206,7 @@ test('2b: a new policy is always a report-only preparation, so a readiness hold 
     }
   }
   assert.ok(creates > 0, `held steps that still propose a new policy: ${creates}`)
+  assert.ok(createdOn > 0, `held User Action policies: ${createdOn}`)
 })
 
 // ---- 4: unknown is not met ----

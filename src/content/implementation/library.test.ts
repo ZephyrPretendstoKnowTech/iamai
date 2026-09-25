@@ -11,11 +11,10 @@ import type { LibraryIndex } from './library.ts'
 import { PACKAGE_STATES, unconfiguredConditions, validatePackage } from './protocol.ts'
 import type { CompiledPackage } from './protocol.ts'
 import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, projectSafely, readinessSafely, troubleshootingSafely } from './project.ts'
-import type { RuntimeContext } from './project.ts'
+import type { PackageState, RuntimeContext } from './project.ts'
 import { contentStepFor, contentStepForPackage } from '../stepTitle.ts'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
-import { operationsOf } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
@@ -44,6 +43,18 @@ function project({ step, ctx }: Placed) {
   const c = stepContract(step, ctx)
   const state = packageStateOf(step, c, ctx.snapshot)!
   const bindings = packageBindings(step, ctx, c)
+  const { runtime } = packageRuntime(pkg, state, bindings, {})
+  return { pkg, state, bindings, projection: projectSafely(pkg, state, bindings, runtime) }
+}
+
+/**
+ * A step's package projected in a state it is not in yet: a User Action policy is
+ * created On since Phase 2e, so its create waits on readiness (state `blocked`),
+ * and what it will hand over is read as the create it will be.
+ */
+function projectAs({ step, ctx }: Placed, state: PackageState) {
+  const pkg = implementationPackageFor(step)!
+  const bindings = packageBindings(step, ctx, stepContract(step, ctx))
   const { runtime } = packageRuntime(pkg, state, bindings, {})
   return { pkg, state, bindings, projection: projectSafely(pkg, state, bindings, runtime) }
 }
@@ -171,9 +182,9 @@ test('a policy IAMAI would create projects the package’s Entra, PowerShell, JS
   // (q-pin), which names a group of the author's this baseline has not settled,
   // and an unsettled source group holds the create.
   const pilot = at(placed('small', true), 's-goal-device-registration-mfa')
-  const piloted = project(pilot)
-  assert.equal(piloted.state, 'missing')
-  const op = operationsOf(pilot.step)[0]
+  assert.equal(project(pilot).state, 'blocked', 'created On, its create waits for everyone it covers to be ready')
+  const piloted = projectAs(pilot, 'missing')
+  const op = pilot.step.action.resolution!.policies[0]
   const target = (op.target ?? op.body) as Record<string, unknown>
   const artifact = piloted.projection.channels.find((c) => c.channel === 'json')!
   assert.deepEqual(artifact.requests, [{ method: 'POST', endpoint: '/identity/conditionalAccess/policies' }])
@@ -193,8 +204,11 @@ test('a required value IAMAI does not hold withholds only the channel that names
   // portal lines (`policy.target.grantWords`; it once asked for a mode IAMAI never
   // binds). Without that one value the portal steps are withheld, and the PowerShell
   // rendered from the pinned target still projects, and so does its JSON create request.
-  const opened = project(at(SMALL, 's-goal-register-info-protected'))
-  assert.equal(opened.state, 'missing')
+  // Created On since Phase 2e, its create waits on MFA readiness and on what its turn-on waits for; read here with both met.
+  const registration = at(SMALL, 's-goal-register-info-protected')
+  assert.equal(project(registration).state, 'blocked', 'the premise: readiness holds the create')
+  const ready: Placed = { ...registration, step: { ...registration.step, action: { ...registration.step.action, readinessGate: undefined, enforceWaitsOn: [] }, blockers: registration.step.blockers.filter((b) => b.kind !== 'readiness') } }
+  const opened = projectAs(ready, 'missing')
   assert.equal(opened.projection.hold, null)
   assert.ok(opened.projection.channels.some((c) => c.channel === 'entra'), 'the premise: with the grant words bound the portal steps are drawn')
   const { ['policy.target.grantWords']: _grant, ...withoutGrant } = opened.bindings as Record<string, unknown>
