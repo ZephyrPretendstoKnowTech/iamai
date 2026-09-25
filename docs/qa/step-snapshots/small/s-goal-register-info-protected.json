@@ -1,11 +1,11 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": "when MFA readiness reaches 90% (now 77%)",
   "fact": null,
-  "badge": "Up Next",
-  "bar": "After Configure Passkey Authentication",
-  "rail": "Create the policy in Report-only",
+  "badge": "On Hold",
+  "bar": "When MFA readiness reaches 90% (now 77%)",
+  "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -18,23 +18,21 @@
       "state": "77% MFA-ready"
     },
     {
-      "label": "Configure Passkey Authentication",
-      "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Before turning on",
+      "label": "Prerequisites",
       "state": "Temporary Access Pass"
     },
     {
-      "label": "Before turning on",
+      "label": "Prerequisites",
       "state": "People without a method"
+    },
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info"
   ],
-  "when": "Est. Aug 31, 2026"
+  "when": "Est. Sep 7, 2026"
 }

@@ -12,16 +12,7 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Define the Trusted Network",
-      "state": "Prerequisite step"
-    },
-    {
-      "label": "Create or Correct Service Accounts Group",
-      "state": "Prerequisite step"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "AI Info"

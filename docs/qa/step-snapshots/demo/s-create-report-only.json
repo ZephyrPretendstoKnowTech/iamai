@@ -18,19 +18,19 @@
       "state": "Create in Report-only"
     },
     {
+      "label": "Restrict Azure Virtual Desktop to the Trusted Network",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Restrict SharePoint and OneDrive to the Trusted Network",
+      "state": "Create in Report-only"
+    },
+    {
       "label": "Shorten Admin Sessions",
       "state": "Create in Report-only"
     },
     {
       "label": "Block Unsupported Device Platforms",
-      "state": "Create in Report-only"
-    },
-    {
-      "label": "Require a Fresh Sign-in for Intune Enrollment",
-      "state": "Create in Report-only"
-    },
-    {
-      "label": "Limit How Long Sessions Last",
       "state": "Create in Report-only"
     },
     {

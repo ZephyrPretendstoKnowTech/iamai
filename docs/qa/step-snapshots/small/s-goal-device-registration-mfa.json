@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "Baseline references an unmapped group",
+  "reason": "when Modern MFA + TAP readiness reaches 100% (now 13%)",
   "fact": null,
   "badge": "On Hold",
-  "bar": "Baseline references an unmapped group",
-  "rail": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in Fixture small or is left out.",
+  "bar": "When everyone it covers has a method it accepts (3 of 22)",
+  "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,23 +15,11 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "13% ready for Modern MFA + TAP"
-    },
-    {
-      "label": "Baseline mapping",
-      "state": "Baseline references an unmapped group"
+      "state": "3 of 22 people have a method it accepts"
     },
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Exclusions",
-      "state": "Not met"
-    },
-    {
-      "label": "Enrollment workflows",
-      "state": "Unknown"
     }
   ],
   "channels": [

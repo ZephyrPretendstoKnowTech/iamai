@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
+  "lane": "Up Next",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now 76%)",
+  "reason": "after: Configure Passkey Authentication",
   "fact": null,
-  "badge": "On Hold",
-  "bar": "When MFA readiness reaches 90% (now 76%)",
+  "badge": "Up Next",
+  "bar": "After Configure Passkey Authentication",
   "rail": "Create the policy, turned on",
   "headings": [
     "About this Step",
@@ -13,18 +13,6 @@
     "Completion Criteria"
   ],
   "tiles": [
-    {
-      "label": "Threshold",
-      "state": "76% MFA-ready"
-    },
-    {
-      "label": "Prerequisites",
-      "state": "Temporary Access Pass"
-    },
-    {
-      "label": "Prerequisites",
-      "state": "People without a method"
-    },
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"

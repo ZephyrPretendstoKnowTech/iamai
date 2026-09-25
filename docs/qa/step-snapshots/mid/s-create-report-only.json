@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
-  "rail": "8 policies to create in Report-only",
+  "rail": "10 policies to create in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -39,6 +39,14 @@
     },
     {
       "label": "Challenge Medium-Risk Sign-ins",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Remediate High-Risk Users",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Reset Passwords for Medium-Risk Users",
       "state": "Create in Report-only"
     },
     {
