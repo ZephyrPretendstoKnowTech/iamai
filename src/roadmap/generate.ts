@@ -17,7 +17,7 @@ import type { CaPolicy } from '../baseline/types.ts'
 import { docFor } from '../baseline/index.ts'
 import { referenceUsage } from '../baseline/interpretation.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
-import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
+import { CORE_ADMIN_ROLE_IDS, guestKindsReached, matchesSignature } from '../coverage/classify.ts'
 import { scopedToGoalApps } from '../coverage/goalIdentity.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
@@ -2142,11 +2142,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // The plan's canonical name for each member — not the suffixed proposal a
         // create would take, because the policy this matches is the one already
         // carrying that name.
-        const members = named(changing, proposedPolicyName(goal, naming))
+        const pair = named(changing, proposedPolicyName(goal, naming))
+        // What the tenant's own policies already do is credited (owner decision 8,
+        // 2026-09-25): a member every one of whose guest kinds an enabled policy
+        // delivers at that member's floor (coverage `kindsDelivered`) is in place,
+        // and only the member left short is written — never both of the baseline's
+        // beside a policy that does half of it, and never a rewrite of the
+        // tenant's policy into the baseline's narrower one.
+        const delivered = result.kindsDelivered
+        const namedRows = new Set(((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]).filter((p) => p.state !== 'disabled').map((p) => String(p.displayName ?? '').trim().toLowerCase()))
+        const creditOf = (m: StepPolicyInput): string[] | null => {
+          // A member whose own copy the tenant already has, by the name the plan
+          // gives it, is the step's to finish, never credited to another policy.
+          if (namedRows.has(String(m.displayName ?? '').trim().toLowerCase())) return null
+          const f = stepSources.find((s) => s.key === m.sourceKey)?.facts
+          const k = f && delivered ? guestKindsReached(f) : 'unknown'
+          if (k === 'unknown' || k.size === 0 || [...k].some((x) => (delivered?.[x] ?? []).length === 0)) return null
+          return [...new Set([...k].flatMap((x) => delivered?.[x] ?? []))]
+        }
+        const credits = pair.map(creditOf)
+        const partlyCredited = credits.some((c) => c !== null) && credits.some((c) => c === null)
+        const creditedMembers: Action['creditedMembers'] = !partlyCredited ? undefined : pair.flatMap((m, i) => (credits[i] ? [{ name: String(m.displayName ?? m.sourceName), policyIds: credits[i]!, policyNames: credits[i]!.map((id) => String(((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]).find((p) => String(p.id) === id)?.displayName ?? id)), kinds: [...(guestKindsReached(stepSources.find((s) => s.key === m.sourceKey)!.facts) as Set<string>)] }] : []))
+        const members = partlyCredited ? pair.filter((_, i) => credits[i] === null) : pair
         const byName = new Map((snapshot.config.caPolicies?.rows ?? []).map((p) => [String((p as RawPolicy).displayName ?? '').trim().toLowerCase(), p as RawPolicy]))
         const matched = members.map((m) => byName.get(String(m.displayName ?? '').trim().toLowerCase()) ?? null)
         const ids = matched.filter((p): p is RawPolicy => p !== null).map((p) => String(p.id))
-        const ambiguous = matched.every((p) => p === null) || new Set(ids).size !== ids.length
+        const ambiguous = !partlyCredited && (matched.every((p) => p === null) || new Set(ids).size !== ids.length)
         if (ambiguous) {
           action = { kind: 'adjust', summary: [], json: null, portalSteps: members.map(m => fillText(app.plan.pairReviewExpected, { name: String(m.displayName) })), missing: [], unmatchedPair: true }
         } else {
@@ -2162,7 +2183,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           let built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
           if (settleSections(sections, built, new Map(matched.filter((p): p is RawPolicy => p !== null).map((p) => [String(p.id), p])), belowFloor)) built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
           const firstUpdate = matched.find((p) => p !== null) ?? null
-          action = changesFor(built, sections, firstUpdate)
+          action = { ...changesFor(built, sections, firstUpdate), ...(creditedMembers ? { creditedMembers } : {}) }
         }
       }
       // Every update empty: the policies it targets already hold each section
@@ -2297,8 +2318,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // 2026-09-25): a device registers in the tenant of the account doing it,
       // which for a guest is their own, so the policy never asks a guest for
       // anything and a guest's missing passkey cannot hold it.
-      const counted = goal.id === 'device-registration-mfa' ? [...popIndex.active].filter((id) => !popIndex.guests.has(id)) : [...popIndex.active]
+      // Require MFA for Guests counts only the guests whose methods the scan reads
+      // (owner decision 7, 2026-09-25): a guest's methods live in their own
+      // organisation, so one with no registration record here is not a reading,
+      // and with nobody left to count the step has no gate.
+      const registered = readinessKey === 'guest' ? new Set(snapshot.registrationDetails.map((r) => r.id)) : null
+      const counted = [...popIndex.active].filter((id) => !(popIndex.guests.has(id) && (goal.id === 'device-registration-mfa' || (registered !== null && !registered.has(id)))))
       policyPreparation = methodPreparation(effects, counted, snapshot, strandContext, methodPreparationCache)
+      // Nor anyone the directory cannot place: which kind of guest or external
+      // user an account is (a B2B member reads as a member) is not in the
+      // directory, so an unplaced account is left out of the count rather than
+      // holding it as unmeasured, and with nobody placed there is no gate.
+      if (registered !== null) policyPreparation = { ...policyPreparation, completeScope: true }
       const reading = methodReadiness(readinessKey, policyPreparation)
       Object.assign(readiness, reading)
       if (!reading.unmeasured) delete readiness.unmeasured

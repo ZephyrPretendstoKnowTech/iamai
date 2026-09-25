@@ -25,7 +25,6 @@ import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepContract } from './stepContract.ts'
 import { packageBindings } from './stepPackage.ts'
-import { unavailableReason } from '../../roadmap/operations.ts'
 import { copyBoxes, exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { PROMPTS } from '../../copy/comms.ts'
@@ -218,29 +217,32 @@ test('the calendar books a Cleanup row only where its export view is dated', () 
 // create procedure, "Create the two guest policies separately" with
 // ‹guests policy name› placeholders, into the calendar, the pack, the bundle and
 // AI Info's What remains. The export carries the portal channel the screen draws.
-test('an export carries the portal channel the opened step draws: the guest pair it cannot match is reviewed, never created', () => {
+test('an export carries the portal channel the opened step draws: the guest pair the tenant half-delivers creates only the half it lacks', () => {
   const p = exportPage(fixture('demo'))
   const step = p.r.steps.find((s) => s.id === 's-goal-guests-mfa')!
-  assert.equal(unavailableReason(step), 'unmatched-pair', 'the premise: the pair is unmatched')
+  // The demo's own guest policies deliver one of the baseline's two (owner
+  // decision 8, 2026-09-25): the step writes the other, and names what it credits.
+  assert.equal((step.action.creditedMembers ?? []).length, 1, 'the premise: one member is credited')
+  assert.equal((step.action.resolution?.policies ?? []).length, 1, 'and one is written')
   const v = p.view(step)
   const screenPortal = stepBodyOf(step, p.ctxOf(step), { lane: laneViewFor(step, p.board) }).artifacts.find((a) => a.id === 'portal')!
-  const unnumbered = (l: string): string => l.replace(/^\d+\. /, '').trim()
-  const screenLines = screenPortal.text().split('\n').map(unnumbered).filter((l) => l !== '')
-  const exported = v.whatToDo.map(unnumbered)
-  for (const line of screenLines) assert.ok(exported.includes(line), `the export drops the screen's portal line "${line}"`)
+  // The export writes the procedure plain: the create's lines, without the bold
+  // the screen draws and without its task headings.
+  const plainLine = (l: string): string => l.replace(/^\d+\. /, '').replace(/\*\*/g, '').trim()
+  const screenText = screenPortal.text()
+  const createLines = screenText.slice(0, screenText.indexOf('**Turn the policy on**')).split('\n').filter((l) => l.trim() !== '' && !/^\*\*[^*]+\*\*$/.test(l.trim())).map(plainLine)
+  assert.ok(createLines.length > 3, 'the premise: the screen draws the create')
+  const exported = v.whatToDo.map(plainLine)
+  for (const line of createLines) assert.ok(exported.includes(line), `the export drops the screen's create line "${line}"`)
   for (const line of v.whatToDo) {
     assert.doesNotMatch(line, /‹[^›]+›/, `an unfilled placeholder: ${line}`)
-    assert.doesNotMatch(line, /^Create the two guest policies/, `the create procedure the screen withholds: ${line}`)
+    assert.doesNotMatch(line, /^Create the two guest policies/, `a create of both halves: ${line}`)
   }
-  // AI Info hands an assistant the same step: not the package's words for the
-  // create ("This state creates two guest MFA policies"), nor its POST request,
-  // while the JSON channel beside it only reads.
+  // AI Info hands an assistant the same step: the half it writes, never the
+  // package's words for both.
   const body = stepBodyOf(step, p.ctxOf(step), { lane: laneViewFor(step, p.board) })
   const ai = body.artifacts.find((a) => a.id === 'ai')!.text()
-  const json = body.artifacts.find((a) => a.id === 'json')?.text() ?? ''
-  assert.doesNotMatch(json, /"method": "POST"/, 'the premise: the JSON channel only reads')
-  assert.doesNotMatch(ai, /creates two guest MFA policies/, 'AI Info describes the create the step withholds')
-  assert.doesNotMatch(ai, /Request: POST/, 'AI Info names a request the JSON channel does not make')
+  assert.doesNotMatch(ai, /creates two guest MFA policies|Both guest policies/, 'AI Info describes both halves where the step writes one')
 })
 
 // Finding 7 (severity 3). The opened step's Threshold card says what holds the

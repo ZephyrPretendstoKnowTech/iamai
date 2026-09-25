@@ -131,13 +131,11 @@ function withTenantPolicies(rows: Record<string, unknown>[], edit: (p: Record<st
   const nameOf = (id: string): string => r.input.names!.label(id)
   const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   const of = (goalId: string): { step: Step; portal: string[] | null } => {
-    let step = r.steps.find((x) => x.goalId === goalId && x.kind !== 'verify') as Step
+    const step = r.steps.find((x) => x.goalId === goalId && x.kind !== 'verify') as Step
     assert.ok(step, `${goalId} is on the plan`)
-    if (opts.guestsReady && goalId === 'guests-mfa') {
-      assert.equal(step.methodPreparation?.completeScope, false, 'external-type scope remains unknown in the real plan')
-      assert.ok(step.action.readinessGate, 'the real plan retains its method readiness hold')
-      step = { ...step, action: { ...step.action, readinessGate: undefined } }
-    }
+    // Nobody the directory cannot place as a guest type is counted (owner decision
+    // 7, 2026-09-25): the guest gate holds nothing on people it cannot place.
+    if (opts.guestsReady && goalId === 'guests-mfa') assert.equal(step.action.readinessGate, undefined, 'the guest gate held on people it could not place')
     return { step, portal: stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) }
   }
   return { f, r, ctx, of, snapshot }

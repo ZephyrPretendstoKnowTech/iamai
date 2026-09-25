@@ -18,6 +18,7 @@ export const REASON = {
     fillText(COVERAGE.statement.conditionsRecorded, { conditions: list([...new Set(dimensions.map((d) => COVERAGE.conditions[d] ?? COVERAGE.conditions.unread))]) }),
   /** The goal's satisfiers between them reach fewer guest and external user kinds than its baseline policies. */
   guestTypes: (reached: number, required: number): string => fillText(COVERAGE.reason.guestTypes, { reached, required }),
+  guestTypesWeaker: (short: number, required: number): string => fillText(COVERAGE.reason.guestTypesWeaker, { short, required }),
   /** People the goal expects that no enabled policy includes. */
   notTargeted: (n: number, expected: number): string =>
     n > 0 && n === expected

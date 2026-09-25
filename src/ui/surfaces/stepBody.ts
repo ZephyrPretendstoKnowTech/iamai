@@ -620,6 +620,9 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     }
     if (!produced.some(a => a.id === channel)) supported.delete(channel)
   }
+  // Require MFA for Guests writes to guests: a directory with none has nobody to
+  // tell (owner, 2026-09-25).
+  if (step.goalId === 'guests-mfa' && !ctx.snapshot.users.some((u) => u.userType === 'guest')) supported.delete('email')
   if (supported.has('email') && step.id !== 's-verify-mfa') {
     const existing = produced.findIndex(a => a.id === 'email')
     if (existing >= 0) produced.splice(existing, 1)

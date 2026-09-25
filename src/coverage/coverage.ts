@@ -11,7 +11,7 @@ import type { GoalMap } from '../roadmap/goalMap.ts'
 import { applyDeviations } from '../roadmap/deviations.ts'
 import { policyFacts } from './facts.ts'
 import type { StrengthLookup } from './strength.ts'
-import { grantExceedsFloor, satisfiesFloor } from './strength.ts'
+import { grantExceedsFloor, grantFloorRank, satisfiesFloor } from './strength.ts'
 import { resolveFactsWho, resolvePopulation } from './population.ts'
 import type { GroupMembers } from './population.ts'
 import { detectFacets } from './applicability.ts'
@@ -26,6 +26,7 @@ import type {
   AssumedExclusions,
   CandidateContribution,
   CoverageReport,
+  Floor,
   Goal,
   GoalResult,
   NotAssessed,
@@ -424,6 +425,29 @@ function evaluateGoal(
       if (k !== 'unknown') for (const x of k) requiredKinds.add(x)
     }
   }
+  // The floor each guest kind is held to: the grant of the goal's own policy that
+  // reaches it, where that is above the goal's floor (owner, 2026-09-25: the
+  // baseline decides). Jon asks MFA of B2B collaboration guests and other external
+  // users, and Modern MFA + TAP of local guests, B2B members, direct-connect users
+  // and service providers: a policy asking only MFA reaches those four and does
+  // not deliver them. A kind no goal policy raises is held to the goal's floor.
+  const kindFloor = new Map<string, Floor>()
+  if (requiredKinds.size > 0 && floor.grant !== undefined) {
+    for (const b of goalPolicies) {
+      const k = guestKindsReached(b)
+      const tier = b.grant?.strength
+      if (k === 'unknown' || !tier || grantFloorRank(tier) <= grantFloorRank(floor.grant)) continue
+      for (const x of k) {
+        const held = kindFloor.get(x)?.grant
+        if (held === undefined || grantFloorRank(tier) > grantFloorRank(held)) kindFloor.set(x, { ...floor, grant: tier })
+      }
+    }
+  }
+  /** The guest kinds a policy reaches that it also meets the kind's floor for. */
+  const kindsAtFloor = (c: PolicyFacts): Set<string> | 'unknown' => {
+    const k = guestKindsReached(c)
+    return k === 'unknown' ? k : new Set([...k].filter((x) => satisfiesFloor(c.grant, c.session, kindFloor.get(x) ?? floor)))
+  }
   // The reference's own resource exclusions. A tenant policy that excludes
   // exactly what the reference excludes delivers the same scope; one that
   // excludes more delivers a narrower scope, and an exclusion IAMAI drops here
@@ -700,7 +724,7 @@ function evaluateGoal(
   let kindsUnknown = false
   for (const c of candidates) {
     if (!eligible.has(c.id)) continue
-    const k = guestKindsReached(c)
+    const k = kindsAtFloor(c)
     if (k === 'unknown') kindsUnknown = true
     else for (const x of k) reachedKinds.add(x)
   }
@@ -708,10 +732,31 @@ function evaluateGoal(
   // The kinds no live candidate reaches at all. Kinds only a policy that falls
   // short reaches are that policy's finding, stated by its own reason.
   const liveKinds = new Set<string>()
+  // And the kinds a live candidate reaches at the kind's floor: a kind reached
+  // only below it (plain MFA where the baseline asks Modern MFA + TAP) is the
+  // other member's to deliver, not this policy's scope to widen.
+  const liveAtFloor = new Set<string>()
   for (const c of candidates) {
     if (c.state !== 'enabled' && c.state !== 'enabledForReportingButNotEnforced') continue
     const k = guestKindsReached(c)
     if (k !== 'unknown') for (const x of k) liveKinds.add(x)
+    const f = kindsAtFloor(c)
+    if (f !== 'unknown') for (const x of f) liveAtFloor.add(x)
+  }
+  // Which enabled policies deliver each guest kind at its floor, where all that
+  // keeps one short is the exclusions group, which Configure Emergency Exclusions
+  // adds: the step credits a baseline member these already deliver and writes only
+  // the members left short (owner decision 8, 2026-09-25).
+  const kindsDelivered: Record<string, string[]> = {}
+  if (requiredKinds.size > 0) {
+    for (const c of candidates) {
+      const contribution = contributions.find((x) => x.policyId === c.id)
+      if (c.state !== 'enabled' || !contribution || contribution.caveats.some((v) => v !== 'exclusion-missing' && v !== 'exclusion-unresolved')) continue
+      const k = kindsAtFloor(c)
+      if (k === 'unknown') continue
+      for (const x of k) if (requiredKinds.has(x)) (kindsDelivered[x] ??= []).push(c.id)
+    }
+    base.kindsDelivered = kindsDelivered
   }
   const unreachedKinds = [...requiredKinds].filter((k) => !liveKinds.has(k))
   const peopleCovered = vacuous
@@ -753,6 +798,8 @@ function evaluateGoal(
   if (status !== 'enforced') {
     reasons.push(...defects)
     if (unreachedKinds.length > 0 && !kindsUnknown) reasons.push({ kind: 'guest-types-narrower', userIds: [], detail: REASON.guestTypes(requiredKinds.size - unreachedKinds.length, requiredKinds.size) })
+    const belowFloor = [...requiredKinds].filter((k) => liveKinds.has(k) && !liveAtFloor.has(k))
+    if (belowFloor.length > 0 && !kindsUnknown) reasons.push({ kind: 'guest-types-weaker', userIds: [], detail: REASON.guestTypesWeaker(belowFloor.length, requiredKinds.size) })
   }
 
   // Who satisfied it, from the classifier that decided it was satisfied. Every
@@ -766,7 +813,7 @@ function evaluateGoal(
     const strongContribs = contributions.filter((c) => eligible.has(c.policyId))
     const kindsOf = (id: string): Set<string> => {
       const f = candidates.find((x) => x.id === id)
-      const k = f ? guestKindsReached(f) : new Set<string>()
+      const k = f ? kindsAtFloor(f) : new Set<string>()
       return k === 'unknown' ? new Set<string>() : k
     }
     const contributes = (c: CandidateContribution): boolean =>
@@ -982,6 +1029,7 @@ function buildStatement(
     has('apps-narrower') || has('apps-excluded') ? ' Covers fewer apps than the goal expects.' : '',
     has('conditions-narrower') ? ` ${engine.coverage.statement.conditionsNarrower}` : '',
     has('guest-types-narrower') ? ` ${engine.coverage.statement.guestTypes}` : '',
+    has('guest-types-weaker') ? ` ${engine.coverage.statement.guestTypesWeaker}` : '',
     has('exclusion-missing') ? ` ${engine.coverage.statement.exclusionMissing}` : '',
   ].join('')
 

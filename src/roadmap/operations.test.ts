@@ -242,11 +242,10 @@ test('E: report-only → enabled is enabled in the body, in the target, in the i
   // The tenant's guests are Ready first (Step 7): turning the policy on is an
   // enforcement, and the guest readiness gate would otherwise hold it.
   const { r, ctx } = demoRun([memberA], {}, () => ({}), { guestsReady: true })
-  const held = r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
-  assert.equal(implementationOffered(held), false, 'this fixture cannot settle the external-user subtype scope')
-  assert.equal(held.methodPreparation?.completeScope, false)
-  // Isolate translation from that independently asserted scope gate.
-  const step = { ...held, action: { ...held.action, readinessGate: undefined } }
+  const step = r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
+  // Nobody the directory cannot place as a guest type is counted (owner decision
+  // 7, 2026-09-25), so no guest gate holds the turn-on.
+  assert.equal(step.action.readinessGate, undefined)
   assert.equal(implementationOffered(step), true)
   const update = stepOperations(step).find((o) => o.mode === 'update')
   assert.ok(update, 'the half the tenant has is an update')

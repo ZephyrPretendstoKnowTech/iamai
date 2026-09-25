@@ -144,7 +144,7 @@ foreach($t in @($strong,$mixed)){
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-This state creates two guest MFA policies for {{tenant.displayName}}, both in Report-only. They cover different external-user types from the baseline, adjusted only through saved partner or service-provider decisions: one requires the tenant's resolved authentication strength and the other requires built-in MFA. The split is by external-user type, not simply trusted partners versus everyone else. Microsoft does not accept authentication strengths for every external identity provider, so check which guests each policy covers. Inbound MFA trust for B2B partners and GDAP service-provider access are handled differently. The JSON output creates both policies in one Graph batch, which can create one policy and fail on the other.
+This state creates, in Report-only, the baseline's guest MFA policies that {{tenant.displayName}}'s own policies do not already deliver. The baseline splits them by external-user type, adjusted only through saved partner or service-provider decisions: B2B collaboration guest users and other external users get built-in MFA, and local guest users, B2B collaboration member users, B2B direct connect users and service provider users get the tenant's resolved authentication strength. Microsoft does not accept authentication strengths for every external identity provider. Inbound MFA trust for B2B partners and GDAP service-provider access are handled differently. Where the JSON output creates two policies it does so in one Graph batch, which can create one and fail on the other.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
@@ -162,12 +162,12 @@ This state applies approved inbound MFA trust for specific ordinary B2B partner 
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 
-Both guest policies are in Report-only. Evidence: {{evidence.reportOnly}}. A guest's result can depend on their external-user type, home organization and identity provider as well as on the policy settings. One successful guest sign-in does not prove that other identity providers or home organizations will work.
+The guest policies this step writes are in Report-only. Evidence: {{evidence.reportOnly}}. A guest's result can depend on their external-user type, home organization and identity provider as well as on the policy settings.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 
-Both guest policies in {{tenant.displayName}} are ready to enforce. Before they are set On, each should still match its intended target and be Report-only, representative guest access should be tested on both policy paths, and any approved partner MFA trust should already be in place. The JSON output enables both in one Graph batch; one policy can be enabled while the other fails, so both results need checking.
+The guest policies this step writes in {{tenant.displayName}} are ready to turn on. Each still matches its intended target and is in Report-only, and any approved partner MFA trust is already in place. Where the JSON output enables two policies it does so in one Graph batch, so one can be enabled while the other fails.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}

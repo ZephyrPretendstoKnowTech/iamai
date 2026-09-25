@@ -351,8 +351,10 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     }
   }
 
-  // 4. the goal's coverage fingerprint, for a step with one member
-  if (sole && !out[0].policy && !out[0].ambiguous) {
+  // 4. the goal's coverage fingerprint, for a step with one member. Not for the
+  // member a partly credited pair still writes (Action.creditedMembers): it is
+  // half of a pair, and the policies that deliver the goal are the other half's.
+  if (sole && !out[0].policy && !out[0].ambiguous && !(step.action.creditedMembers?.length)) {
     const result = coverage.results.find((r) => r.goal.id === step.goalId)
     // The goal's own policy (coverage.ts ownScope), whatever order the scan listed
     // policies in. Another goal's policy stands for this step only where the

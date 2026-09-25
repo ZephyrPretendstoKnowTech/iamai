@@ -429,12 +429,10 @@ test('opened from a step, the page scopes its words and its next check to what t
     assert.match(page(), /scopeWords\(context, scopedCohort\)/)
   }
   {
+    // A hold on readiness nobody can be named for (StepMfaHold ids null) has no
+    // next check to offer. The guest step was this case until its gate stopped
+    // counting people the scan cannot place (owner decision 7, 2026-09-25).
     const f = fixture('demo')
-    const run = runFixture(f)
-    const step = run.steps.find((s) => s.id === 's-goal-guests-mfa')
-    assert.ok(step)
-    const hold = stepMfaHold(step, run.viability ?? [])
-    assert.ok(hold && hold.ids === null, 'the premise: the guest step waits on readiness it could not attribute to anybody')
     const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     const checks = tenantSetupChecks(f.snapshot, view)
     assert.equal(nextCheck(view, checks).kind, 'group', 'the premise: the tenant has a next check')

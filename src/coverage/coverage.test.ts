@@ -196,8 +196,9 @@ test('audit: an all-client-apps block is not the legacy block; a strong policy w
   const block = (displayName: string, conditions: P) => mkPolicy({ displayName, conditions: mergeConditions(conditions), grantControls: { operator: 'OR', builtInControls: ['block'] } })
   assert.equal(goal(run([block('Block outside countries', { locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } })]), 'block-legacy-auth').status, 'absent')
   assert.equal(goal(run([block('Block legacy', { clientAppTypes: ['exchangeActiveSync', 'other'] })]), 'block-legacy-auth').status, 'enforced')
+  // At the grant the baseline asks of every guest type (phishing-resistant MFA meets Jon's Modern MFA + TAP).
   const guestsOnly = run(
-    [mkPolicy({ displayName: 'MFA for Guests', conditions: mergeConditions({ users: { includeUsers: ['GuestsOrExternalUsers'] } }) })],
+    [mkPolicy({ displayName: 'MFA for Guests', conditions: mergeConditions({ users: { includeUsers: ['GuestsOrExternalUsers'] } }), grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } } })],
     { snapshot: mkSnapshot({ users: mkSnapshot().users.filter((u) => u.userType !== 'guest') }) },
   )
   assert.equal(goal(guestsOnly, 'guests-mfa').status, 'enforced')

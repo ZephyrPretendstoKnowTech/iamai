@@ -446,7 +446,8 @@ test('a readiness gate that names the step moving its number links to that step'
     }
   }
   // One fewer since Protect Sign-in Method Registration requires Jon's strength (2026-09-25).
-  assert.ok(checked >= 3, `only ${checked} gates named a route`)
+  // And one fewer since Require MFA for Guests counts no guest the scan cannot read (owner decision 7, 2026-09-25).
+  assert.ok(checked >= 2, `only ${checked} gates named a route`)
 })
 
 // R4-20 (Priya D5). Which source the scan could not read, why, and the

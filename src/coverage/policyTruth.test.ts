@@ -139,12 +139,14 @@ test('correct control, wrong population: a group of members is not everyone, and
 })
 
 test('a guest policy satisfies the guests goal and is the policy named for it; an internal-users policy that excludes guests cannot, with guests or with none', () => {
-  const g = goal(cover([policy('p-everyone', { includeUsers: ['All'] }), policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] })]), 'guests-mfa')
+  // A guest policy at the baseline's grant for every guest type (Jon asks Modern
+  // MFA + TAP of four of them; phishing-resistant MFA meets it).
+  const g = goal(cover([policy('p-everyone', { includeUsers: ['All'] }), policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] }, { grantControls: PR_GRANT })]), 'guests-mfa')
   assert.equal(g.status, 'enforced')
-  // The all-users policy covers every guest too; the guest policy is the goal's own.
+  // The all-users policy asks only MFA; the guest policy is the goal's own, and the one that covers every type.
   assert.equal(g.satisfaction?.sufficientId, 'p-guests')
   const internal = policy('p-internal', { includeUsers: ['All'], excludeUsers: ['GuestsOrExternalUsers'] })
-  const guests = policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] })
+  const guests = policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] }, { grantControls: PR_GRANT })
   for (const n of [2, 0]) {
     const alone = goal(cover([internal], { snapshot: snapshot(n) }), 'guests-mfa')
     assert.notEqual(alone.verdict, 'inPlace', `${n} guests, the internal policy alone`)
@@ -159,7 +161,8 @@ test('a guest policy satisfies the guests goal and is the policy named for it; a
 test('guest types: a policy for some guest types is not full coverage, even with no guests; two that reach every type between them are', () => {
   const forTypes = (id: string, types: string) => policy(id, { includeGuestsOrExternalUsers: { guestOrExternalUserTypes: types, externalTenants: { membershipKind: 'all' } } })
   const someTypes = forTypes('p-some', 'b2bCollaborationGuest,otherExternalUser')
-  const restTypes = forTypes('p-rest', 'internalGuest,b2bCollaborationMember,b2bDirectConnectUser,serviceProvider')
+  // The other four at the grant the baseline asks of them (Modern MFA + TAP; phishing-resistant MFA meets it).
+  const restTypes = { ...forTypes('p-rest', 'internalGuest,b2bCollaborationMember,b2bDirectConnectUser,serviceProvider'), grantControls: PR_GRANT }
   for (const n of [0, 2]) {
     const one = goal(cover([someTypes], { snapshot: snapshot(n) }), 'guests-mfa')
     assert.equal(one.status, 'partial', `${n} guests, some types`)
@@ -169,6 +172,12 @@ test('guest types: a policy for some guest types is not full coverage, even with
     assert.equal(both.status, 'enforced', `${n} guests, both halves`)
     assert.equal(both.satisfaction?.sufficientId, null, 'neither reaches every type alone')
     assert.deepEqual([...(both.satisfaction?.policyIds ?? [])].sort(), ['p-rest', 'p-some'])
+    // Asking those four only for MFA reaches them and does not deliver them (owner, 2026-09-25).
+    const mfaOnly = goal(cover([someTypes, forTypes('p-rest', 'internalGuest,b2bCollaborationMember,b2bDirectConnectUser,serviceProvider')], { snapshot: snapshot(n) }), 'guests-mfa')
+    assert.equal(mfaOnly.status, 'partial', `${n} guests, the second half asks only for MFA`)
+    assert.ok(mfaOnly.reasons.some((x) => x.kind === 'guest-types-weaker'), 'reached below the baseline, not narrower')
+    assert.equal(mfaOnly.reasons.some((x) => x.kind === 'guest-types-narrower'), false)
+    assert.deepEqual(mfaOnly.kindsDelivered, { b2bcollaborationguest: ['p-some'], otherexternaluser: ['p-some'] })
   }
   // One partner tenant's guests only reach no guest type everywhere.
   const partner = goal(cover([policy('p-partner', { includeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest,otherExternalUser,internalGuest,b2bCollaborationMember,b2bDirectConnectUser,serviceProvider', externalTenants: { membershipKind: 'enumerated', members: ['tenant-a'] } } })], { snapshot: snapshot(0) }), 'guests-mfa')
@@ -309,7 +318,7 @@ test("a narrower condition on the goal's own policy is partly in place, never mi
   const cases: [string, P, string][] = [
     ['phishing-resistant MFA on Windows only', policy('p-admins', { includeRoles: [GA] }, { grantControls: PR_GRANT, conditions: { platforms: { includePlatforms: ['windows'], excludePlatforms: [] } } }), 'admins-phishing-resistant'],
     ['a legacy block that spares the office network', policy('p-legacy', { includeUsers: ['All'] }, { conditions: { clientAppTypes: ['exchangeActiveSync', 'other'], locations: { includeLocations: ['All'], excludeLocations: ['loc-office'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'block-legacy-auth'],
-    ['guest MFA that spares compliant devices', policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] }, { conditions: { devices: { deviceFilter: { mode: 'exclude', rule: 'device.isCompliant -eq True' } } } }), 'guests-mfa'],
+    ['guest MFA that spares compliant devices', policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] }, { grantControls: PR_GRANT, conditions: { devices: { deviceFilter: { mode: 'exclude', rule: 'device.isCompliant -eq True' } } } }), 'guests-mfa'],
     ['MFA only at elevated insider risk, a condition IAMAI does not read', policy('p-everyone', { includeUsers: ['All'] }, { conditions: { insiderRiskLevels: 'elevated' } }), 'mfa-all-users'],
   ]
   for (const [label, p, goalId] of cases) {
@@ -322,7 +331,7 @@ test("a narrower condition on the goal's own policy is partly in place, never mi
   // The same policies without the condition are in place.
   assert.equal(goal(cover([policy('p-admins', { includeRoles: [GA] }, { grantControls: PR_GRANT })]), 'admins-phishing-resistant').status, 'enforced')
   assert.equal(goal(cover([policy('p-legacy', { includeUsers: ['All'] }, { conditions: { clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } })]), 'block-legacy-auth').status, 'enforced')
-  assert.equal(goal(cover([policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] })]), 'guests-mfa').status, 'enforced')
+  assert.equal(goal(cover([policy('p-guests', { includeUsers: ['GuestsOrExternalUsers'] }, { grantControls: PR_GRANT })]), 'guests-mfa').status, 'enforced')
 
   // MFA on risky sign-ins is the sign-in risk goal's policy, not MFA for everyone.
   const risky = goal(cover([policy('p-risky', { includeUsers: ['All'] }, { conditions: { signInRiskLevels: ['high'] } })]), 'mfa-all-users')
@@ -346,8 +355,8 @@ test('no title makes a match: a guests name on a members policy earns nothing, a
   assert.equal(misnamed.status, 'absent')
   assert.deepEqual(candidateIds(misnamed), [])
   const body = { includeUsers: ['GuestsOrExternalUsers'] }
-  const plain = goal(cover([policy('p-b', body, { displayName: 'Printer exceptions' })]), 'guests-mfa')
-  const titled = goal(cover([policy('p-b', body, { displayName: 'Require MFA for Guests' })]), 'guests-mfa')
+  const plain = goal(cover([policy('p-b', body, { displayName: 'Printer exceptions', grantControls: PR_GRANT })]), 'guests-mfa')
+  const titled = goal(cover([policy('p-b', body, { displayName: 'Require MFA for Guests', grantControls: PR_GRANT })]), 'guests-mfa')
   assert.equal(plain.status, 'enforced')
   assert.equal(plain.satisfaction?.sufficientId, 'p-b')
   assert.deepEqual({ status: titled.status, ids: titled.satisfaction?.policyIds }, { status: plain.status, ids: plain.satisfaction?.policyIds })
@@ -414,8 +423,19 @@ test('audit, demo: MFA for everyone and the legacy block are partly in place wit
   for (const id of w.mapping.serviceAccountUserIds) assert.ok(legacy.enforcedIds.includes(id), id)
 })
 
+/**
+ * The follow-up demo with its guest policy at the grant the baseline asks of every
+ * guest type (phishing-resistant MFA meets Jon's Modern MFA + TAP; owner,
+ * 2026-09-25): as shipped it asks only MFA, which delivers two of the six types.
+ */
+function withStrongGuestPolicy(f: Fixture): Fixture {
+  const g = structuredClone(f)
+  for (const p of rowsOf(g) as (Row & { grantControls?: unknown })[]) if (p.conditions.users?.includeUsers?.includes('GuestsOrExternalUsers')) p.grantControls = PR_GRANT
+  return g
+}
+
 test('audit, guests: the guest policy is named on the coverage, the step and the history; with no guests, a policy excluding guests does not put the step In place, and a guest policy does', () => {
-  const run = runFixture(fixture('demo-week2'))
+  const run = runFixture(withStrongGuestPolicy(fixture('demo-week2')))
   const r = resultOf(run, 'guests-mfa')
   assert.equal(r.verdict, 'inPlace')
   const own = r.candidates.find((c) => c.policyId === r.satisfaction?.sufficientId)
@@ -432,7 +452,7 @@ test('audit, guests: the guest policy is named on the coverage, the step and the
   }
 
   // Live-shaped: the same tenant with no guest accounts, whose everyone policy now excludes guests.
-  const base = fixture('demo-week2')
+  const base = withStrongGuestPolicy(fixture('demo-week2'))
   const everyoneId = resultOf(run, 'mfa-all-users').satisfaction?.sufficientId
   const guestId = r.satisfaction?.sufficientId
   assert.ok(everyoneId && guestId && everyoneId !== guestId)

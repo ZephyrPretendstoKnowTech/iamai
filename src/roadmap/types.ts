@@ -322,6 +322,14 @@ export type Action = {
    */
   unmatchedPair?: boolean
   /**
+   * The baseline members a pair step does not write because the tenant's own
+   * enabled policies already deliver every guest kind they reach at their floor
+   * (owner decision 8, 2026-09-25; coverage GoalResult.kindsDelivered): each with
+   * the policies that deliver it and the kinds, for the card that says so. Set
+   * only where the pair is partly credited, so the step writes the rest.
+   */
+  creditedMembers?: { name: string; policyIds: string[]; policyNames: string[]; kinds: string[] }[]
+  /**
    * With `unmatchedPair`: the step is one policy, and the tenant has several the
    * goal could correct that nothing about them tells apart (coverage.ts
    * ownCandidate). The same hold, said for one policy rather than a pair.

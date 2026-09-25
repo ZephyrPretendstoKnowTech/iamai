@@ -18,7 +18,7 @@ import { fillText } from '../content/render.ts'
  * what it touches — its package's `impact.fallbackLabel` — or `none`, the
  * placeholder (U13, ui/surfaces/rowWho.ts).
  */
-export const IMPACT = (pages.plan as { impact: { notEstablished: string; noUserImpact: string; none: string; coversEnabled: string } }).impact
+export const IMPACT = (pages.plan as { impact: { notEstablished: string; noUserImpact: string; noGuests: string; none: string; coversEnabled: string } }).impact
 
 // A row counts people and never names them (RUN-CONTEXT-B decision 11): one
 // person reads "1 person", and the names are on the step. The gap on a row is

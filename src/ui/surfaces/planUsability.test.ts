@@ -161,7 +161,11 @@ test('every row reads an Impact value: a count, No user impact, or a non-policy 
       assert.notEqual(impact.trim(), '', `${name}/${s.id}: a blank Impact`)
       assert.equal(impact.includes('Configuration only'), false, `${name}/${s.id}: "${impact}"`)
       const pop = reached(s)
-      if (s.impactCount !== undefined) {
+      if (s.goalId === 'guests-mfa') {
+        // Require MFA for Guests counts its guests, whatever else its policy reaches (owner, 2026-09-25).
+        assert.match(impact, /^([\d,]+ guests?|No guests)$/, `${name}/${s.id}: "${impact}"`)
+        seen.add('known')
+      } else if (s.impactCount !== undefined) {
         // Configure Emergency Exclusions, Configure Passkey Authentication and the Prepare steps count what they change (rowWho.ts).
         assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people|accounts?|steps?)$/, `${name}/${s.id}: "${impact}"`)
         seen.add('known')
