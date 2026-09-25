@@ -293,8 +293,9 @@ test('every email IAMAI hands over is signed with the plan signature and carries
       signedOff(text, `${name}/template ${id}`)
     }
   }
-  // Block Legacy Authentication and Require MFA for Everyone hand over none (walk list 4.x item 29).
-  assert.ok(seen >= 15, `the premise: the fixtures hand over emails (${seen})`)
+  // Block Legacy Authentication and Require MFA for Everyone hand over none (walk list 4.x item 29),
+  // and Give Shared Devices Their Own Policy left with its email (Phase 2a).
+  assert.ok(seen >= 13, `the premise: the fixtures hand over emails (${seen})`)
   // The guests email names who to contact, not a bracket.
   const f = fixture('mid')
   const r = runFixture(f, {}, null, f.snapshot.asOf)

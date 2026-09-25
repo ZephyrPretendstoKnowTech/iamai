@@ -45,8 +45,9 @@ function opened(name: 'demo' | 'demo-week2' | Fixture, id: string) {
 
 test('one tile per outstanding fix, each linking to its step or to Baseline mappings; no count tile stands in for them', () => {
   const { step, c, blockers } = opened('demo', 's-goal-mfa-all-users')
-  // Both foundation steps it waits on, and no mapping (walk list 4.x item 23 files the exclusions check under its own step).
-  assert.deepEqual(c.fix.map(f => f.key).sort(), [`step:${EMERGENCY}`, 'step:s-prereq-exclusion-group'].sort(), 'unexplained optional source exclusions do not create public mapping blockers')
+  // Both foundation steps it waits on, and no mapping (walk list 4.x item 23 files the exclusions check under its own step);
+  // and the service-accounts group 2.2 leaves out of it, which the demo has not made yet (Phase 2a).
+  assert.deepEqual(c.fix.map(f => f.key).sort(), [`step:${EMERGENCY}`, 'step:s-prereq-exclusion-group', 'missing:s-prereq-service-accounts-group'].sort(), 'unexplained optional source exclusions do not create public mapping blockers')
   const r = readinessOf(step, c, blockers)
   assert.equal(r.tiles.some(t => t.key === 'mapping'), false)
   const prereq = r.tiles.find((t) => t.key === `step:${EMERGENCY}`)!

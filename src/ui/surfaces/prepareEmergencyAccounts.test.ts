@@ -118,7 +118,7 @@ test('#15 every picker saves from the list: Done saves and closes, taking a chip
   assert.match(picker, /if \(idsOf\(latest\.current\) !== openedWith\.current\) save\(latest\.current\)/)
 
   // The decisions whose picker is their only input draw no Save; the rest keep theirs for their other inputs.
-  for (const id of [STEP, 's-prereq-exclusion-group', 's-prereq-service-accounts-group', 's-shared-devices']) assert.equal(pickerSavesAlone(decisionOf(id), id), true, id)
+  for (const id of [STEP, 's-prereq-exclusion-group', 's-prereq-service-accounts-group']) assert.equal(pickerSavesAlone(decisionOf(id), id), true, id)
   for (const id of ['s-prereq-trusted-location', 's-prereq-allowed-countries']) assert.equal(pickerSavesAlone(decisionOf(id), id), false, id)
   // The office network's picker saves from its list too; its Save stays for the typed network.
   assert.equal(pickerSaves(decisionOf('s-prereq-trusted-location'), 's-prereq-trusted-location'), true)

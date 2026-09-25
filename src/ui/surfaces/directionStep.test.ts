@@ -72,7 +72,7 @@ test('a Direction step draws About this Step, Questions and Completion Criteria 
 test('a step whose question moved never asks it again', () => {
   {
     // The countries step asks its own work countries since Stage 3: nothing about it is answered in Direction.
-    assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-legacy-auth', 's-goal-guests-mfa', 's-shared-devices'].sort())
+    assert.deepEqual(Object.keys(ANSWERED_IN).sort(), [PREREQ_STEP_ID.serviceAccountsGroup, PREREQ_STEP_ID.trustedLocation, 's-goal-block-legacy-auth', 's-goal-guests-mfa'].sort())
   }
   {
     // The owner's own example (docs/plans/step-redundancy-analysis.md finding 2).

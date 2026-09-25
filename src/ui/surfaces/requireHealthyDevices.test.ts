@@ -32,7 +32,6 @@ import type { MappingState } from '../../mapping/types.ts'
 
 const MANAGED = 's-goal-require-managed-device'
 const PHONES = 's-ladder-phone-access-restriction'
-const SHARED = 's-shared-devices'
 
 /**
  * The device answer that keeps company data off phones: the one answer that
@@ -162,21 +161,3 @@ test('P2-P4: the phone policy sets Configure to Yes on Device platforms (at No, 
   assert.ok(b.contract.doneWhen.some((l) => /iOS and Android are blocked by a policy of this tenant's own/.test(l)), b.contract.doneWhen.join(' | '))
 })
 
-// ---------------------------------------------------------------------------
-// Give Shared Devices Their Own Policy (spec section 6)
-// ---------------------------------------------------------------------------
-
-test('S3/S4: every shared-device procedure sets Configure to Yes on Locations (at No it stops the device completely), and the grant is Block with no interactive control', () => {
-  {
-    for (const id of ['entra.create', 'entra.correct.location', 'entra.manual-review']) {
-      const text = blockText(SHARED, id)
-      assert.match(text, /set \*\*Configure\*\* to \*\*Yes\*\*/, id)
-      assert.match(text, /stops the device completely/, id)
-    }
-    // And the step's own portal reference, which the review page and the export read.
-    assert.match(allText('s-shared-devices'), /Conditions → Locations: set Configure to Yes, then Include: Any location; Exclude: \{trustedLocation\}/)
-  }
-  {
-    assert.match(blockText(SHARED, 'entra.create'), /Grant: \*\*Block access\*\*\. Do not add an interactive control: a room account has no second device to approve one with\./)
-  }
-})

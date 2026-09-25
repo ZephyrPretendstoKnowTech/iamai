@@ -352,21 +352,20 @@ test('§12.1 unlock counts: direct and transitive, Security Defaults cutover edg
   const counts = unlockCounts(graph, { excludeConditions: ['sd-enabled'] })
   const expect = (id: string, direct: number, transitive: number): void => assert.deepEqual(counts.get(id), { direct, transitive }, id)
   // d4821b75 (owner edges): passkey settings waits on both emergency steps, and the campaign waits on the operator passkey instead.
-  expect('s-prereq-break-glass', 26, 30)
-  expect('s-prereq-exclusion-group', 21, 29)
-  expect('s-prereq-passkey-settings', 4, 28)
+  expect('s-prereq-break-glass', 26, 29)
+  expect('s-prereq-exclusion-group', 21, 28)
+  expect('s-prereq-passkey-settings', 4, 27)
   expect('s-prereq-auth-strength', 8, 8)
   expect('s-verify-mfa', 7, 8)
-  expect('s-prereq-trusted-location', 4, 5)
-  expect('s-prereq-device-plan', 1, 3)
+  expect('s-prereq-trusted-location', 3, 3)
+  expect('s-prereq-device-plan', 1, 1)
   // Block Legacy Authentication's turn-on no longer waits on the group (walk list 4.x item 5): Restrict Service Accounts alone.
   expect('s-prereq-service-accounts-group', 1, 1)
   // s-prereq-allowed-countries folded into the countries block in Stage 3: not a graph step.
   assert.equal(counts.has('s-prereq-allowed-countries'), false)
   expect('s-question-partner', 2, 2)
-  expect('s-shared-devices', 2, 2)
-  expect('s-goal-require-managed-device', 1, 2)
-  expect('s-goal-all-users-no-persistence', 1, 2)
+  expect('s-goal-require-managed-device', 0, 0)
+  expect('s-goal-all-users-no-persistence', 0, 0)
   expect('s-question-mail-devices', 1, 1)
   expect('s-question-travel', 1, 1)
   expect('s-goal-mfa-all-users', 1, 1)
@@ -401,12 +400,11 @@ test('§14 Up Next order: fewest layers, then nearest blocker closest to complet
     'cleanup-drill': ABSENT,                           // 1 layer behind break-glass, unlocks 0
     'cleanup-hardening': ABSENT,                       // 1 layer behind break-glass, unlocks 0
     's-prereq-trusted-location': ABSENT,               // Create (ordinal 3)
-    's-shared-devices': ABSENT,                        // 1 layer behind trusted-location, unlocks 2
     's-goal-service-accounts-trusted-network': ABSENT, // 1 layer behind trusted-location, unlocks 0
     's-prereq-device-plan': {},                        // Decision (ordinal 4)
     's-goal-token-protection': ABSENT,                 // 2 layers (exclusion-group, break-glass)
     's-goal-require-managed-device': ABSENT,           // 4 layers (device-plan, trusted-location, exclusion-group, break-glass)
-  }, { conditions: { 'shared-devices-exist': 'unresolved' } })
+  })
   const results = deriveLanes(graph, tenant, owner)
   assert.equal(results.get('s-prereq-per-user-mfa')?.layers, 4, 'its enforcement path retains all emergency-access gates')
   const upNext = [...results].filter(([, r]) => r.lane === 'Up Next').map(([id, result]) => ({ id, result }))
@@ -415,7 +413,7 @@ test('§14 Up Next order: fewest layers, then nearest blocker closest to complet
   assert.deepEqual(sortUpNext(deeper, graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] })).map((r) => r.id), ['s-goal-mfa-all-users', 's-prereq-per-user-mfa'])
   const sorted = sortUpNext(upNext, graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] }))
   assert.deepEqual(sorted.map((r) => r.id), [
-    's-shared-devices', 'cleanup-hardening', 's-goal-service-accounts-trusted-network',
+    'cleanup-hardening', 's-goal-service-accounts-trusted-network',
     's-goal-token-protection', 'cleanup-drill', 's-goal-require-managed-device',
   ])
 })

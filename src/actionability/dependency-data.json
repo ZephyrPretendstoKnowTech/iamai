@@ -130,14 +130,6 @@
       "iamaiOrder": null
     },
     {
-      "id": "s-shared-devices",
-      "title": "Give Shared Devices Their Own Policy",
-      "workType": "supporting policy / exception design",
-      "scopeClass": "devices",
-      "effortKind": "portal",
-      "iamaiOrder": null
-    },
-    {
       "id": "s-goal-mfa-all-users",
       "title": "Require MFA for Everyone",
       "workType": "CA policy",
@@ -452,42 +444,6 @@
       "condition": null,
       "edgeKind": "hard",
       "source": "owner",
-      "status": "ok",
-      "table": "10.1"
-    },
-    {
-      "step": "s-shared-devices",
-      "action": "start",
-      "prerequisite": "s-prereq-trusted-location",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "package",
-      "status": "ok",
-      "table": "10.1"
-    },
-    {
-      "step": "s-shared-devices",
-      "action": "complete",
-      "prerequisite": "s-goal-require-managed-device",
-      "prerequisiteKind": "step",
-      "milestone": "created",
-      "condition": "shared-devices-exist",
-      "edgeKind": "conditional",
-      "source": "v2",
-      "status": "ok",
-      "table": "10.1"
-    },
-    {
-      "step": "s-shared-devices",
-      "action": "complete",
-      "prerequisite": "s-goal-all-users-no-persistence",
-      "prerequisiteKind": "step",
-      "milestone": "created",
-      "condition": "shared-devices-exist",
-      "edgeKind": "conditional",
-      "source": "v2",
       "status": "ok",
       "table": "10.1"
     },
@@ -1737,18 +1693,6 @@
       "table": "10.3"
     },
     {
-      "step": "s-goal-require-managed-device",
-      "action": "enforce",
-      "prerequisite": "s-shared-devices",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": "shared-devices-exist",
-      "edgeKind": "conditional",
-      "source": "package",
-      "status": "ok",
-      "table": "10.3"
-    },
-    {
       "step": "s-goal-all-users-no-persistence",
       "action": "create",
       "prerequisite": "s-prereq-exclusion-group",
@@ -1757,18 +1701,6 @@
       "condition": null,
       "edgeKind": "hard",
       "source": "package",
-      "status": "ok",
-      "table": "10.3"
-    },
-    {
-      "step": "s-goal-all-users-no-persistence",
-      "action": "enforce",
-      "prerequisite": "s-shared-devices",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": "shared-devices-exist",
-      "edgeKind": "conditional",
-      "source": "v2",
       "status": "ok",
       "table": "10.3"
     },
@@ -2220,11 +2152,6 @@
       "name": "travel-exceptions-allowed",
       "ownedBy": "s-question-travel",
       "meaning": "the organisation permits temporary travel exceptions"
-    },
-    {
-      "name": "shared-devices-exist",
-      "ownedBy": "s-shared-devices",
-      "meaning": "confirmed shared identities/devices"
     },
     {
       "name": "sd-enabled",

@@ -237,8 +237,8 @@ test('the Plan header offers four useful filters and an estimated finish, keepin
 // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
 const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
 
-function opened(name: 'demo' | 'small', id: string, move?: Parameters<typeof pilotStepAt>[1]) {
-  const f: Fixture = fixture(name)
+function opened(name: 'demo' | 'small', id: string, move?: Parameters<typeof pilotStepAt>[1], given?: Fixture) {
+  const f: Fixture = given ?? fixture(name)
   const r = runFixture(f)
   const found = r.steps.find((s) => s.id === id)
   assert.ok(found, `${name} carries no ${id}`)
@@ -250,7 +250,7 @@ function opened(name: 'demo' | 'small', id: string, move?: Parameters<typeof pil
 }
 
 test('a blocked policy with authored implementation shows its planning preview with stand-ins and no Copy; resolved, the same work is executable', () => {
-  const { f, step, ctx, c } = opened('demo', 's-goal-device-registration-mfa')
+  const { f, step, ctx, c } = opened('demo', 's-goal-intune-enrollment-reauth')
   const pkg = implementationPackageFor(step)!
   const state = packageStateOf(step, c, f.snapshot)!
   assert.equal(state, 'blocked', 'the premise: nothing to execute now')
@@ -263,14 +263,18 @@ test('a blocked policy with authored implementation shows its planning preview w
   assert.deepEqual(preview.channels.map((x) => x.channel), ['entra', 'powershell', 'json', 'aiInfo'])
   assert.ok(preview.hold!.missingBindings.includes('policy.target.excludeGroups'), 'the preview does not name what is unresolved')
   for (const ch of preview.channels) assert.equal(/\{\{|\{policy\.|\[omit /.test(ch.text), false, `${ch.channel}: raw binding syntax reached the preview`)
-  assert.match(preview.channels.find((x) => x.channel === 'json')!.text, /‹exclusions group›/, 'an unknown value was filled silently')
+  // The group it waits on (demo: the service-accounts group 2.2 leaves out, not made yet) stands in by name.
+  assert.match(preview.channels.find((x) => x.channel === 'json')!.text, /‹[^›]*group›/, 'an unknown value was filled silently')
   // The copy control — inline and in the expanded viewer — is not offered on a preview.
   assert.match(CONTENT_STEP, /const copyable = active !== null && active\.unavailable !== true/)
   // Available preview guidance stays copyable; unresolved values remain visible.
   assert.match(CONTENT_STEP, /aria-disabled=\{!copyable\}/)
   assert.match(CONTENT_STEP, /if \(copyable\) copy\('implementation'/)
   // Resolved: the same package, the same state's blocks, executable and no longer a preview.
-  const done = opened('small', 's-goal-device-registration-mfa', 'missing')
+  // The same demo once its service-accounts group exists: nothing is left to wait on.
+  const resolved = structuredClone(fixture('demo'))
+  resolved.mapping.serviceAccountsGroupId = [...resolved.groups.keys()][0]!
+  const done = opened('demo', 's-goal-intune-enrollment-reauth', 'missing', resolved)
   const mstate = packageStateOf(done.step, done.c, done.f.snapshot)!
   assert.equal(mstate, 'missing')
   const mb = packageBindings(done.step, done.ctx, done.c)
@@ -292,7 +296,7 @@ test('every step draws its Implementation region, a decision and a check include
 })
 
 test('one blocker, one place: no caption, a concise rail, Prerequisites in Readiness, and the end state as Done when', () => {
-  const { step, c, lane } = opened('demo', 's-goal-device-registration-mfa')
+  const { step, c, lane } = opened('demo', 's-goal-require-managed-device')
   assert.equal(lane.lane, 'On Hold', 'the premise: the engine holds it')
   assert.equal(nextCaption(c), null, 'the head restates the hold')
   assert.equal(c.doneWhen.length, 1)

@@ -13,7 +13,7 @@ import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { ADMIN_ROLE_IDS, adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
-import { notActiveUsers, notPeopleIds, lastSuccessOf } from './sets.ts'
+import { notActiveUsers, notPeopleIds, lastSuccessOf, serviceAccountIdsOf } from './sets.ts'
 import { ladder } from './ladder.ts'
 import { riskIds } from '../roadmap/evidence.ts'
 import { mailDevicesOf } from '../roadmap/answers.ts'
@@ -158,7 +158,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // Emergency, service and admin id sets (mapping, roles).
     emergencyAccounts: names(mapping.breakGlassUserIds),
     emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => upnOf(snapshot, id) ?? nameOf(id)),
-    serviceAccounts: names(mapping.serviceAccountUserIds),
+    serviceAccounts: names(serviceAccountIdsOf(mapping)),
     // The admins the campaign's note names: the people among the role holders. A
     // service principal holds a role but is never a person; the emergency accounts
     // are not people (sets.ts notPeopleIds); byId holds the person accounts.

@@ -118,10 +118,11 @@ test('every network policy sets its condition through Configure: Yes, in create 
   assert.match(blockText('s-goal-service-accounts-trusted-network', 'entra.create'), /Left at \*\*No\*\* the network condition is not configured/)
 })
 
-test('T5: the step names every step that waits on it, which the board proves is four', () => {
+test('T5: the step names every step that waits on it, which the board proves is three', () => {
   const waits = String((stepById['s-prereq-trusted-location'] as unknown as { more?: { waits?: string } }).more?.waits ?? '')
-  // The demo's board holds exactly these four waiting on this object.
-  const waiting = ['s-shared-devices', 's-goal-register-info-protected', 's-goal-require-managed-device', 's-goal-service-accounts-trusted-network']
+  // The demo's board holds exactly these three waiting on this object (Give Shared
+  // Devices Their Own Policy left in Phase 2a: its accounts join the service accounts).
+  const waiting = ['s-goal-register-info-protected', 's-goal-require-managed-device', 's-goal-service-accounts-trusted-network']
   const bodies = bodiesOf('demo')
   for (const id of waiting) {
     const tiles = JSON.stringify(bodies.get(id)!.allTiles)

@@ -97,7 +97,7 @@ test('no package, registered or as authored with the parts the registry withhold
     // The floor moves down when a step retires and its package goes with it
     // (step-redundancy-analysis.md: eleven step identities, 2026-09-19). What the
     // number guards is that the sweep below reads the whole corpus, not a shard.
-    assert.ok(sources.length >= 43, `${sources.length} authored packages`)
+    assert.ok(sources.length >= 42, `${sources.length} authored packages`)
     const staging: Record<string, string[]> = {}
     for (const source of sources) {
       const meta = JSON.parse(source.metaJson) as { stepId: string }

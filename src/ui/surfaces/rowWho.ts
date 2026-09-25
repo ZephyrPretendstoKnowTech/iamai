@@ -27,7 +27,6 @@ const PASSKEY_SETTINGS_STEP_ID = 's-prereq-passkey-settings'
 // population, so their topic must not turn into a misleading zero.
 const ACCOUNT_REVIEW_STEPS = new Set([
   's-ladder-per-user-mfa-cleanup',
-  's-shared-devices',
 ])
 /**
  * Finish Moving Off Per-User MFA counts the accounts still on per-user MFA

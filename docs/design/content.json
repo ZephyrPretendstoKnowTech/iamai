@@ -2676,7 +2676,6 @@
               "partner.decisionSummary": "partner decision",
               "passkey.profileOptInApproved": "passkey profile approval",
               "passkey.target.fido2Configuration": "passkey settings",
-              "peoplePolicies.resolvedPatches": "changes to the people policies",
               "pim.roleManagementPolicyIds": "PIM role settings",
               "policies.guests.mixed.current.id": "mixed guests policy ID",
               "policies.guests.mixed.target.conditions": "mixed guests policy conditions",
@@ -3095,8 +3094,7 @@
           "s-prereq-break-glass": "Emergency access accounts",
           "s-prereq-exclusion-group": "Policy exclusions",
           "s-prereq-device-plan": "Phones and computers",
-          "s-ladder-phone-access-restriction": "Phone access",
-          "s-shared-devices": "Shared-device accounts"
+          "s-ladder-phone-access-restriction": "Phone access"
         },
         "impactDefault": "Tenant settings",
         "impactPolicy": "Policy scope",
@@ -3197,8 +3195,8 @@
             },
             "accounts": {
               "title": "Identify Service and Shared Accounts",
-              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Approve or correct them: the MFA campaign stops counting them as people, and each kind gets a policy that fits it.",
-              "milestoneAction": "Approving these answers sets which accounts count as people and which get a policy of their own."
+              "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Approve or correct them: the MFA campaign stops counting them as people, and they join the service-accounts group, which is kept to your office network instead of being asked for MFA.",
+              "milestoneAction": "Approving these answers sets which accounts count as people and which join the service-accounts group."
             },
             "devices": {
               "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the owner's section 2 walk words (walk list 62, 63).",
@@ -3264,7 +3262,9 @@
               "seen": "{n} accounts look like shared-device accounts.",
               "seenOne": "1 account looks like a shared-device account.",
               "notSeen": "No account looks like a shared-device account.",
-              "note": "Takes Give Shared Devices Their Own Policy off your plan and counts these accounts as people."
+              "note": "Counts these accounts as people.",
+              "$commentJoins": "Owner, 2026-09-24 (Phase 2a): Jon's baseline has no policy for shared devices, so their accounts are treated as service accounts.",
+              "joins": "These accounts join the service-accounts group: Restrict Service Accounts to the Trusted Network keeps them to your office network, and the policies that ask a person for MFA leave them out."
             },
             "$commentChosen": "Each card says what the chosen answer does, in one line (roadmap/direction.ts chosen; owner, 2026-09-24). 2.3 draws no scan counts: it asks how people should sign in, not what the tenant has today.",
             "computers": {
@@ -4189,7 +4189,7 @@
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Give Shared Devices Their Own Policy, Protect Sign-in Method Registration, Require a Managed Device Outside the Office and Restrict Service Accounts to the Trusted Network wait on this."
+        "waits": "Protect Sign-in Method Registration, Require a Managed Device Outside the Office and Restrict Service Accounts to the Trusted Network wait on this."
       },
       "example": {
         "tenant": "Contoso Pty Ltd",
@@ -4310,92 +4310,6 @@
         }
       },
       "taskTitle": "Create the service accounts group"
-    },
-    {
-      "id": "s-shared-devices",
-      "kind": "policy",
-      "title": "Give Shared Devices Their Own Policy",
-      "changeLine": null,
-      "why": "A room system signs in with nobody standing at it, so a policy that waits for someone to approve a prompt stops it dead. These accounts get one policy of their own — allowed on the approved network, blocked anywhere else — and come out of the policies written for people.",
-      "learn": {
-        "url": "https://learn.microsoft.com/microsoftteams/rooms/conditional-access-and-compliance-for-devices"
-      },
-      "who": {
-        "lead": "Shared-device accounts IAMAI recognised, and how each was recognised:",
-        "devices": "{list:devicesWithSignals}",
-        "none": "No shared-device accounts recognised in {tenant}.",
-        "evidence": [
-          "{existingCoverage}"
-        ]
-      },
-      "decision": {
-        "label": "Shared devices",
-        "help": "Accounts that belong to a room, a panel or a shared phone.",
-        "pickerRow": "{name} · {signals}",
-        "save": "Save"
-      },
-      "dates": "{datesNew}",
-      "doneWhen": [
-        "Each shared device completes its required work tasks from the approved network. Its account has only the reviewed policy exceptions it needs, and a successful test records the account, task and date."
-      ],
-      "ifWrong": "{policyIfWrong}",
-      "comms": null,
-      "doesntApply": true,
-      "skip": false,
-      "scanControl": true,
-      "more": {
-        "risks": [
-          {
-            "text": "A device that leaves the trusted network, for a firmware update or a move, is blocked until it is back.",
-            "applies": "always"
-          },
-          {
-            "text": "Sign-in frequency is not supported on Teams devices: a policy that sets one signs them out on its own schedule. Check the session-length policies as well as the ones that ask for MFA.",
-            "applies": "always"
-          },
-          {
-            "text": "An authentication strength is not supported on Teams devices either, a security key included. A strength policy that reaches these accounts blocks them however well they are set up.",
-            "applies": "always"
-          }
-        ],
-        "helpDesk": [
-          "A room device that stops signing in: check it is on the office network and its account is in this policy and out of the others.",
-          "These accounts cannot answer an MFA prompt at all: there is no second device at the room to approve it. Exclude the account from the policy that prompted it rather than finding it another method."
-        ],
-        "manager": "Meeting-room and shared devices get a rule that fits them instead of prompts meant for people. Without it, a person-specific prompt can stop a room device from signing in.",
-        "waits": null
-      },
-      "example": {
-        "tenant": "Contoso Pty Ltd",
-        "devicesWithSignals": [
-          "Boardroom · Teams Rooms or shared-device licence; signs in only from a Teams device"
-        ],
-        "policyName": "Core - Allow - Shared devices",
-        "sharedDevices": [
-          "Boardroom"
-        ],
-        "trustedLocation": "Core - Trusted - Head office",
-        "peoplePolicies": [
-          "Require MFA for Everyone",
-          "Limit How Long Sessions Last"
-        ],
-        "existingPolicies": [],
-        "from": "Aug 1"
-      },
-      "whatToDo": {
-        "lead": "Confirm which accounts belong to shared devices, give them their own policy, and take them out of the policies that ask a person to act.",
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: {list:sharedDevices}",
-          "Target resources → Resources → All resources",
-          "Conditions → Locations: set Configure to Yes, then Include: Any location; Exclude: {trustedLocation}. Left at No the policy applies everywhere, including the office, and Block access there stops the device completely.",
-          "Grant → Block access",
-          "{reportOnlyLine}",
-          "Separately, apply the resolved exclusions for these accounts to the policies that ask a person to act: {list:peoplePolicies}"
-        ]
-      },
-      "aiFocus": "Distinguish the dedicated block policy from the separate people-policy changes. Do not claim the PowerShell create action performs both."
     },
     {
       "id": "s-prereq-security-defaults",

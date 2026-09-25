@@ -181,6 +181,7 @@ export const DECISION_STEPS = {
   serviceAccounts: PREREQ_STEP_ID.serviceAccountsGroup,
   /** Not a step: Create or Correct Service Accounts Group's group picker persists under this key (decisionKeyOf). */
   serviceAccountsGroup: 's-prereq-service-accounts-group-choice',
+  // The key the 2.2 shared-device answer is saved under; it names no step now (the accounts join the service-accounts group).
   sharedDevices: 's-shared-devices',
   /** Not a step: the campaign's "Turn on without them for now" list persists under this key (followUp.ts). */
   followUp: MFA_FOLLOW_UP_KEY,

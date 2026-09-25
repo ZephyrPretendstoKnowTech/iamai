@@ -189,14 +189,16 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
       suggested: candidates.length > 0 ? answer('some', candidates) : answer('none'),
       evidence: seen(Q.serviceAccounts, candidates.length),
       // None says what it does to "these accounts" only while there are some: found, or already picked.
-      chosen: candidates.length > 0 || mapping.serviceAccountUserIds.length > 0 ? { none: Q.serviceAccounts.note } : null,
+      // With shared-device accounts picked, the restriction stays on the plan for them.
+      chosen: candidates.length > 0 || mapping.serviceAccountUserIds.length > 0 ? { none: (mapping.sharedDeviceUserIds ?? []).length > 0 ? Q.sharedDevices.note : Q.serviceAccounts.note } : null,
       note: setAside,
     }),
     question('sharedDevices', ctx, {
       label: Q.sharedDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
       suggested: shared.length > 0 ? answer('some', shared) : answer('none'),
       evidence: seen(Q.sharedDevices, shared.length),
-      chosen: shared.length > 0 || (mapping.sharedDeviceUserIds ?? []).length > 0 ? { none: Q.sharedDevices.note } : null,
+      // Picked, they join the service-accounts group (owner, 2026-09-24): Jon's baseline has no policy of its own for them.
+      chosen: shared.length > 0 || (mapping.sharedDeviceUserIds ?? []).length > 0 ? { none: Q.sharedDevices.note, some: Q.sharedDevices.joins } : null,
     }),
   ]
 }
@@ -336,8 +338,7 @@ export function answerTextOf(q: Pick<DirectionQuestion, 'options' | 'pickedWith'
  */
 export const ANSWERED_IN: Readonly<Record<string, readonly DirectionQuestionKey[]>> = {
   [PREREQ_STEP_ID.trustedLocation]: ['officeNetwork'],
-  [PREREQ_STEP_ID.serviceAccountsGroup]: ['serviceAccounts'],
-  's-shared-devices': ['sharedDevices'],
+  [PREREQ_STEP_ID.serviceAccountsGroup]: ['serviceAccounts', 'sharedDevices'],
   [QUESTION_STEP.mailDevices]: ['mailDevices'],
   [QUESTION_STEP.partner]: ['partner'],
 }
@@ -378,7 +379,7 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   // Work countries are asked on the countries step itself (6.3), which holds its
   // own decision until one is saved; travel was retired (Stage 3).
   'geo-restriction': ['partner'],
-  'service-accounts-trusted-network': ['serviceAccounts', 'officeNetwork'],
+  'service-accounts-trusted-network': ['serviceAccounts', 'sharedDevices', 'officeNetwork'],
   'register-info-protected': ['officeNetwork'],
   // Define the Trusted Network holds until the office question is answered, as
   // the policies that use the office do (walk list item 60): before it, the step
@@ -401,14 +402,14 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
  * The steps only an answer puts on the plan, so the plan may not hold them
  * now: Keep Company Data Off Phones while phones are Blocked from company data
  * (generate.ts); the service accounts group and Restrict Service Accounts to
- * the Trusted Network while service accounts are picked, and Give Shared
- * Devices Their Own Policy while shared-device accounts are (walk list 45). A
- * goal's step is one only where the plan's baseline holds that goal.
+ * the Trusted Network while service or shared-device accounts are picked (walk
+ * list 45; shared-device accounts join the service-accounts group under Jon's
+ * baseline, owner 2026-09-24). A goal's step is one only where the plan's
+ * baseline holds that goal.
  */
 const ADDED_BY_ANSWER: Readonly<Record<string, { keys: readonly DirectionQuestionKey[]; goal?: string }>> = {
   's-ladder-phone-access-restriction': { keys: ['phones'] },
-  [PREREQ_STEP_ID.serviceAccountsGroup]: { keys: ['serviceAccounts'] },
-  's-shared-devices': { keys: ['sharedDevices'] },
+  [PREREQ_STEP_ID.serviceAccountsGroup]: { keys: ['serviceAccounts', 'sharedDevices'] },
   [stepIdForGoal('service-accounts-trusted-network')]: { keys: GOAL_DEPENDS['service-accounts-trusted-network'], goal: 'service-accounts-trusted-network' },
 }
 

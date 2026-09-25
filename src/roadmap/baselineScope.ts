@@ -25,7 +25,7 @@ export function absentStepIds(map: GoalMap = PINNED_GOAL_MAP): string[] {
   for (const s of steps as unknown as ContentStep[]) {
     if (s.kind !== 'policy') continue
     // The goals this step renders: its merged goals, or its own id when that id is
-    // a catalogue goal. A step whose id is not a goal (e.g. s-shared-devices) is
+    // a catalogue goal. A step whose id is not a goal is
     // not one of the baseline-absent goals and always renders.
     const goals = s.mergesGoals && s.mergesGoals.length > 0 ? s.mergesGoals : GOAL_IDS.has(s.id) ? [s.id] : null
     if (goals && goals.every((g) => !mapped.has(g))) out.push(s.id)

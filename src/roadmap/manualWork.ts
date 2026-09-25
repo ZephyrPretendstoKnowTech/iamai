@@ -24,11 +24,6 @@ function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
     const targets = c.users ?? {}
     const available = selected.filter(id => !(targets.excludeUsers ?? []).includes(id))
     const potentiallyTargeted = selected.length === 0 || available.length > 0 && ((targets.includeUsers ?? []).includes('All') || (targets.includeUsers ?? []).some((id: string) => available.includes(id)) || (targets.includeGroups ?? []).length > 0 || !!targets.includeGuestsOrExternalUsers || (targets.includeRoles ?? []).some((role: string) => available.some(id => (snapshot.roles.active[id] ?? []).includes(role))))
-    if (step.id === 's-shared-devices') {
-      const users = c.users ?? {}
-      const remaining = step.population.ids.filter(id => !(users.excludeUsers ?? []).includes(id))
-      return remaining.length > 0 && ((users.includeUsers ?? []).includes('All') || (users.includeUsers ?? []).some((id: string) => remaining.includes(id)) || (users.includeGroups ?? []).length > 0 || (users.includeRoles ?? []).some((role: string) => remaining.some(id => (snapshot.roles.active[id] ?? []).includes(role))))
-    }
     if (step.id === 's-ladder-phone-access-restriction') return (c.platforms?.includePlatforms ?? []).some((x: string) => ['android', 'iOS'].includes(x)) && (p.grantControls?.builtInControls ?? []).includes('block')
     return false
   }).map(raw => { const p = raw as Record<string, unknown>; return [p.id, p.state, p.conditions, p.grantControls, p.sessionControls] }).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
@@ -48,7 +43,7 @@ const POLICY_WORKFLOWS: Record<string, string> = {
 // Code Sign-in: an enforced policy that matches completes it from the scan
 // (walk list 4.x item 3). Block Legacy Authentication's mail half is the sign-in
 // records' too (item 4, roadmap/blockSignIns.ts).
-const SCOPED_MANUAL = new Set(['s-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-shared-devices', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
+const SCOPED_MANUAL = new Set(['s-ladder-global-admin-count', 's-ladder-authenticator-over-sms', 's-ladder-legacy-auth-inventory', 's-ladder-guest-review', 's-ladder-app-passwords', ...Object.keys(POLICY_WORKFLOWS)])
 const outcomeField = (review = false): ManualEvidenceField => ({ key: 'outcome', label: 'Outcome', type: 'select', required: true, options: review ? [{ value: 'retained', label: 'Retain access' }, { value: 'revoked', label: 'Access revoked' }, { value: 'investigate', label: 'Investigate' }] : [{ value: 'passed', label: 'Successful' }, { value: 'failed', label: 'Unsuccessful' }, { value: 'investigate', label: 'Investigate' }] })
 
 /** Only the existing manual steps receive scoped evidence inputs. */
@@ -180,7 +175,7 @@ function evidenceRead(step: Step, snapshot: TenantSnapshot): boolean {
   if (step.id === 's-ladder-global-admin-count' && snapshot.config.roleAssignments?.status !== 'ok') return false
   if (step.id === 's-ladder-global-admin-count' && snapshot.config.pimEligibility?.status !== 'ok') return false
   if (step.id === 's-ladder-authenticator-over-sms' && (snapshot.config.authMethodsPolicy?.status !== 'ok' || scopedPeople(step, snapshot).some(id => !Array.isArray(snapshot.authMethods[id])))) return false
-  if ((POLICY_WORKFLOWS[step.id] || step.id === 's-shared-devices') && snapshot.config.caPolicies?.status !== 'ok') return false
+  if (POLICY_WORKFLOWS[step.id] && snapshot.config.caPolicies?.status !== 'ok') return false
   if (step.id === 's-goal-guests-mfa' && snapshot.config.crossTenantAccess?.status !== 'ok') return false
   if (step.id === 's-goal-service-accounts-trusted-network' && snapshot.config.namedLocations?.status !== 'ok') return false
   if (step.id === 's-goal-device-registration-mfa' && snapshot.config.deviceRegistrationPolicy?.status !== 'ok') return false
@@ -202,12 +197,6 @@ export function completeManualEvidence(stepId: string, record: OwnerConfirmation
 /** Review only facts material to this task, not every scan timestamp. */
 export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: MappingState, accountCache?: Map<string, string>): string {
   if (SCOPED_MANUAL.has(step.id)) return scopedBasis(step, snapshot, mapping, undefined, accountCache)
-  if (step.id === 's-shared-devices') {
-    const byId = (a: Record<string, unknown>, b: Record<string, unknown>) => String(a.id).localeCompare(String(b.id))
-    const policies = relevantPolicies(step, snapshot)
-    const locations = (snapshot.config.namedLocations?.rows ?? []).filter(raw => mapping?.trustedLocationIds.includes(String((raw as Record<string, unknown>).id))).map(raw => { const l = raw as Record<string, unknown>; return { id:l.id, type:l['@odata.type'], isTrusted:l.isTrusted, ipRanges:l.ipRanges } }).sort(byId)
-    return JSON.stringify([step.id, [...step.population.ids].sort(), policies, locations])
-  }
   const item = step.id.replace('s-ladder-', '')
   const people = snapshot.users.filter((u) => item === 'guest-review' ? u.userType === 'guest' : item === 'global-admin-count' ? (snapshot.roles.active[u.id]?.length ?? 0) > 0 : item === 'legacy-auth-inventory' ? snapshot.evidenceUsage?.legacyAuth.userIds.includes(u.id) : true)
   const users = people.map((u) => [u.id, u.accountEnabled, u.userType, null, null, null]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
@@ -274,12 +263,7 @@ export function applyManualReviews(steps: Step[], snapshot: TenantSnapshot, conf
   const labelOf = (u: { id: string; userPrincipalName?: string | null }): string => (labels ??= personLabels(snapshot.users)).get(u.id) || u.userPrincipalName || u.id
   for (const step of steps) {
     const item = step.id.replace('s-ladder-', '')
-    if (!SCOPED_MANUAL.has(step.id) && step.id !== 's-shared-devices' && step.id !== 's-prereq-per-user-mfa' && (!step.id.startsWith('s-ladder-') || !REVIEWS.has(item))) continue
-    if (step.id === 's-shared-devices' && step.state.setAside && step.doesntApply) {
-      const record = confirmations[step.id]?.[MANUAL_REVIEW_ID]
-      step.manualReview = { basis: manualBasis(step, snapshot, mapping, accountCache), readyToConfirm: false, confirmedAt: null, fields: [], ...(record ? { record, verification: 'historical' as const } : {}) }
-      continue
-    }
+    if (!SCOPED_MANUAL.has(step.id) && step.id !== 's-prereq-per-user-mfa' && (!step.id.startsWith('s-ladder-') || !REVIEWS.has(item))) continue
     const perUser = step.id === 's-prereq-per-user-mfa' || item === 'per-user-mfa-cleanup'
     if (perUser) {
       const { enabled } = perUserMfaReading(snapshot)

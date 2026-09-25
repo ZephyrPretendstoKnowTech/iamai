@@ -54,8 +54,9 @@ test('the registry and LIBRARY.json are the whole library compiled and regenerat
     assert.deepEqual(registry, JSON.parse(JSON.stringify(registryOf(LIBRARY))), 'registry.generated.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --registry')
     // 42: the trip-operations package left with its step (docs/plans/step-redundancy-analysis.md
     // finding 4), and the partner and mail follow-ups folded into the policy steps
-    // that own their outcomes (findings 5 and 6).
-    assert.equal(LIBRARY.registered.length, 42)
+    // that own their outcomes (findings 5 and 6). 41: Give Shared Devices Their Own
+    // Policy left with its step (Phase 2a: shared-device accounts join the service accounts).
+    assert.equal(LIBRARY.registered.length, 41)
     // The drill row is not a content step: the Plan draws it with CleanupBody. The
     // not-assessed row left with its duplicate (docs/plans/step-redundancy-analysis.md finding 8).
     assert.deepEqual(LIBRARY.notSteps.map((p) => p.stepId), ['cleanup-drill'])
