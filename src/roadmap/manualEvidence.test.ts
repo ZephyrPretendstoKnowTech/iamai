@@ -135,7 +135,14 @@ test('consolidation retains completion through intended retirement and rename, b
 test('an enforced policy finishes on what the scan reads, with no workflow record', () => {
   // Require MFA for Guests read Ready · Review over its enforced policies, waiting
   // on a test the person recorded; no step records one now (owner, 2026-09-25).
-  const result = runFixture(curatedFixture('demo-week2'))
+  // Its guest policy at the grant the baseline asks of every guest type
+  // (phishing-resistant MFA meets Jon's Modern MFA + TAP; owner, 2026-09-25): as
+  // shipped it asks only MFA, which delivers two of the six types.
+  const f = structuredClone(curatedFixture('demo-week2'))
+  for (const p of f.snapshot.config.caPolicies.rows as { conditions?: { users?: { includeUsers?: string[] } }; grantControls?: unknown }[]) {
+    if (p.conditions?.users?.includeUsers?.includes('GuestsOrExternalUsers')) p.grantControls = { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } }
+  }
+  const result = runFixture(f)
   const guests = result.steps.find(s => s.id === 's-goal-guests-mfa')!
   assert.equal(guests.state.lifecycle, 'enforced', 'the premise: deployment remains observable')
   assert.equal(guests.manualReview, undefined, 'Require MFA for Guests still asks for a workflow record')

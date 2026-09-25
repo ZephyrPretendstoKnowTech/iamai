@@ -166,6 +166,7 @@ export type ReasonKind =
   | 'exclusion-missing'
   /** The satisfiers between them reach fewer guest and external user kinds than the goal's baseline policies. */
   | 'guest-types-narrower'
+  | 'guest-types-weaker'
 
 export type Reason = {
   kind: ReasonKind
@@ -279,6 +280,13 @@ export type GoalResult = {
   /** Which policies satisfy the goal, and whether one of them does it alone. Null unless the classifier found it satisfied. */
   satisfaction: Satisfaction | null
   floorRaised: { from: string; to: string; by: string } | null
+  /**
+   * For a goal about guests: each guest and external user kind the goal requires,
+   * with the enabled policies that deliver it at its floor (the grant of the
+   * baseline member that reaches it), where nothing but the exclusions group keeps
+   * them short. A kind no policy delivers is absent.
+   */
+  kindsDelivered?: Record<string, string[]>
   /** For a not-applicable goal: the applicability facet that switched it off, and why (a licence, or no sign-in activity). */
   applicability?: { facet: string; reason: string }
 }

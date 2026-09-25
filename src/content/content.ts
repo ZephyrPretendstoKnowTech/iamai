@@ -194,9 +194,9 @@ export type EngineWords = {
   blockSignIns: { legacyLabel: string; legacySome: string; legacyNone: string; deviceCodeLabel: string; deviceCodeSome: string; deviceCodeNone: string; legacyMove: string; deviceCodeMove: string; more: string }
   /** Why an existing policy that is the goal's policy does not put it in place (coverage/coverage.ts). */
   coverage: {
-    reason: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string }
-    gap: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string }
-    statement: { exclusionMissing: string; conditionsNarrower: string; conditionsRecorded: string; guestTypes: string }
+    reason: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string; guestTypesWeaker: string }
+    gap: { exclusionMissing: string; conditionsNarrower: string; guestTypes: string; guestTypesWeaker: string }
+    statement: { exclusionMissing: string; conditionsNarrower: string; conditionsRecorded: string; guestTypes: string; guestTypesWeaker: string }
     conditions: Record<string, string>
   }
   /** The name directory's fallback for a role holder it holds no name for (names.ts label). */

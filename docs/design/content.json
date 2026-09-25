@@ -605,19 +605,23 @@
         "reason": {
           "exclusionMissing": "{policy} does not exclude the exclusions group",
           "conditionsNarrower": "{policy} applies only under narrower conditions than the baseline: {conditions}",
-          "guestTypes": "The policies reach {reached} of the {required} guest types the baseline covers"
+          "guestTypes": "The policies reach {reached} of the {required} guest types the baseline covers",
+          "$commentGuestTypesWeaker": "Guest types a policy reaches below the baseline's grant for them (owner, 2026-09-25): Jon asks Modern MFA + TAP of local guests, B2B members, direct-connect users and service providers, and plain MFA reaches them without delivering them.",
+          "guestTypesWeaker": "{short} of the {required} guest types get less than the baseline asks of them"
         },
         "gap": {
           "exclusionMissing": "does not exclude the exclusions group",
           "conditionsNarrower": "applies only under narrower conditions",
-          "guestTypes": "reaches only some guest types"
+          "guestTypes": "reaches only some guest types",
+          "guestTypesWeaker": "asks some guest types for less than the baseline"
         },
         "statement": {
           "exclusionMissing": "It does not exclude the exclusions group.",
           "conditionsNarrower": "It applies only under narrower conditions than the baseline.",
           "$commentConditionsRecorded": "Added after an in-place goal's statement where the delivering policy is narrower than the baseline only as far as the person's recorded answer chose (roadmap/deviations.ts applyDeviations; coverage.ts recordedReference): the device decision's phones-out answer. {conditions} is the list of coverage.conditions words.",
           "conditionsRecorded": "It applies under narrower conditions than the baseline by your choice: {conditions}.",
-          "guestTypes": "It reaches only some guest types."
+          "guestTypes": "It reaches only some guest types.",
+          "guestTypesWeaker": "It asks some guest types for less than the baseline does."
         },
         "conditions": {
           "locations": "locations",
@@ -976,6 +980,8 @@
         "$comment": "The Impact column's words that are not a count (derive/whoLine.ts IMPACT). Unknown is never zero. none is the last fallback for a step that reaches no people and whose package authors no impact.fallbackLabel (rowWho.ts).",
         "notEstablished": "Not established",
         "noUserImpact": "No user impact",
+        "$commentNoGuests": "Require MFA for Guests counts the guests it acts on (owner, 2026-09-25): its policy may reach everyone, and \"1 person\" counted the one member it reaches instead (ui/surfaces/rowWho.ts).",
+        "noGuests": "No guests",
         "none": "—",
         "$commentCoversEnabled": "The population line's suffix when more enabled accounts are in scope than the line counts (derive/whoLine.ts populationLine). {n} is a number: fillText prints it as count() does, \"covers 4,900 enabled\".",
         "coversEnabled": "covers {n} enabled"
@@ -2133,8 +2139,6 @@
             "differs": "Not as asked",
             "wider": "Wider than this step",
             "shortfall": "Who it misses",
-            "guestDirectory": "Guest Directory",
-            "directory-inventory": "Guest Directory",
             "pimRoles": "PIM Role Settings",
             "tagged-disabled": "Left switched off"
           },
@@ -2306,8 +2310,6 @@
           },
           "$commentFoundDiffers": "The deployed policy is not what this step asked for, in a part IAMAI writes. The comparison existed and its answer was discarded after deciding readiness, so a policy built with a narrowing condition left at Configure: No — the trap the step's own procedure warns about — rendered identically to one built exactly right.",
           "$commentFoundTaggedDisabled": "A tenant IAMAI has planned before arrives carrying policies with IAMAI's own plan tag, and one of them is switched off. The engine matches it (tracking.matchedBy is a tag, tracking.state is disabled) and then ignores it, because a disabled policy cannot be the step's live policy — so the step proposed a second policy of the same name, the operator built it, two policies then carried the tag for one step, and the step could never finish. The proposal no longer suffixes around the step's own policy, and the finding says what is there. It renders only where another reason holds the step first, and it ended \"or follow the instructions below and leave it switched off\": there, the instructions below were the create procedure, so following them built a second policy beside the one that is Off. The step's own procedure for that policy is now the Report-only one, and the finding no longer points anywhere else.",
-          "$commentInventoryNames": "The Guest Directory tile joined its note and its names with newlines and nothing between them, so on a tenant with one guest the tile read as two sentences and then a person's name on a line of its own, with nothing saying what the name was. A list says it is a list.",
-          "inventoryNames": "The accounts, as the directory names them:",
           "foundTaggedDisabled": "{policy} already carries this step's tag in {tenant} and is switched off, so it is doing nothing today. IAMAI does not turn a policy on: review its settings in the Entra admin center and, if it is the one you want, set Enable policy to Report-only there, not On.",
           "foundDiffers": "{policy} differs from the plan in {fields}.",
           "$commentFoundDiffersResources": "Which resources, where the resources are what differs (stepContract.ts foundOf, tracking.ts resourcesDiffer; net-new 14): 4.4's read only \"target resources differ\" where the baseline excludes Microsoft Intune Enrollment and the tenant's policy does not.",
@@ -2349,6 +2351,12 @@
           "$commentDoneOn": "Completion Criteria on a policy in Turn On MFA for Everyone (walk list 4.x item 26, owner 2026-09-24): two lines, the same in every state. doneOn is what IAMAI will see ({fact} is policyFact's participle form); the second line is the report-only period the policy has to pass (\"period\", not the owner's \"week\": Block Legacy Authentication and Block Device Code Sign-in watch 3 days where nobody used the flow), left out where the scan found the policy already On, and shared.policyVerifyAfter in its place where the policy went On without a report-only period IAMAI watched (owner, 2026-09-22). doneOnPlain is the first line where IAMAI holds no fact for the policy.",
           "doneOn": "IAMAI sees {policy} On, {fact}.",
           "doneOnPlain": "IAMAI sees {policy} On.",
+          "$commentDoneOnGuests": "Require MFA for Guests delivered by several policies between them (owner, 2026-09-25): each guest and external user type at the baseline's grant for it, which no one of them does alone.",
+          "doneOnGuests": "IAMAI sees {policy} On, and together they cover every guest and external user type.",
+          "$commentGuestsCovered": "Require MFA for Guests where the tenant's own policies already deliver one of the baseline's two guest policies (owner decision 8, 2026-09-25): the step writes only the other, and this card says which guest types are already covered, and by what.",
+          "guestsCovered": { "label": "Already covered", "note": "{policies} already {cover} {kinds} at the baseline's requirement." },
+          "$commentGuestKinds": "Microsoft's names for the guest and external user types a Conditional Access policy can include (Users → Guest or external users).",
+          "guestKinds": { "internalguest": "local guest users", "b2bcollaborationguest": "B2B collaboration guest users", "b2bcollaborationmember": "B2B collaboration member users", "b2bdirectconnectuser": "B2B direct connect users", "otherexternaluser": "other external users", "serviceprovider": "service provider users" },
           "donePeriod": "Its report-only period showed no sign-in it would have stopped.",
           "$commentDonePeriodMail": "The second line where Confirm What You Use named mail accounts (walk list 4.x item 26: two lines): the report-only line and the mail half in one sentence. It was a third line.",
           "donePeriodMail": "Its report-only period showed no sign-in it would have stopped, and {accounts} used no legacy authentication in the last 30 days.",

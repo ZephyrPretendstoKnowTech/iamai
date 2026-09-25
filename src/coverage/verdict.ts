@@ -70,6 +70,7 @@ export function gapSentenceOf(r: GoalResult): string | null {
   if (r.reasons.some((x) => x.kind === 'apps-narrower' || x.kind === 'apps-excluded')) return 'covers fewer apps than the baseline'
   if (r.reasons.some((x) => x.kind === 'conditions-narrower')) return engine.coverage.gap.conditionsNarrower
   if (r.reasons.some((x) => x.kind === 'guest-types-narrower')) return engine.coverage.gap.guestTypes
+  if (r.reasons.some((x) => x.kind === 'guest-types-weaker')) return engine.coverage.gap.guestTypesWeaker
   if (r.reportOnlyIds.length > 0 && r.enforcedIds.length === 0) return REPORT_ONLY_GAP
   if (r.reasons.some((x) => x.kind === 'exclusion-missing')) return engine.coverage.gap.exclusionMissing
   return null

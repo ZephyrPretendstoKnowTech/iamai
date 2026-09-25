@@ -95,6 +95,13 @@ export function rowWho(step: Step): string {
   // step reopened later in the run (the guests step, delivered by the all-users
   // policy until its own check reopened it) is not reached by their scope
   // (derive/population.ts impactReachOf).
+  // Require MFA for Guests counts the guests it acts on, whatever else its policy
+  // reaches (owner, 2026-09-25): a tenant with none reads "No guests", never "1
+  // person" from an all-users policy.
+  if (step.goalId === 'guests-mfa') {
+    const guests = (impactReachOf(step) ?? step.population).guests
+    return guests > 0 ? count(guests, 'guest') : IMPACT.noGuests
+  }
   const policy = isPolicyStep(step)
   const pop = policy ? impactReachOf(step) : reached(step)
   const fallback = implementationPackageFor(step)?.meta.impact?.fallbackLabel ?? structuralWords.impactDefault

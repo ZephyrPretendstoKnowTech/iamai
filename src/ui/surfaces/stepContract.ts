@@ -193,7 +193,6 @@ type ContractWords = {
   foundDiffersExcluded: string
   foundTaggedDisabled: string
   /** The line that heads the directory tile's name list, so a name is never a paragraph of its own. */
-  inventoryNames: string
   foundInPlaceWatched: string
   foundInPlaceWatchedTogether: string
   foundInPlaceTogether: string
@@ -364,8 +363,6 @@ export type ContractFound = { key: string; label: string; text: string }
  */
 export type ContractWho = { known: boolean; text: string }
 
-export type ContractInventory = { label: string; count: number; complete: boolean; names: string[]; note: string }
-
 /** The one next operator action. Every step has exactly one, and it is never absent. */
 export type ContractAction = {
   kind: 'decide' | 'resolve' | 'preserve' | 'observe' | 'enforce' | 'deploy' | 'verify' | 'restore' | 'none'
@@ -500,8 +497,6 @@ export type StepContract = {
   why: string
   found: ContractFound[]
   who: ContractWho | null
-  /** Known directory inventory is distinct from exact policy applicability. */
-  inventory?: ContractInventory | null
   /** The people marked on the campaign to turn this policy on without, for now, and what happens to them; null where there are none. */
   followUp: { count: number; text: string } | null
   /** Require MFA for Everyone: the dormant accounts its policy reaches with no method, and where to disable them (Step.dormantWithoutMethod); null elsewhere. */
@@ -952,6 +947,8 @@ function whoOf(step: Step): ContractWho | null {
   // Prepare Your Team for MFA's is its Impact too (net-new 17): "29 people and 1
   // guest", never "30 active people · 3 admins · 1 guest", which counted the
   // guest among the people and again beside them.
+  // Require MFA for Guests' reach is its guests, as its Impact counts them (owner, 2026-09-25).
+  if (step.goalId === 'guests-mfa') return { known: true, text: rowWho(step) }
   if (step.preparation || (isGroupMember(step.id, 'core') && (contentStepFor(step) as { kind?: unknown } | undefined)?.kind === 'policy')) {
     const impact = rowWho(step)
     if (/^[0-9]/.test(impact)) return { known: true, text: impact }
@@ -959,21 +956,6 @@ function whoOf(step: Step): ContractWho | null {
   const pop = impactReachOf(step)
   if (affectedIds(pop).length === 0 && (pop.inScope ?? 0) === 0) return null
   return { known: true, text: populationLine(pop) }
-}
-
-function inventoryOf(step: Step, ctx: StepVarContext): ContractInventory | null {
-  if (step.goalId !== 'guests-mfa') return null
-  const users = ctx.snapshot.users.filter(u => u.userType === 'guest')
-  const complete = ctx.snapshot.sources.users?.status === 'ok'
-  // Which guests this counts, because the step's own line counts different
-  // ones. "Guest Directory - 225 guests" sat on the same board as "197 guests",
-  // both correct — every guest account against the active ones — and nothing
-  // said which was which, so a reader had two numbers for one word.
-  return {
-    label: 'Guest Directory', count: users.length, complete,
-    names: users.map(u => ctx.nameOf(u.id)),
-    note: `${complete ? 'Every guest account in the directory, whether or not it has been seen signing in' : 'Every guest account the incomplete directory read returned, whether or not it has been seen signing in'}. Other guest counts on this plan are the people a step acts on, which is smaller. Policy applicability also depends on external-user type, home organization and exclusions.`,
-  }
 }
 
 /** The step's required policy members (Foundation B), each with its own name, stage and history. */
@@ -1362,7 +1344,7 @@ function objectTaskDoneWhen(task: Record<string, unknown> | undefined, ex: Recor
 }
 
 /** Completion Criteria's words on a policy in Turn On MFA for Everyone (walk list 4.x item 26). */
-type DoneOnWords = { doneOn: string; doneOnPlain: string; donePeriod: string; donePeriodMail: string }
+type DoneOnWords = { doneOn: string; doneOnPlain: string; doneOnGuests: string; donePeriod: string; donePeriodMail: string }
 const DONE_ON = (): DoneOnWords => CONTRACT as unknown as DoneOnWords
 /** The completion of the mail half of Block Legacy Authentication, where the mail question named accounts (shared.mailDevices.done). */
 const MAIL_DONE = (): string => (shared.mailDevices as unknown as { done: string }).done
@@ -1414,6 +1396,9 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     // A step that makes two policies (Require MFA for Guests) names both, never its own title.
     const planned = (step.action.resolution?.policies ?? []).map((op) => ((op.mode === 'update' ? (op.target ?? op.body) : op.body) as { displayName?: unknown } | undefined)?.displayName).filter((n): n is string => typeof n === 'string' && n.trim() !== '')
     const pair = planned.length > 1 ? list(planned) : null
+    // Require MFA for Guests delivered between several policies: each guest type at
+    // the baseline's grant for it, which none does alone (owner, 2026-09-25).
+    if (step.goalId === 'guests-mfa' && together !== null) return [fillText(DONE_ON().doneOnGuests, { policy: together })]
     return policyDoneWhen(step, fact, together ?? pair ?? tracked ?? String(ex.policyName ?? contentTitle(step)), mail)
   }
   // Emergency access in place with its hardening deferred is not fully resilient,
@@ -1616,8 +1601,6 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const routeStart = gateNow ? routeStartOf(step, gateNow, startOf) : null
   const found = foundOf(step, tenant, milestone.line, routeStart, personLabels(ctx.snapshot.users, { address: true }), operator?.id ?? null, ctx.nameOf)
   const policyFact = policyFactOf(step, ctx)
-  const inventory = inventoryOf(step, ctx)
-  if (inventory) found.push({ key: 'directory-inventory', label: inventory.label, text: `${inventory.complete ? '' : 'At least '}${inventory.count} guest ${plural(inventory.count, 'account')}. ${inventory.names.join('; ')}` })
   // The object a step makes itself comes first, as its task does (Stage 3;
   // Step.objectTask): the countries location's own About sentence, then the
   // policy's, each as its content entry wrote it.
@@ -1649,7 +1632,6 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     why,
     found,
     who: whoOf(step),
-    inventory,
     followUp: followUpOf(step, ctx),
     dormant: dormantOf(step, ctx),
     pitfalls: pitfallTilesOf(step, ctx, step.state.satisfied, stepLink),
@@ -2526,6 +2508,21 @@ function operatorAloneShort(step: Step, gate: NonNullable<Step['action']['readin
   return short.length > 0 && short.every((id) => id.toLowerCase() === operatorId.toLowerCase())
 }
 
+/**
+ * Require MFA for Guests where the tenant's own policies already deliver one of
+ * the baseline's two guest policies (owner decision 8, 2026-09-25): the step
+ * writes only the other, and this card says which guest types are covered
+ * already, and by what.
+ */
+function guestsCoveredTile(step: Step): ReadinessTile | null {
+  const credited = step.action.creditedMembers ?? []
+  if (credited.length === 0 || step.state.satisfied) return null
+  const W = (CONTRACT as unknown as { guestsCovered: { label: string; note: string }; guestKinds: Record<string, string> })
+  const names = [...new Set(credited.flatMap((m) => m.policyNames))]
+  const kinds = [...new Set(credited.flatMap((m) => m.kinds))].map((k) => W.guestKinds[k] ?? k)
+  return { key: 'guests-covered', label: W.guestsCovered.label, tone: 'good', value: list(kinds), note: fillText(W.guestsCovered.note, { policies: list(names), cover: names.length === 1 ? 'covers' : 'cover', kinds: list(kinds) }) }
+}
+
 /** The tile that says what the step's own state turns on, where the state turns on something. */
 function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): ReadinessTile | null {
   const s = c.state
@@ -2888,7 +2885,6 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
     const tiles = configuredTiles.filter(t => t.tone !== 'good')
     return { tiles, satisfied: configuredTiles.filter(t => t.tone === 'good'), bar: barOf(c) }
   }
-  const inventory: ReadinessTile | null = c.inventory ? { key: 'directory-inventory', label: c.inventory.label, value: `${c.inventory.complete ? '' : 'At least '}${c.inventory.count} ${plural(c.inventory.count, 'guest')}`, note: [c.inventory.note, c.inventory.names.length > 0 ? CONTRACT.inventoryNames : null, ...c.inventory.names].filter((x): x is string => x !== null).join('\n'), tone: 'info' } : null
   // No "Affected people" card (walk list item 11, owner 2026-09-23): it repeated
   // the row's Impact in other numbers ("3 active people · 3 admins · covers 4
   // enabled" beside "4 accounts") and, on a check step, asked the reader to
@@ -2896,7 +2892,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
   // step's own state tile, never in its place.
   const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c), inventory].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), guestsCoveredTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c)].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   // The drift card is the review's one card, and the exclusions card the exposure's

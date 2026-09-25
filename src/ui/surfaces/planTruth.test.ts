@@ -142,6 +142,11 @@ test('Step 5: the Impact column says who a step reaches, never the state, and st
       const where = `${p.label}/${s.id}`
       const impact = rowWho(s)
       assert.ok(!impact.includes(REPORT_ONLY_GAP), `${where}: "${impact}" restates the state`)
+      // Require MFA for Guests counts its guests, whatever else its policy reaches (owner, 2026-09-25).
+      if (s.goalId === 'guests-mfa') {
+        assert.match(impact, /^([\d,]+ guests?|No guests)$/, `${where}: "${impact}"`)
+        continue
+      }
       if (s.impactCount !== undefined) {
         // Configure Emergency Exclusions, Configure Passkey Authentication and the Prepare steps count what they change (rowWho.ts).
         assert.match(impact, /^([\d,]+|no) (polic(y|ies)|person|people|accounts?|steps?)$/, `${where}: "${impact}"`)

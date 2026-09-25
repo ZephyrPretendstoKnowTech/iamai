@@ -740,10 +740,13 @@ function boardTimingOf(step: Step, waveStart: string | null, read: LaneView | nu
     day: day ? dayLabel(day) : null,
   })
   if (result === WHEN.none || result === '—' || result === '–') {
+    // A Ready row the scheduler gave no day — a review, or a step whose own status
+    // is already `done` while a decision on it is still open — is work for its
+    // phase, and reads the phase's first day like the rest of the column (net-new
+    // 29, owner 2026-09-25): "Review now" and "Decide now" were the only rows
+    // without a date.
+    if (lane.lane === 'Ready' && (lane.substatus === 'Review' || lane.substatus === 'Decision') && waveStart) return { kind: 'day', text: dayLabel(waveStart) }
     if (lane.lane === 'Ready' && lane.substatus === 'Review') return { kind: 'word', text: schedulingWords.reviewNow }
-    // A Ready row the scheduler gave no day — a step whose own status is already
-    // `done` while a decision on it is still open — says the action rather than
-    // a placeholder.
     if (lane.lane === 'Ready' && lane.substatus === 'Decision') return { kind: 'word', text: schedulingWords.decideNow }
     return step.blockedBy.length > 0 ? { kind: 'held' } : { kind: 'undated', word: step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none }
   }
