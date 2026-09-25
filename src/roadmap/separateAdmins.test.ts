@@ -14,6 +14,7 @@ import { stepById } from '../content/content.ts'
 import { stepLines } from '../ui/surfaces/stepExport.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
+import { sectionThreeTasksOf } from '../ui/surfaces/sectionThreeTasks.ts'
 
 const TITLE = 'Use Separate Accounts for Admin Work'
 
@@ -40,4 +41,29 @@ test('the review includes role holders and separately lists observed mail or Tea
   assert.equal(ex.adminsWithWorkload.length, 2)
   for (const row of ex.adminsWithWorkload) assert.match(row, /^.+ · (Outlook|Microsoft Teams)/, row)
   assert.ok(stepLines(s, ctx).some((l) => /^Review the \d+ administrator accounts for dedicated administration/.test(l)), 'the lead counts them')
+})
+
+test('the role is assigned the way the licence offers it: Roles & admins without PIM, Privileged Identity Management with it', () => {
+  // Owner audit, 2026-09-24: the line said "choose Assignment type: Active" on
+  // Roles & admins, a choice that page offers only where PIM is licensed.
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const s = r.steps.find((x) => x.id === SEPARATE_ADMIN_ACCOUNTS_STEP_ID)!
+  const lines = (pim: boolean): string[] => {
+    const snapshot = structuredClone(f.snapshot)
+    snapshot.capabilities.pim = { ...snapshot.capabilities.pim, enabled: pim }
+    snapshot.roles.eligible = {}
+    const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
+    return sectionThreeTasksOf(s, ctx)!.tasks.flatMap((t) => t.steps).filter((l) => /Add assignments/.test(l))
+  }
+  const direct = lines(false)
+  assert.ok(direct.length > 0, 'the premise: the procedure assigns a role')
+  for (const l of direct) {
+    assert.match(l, /^Open \*\*Entra ID → Roles & admins → .+ → Add assignments\*\*, select \*\*.+\*\*, and complete the assignment\. If it asks for an assignment type, choose \*\*Active\*\* and \*\*Permanently assigned\*\*\.$/, l)
+  }
+  const pim = lines(true)
+  assert.ok(pim.length > 0)
+  for (const l of pim) {
+    assert.match(l, /^Open \*\*ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → .+ → Add assignments\*\*, select \*\*.+\*\*\. Choose \*\*Assignment type: Active\*\* and \*\*Permanently assigned\*\*\.$/, l)
+  }
 })
