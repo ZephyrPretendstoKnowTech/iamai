@@ -19,7 +19,7 @@
 import type { Step } from '../../roadmap/types.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { stepById } from '../../content/content.ts'
+import { app, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { tenantSetupChecks } from '../../derive/readinessSetup.ts'
@@ -47,7 +47,22 @@ export function pitfallTilesOf(step: Step, ctx: StepVarContext, satisfied: boole
   if (satisfied || step.status === 'done' || step.status === 'skipped' || step.state.setAside) return []
   if (step.id === CAMPAIGN_STEP_ID) return campaignPitfalls(step, ctx)
   if (step.id === MFA_EVERYONE_STEP_ID) return mfaEveryonePitfalls(step, ctx, stepLink)
+  if ((step.methodShort ?? []).length > 0) return methodShortPitfalls(step, ctx)
   return []
+}
+
+/** The shared words of a card naming people short of a method (pages.app.plan.stepContract.methodGate). */
+const GATE = (app.plan as unknown as { stepContract: { methodGate: Record<string, string> } }).stepContract.methodGate
+
+/**
+ * A risk step whose policy asks for a strength (owner decision 11, 2026-09-25):
+ * each person it reaches who holds nothing it accepts, with MFA Readiness's next
+ * step, and the page that lists them (roadmap/generate.ts Step.methodShort). It
+ * informs and holds nothing.
+ */
+function methodShortPitfalls(step: Step, ctx: StepVarContext): ReadinessTile[] {
+  const ids = step.methodShort ?? []
+  return [{ key: 'pitfall:no-accepted-method', label: GATE.methodShortLabel, tone: 'warn', value: fillText(GATE.methodShortValue, { n: ids.length }), note: GATE.methodShortNote, names: personLines(ctx, ids), link: { label: GATE.readinessLink, href: `#/readiness/step/${step.id}` } }]
 }
 
 /**

@@ -234,7 +234,9 @@ test('a person the risk policies reach who cannot answer them is said to be bloc
     // "This flow doesn't use self-service password reset (SSPR)."
     const text = allText('user-risk')
     assert.match(text, /registered for multifactor authentication before this policy reaches them/)
-    assert.match(text, /this is not the self-service password reset flow/)
+    // The line that asked the reader to check each person's method (and said this
+    // is not the SSPR flow) gave way to the card naming them (owner decision 11,
+    // 2026-09-25; roadmap/riskSteps.test.ts).
     assert.ok(risksOf('user-risk').some((r) => /no registered multifactor authentication method cannot complete remediation at all/.test(r)), risksOf('user-risk').join('\n'))
   }
   {
