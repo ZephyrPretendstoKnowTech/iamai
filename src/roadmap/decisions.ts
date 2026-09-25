@@ -11,7 +11,7 @@ import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyC
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
-import { MFA_FOLLOW_UP_KEY, SPECIAL_CARE_STEP_ID, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
+import { MFA_FOLLOW_UP_KEY, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
 import { WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
@@ -182,7 +182,6 @@ export const DECISION_STEPS = {
   /** Not a step: Create or Correct Service Accounts Group's group picker persists under this key (decisionKeyOf). */
   serviceAccountsGroup: 's-prereq-service-accounts-group-choice',
   sharedDevices: 's-shared-devices',
-  campaign: SPECIAL_CARE_STEP_ID,
   /** Not a step: the campaign's "Turn on without them for now" list persists under this key (followUp.ts). */
   followUp: MFA_FOLLOW_UP_KEY,
   /** Not a step: the Baseline mappings (Plan settings) persist under this key (sourceMappings.ts). */
@@ -204,8 +203,7 @@ export function decisionKeyOf(stepId: string): string {
  * emergency access accounts → the break-glass ids, on an operator's confirmation
  * only; the exclusions group → the
  * exclusions record, on an operator's confirmation only; allowed countries → the country codes; the trusted
- * network → the trusted location ids; service accounts → their ids; the
- * campaign's special care → the high-care ids; and a chosen option or a
+ * network → the trusted location ids; service accounts → their ids; and a chosen option or a
  * question's answer → questionAnswers[stepId:label], in the option's own words
  * (answers.ts). An answer then applies (E1): the travellers' countries join the
  * allowed list and the mail-sending devices join the service accounts; the
@@ -357,10 +355,6 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       if (provenance === 'confirmed') next.serviceAccountsGroupId = picked[0] ?? null
     } else if (stepId === DECISION_STEPS.sharedDevices && provenance === 'confirmed') {
       next.sharedDeviceUserIds = picked
-    } else if (stepId === DECISION_STEPS.campaign) {
-      next.highCareUserIds = picked
-      // Only a person's Save confirms the list; the picker's pre-ticked proposal does not.
-      if (provenance === 'confirmed') next.specialCareConfirmed = picked
     }
   }
   // The answers that add to a picker's list (E1): the travellers' countries

@@ -2707,7 +2707,6 @@
               "readiness.activeCount": "active people",
               "readiness.adminsNeedingPasskey": "admins who need a passkey",
               "readiness.percent": "MFA readiness",
-              "readiness.specialCare": "people who need special care",
               "securityDefaults.current.isEnabled": "security defaults setting",
               "sharepoint.adminUrl": "SharePoint admin address",
               "sharepoint.unmanagedDevices.currentMode": "SharePoint unmanaged device setting",
@@ -4950,11 +4949,6 @@
           "Shallan Davar · computer"
         ],
         "deviceSentence": "On your phone, use Outlook and Teams for work; nothing to enroll; on your computer, domain-joined computers are already covered.",
-        "specialCare": [
-          "Alex Morgan · admin, phishing-resistant, proven",
-          "Kaladin Stormblessed · admin, phishing-resistant, proven",
-          "Alex Morgan (guest) · registered, never prompted"
-        ],
         "adminCount": 2,
         "pushOnly": [],
         "from": "Aug 1",

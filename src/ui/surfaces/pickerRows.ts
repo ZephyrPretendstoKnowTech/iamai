@@ -24,7 +24,7 @@ import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { app, directionWords, engine, shared } from '../../content/content.ts'
-import { QUESTION_STEP, SPECIAL_CARE_STEP_ID } from '../../roadmap/answers.ts'
+import { QUESTION_STEP } from '../../roadmap/answers.ts'
 import { mailPickable, mailSenderIds } from '../../roadmap/direction.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 
@@ -92,10 +92,9 @@ function vars(key: string, rows: string[], ids: string[], ticked: string[], matc
  * the decision also asks a question: saving from the picker would record the
  * question's default before it is answered (the countries location and its
  * travel destinations), so that decision keeps Save as the one thing that saves.
- * A read-only list (the campaign's support list) has no Done either.
  */
 export function pickerSaves(d: Readonly<Record<string, unknown>>, stepId: string): boolean {
-  return Boolean(d.pickerRow) && stepId !== SPECIAL_CARE_STEP_ID && !d.question
+  return Boolean(d.pickerRow) && !d.question
 }
 
 /**
@@ -387,7 +386,7 @@ export function accountBadges(questionKey: string, ctx: PickerContext): Map<stri
 /** The kind of thing a picker chooses, from the step and its content source. */
 export type PickerKind = 'accounts' | 'groups' | 'locations' | 'countries' | 'strengths' | 'other'
 export function pickerKind(stepId: string, source: string | null): PickerKind {
-  if (DECISION_STEPS.emergency.has(stepId) || stepId === DECISION_STEPS.serviceAccounts || stepId === DECISION_STEPS.sharedDevices || stepId === DECISION_STEPS.campaign || source === 'accounts') return 'accounts'
+  if (DECISION_STEPS.emergency.has(stepId) || stepId === DECISION_STEPS.serviceAccounts || stepId === DECISION_STEPS.sharedDevices || source === 'accounts') return 'accounts'
   if (DECISION_STEPS.exclusions.has(stepId) || source === 'groups') return 'groups'
   if (stepId === DECISION_STEPS.trustedLocation || source === 'locations') return 'locations'
   if (stepId === DECISION_STEPS.countries) return 'countries'

@@ -46,7 +46,7 @@ The registration campaign for {{tenant.displayName}} needs to be configured. Int
 
 @@IAMAI-BEGIN {"id":"ai.running","channel":"aiInfo","states":["campaignRunning"],"format":"markdown","kind":"template"}
 
-The campaign is running and enrollment work is in progress. Active people: {{readiness.activeCount}}. MFA readiness: {{readiness.percent}}. People who need hands-on help: {{readiness.specialCare}}. Admins who still need a passkey or security key: {{readiness.adminsNeedingPasskey}}. A registered method and a successful sign-in with it are different evidence. An older method is retired only through the approved method-policy change, after checking recovery needs.
+The campaign is running and enrollment work is in progress. Active people: {{readiness.activeCount}}. MFA readiness: {{readiness.percent}}. Admins who still need a passkey or security key: {{readiness.adminsNeedingPasskey}}. A registered method and a successful sign-in with it are different evidence. An older method is retired only through the approved method-policy change, after checking recovery needs.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.holdouts","channel":"aiInfo","states":["holdoutReview"],"format":"markdown","kind":"template"}

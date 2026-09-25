@@ -48,7 +48,8 @@ import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey, decisionKeyOf } from '../../roadmap/decisions.ts'
-import { SPECIAL_CARE_STEP_ID, answerOf, effectLine } from '../../roadmap/answers.ts'
+import { answerOf, effectLine } from '../../roadmap/answers.ts'
+import { CAMPAIGN_STEP_ID } from '../../roadmap/stepIds.ts'
 import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -494,7 +495,7 @@ export function ContentStep({
               )
             }}
           >
-            {step.id === SPECIAL_CARE_STEP_ID ? <p><a href={TEAM_READINESS_HREF}>{String(cs.card?.link ?? '')}</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
+            {step.id === CAMPAIGN_STEP_ID ? <p><a href={TEAM_READINESS_HREF}>{String(cs.card?.link ?? '')}</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
           </ReadinessSection>}
 
           {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
@@ -527,7 +528,7 @@ export function ContentStep({
           {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). A step whose own picker saves under a key of its own still draws it: Create or Correct Service Accounts Group's group picker (decisions.ts decisionKeyOf). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
           {ANSWERED_IN[step.id] && decisionKeyOf(step.id) === step.id ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)} ctx={ctx} printing={printing} railInstruction={!taskDecision && rail.instruction !== null} />}
-          {step.id === SPECIAL_CARE_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
+          {step.id === CAMPAIGN_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
               column below Completion Criteria — a sixth section, outside the four
@@ -1181,19 +1182,13 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
         {/* Each part of a decision reads the same way: its heading, its question, its answers. */}
         {!isExclusionsGroup && typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
         {isNetwork && <label className="remote-choice"><input type="checkbox" checked={remote} onChange={e => setRemote(e.target.checked)} />Everyone Is Remote</label>}
-        {/* The campaign's support list is IAMAI's: the person confirms it,
-            rather than composing one. It is computed from the readiness the
-            plan already holds — every active admin, everyone with no method,
-            everyone on SMS alone (derive/contentLists.ts specialCareIds) —
-            and somebody added by hand changes who the plan says needs help,
-            which is a number other steps read (owner, 2026-09-22).
-            On paper, a picker nobody saved (pickerRows.ts initialPicked
+        {/* On paper, a picker nobody saved (pickerRows.ts initialPicked
             `defaulted`) says its chips are IAMAI's suggestion and not saved
             (printedDefaultLine): it had printed them as the answer, and then
             the heading over nothing. */}
         {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
           ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
-          : <Picker labelledBy={`${base}-decision`} selected={shownChips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} readOnly={stepId === SPECIAL_CARE_STEP_ID} onCommit={saves ? (picked) => save(picked) : undefined} />)}
+          : <Picker labelledBy={`${base}-decision`} selected={shownChips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} onCommit={saves ? (picked) => save(picked) : undefined} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>

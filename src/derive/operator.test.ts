@@ -67,8 +67,6 @@ test('a second signed-in account produces identical facts: MFA Readiness, the pa
     for (const other of rest) assert.deepEqual(other, first, `${name}: the facts change with the signed-in account`)
     const rows = runs.map((s) => readinessView(s, s.asOf, f.mapping).rows.map((r) => [r.user.id, r.kind, r.active, r.state, r.explained, r.readiness?.state ?? null, JSON.stringify(r.readiness ? { devices: r.readiness.devices, credentials: r.readiness.credentials, lastConfirmed: r.readiness.lastConfirmed, next: r.readiness.next, recommended: r.readiness.recommended } : null)]))
     for (const other of rows.slice(1)) assert.deepEqual(other, rows[0], `${name}: Today's rows change with the signed-in account`)
-    const care = runs.map((s) => contentLists({ snapshot: s, mapping: f.mapping, nameOf: (id) => id, now: s.asOf }).specialCareIds)
-    for (const other of care.slice(1)) assert.deepEqual(other, care[0], `${name}: the special-care default changes with the signed-in account`)
     // The operator's own passkey rung (A5 task 5) is the one step about the signed-in account itself; every other population is the same.
     const populations = runs.map((s) => runFixture({ ...f, snapshot: s }).steps.filter((st) => st.id !== OPERATOR_PASSKEY_STEP_ID).map((st) => [st.id, [...st.population.ids].sort().join(',')]))
     for (const other of populations.slice(1)) assert.deepEqual(other, populations[0], `${name}: a step's population changes with the signed-in account`)

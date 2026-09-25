@@ -305,7 +305,7 @@ test('a confirmed emergency account keeps its methods and its records outside th
   assert.ok(l.kinds.emergency.some((u) => u.id === id), 'listed as emergency access')
   for (const state of READINESS_STATES) assert.ok(!l.states[state].some((p) => p.id === id), 'never counted in a state')
   const cl = contentLists({ snapshot: s, mapping: f.mapping, nameOf: (x) => x, now: s.asOf })
-  for (const list of [cl.unproven, cl.noMethod, cl.needsSetup, cl.needsProof, cl.readinessUnknown, cl.specialCareIds]) assert.ok(!list.includes(id), 'and never in a campaign group')
+  for (const list of [cl.unproven, cl.noMethod, cl.needsSetup, cl.needsProof, cl.readinessUnknown]) assert.ok(!list.includes(id), 'and never in a campaign group')
   // Its own methods and records are still readable, for the lockout and
   // prerequisite questions that ask about it by name.
   assert.deepEqual(s.signInEvidence[id].proofs?.map((p) => p.cls), ['passkey'], 'the emergency account keeps its evidence')

@@ -523,16 +523,13 @@ test('the cover, the timeline and the Cleanup dates state nothing empty and no r
 // ---- A saved decision prints as saved; an unsaved one prints no suggestion as the answer ----
 
 test('the printed step reads the saved decision, and never prints a picker\'s own suggestions as the list nobody saved', () => {
-  // Demo, Prepare Your Team for MFA: the operator saved 1 of the 11 people
-  // nominated for help. The print handed ContentStep no decision, so the picker
-  // opened on its own default, every nominated person, and printed all eleven
-  // under "People Needing Help".
-  const p = plan('demo')
-  const campaign = byId(p.steps, 's-verify-mfa')
-  const ex = stepVars(campaign, p.ctx(campaign)) as Record<string, unknown>
-  const key = typeof ex.pickerKey === 'string' ? ex.pickerKey : 'specialCareIds'
-  const ids = (ex[`${key}Ids`] ?? ex[key]) as string[] | undefined
-  assert.ok(Array.isArray(ids) && ids.length > 1, `the premise: the campaign nominates people for help (${key})`)
+  // A picker that opens on its own suggestion, with nothing saved: the print
+  // handed ContentStep no decision, so it printed the suggestion as the answer
+  // (found on the campaign's support list, since removed with the high-care
+  // code). A picker the plan pre-ticks is never a default (initialPicked).
+  const ex: Record<string, unknown> = {}
+  const key = 'accounts'
+  const ids = ['account-1', 'account-2']
   // Nothing saved: the chips are the picker's own default, which a document may not state as the answer.
   assert.equal(initialPicked(ex, key, null, ids, false).defaulted, true, 'the picker\'s own default is not marked as one')
   // Saved: the saved people, and not a default.
@@ -547,7 +544,7 @@ test('the printed step reads the saved decision, and never prints a picker\'s ow
   assert.equal(mountOf('decisions'), 'decisions={data.stepDecisions}', 'the Export page does not hand the printed plan the saved decisions')
   // Nothing saved: the paper says the chips are IAMAI's suggestion and not
   // saved, rather than an empty heading or the suggestion as the answer.
-  const names = ids.map((id) => p.ctx(campaign).nameOf(id))
+  const names = ids
   assert.equal(printedDefaultLine(names), `Suggested by IAMAI, not saved yet: ${names.join(', ')}`)
   assert.equal(printedDefaultLine([]), 'Not saved yet.', 'a picker with nothing to suggest prints an empty heading')
   const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')

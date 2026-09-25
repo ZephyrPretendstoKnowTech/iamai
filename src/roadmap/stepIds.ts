@@ -16,6 +16,8 @@ export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
 export const SEPARATE_ADMIN_ACCOUNTS_STEP_ID = 's-check-separate-admin-accounts'
 /** Break-glass: the plan's escape hatch, checked and gated by the validation rules. */
 export const BREAK_GLASS_STEP_ID = 's-prereq-break-glass'
+/** Prepare Your Team for MFA (3.4), the registration campaign. */
+export const CAMPAIGN_STEP_ID = 's-verify-mfa'
 /** Create the Policies in Report-only (3.8): every policy the plan can create now, created in Report-only at once (roadmap/reportOnlyBatch.ts). */
 export const REPORT_ONLY_STEP_ID = 's-create-report-only'
 /** Finish Moving Off Per-User MFA: the accounts still on legacy per-user MFA (roadmap/manualWork.ts). */

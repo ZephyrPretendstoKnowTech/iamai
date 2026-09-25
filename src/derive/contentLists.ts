@@ -32,13 +32,6 @@ export type ListContext = {
   mfaInPlace?: boolean
 }
 
-// The readiness word for the special-care picker: the state's title (pages.readiness.states), or Not active (pages.readiness.show).
-type ReadinessWords = { states: Record<ReadinessState, { title: string }>; show: { notActive: string } }
-const stateWord = (v: MfaViability): string => {
-  const W = pages.readiness as unknown as ReadinessWords
-  return v.activity === 'active' ? W.states[v.readiness.state].title : W.show.notActive
-}
-
 const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
 const people = (ev: { people: string[] } | undefined | null): string[] => ev?.people ?? []
 
@@ -90,31 +83,11 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   // in the records. With Require MFA for Everyone in place every sign-in
   // completes MFA, so nobody is in it.
   const unprovenIds = unprovenIdsOf(ctx)
-  const smsOnly = active.filter((v) => v.signals.smsVoiceOnly || (v.methodTiers.length > 0 && v.methodTiers.every((t) => t === 'smsVoice')))
   const bucketName = (rows: MfaViability[]): string[] => rows.map((v) => nameOf(v.userId))
 
-  // The special-care picker (the campaign's decision): admins, anyone with no
-  // method, anyone with text or call only, each with the Today state that says
-  // why. One entry per person, in that order (walk-51 item 3). Never the
-  // signed-in account for being signed in: the plan does not depend on who ran the scan.
   const byId = new Map(viability.map((v) => [v.userId, v]))
   const admins = new Set(adminUserIds(snapshot.roles))
-  const careIds: string[] = []
-  const seen = new Set<string>()
-  const addCare = (id: string): void => {
-    if (id && !seen.has(id) && byId.has(id) && !bg.has(id)) {
-      seen.add(id)
-      careIds.push(id)
-    }
-  }
-  for (const v of active) if (admins.has(v.userId)) addCare(v.userId)
-  for (const v of noMethod) addCare(v.userId)
-  for (const v of smsOnly) addCare(v.userId)
-  const specialCare = careIds.map((id) => `${nameOf(id)} · ${stateWord(byId.get(id) as MfaViability)}`)
   const dormant = notActiveUsers(snapshot, now, svc)
-  // The ids behind the rows, in the same order, so a tick is a decision about an
-  // account (prompt 52 Part 3): the picker reads `<source>Ids` beside `<source>`.
-  const specialCareIds = [...careIds]
 
   // The readiness lists these steps name (E8): who among a set of people is not
   // yet Ready for phishing-resistant MFA (scoring/phishingResistant.ts), by name
@@ -194,9 +167,6 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     adminsNotReady: names([...admins].filter((id) => { const v = byId.get(id); return v !== undefined && v.activity === 'active' && !bg.has(id) && !isReady(v.readiness.state) })),
     coreAdminRoles: [...CORE_ADMIN_ROLE_IDS].map(roleName),
     eligible: names(Object.keys(snapshot.roles.eligible).filter((id) => byId.has(id))),
-    // The special-care picker rows ("name · state"), and their ids.
-    specialCare,
-    specialCareIds,
     // The dormant accounts (no sign-in for 90 days, or none on record) with their
     // state, for the problematic-accounts check (walk of f3d140b): the state is
     // the last sign-in date, or the content example's own "no sign-in on record".

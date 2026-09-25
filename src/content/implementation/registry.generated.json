@@ -23584,7 +23584,6 @@
           "campaign.snoozeDurationInDays",
           "readiness.activeCount",
           "readiness.percent",
-          "readiness.specialCare",
           "readiness.adminsNeedingPasskey"
         ],
         "optionalBindings": [
@@ -23680,9 +23679,7 @@
           }
         },
         "supportBlocks": {
-          "readiness": [
-            "readiness.model"
-          ]
+          "readiness": []
         },
         "verifiedSources": [
           {
@@ -23801,7 +23798,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThe campaign is running and enrollment work is in progress. Active people: {{readiness.activeCount}}. MFA readiness: {{readiness.percent}}. People who need hands-on help: {{readiness.specialCare}}. Admins who still need a passkey or security key: {{readiness.adminsNeedingPasskey}}. A registered method and a successful sign-in with it are different evidence. An older method is retired only through the approved method-policy change, after checking recovery needs.\n"
+          "text": "\nThe campaign is running and enrollment work is in progress. Active people: {{readiness.activeCount}}. MFA readiness: {{readiness.percent}}. Admins who still need a passkey or security key: {{readiness.adminsNeedingPasskey}}. A registered method and a successful sign-in with it are different evidence. An older method is retired only through the approved method-policy change, after checking recovery needs.\n"
         },
         "ai.holdouts": {
           "meta": {
@@ -23838,21 +23835,6 @@
             "kind": "template"
           },
           "text": "\nThis step is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}.\n"
-        },
-        "readiness.model": {
-          "meta": {
-            "id": "readiness.model",
-            "channel": "readiness",
-            "states": [
-              "setupRequired",
-              "campaignRunning",
-              "holdoutReview",
-              "ready"
-            ],
-            "format": "json-template",
-            "kind": "referenceOnly"
-          },
-          "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"The campaign helps people register; MFA Readiness evidence, not the campaign settings, shows whether they are ready.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"The campaign helps people register; MFA Readiness evidence, not the campaign settings, shows whether they are ready.\"\n    }\n  }\n}\n"
         }
       }
     }

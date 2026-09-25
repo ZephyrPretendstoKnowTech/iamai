@@ -54,12 +54,3 @@ test('a plan-file round-trip preserves every decision (the ticked ids, the optio
   }
 })
 
-test('the special-care picker rows carry their ids, one per row, in the same order', () => {
-  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => run.input.names!.label(id), now: f.snapshot.asOf })
-  assert.ok(lists.specialCare.length > 0, 'the demo has special-care rows')
-  assert.equal(lists.specialCareIds.length, lists.specialCare.length)
-  const users = new Set(f.snapshot.users.map((u) => u.id))
-  for (const id of lists.specialCareIds) assert.ok(users.has(id), `${id} is a directory account`)
-  assert.ok(lists.specialCareIds.includes(f.operatorId), 'the operator is a row, so "you" can be ticked')
-  lists.specialCareIds.forEach((id, i) => assert.ok(lists.specialCare[i].startsWith(run.input.names!.label(id)), `row ${i} names its id`))
-})
