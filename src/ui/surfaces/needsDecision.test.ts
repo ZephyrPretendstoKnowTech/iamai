@@ -242,7 +242,8 @@ test('needs decision: no channel hands over a policy while the exclusions group 
   // And no step in the plan does, because every policy the plan would write
   // names the group nobody has chosen (Foundation A).
   assert.deepEqual(c.run.steps.filter((s) => implementationOffered(s)).map((s) => s.id), [])
-  const withheld = c.run.steps.filter((s) => s.id.startsWith('s-goal-') && !s.state.satisfied)
+  // A step an answer set aside (a remote team's trusted-network blocks, Phase 2d) hands over nothing either (above).
+  const withheld = c.run.steps.filter((s) => s.id.startsWith('s-goal-') && !s.state.satisfied && !s.state.setAside)
   assert.ok(withheld.length > 0, 'the tenant does have policy steps to withhold')
   for (const s of withheld) assert.notEqual(unavailableReason(s), null, `${s.id} hands over a policy while the exclusions group is unchosen`)
   assert.ok(withheld.some((s) => unavailableReason(s) === 'missing-object'), 'the object nobody has chosen is what withholds them')

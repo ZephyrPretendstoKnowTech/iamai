@@ -173,8 +173,9 @@ test('GetIAMAI: the Doesn\'t-apply group holds only answers, and the licence row
   const f = fixture('getiamai')
   const r = runFixture(f)
   // Security defaults never seen on, and everyone working remotely, do not apply either (Stage 3, V1 decision 6).
-  // No service accounts adds no group step at all (walk list 45).
-  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id).sort(), ['s-prereq-security-defaults', 's-prereq-trusted-location'], 'licence exclusions do not join the answers')
+  // No service accounts adds no group step at all (walk list 45). Jon's AVD and
+  // SharePoint blocks outside the trusted network are answers too (Phase 2d).
+  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id).sort(), ['s-goal-avd-trusted-network', 's-goal-sharepoint-trusted-network', 's-prereq-security-defaults', 's-prereq-trusted-location'], 'licence exclusions do not join the answers')
   // Over the goals this baseline holds: an absent goal never renders (walk-51 item 9).
   const licenceGoals = r.coverage.results.filter((x) => x.status === 'not-applicable' && x.applicability && / licence$/.test(x.applicability.reason) && goalInMap(PINNED_GOAL_MAP, x.goal.id)).map((x) => x.goal.id)
   assert.ok(licenceGoals.length >= 1, `licence-facet goals the baseline holds (${licenceGoals.join(', ')})`)

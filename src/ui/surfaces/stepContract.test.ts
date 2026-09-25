@@ -8,6 +8,7 @@
 // the way they are: whole fixtures through the whole engine, never a hand-built
 // Step. A hand-built step would agree with whatever the contract happened to do.
 import { test } from 'node:test'
+import { everyoneGate } from '../../copy/reasons.ts'
 import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
@@ -330,7 +331,8 @@ test('a readiness gate with no number states its threshold and claims no number'
       floored += 1
       // What used to be a dead end: the reading is said, and the card's value marks it as a floor.
       assert.match(readinessValueOf(gate), /At least [0-9]+%/, `${name}/${step.id}: ${text}`)
-      if (step.state.lifecycle !== 'enforced' && typeof line === 'string' && line.length > 0) assert.ok(text.includes(line), `${name}/${step.id}: the gate does not say what could not be measured — ${text}`)
+      // A gate on everyone it covers names the people instead (Phase 2e).
+      if (step.state.lifecycle !== 'enforced' && !everyoneGate(gate) && typeof line === 'string' && line.length > 0) assert.ok(text.includes(line), `${name}/${step.id}: the gate does not say what could not be measured — ${text}`)
     }
   }
   assert.ok(floored > 3, `gates reading a floor: ${floored}`)

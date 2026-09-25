@@ -37,6 +37,23 @@ export function evidenceStrategyOf(policy: unknown): EvidenceStrategy {
 }
 
 /**
+ * A User Action policy is created On (owner decision 3, Phase 2e): Microsoft does
+ * not evaluate it in report-only, so a report-only week would watch nothing, and
+ * by the time the plan reaches it MFA has been rolled out. Its create is its
+ * turn-on, and whatever holds a turn-on holds it.
+ */
+export function createdOn(policy: unknown): boolean {
+  return userActionsOf(policy).length > 0
+}
+
+/** A create step whose every policy is created On: it has no report-only week, and its create is dated and held as a turn-on. */
+export function stepCreatedOn(step: Pick<Step, 'kind' | 'action'>): boolean {
+  if (step.kind !== 'create') return false
+  const ops = step.action.resolution?.policies ?? []
+  return ops.length > 0 && ops.every((op) => op.mode === 'create' && createdOn(op.body))
+}
+
+/**
  * A step's strategy, from the policies it delivers: configuration only where
  * every policy it names is a User Action policy, because one policy evaluated in
  * report-only still has records to wait for.

@@ -50,7 +50,8 @@ test('the printed timeline names each phase step by the title the board and the 
   const admins = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   assert.notEqual(admins.title, contentTitle(admins), 'the premise: this step has a goal statement of its own')
   assert.ok(printed.includes('Require Phishing-Resistant MFA for Admins'), `the timeline does not name the admin policy by its title: ${printed}`)
-  assert.ok(printed.includes('Require MFA to Register a Device'), 'the timeline does not name the device-registration policy by its title')
+  // Require MFA to Register a Device is no longer in a phase here: created On since
+  // Phase 2e, its create waits undated for everyone it covers to be ready.
   assert.equal(printed.includes('Admins use phishing-resistant auth'), false, 'the timeline prints the engine\'s goal statement')
   assert.equal(printed.includes('Registering or joining a device requires MFA'), false, 'the timeline prints the engine\'s goal statement')
   // A second tenant, read as a list of names: every step whose goal statement

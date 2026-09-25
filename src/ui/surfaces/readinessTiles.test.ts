@@ -436,26 +436,26 @@ test('the Threshold card, its finding and the AI Info briefing say the same sent
 // Headed "Prerequisites", the other turn-on waits ("when 1 trusted location
 // exists (now 0)") would read as the create's own prerequisites, the claim that
 // rule took out of Fix: every one is headed by what it holds.
-test('a written enforcement prerequisite is on the step before the create, as a wait on the turn-on', async () => {
+test('a written enforcement prerequisite on a policy created On is a prerequisite of its create', async () => {
+  // Protect Sign-in Method Registration is created On since Phase 2e (owner
+  // decision 3): its create is its turn-on, so what the turn-on waits for — a
+  // Temporary Access Pass, the people without a method — comes before the create.
+  // Before, readiness gated only the turn-on and these were turn-on waits beside a
+  // report-only create (owner, 2026-09-11).
   const { withFoundationSettled } = await import('../../roadmap/fixtures/run.ts')
   const { scheduleOf } = await import('../../roadmap/stepSchedule.ts')
   const f = withFoundationSettled(fixture('mid'))
   const { step, c, blockers, lane } = opened(f, 's-goal-register-info-protected')
-  assert.equal(scheduleOf(step).transition, 'createReportOnly', 'the premise: the next action is the report-only create')
-  assert.equal(lane.lane, 'Ready', 'the premise: the create can be done today')
+  assert.notEqual(scheduleOf(step).transition, 'createReportOnly', 'the premise: no report-only create')
+  assert.equal(lane.lane, 'On Hold', 'the premise: the create waits')
   assert.ok(step.blockers.some((b) => b.kind === 'readiness' && b.label === 'registration-no-tap'), 'the premise: no Temporary Access Pass, and the engine knows it')
   const tiles = readinessOf(step, c, blockers).tiles
   const tap = tiles.filter((t) => /Temporary Access Pass/.test(`${t.value} ${t.note ?? ''}`))
-  assert.equal(tap.length, 1, `the pass is named once on the create: ${JSON.stringify(tiles.map((t) => t.value))}`)
-  assert.equal(tap[0].tone, 'wait', 'a wait on the turn-on, not a warning that the create is blocked')
+  assert.equal(tap.length, 1, `the pass is named once: ${JSON.stringify(tiles.map((t) => t.value))}`)
+  assert.equal(tap[0].label, CONTRACT.readiness.tiles.blockers, 'a prerequisite of the create')
   assert.match(tap[0].note ?? '', /before this policy is turned on/, 'and it says what it holds')
-  assert.equal(c.fix.some((x) => /Temporary Access Pass/.test(x.text)), false, 'never a fix before the create (owner, 2026-09-11)')
-  const waits = tiles.filter((t) => t.key.startsWith('readiness:'))
-  assert.ok(waits.length > 1, `the premise: more than the pass holds the turn-on — ${JSON.stringify(waits.map((t) => t.value))}`)
-  for (const t of waits) {
-    assert.equal(t.label, CONTRACT.readiness.tiles.beforeTurnOn, `${t.value}: a turn-on wait headed as a prerequisite of the create`)
-    assert.equal(t.tone, 'wait', t.value)
-  }
+  assert.ok(c.fix.some((x) => /Temporary Access Pass/.test(x.text)), 'a fix before the create, which turns it on')
+  assert.deepEqual(c.enforcementWaits, [], 'nothing is left to wait on after the create')
   // The threshold is its own card, and is not said twice.
   assert.equal(tiles.filter((t) => t.key === 'gate').length, 1)
   assert.equal(tiles.some((t) => t.key === 'readiness:readiness'), false)
@@ -481,7 +481,9 @@ test('a written enforcement prerequisite is on the step before the create, as a 
 // own list now: the cards read it, and the export view carries it under the
 // cards' own label. It is never under Fix, which would claim the create is
 // blocked (owner, 2026-09-11).
-test('the turn-on waits the cards state before the create are in the exports and the AI Info briefing', async () => {
+test('a policy created On: the prerequisites its cards state before the create are in the exports and the AI Info briefing', async () => {
+  // Created On since Phase 2e, the registration policy's Temporary Access Pass is a
+  // prerequisite of its create; every channel says so, as the screen does.
   const { withFoundationSettled } = await import('../../roadmap/fixtures/run.ts')
   const { scheduleOf } = await import('../../roadmap/stepSchedule.ts')
   const { stepExportView } = await import('./stepExport.ts')
@@ -490,24 +492,15 @@ test('the turn-on waits the cards state before the create are in the exports and
   const T = CONTRACT.readiness.tiles
   for (const f of [fixture('small'), withFoundationSettled(fixture('mid'))]) {
     const { step, ctx, c, blockers, lane } = opened(f, 's-goal-register-info-protected')
-    assert.equal(scheduleOf(step).transition, 'createReportOnly', `${f.name}: the premise — the next action is the report-only create`)
-    const cards = readinessOf(step, c, blockers).tiles.filter((t) => t.label === T.beforeTurnOn)
-    assert.ok(cards.some((t) => /Temporary Access Pass/.test(t.note ?? '')), `${f.name}: the premise — the screen names the pass before the create`)
-    // One list: the cards are the contract's waits, card for card.
-    assert.deepEqual(cards.map((t) => t.note), c.enforcementWaits.map((w) => w.text), `${f.name}: the cards and the contract disagree`)
+    assert.notEqual(scheduleOf(step).transition, 'createReportOnly', `${f.name}: the premise — no report-only create`)
+    const cards = readinessOf(step, c, blockers).tiles.filter((t) => t.label === T.blockers)
+    assert.ok(cards.some((t) => /Temporary Access Pass/.test(`${t.value} ${t.note ?? ''}`)), `${f.name}: the premise — the screen names the pass before the create`)
     const view = stepExportView(step, ctx, lane)
-    // The waits the cards state, and the Threshold card's sentence after them
-    // where the card is drawn and the policy is not yet on (Phase 2 export
-    // finding 7); nothing else.
-    const gate = readinessOf(step, c, blockers).tiles.find((t) => t.key === 'gate')
-    const threshold = gate?.note !== undefined && step.state.lifecycle !== 'enforced' ? [gate.note] : []
-    assert.deepEqual(view.beforeTurnOn, [...c.enforcementWaits.map((w) => w.text), ...threshold], `${f.name}: the export view and the cards disagree on what holds the turn-on`)
-    assert.equal(view.fix.some((l) => /Temporary Access Pass/.test(l)), false, `${f.name}: the pass is a fix before the create in the export`)
+    assert.ok(view.fix.some((l) => /Temporary Access Pass/.test(l)), `${f.name}: the export names no Temporary Access Pass before the create`)
     const lines = stepArtifactLines(view)
-    const turnOn = lines.find((l) => l.startsWith(`${T.beforeTurnOn}: `))
-    assert.ok(turnOn && /Temporary Access Pass/.test(turnOn), `${f.name}: the calendar entry and the prompt pack name no Temporary Access Pass — ${lines.join(' / ')}`)
+    assert.ok(lines.some((l) => /Temporary Access Pass/.test(l)), `${f.name}: the calendar entry and the prompt pack name no Temporary Access Pass — ${lines.join(' / ')}`)
     const b = stepBodyOf(step, ctx, { lane, blockers })
     const ai = String(b.artifacts.find((a) => a.id === 'ai')!.text())
-    assert.ok(ai.includes(`${T.beforeTurnOn}: `) && /Temporary Access Pass/.test(ai), `${f.name}: the AI Info briefing names no Temporary Access Pass`)
+    assert.ok(/Temporary Access Pass/.test(ai), `${f.name}: the AI Info briefing names no Temporary Access Pass`)
   }
 })

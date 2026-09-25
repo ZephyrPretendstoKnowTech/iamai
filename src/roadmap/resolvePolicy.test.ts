@@ -6,6 +6,7 @@ import { readyEvidence } from './fixtures/readyEvidence.ts'
 // instructions, the JSON, the PowerShell and the download all describe that
 // same policy and are offered together or not at all.
 import { test } from 'node:test'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import assert from 'node:assert/strict'
 import pinned from '../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
 import type { CaPolicy } from '../baseline/types.ts'
@@ -29,6 +30,8 @@ import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 import { enforcementUnearned } from './forecast.ts'
 import { createWaitsOnReadiness } from './operations.ts'
 import type { MappingState } from '../mapping/types.ts'
+import { answerKey } from './answers.ts'
+import { DIRECTION_LOCATIONS_STORAGE } from './directionAnswers.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { applyDeviations } from './deviations.ts'
 import { commsFor, stepExportView } from '../ui/surfaces/stepExport.ts'
@@ -60,6 +63,12 @@ const usersOf = (body: Record<string, unknown>): Record<string, unknown> => (((b
 const excludeGroupsOf = (body: Record<string, unknown>): string[] => (usersOf(body).excludeGroups as string[] | undefined) ?? []
 
 /** Every fixture step that describes a policy, with its portal instructions. */
+/**
+ * demo-week2 with an office: a remote team's service-accounts block and group
+ * don't apply (Phase 2d), and the service-accounts cases need them on the plan.
+ */
+const OFFICE = (): Partial<MappingState> => ({ questionAnswers: { ...(fixture('demo-week2').mapping.questionAnswers ?? {}), [answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')]: 'office' } })
+
 function policySteps(name: Parameters<typeof fixture>[0], mappingOver: Partial<MappingState> = {}) {
   const base = fixture(name)
   const changed = Object.keys(mappingOver).length > 0
@@ -266,7 +275,7 @@ test('4 + 5: an explicit serviceAccountsGroup means that object or nothing: miss
   assert.ok(excludeGroupsOf(impl.policy).includes(X), 'while the exclusions group still is')
 
   // On the plan: every channel waits on it together.
-  const { rows } = policySteps('demo-week2')
+  const { rows } = policySteps('demo-week2', OFFICE())
   const step = rows.find((x) => x.step.goalId === 'service-accounts-trusted-network')
   assert.ok(step, 'the service-accounts step is on the demo plan')
   assert.ok(missingObjects(step.step).some((m) => m.stepId === PREREQ_STEP_ID.serviceAccountsGroup), 'it waits on the service-accounts group')
@@ -280,7 +289,7 @@ test('4 + 5: an explicit serviceAccountsGroup means that object or nothing: miss
     // before anything is offered: the point here is that its own service-accounts
     // group is what stands where the author's did, and that it did not become the
     // exclusions group on the way.
-    const { rows, f } = policySteps('demo-week2', { serviceAccountsGroupId: SA, trustedLocationIds: ['loc-1'] })
+    const { rows, f } = policySteps('demo-week2', { ...OFFICE(), serviceAccountsGroupId: SA, trustedLocationIds: ['loc-1'] })
     const exclusions = f.mapping.records['__globalExclusion']?.resolvedId
     assert.ok(exclusions)
     const step = rows.find((x) => x.step.goalId === 'service-accounts-trusted-network')
@@ -297,7 +306,7 @@ test('4 + 5: an explicit serviceAccountsGroup means that object or nothing: miss
 
   // An unresolved service-accounts reference leaves no executable body and no channel.
   {
-    const { rows } = policySteps('demo-week2')
+    const { rows } = policySteps('demo-week2', OFFICE())
     const step = rows.find((x) => x.step.goalId === 'service-accounts-trusted-network')
     assert.ok(step, 'the service-accounts step is on the plan')
     assert.ok(missingObjects(step.step).some((m) => m.stepId === PREREQ_STEP_ID.serviceAccountsGroup), 'it waits on the service-accounts group')
@@ -311,7 +320,7 @@ test('4 + 5: an explicit serviceAccountsGroup means that object or nothing: miss
 
   // An unresolved step is not scheduled and carries nothing that implies a rollout, but still names what it waits on.
   {
-    const { r, ctx, rows } = policySteps('demo-week2')
+    const { r, ctx, rows } = policySteps('demo-week2', OFFICE())
     const row = rows.find((x) => x.step.goalId === 'service-accounts-trusted-network')
     assert.ok(row)
     const step = row.step
@@ -409,13 +418,19 @@ test('3: a confirmed mapping for one author reference wins over the token and th
 // ---- 6: one unresolved list, one answer from all four channels ----
 
 test('6: an object the tenant does not have withholds Portal, JSON, PowerShell and Download together', () => {
-  const { rows } = policySteps('demo-week2')
+  const { rows } = policySteps('demo-week2', OFFICE())
   let gated = 0
   let offered = 0
   let unearned = 0
   let waitsOnDevices = 0
+  let createdOnHeld = 0
   for (const { step, portal } of rows) {
     if ((step.action.resolution?.policies.length ?? 0) === 0) continue
+    // Set aside by an answer (a remote team's trusted-network blocks, Phase 2d): nothing is handed over.
+    if (step.doesntApply != null) {
+      assert.equal(implementationOffered(step), false, `${step.id}: a step that doesn't apply offers nothing`)
+      continue
+    }
     if (missingObjects(step).length > 0) {
       gated += 1
       assert.equal(implementationOffered(step), false, `${step.id}: the one gate is shut`)
@@ -447,14 +462,25 @@ test('6: an object the tenant does not have withholds Portal, JSON, PowerShell a
       assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download either`)
       continue
     }
+    // A User Action policy is created On (Phase 2e): the readiness that holds its
+    // turn-on holds its create, and all four channels shut together.
+    if (stepCreatedOn(step) && step.action.readinessGate) {
+      createdOnHeld += 1
+      assert.equal(implementationOffered(step), false, `${step.id}: the one gate is shut until readiness is met`)
+      assert.equal(portal, null, `${step.id}: no portal instructions until readiness is met`)
+      assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download either`)
+      continue
+    }
     assert.equal(implementationOffered(step), true, `${step.id}: the gate is open`)
     offered += 1
     if (step.action.json) assert.equal(jsonOffered(step), true, `${step.id}: the JSON is offered with it`)
   }
   assert.ok(gated >= 2, `more than one gated policy exercised (${gated})`)
-  assert.ok(offered >= 5, `more than one offered policy exercised (${offered})`)
+  // Four since Phase 2e: the User Action creates wait on readiness (counted above).
+  assert.ok(offered >= 4, `more than one offered policy exercised (${offered})`)
   assert.ok(unearned >= 1, `the report-only case exercised (${unearned})`)
   assert.equal(waitsOnDevices, 1, 'the managed-device create waits on device readiness')
+  assert.ok(createdOnHeld >= 1, `a User Action create held by readiness exercised (${createdOnHeld})`)
 })
 
 // ---- every offered channel carries the one body ----
@@ -486,7 +512,8 @@ test('portal, JSON, PowerShell and download carry the one resolved body, with th
     assert.equal(policyJsonText(step), JSON.stringify(body, null, 2), `${step.id}: the download is the JSON tab's body`)
     checked += 1
   }
-  assert.ok(checked >= 5, `more than one policy exercised (${checked})`)
+  // Three on demo-week2 since Phase 2: its team is remote (2d) and its User Action creates wait on readiness (2e).
+  assert.ok(checked >= 3, `more than one policy exercised (${checked})`)
 })
 
 test('no step on any fixture ships a duplicated id in any collection', () => {

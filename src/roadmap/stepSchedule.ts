@@ -29,6 +29,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import type { Schedule, WaveSchedule } from './schedule.ts'
 import { toWeekday } from './schedule.ts'
 import { holdOf } from './holds.ts'
@@ -152,6 +153,8 @@ export function basisOf(step: Step, schedule: Schedule, byId: ReadonlyMap<string
 export function createsWhileGated(step: Step, basis: ScheduleBasis | null): boolean {
   if (basis === null || basis.decisionOpen) return false
   if (step.kind !== 'create' || step.state.lifecycle !== 'not-deployed') return false
+  // A policy created On has no report-only create to date: what holds its turn-on holds it (Phase 2e).
+  if (stepCreatedOn(step)) return false
   return holdOf(step)?.kind === 'readiness' && implementationOffered(step)
 }
 
@@ -220,6 +223,11 @@ export function stepScheduleOf(step: Step, basis: ScheduleBasis | null): StepSch
     return { ...base, ...span(at, wave ?? byDay(at)), class: 'scheduled', transition: 'enforce', enforcement: 'earned' }
   }
   if (step.kind === 'create' && lifecycle !== 'enforced') {
+    // Created On (evidenceStrategy.ts stepCreatedOn): the create turns it on, on the day the schedule placed it.
+    if (stepCreatedOn(step)) {
+      const at = step.events?.enforce.at ?? placed?.start ?? null
+      return { ...base, ...span(at, wave), class: 'scheduled', transition: 'enforce', enforcement: 'forecast' }
+    }
     return { ...base, ...span(step.reportOnlyAt ?? null, wave), class: 'scheduled', transition: 'createReportOnly', enforcement: 'forecast' }
   }
   // A change to a policy the tenant already has lands on the day the schedule placed it.

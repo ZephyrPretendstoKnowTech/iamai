@@ -68,8 +68,8 @@ The canonical Conditional Access policy is:
 - Grant: **Grant access > Require authentication strength >** this tenant's strength for the requirement (`authStrength.target.displayName`).
 - Authentication strength ID: IAMAI's resolved `authStrength.target.id`.
 - Session controls: none.
-- Create/correct lifecycle: **Report-only**.
-- Enforced lifecycle: **On** only after enrollment validation and the mandatory legacy device-MFA setting check.
+- Create lifecycle: **On** (owner decision 3, 2026-09-24: Microsoft does not evaluate User Actions in Report-only), once everyone it covers has a method its strength accepts, with the legacy device-MFA setting set to No in the same change.
+- A policy found in Report-only is turned **On** after the mandatory legacy device-MFA setting check.
 
 ## Security-significant fields
 The following must agree across Entra, Graph JSON, and PowerShell:
@@ -111,7 +111,7 @@ Condition-related mismatches share one canonical `json.correct.conditions` block
 ## State variants
 
 ### Missing / Create
-Create one canonical policy in **Report-only**. Use the resolved policy name and resolved exclusion IDs. Do not change the tenant-wide device-registration MFA setting merely to create the Report-only policy.
+Create one canonical policy **On**. Use the resolved policy name and resolved exclusion IDs. Set the tenant-wide device-registration MFA setting to No in the same change.
 
 ### Partial / Correct
 IAMAI composes only detected semantic correction modules:

@@ -48,7 +48,7 @@
       "sourceIdentity": "The author's strength ID belongs to the author's tenant. IAMAI binds this tenant's own strength for the requirement and the package never names the source ID."
     },
     "userAction": "urn:user:registerdevice",
-    "initialState": "enabledForReportingButNotEnforced"
+    "initialState": "enabled"
   },
   "requiredBindings": [
     "policy.target.displayName",
@@ -65,7 +65,6 @@
     "policy.current.state",
     "people.affected.count",
     "evidence.deviceRegistration",
-    "evidence.enrollmentWorkflows",
     "dependencies.blockers",
     "tenant.deviceRegistration.multiFactorAuthConfiguration"
   ],
@@ -358,15 +357,6 @@
       },
       "invalidatedBy": [
         "policy.current.id"
-      ]
-    },
-    {
-      "id": "enrollment-workflows",
-      "class": "human-validation",
-      "requiredBefore": "readyToEnforce->inPlace",
-      "invalidatedBy": [
-        "policy.current.id",
-        "policy.target.excludeGroups"
       ]
     },
     {

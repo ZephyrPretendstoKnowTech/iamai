@@ -58,6 +58,7 @@ let PLANS: Plan[] | null = null
 // still held by its own readiness threshold is where Foundation A's safe
 // preparation is still offered, and the create branch below has its live example.
 const SETTLED = 'demo week two, foundation settled (curated)'
+const SMALL_SETTLED = 'small (foundation settled)'
 const plans = (): Plan[] =>
   (PLANS ??= [
     appDemo(false),
@@ -66,6 +67,7 @@ const plans = (): Plan[] =>
     planOf('small', fixture('small')),
     planOf('demo week two (curated)', curatedFixture('demo-week2')),
     planOf(SETTLED, withFoundationSettled(curatedFixture('demo-week2'))),
+    planOf(SMALL_SETTLED, withFoundationSettled(fixture('small'))),
   ])
 const open = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped'
 const CREATE_WALKTHROUGH = /Conditional Access → Policies → New policy|Enable policy: Report-only → Create/
@@ -118,11 +120,13 @@ test('Step 5: a held step still handing over its report-only create says to crea
       }
     }
   }
-  assert.ok(offering > 1 && nothing > 10, `held steps checked: ${offering} offering a create, ${nothing} offering nothing`)
+  // One since Phase 2e: the registration policies, the held creates the plans offered, are created On and their creates wait.
+  assert.ok(offering >= 1 && nothing > 10, `held steps checked: ${offering} offering a create, ${nothing} offering nothing`)
   // Where a readiness threshold is what waits — and the foundation is settled,
-  // so nothing bigger waits first — the line names the threshold.
-  const g = plans().find((p) => p.label === SETTLED)!
-  const reg = g.r.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  // so nothing bigger waits first — the line names the threshold (small, settled:
+  // Require Phishing-Resistant MFA for Admins; it was the registration policy).
+  const g = plans().find((p) => p.label === SMALL_SETTLED)!
+  const reg = g.r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const regDay = reg.scheduled && scheduleOf(reg).class === 'scheduled' ? scheduleOf(reg).at : null
   const gate = { measure: reg.action.readinessGate!.measure, threshold: reg.action.readinessGate!.threshold }
   // The day as the board's row reads it: an estimate where the step's day is one (R4-34).

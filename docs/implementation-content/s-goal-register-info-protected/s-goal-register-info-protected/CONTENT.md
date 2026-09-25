@@ -5,7 +5,7 @@
    Conditions > Locations: set **Configure** to **Yes**, then **{{policy.target.locationWords}}**. Left at **No**, the condition matches every location, including the network you meant to leave out. [omit this line when unavailable]
 4. Grant: **{{policy.target.grantWords}}**, exactly as IAMAI resolved the target. Do not add or swap a control.
 5. Leave session controls unconfigured; the intended target has none.
-6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
+6. Set **Enable policy: On** and create it. This policy is created On: Microsoft does not evaluate User Actions in Report-only, so a report-only week would show nothing, and MFA is in place by the time the plan reaches it. The script for this step creates it On.
 7. Re-open the created policy, compare it with the IAMAI target, then rescan.
 @@IAMAI-END
 
@@ -49,7 +49,7 @@ If any one of them is not true, leave the policy in Report-only. Change **Enable
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
-{"displayName":{{json:policy.target.displayName}},"state":"enabledForReportingButNotEnforced","conditions":{{json:policy.target.conditions}},"grantControls":{{json:policy.target.grantControls}},"sessionControls":null}
+{"displayName":{{json:policy.target.displayName}},"state":"enabled","conditions":{{json:policy.target.conditions}},"grantControls":{{json:policy.target.grantControls}},"sessionControls":null}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.correct-conditions","channel":"json","states":["partial"],"format":"json-template","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
@@ -110,10 +110,10 @@ function Same($actual,$target){
 $target=$TargetPolicyJson|ConvertFrom-Json
 if(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}
 if($Mode -eq 'Create'){
- $body=[ordered]@{displayName=$target.displayName;description=$target.description;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}
+ $body=[ordered]@{displayName=$target.displayName;description=$target.description;state='enabled';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}
  $created=IG POST "$G/identity/conditionalAccess/policies" $body
  $PolicyId=[string]$created.id
- Write-Host "Created $PolicyId in Report-only."
+ Write-Host "Created $PolicyId On."
 }else{GuidOk $PolicyId 'PolicyId'}
 $uri="$G/identity/conditionalAccess/policies/$PolicyId"
 if($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}
@@ -140,9 +140,9 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-State: **Protect Sign-in Method Registration** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only for the Register security information user action, with the IAMAI-resolved users, exclusions, location rule and grant. It does not enforce until it is enabled.
+State: **Protect Sign-in Method Registration** does not exist in {{tenant.displayName}} yet. The next action creates it On for the Register security information user action, with the IAMAI-resolved users, exclusions, location rule and grant. Microsoft does not evaluate User Action policies in Report-only, so it is created On, once MFA is in place.
 
-Where the tenant has a trusted network, the baseline blocks registration outside trusted locations. Where no trusted network applies, the fallback requires MFA for registration instead of blocking it. Report-only results may not show registration attempts, so the registration workflow needs a controlled test.
+Where the tenant has a trusted network, the baseline blocks registration outside trusted locations. Where no trusted network applies, the fallback requires MFA for registration instead of blocking it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
@@ -197,7 +197,7 @@ We are preparing a change to how sign-in methods are registered. Contact IT befo
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Check the resolved location rule and grant. Verify settings separately from a controlled registration test. Include affected Windows Hello for Business and macOS Platform SSO registration workflows, which this user action covers from July 6, 2026.
+Check the resolved location rule and grant. This user action also covers Windows Hello for Business and macOS Platform SSO registration from July 6, 2026.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}

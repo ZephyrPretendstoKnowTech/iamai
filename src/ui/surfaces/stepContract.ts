@@ -22,6 +22,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
+import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
 import { RULE_TO_FIX } from '../../validation/checkFixes.ts'
 import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
@@ -50,7 +51,7 @@ import { personLabels } from '../../names.ts'
 import { adminUserIds } from '../../roles.ts'
 import { DORMANT_STEP_ID } from './sectionThreeTasks.ts'
 import type { MethodPreparation } from '../../roadmap/methodReadiness.ts'
-import { BLOCKED_REASON, BLOCKED_SUBJECT, readinessFamilyOf } from '../../copy/reasons.ts'
+import { BLOCKED_REASON, BLOCKED_SUBJECT, everyoneGate, readinessFamilyOf } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, planStateOf } from './planState.ts'
@@ -156,7 +157,7 @@ type ContractWords = {
   /** The signed-in account a policy would leave with no way in (walk list 4.x item 43). */
   operatorCard: { label: string; value: string; admin: string; other: string; fix: string }
   /** A gate on people's methods: who is short and what moves them (walk list 4.x items 42, 48). */
-  methodGate: { adminValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string; people: string }
+  methodGate: { adminValue: string; everyoneValue: string; needs: string; needMany: string; needListed: string; signIn: string; signInMany: string; signInListed: string; route: string; people: string }
   /** A finished policy this plan owns that went live with no report-only period IAMAI watched (doneWhen.ts enforcedUnwatched; owner decision 3). */
   /** The people marked on the campaign to turn on without, for now (roadmap/followUp.ts). */
   followUp: { label: string; campaignLabel: string; campaign: string; campaignOpen: string; method: string; risk: string; pickerLabel: string; save: string; printed: string; printedNone: string }
@@ -629,7 +630,10 @@ export function readinessHeldLine(step: Step, tenant: string): string {
     // The admin gate is every admin, said in the admins' own count (walk list 4.x item 44).
     const gate = step.action.readinessGate
     const p = gate === undefined ? null : methodGateOf(step, gate)
-    return p !== null && familyOf(gate!) === 'admin' ? fillText(app.plan.readinessHeldAdmin, { ready: p.readyIds.length, total: p.ids.length }) : fillText(app.plan.readinessHeld, vars)
+    const count = p === null ? null : { ready: p.readyIds.length, total: p.ids.length }
+    // Created On (Phase 2e), the create is what waits.
+    if (stepCreatedOn(step)) return count !== null && everyoneGate(gate!) ? fillText(app.plan.readinessHeldOnEveryone, count) : fillText(app.plan.readinessHeldOn, vars)
+    return count !== null && familyOf(gate!) === 'admin' ? fillText(app.plan.readinessHeldAdmin, count) : fillText(app.plan.readinessHeld, vars)
   }
   // A policy the scan found switched off is not one to create: say it was found.
   const off = switchedOffPolicies(step).map((p) => p.name)
@@ -2427,7 +2431,8 @@ function methodGateOf(step: Step, gate: NonNullable<Step['action']['readinessGat
   const p = step.methodPreparation
   const family = familyOf(gate)
   if (p === undefined || family === undefined || !METHOD_FAMILIES.has(family)) return null
-  if (gate.blind !== undefined || gate.routeShortfall !== undefined) return null
+  // A gate on everyone it covers names each of them, so a campaign that cannot reach them all does not stop it.
+  if (gate.blind !== undefined || (gate.routeShortfall !== undefined && !everyoneGate(gate))) return null
   if (!p.completeScope || p.ids.length === 0 || (p.readyIds.length === 0 && p.unknownIds.length === p.ids.length)) return null
   return p
 }
@@ -2439,8 +2444,8 @@ function methodGateOf(step: Step, gate: NonNullable<Step['action']['readinessGat
  */
 function methodGateValueOf(step: Step, gate: NonNullable<Step['action']['readinessGate']>): string | null {
   const p = methodGateOf(step, gate)
-  if (p === null || familyOf(gate) !== 'admin') return null
-  return fillText(CONTRACT.methodGate.adminValue, { ready: p.readyIds.length, total: p.ids.length })
+  if (p === null || !everyoneGate(gate)) return null
+  return fillText(familyOf(gate) === 'admin' ? CONTRACT.methodGate.adminValue : CONTRACT.methodGate.everyoneValue, { ready: p.readyIds.length, total: p.ids.length })
 }
 
 /**
@@ -2455,7 +2460,7 @@ function methodGateSentence(step: Step, gate: NonNullable<Step['action']['readin
   const W = CONTRACT.methodGate
   // A policy already On waits for nobody: the count stands alone.
   const route = gate.route !== undefined && step.state.lifecycle !== 'enforced' ? fillText(W.route, { step: gate.route }) : null
-  if (familyOf(gate) !== 'admin') {
+  if (!everyoneGate(gate)) {
     const line = step.readiness.lines[0]
     return typeof line === 'string' && /\d+ of \d+/.test(line) ? [line, route].filter((x): x is string => x !== null).join(' ') : null
   }
@@ -2495,7 +2500,7 @@ function adminGateNamesOf(step: Step, ctx: StepVarContext): string[] | null {
 /** The admins the admin gate is short of, the signed-in one aside; none on any other gate. The card's lines and its sentence read this one list. */
 function adminShortIds(step: Step, gate: NonNullable<Step['action']['readinessGate']>, operatorId: string | null): string[] {
   const p = methodGateOf(step, gate)
-  if (p === null || familyOf(gate) !== 'admin') return []
+  if (p === null || !everyoneGate(gate)) return []
   const ready = new Set(p.readyIds)
   const unknown = new Set(p.unknownIds)
   const stale = new Set(p.staleIds ?? [])
@@ -2506,7 +2511,7 @@ function adminShortIds(step: Step, gate: NonNullable<Step['action']['readinessGa
 /** Whether the signed-in account is the only admin the admin gate is short of (walk list 4.x item 43). */
 function operatorAloneShort(step: Step, gate: NonNullable<Step['action']['readinessGate']>, operatorId: string): boolean {
   const p = methodGateOf(step, gate)
-  if (p === null || familyOf(gate) !== 'admin') return false
+  if (p === null || !everyoneGate(gate)) return false
   const ready = new Set(p.readyIds.map((id) => id.toLowerCase()))
   const short = p.ids.filter((id) => !ready.has(id.toLowerCase()))
   return short.length > 0 && short.every((id) => id.toLowerCase() === operatorId.toLowerCase())
@@ -2585,7 +2590,7 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     const route = people ? gateRouteOf(step, gate) : c.routeStart ?? gateRouteOf(step, gate)
     const note = c.found.find((f) => f.key === 'gate')?.text ?? readinessSentence(step, gate, c.routeStart)
     // The admin gate names each admin on the card with their next step (round 1).
-    const admins = familyOf(gate) === 'admin' ? c.gateNames : null
+    const admins = everyoneGate(gate) ? c.gateNames : null
     // Where the card states its count ("21 of 30 people have a method it
     // accepts"), the percentage beside it carries no "At least" (walk list 4.x
     // item 48): the count is exact, and the hedge was IAMAI's to carry.

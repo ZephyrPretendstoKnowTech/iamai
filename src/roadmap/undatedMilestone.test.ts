@@ -14,9 +14,9 @@
 // create: two instructions pulling apart.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { curatedFixture } from './fixtures/index.ts'
+import { curatedFixture, fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture, withDirectionApproved } from './fixtures/run.ts'
+import { runFixture, withDirectionApproved, withFoundationSettled } from './fixtures/run.ts'
 import { nextMilestone } from './lifecycle.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { engine } from '../content/content.ts'
@@ -39,7 +39,9 @@ const stepIn = (steps: readonly Step[], id: string): Step => {
 test('a held step names no day in its milestone, keeps its report-only preparation, and dated every milestone is what it was', () => {
   // A held create keeps its report-only preparation, its gate and its kind, without the day.
   {
-    const step = stepIn(stepsOf(withDirectionApproved(curatedFixture('demo-week2'))), 's-goal-register-info-protected')
+    // small, settled: Require Phishing-Resistant MFA for Admins. It was the registration
+    // policy on week two, which is created On since Phase 2e, so its create waits with its turn-on.
+    const step = stepIn(stepsOf(withFoundationSettled(fixture('small'))), 's-goal-admins-phishing-resistant')
     const gate = step.action.readinessGate
     const dated = nextMilestone(step)
     // The premise: the create the plan schedules while readiness holds its turn-on.

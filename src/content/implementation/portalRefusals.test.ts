@@ -43,6 +43,14 @@ function entraText(pkg: CompiledPackage, state: string): string {
   return inState(blocksOf(pkg, 'entra'), state).map((b) => b.text).join('\n')
 }
 
+/**
+ * A User Action package (Protect Sign-in Method Registration, Require MFA to
+ * Register a Device): created On, not in Report-only (owner decision 3, Phase 2e;
+ * roadmap/evidenceStrategy.ts createdOn). Microsoft does not evaluate User Actions
+ * in Report-only, so its enable line says On and why.
+ */
+const createdOn = (pkg: CompiledPackage): boolean => /"userAction":"urn:user:/.test(JSON.stringify(pkg.meta))
+
 /** The package's script, or null. */
 function script(pkg: CompiledPackage): string | null {
   const b = blocksOf(pkg, 'powershell')[0]
@@ -62,31 +70,40 @@ function enforcePath(text: string): string {
 
 const CREATES = ALL.filter((p) => policyCreateBody(p.source) !== null)
 
-test('every package that creates a Conditional Access policy ships one, and only report-only creates', () => {
+test('every package that creates a Conditional Access policy ships one, and only report-only creates, save a User Action policy, created On', () => {
   assert.ok(CREATES.length >= 24, `policy-create packages found: ${CREATES.length}`)
+  assert.equal(CREATES.filter((p) => createdOn(p.source)).length, 2, 'the two User Action packages')
   for (const p of CREATES) {
+    const expected = createdOn(p.source) ? 'enabled' : REPORT_ONLY
     // The JSON channel: every create body, not only the first.
     for (const b of blocksOf(p.source, 'json')) {
       if (b.meta.method !== 'POST') continue
       if (!/conditionalAccess\/policies$/.test(String(b.meta.endpoint ?? ''))) continue
       const states = [...b.text.matchAll(/"state"\s*:\s*"([^"]+)"/g)].map((m) => m[1])
       assert.ok(states.length > 0, `${p.stepId} ${b.meta.id}: a create body states no lifecycle`)
-      for (const s of states) assert.equal(s, REPORT_ONLY, `${p.stepId} ${b.meta.id}: create body ships ${s}`)
+      for (const s of states) assert.equal(s, expected, `${p.stepId} ${b.meta.id}: create body ships ${s}`)
     }
     // The PowerShell channel: the create path names report-only and nothing else.
     const ps = script(p.source)
     if (ps === null) continue
     const created = [...ps.matchAll(/state\s*=\s*'([^']+)'/g)].map((m) => m[1])
-    assert.ok(created.includes(REPORT_ONLY), `${p.stepId}: the script never creates in report-only`)
+    assert.ok(created.includes(expected), `${p.stepId}: the script never creates ${expected}`)
     for (const s of created) assert.ok(s === REPORT_ONLY || s === 'enabled', `${p.stepId}: the script writes state ${s}`)
   }
 })
 
-test('every create procedure refuses On at its enable line, in the Entra channel', () => {
+test('every create procedure refuses On at its enable line, in the Entra channel, save a User Action policy, which says it is created On', () => {
   const missing: string[] = []
   for (const p of CREATES) {
     const text = entraText(p.source, 'missing')
     if (text.length === 0) { missing.push(`${p.stepId}: no Entra create procedure`); continue }
+    if (createdOn(p.source)) {
+      const on = text.split('\n').filter((l) => /Enable policy/.test(l)).join(' ')
+      if (!/\*\*On\*\*|: On\*\*/.test(on)) missing.push(`${p.stepId}: the enable line does not say On`)
+      if (!/does not evaluate User Actions in Report-only/.test(on)) missing.push(`${p.stepId}: the enable line does not say why it is created On`)
+      if (!/The script for this step creates it On/.test(on)) missing.push(`${p.stepId}: the enable line does not carry the script's own create`)
+      continue
+    }
     // The line where the administrator sets the lifecycle.
     const enable = text
       .split('\n')
@@ -168,7 +185,8 @@ test('every enforce procedure names the conditions the script refuses on, and th
     }
     assert.deepEqual(missing, [])
     // The rule is not vacuous: each gate is read off a real script and fires widely.
-    assert.ok(fired.reportOnly >= 20 && fired.drift >= 20 && fired.attested >= 15 && fired.people >= 20, JSON.stringify(fired))
+    // 14 attested since Require MFA to Register a Device lost its enrollment-workflow attestation (Phase 2e: no registration test).
+    assert.ok(fired.reportOnly >= 20 && fired.drift >= 20 && fired.attested >= 14 && fired.people >= 20, JSON.stringify(fired))
   }
   // the refusal stands before the line that turns the policy on, never after it
   {

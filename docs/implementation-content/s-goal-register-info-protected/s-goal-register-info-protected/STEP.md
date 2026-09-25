@@ -30,13 +30,13 @@ IAMAI's canonical source semantics define two valid resolved implementations:
 - **Trusted network exists:** target `Register security information`; include Any location; exclude All trusted locations; block access outside trusted locations.
 - **Trusted network explicitly does not apply:** target the same user action and require MFA using IAMAI's resolved target rather than creating a block that would make registration impossible everywhere.
 
-All variants use canonical emergency exclusions and start Report-only when newly created. No dedicated source-member GUID is surfaced by the retained goal map, so none is invented here.
+All variants use canonical emergency exclusions and are created On (owner decision 3, 2026-09-24: Microsoft does not evaluate User Actions in Report-only). No dedicated source-member GUID is surfaced by the retained goal map, so none is invented here.
 
 ## Security-significant fields
 Population/exclusions, user action, location condition, resolved grant, session controls, lifecycle, and the July 2026 credential-registration expansion.
 
 ## Preserve
-Preserve the IAMAI-resolved mode and stable tenant policy identity. Preserve Report-only validation before enforcement.
+Preserve the IAMAI-resolved mode and stable tenant policy identity.
 
 ## Do not do
 - Do not invent a baseline member GUID.
@@ -49,7 +49,7 @@ Preserve the IAMAI-resolved mode and stable tenant policy identity. Preserve Rep
 Missing; Partial; Report-only; Ready to enforce; In place; Blocked; Needs decision; Source conflict; Not licensed.
 
 ## Verification
-Re-read the policy by stable tenant ID, compare full conditions/grant/session to the resolved target, validate representative registration flows in Report-only, and include WHfB/macOS Platform SSO registration where those workflows exist.
+Re-read the policy by stable tenant ID, compare full conditions/grant/session to the resolved target.
 
 ## Rollback / safe recovery
 Return the same policy to Report-only if legitimate registration is blocked, correct the trusted-location/bootstrap issue, and retest. Do not add a permanent named-user bypass.

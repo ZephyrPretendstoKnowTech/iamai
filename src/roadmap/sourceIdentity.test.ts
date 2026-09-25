@@ -43,7 +43,7 @@ import type { Fixture, FixtureName } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { inventoryReferences, unresolvedReferences } from '../baseline/references.ts'
-import { implementationOffered, operationsOf } from './operations.ts'
+import { implementationOffered, operationsOf, unavailableReason, validOperations } from './operations.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { policyKey } from '../baseline/interpretation.ts'
@@ -122,8 +122,9 @@ test('the author’s own authentication strength is never handed over: a tenant 
   // asks for: that is the same requirement under another name, so the policy is
   // offered and carries the tenant's id.
   const own = runFixture(base).steps.find((s) => s.id === 's-goal-device-registration-mfa')!
-  assert.equal(implementationOffered(own), true, 'a tenant with the strength can create the policy')
-  const body = operationsOf(own)[0].body as { grantControls?: { authenticationStrength?: { id?: string } } }
+  // Created On since Phase 2e, the readiness gate on everyone it covers is all that may still hold its create.
+  assert.ok(implementationOffered(own) || unavailableReason(own) === 'readiness-unmet', `a tenant with the strength can create the policy (${unavailableReason(own)})`)
+  const body = validOperations(own.action)[0].body as { grantControls?: { authenticationStrength?: { id?: string } } }
   const tenantStrength = (base.snapshot.config.authStrengths?.rows ?? []).map((x) => x as { id?: string; policyType?: string }).find((x) => x.policyType !== 'builtIn')
   assert.equal(body.grantControls?.authenticationStrength?.id, tenantStrength?.id, 'the body names the tenant’s own strength')
   assert.ok(r.steps.length > 0)
@@ -148,8 +149,9 @@ test('the author’s own authentication strength is never handed over: a tenant 
     // same combinations, same (absent) restrictions. Still the same requirement
     // under another name, so it still resolves and the body names the tenant's id.
     const same = stepOf(base)
-    assert.equal(implementationOffered(same), true, 'an equivalent tenant strength answers the author’s')
-    const body = operationsOf(same)[0].body as { grantControls?: { authenticationStrength?: { id?: string } } }
+    // Created On since Phase 2e, the readiness gate on everyone it covers is all that may still hold its create.
+    assert.ok(implementationOffered(same) || unavailableReason(same) === 'readiness-unmet', `an equivalent tenant strength answers the author’s (${unavailableReason(same)})`)
+    const body = validOperations(same.action)[0].body as { grantControls?: { authenticationStrength?: { id?: string } } }
     const own = (base.snapshot.config.authStrengths?.rows ?? []).map((x) => x as { id?: string; policyType?: string }).find((x) => x.policyType !== 'builtIn')
     assert.equal(body.grantControls?.authenticationStrength?.id, own?.id, 'and the body names the tenant’s own strength')
 
@@ -161,7 +163,7 @@ test('the author’s own authentication strength is never handed over: a tenant 
         : { ...r, combinationConfigurations: [{ '@odata.type': '#microsoft.graph.fido2CombinationConfiguration', id: 'a1b2c3d4-0000-4000-8000-000000000001', appliesToCombinations: ['fido2'], allowedAAGUIDs: ['de1e552d-db1d-4423-a619-566b625cdc84', '90a3ccdf-635c-4729-a248-9b709135078f', 'd8522d9f-575b-4866-88a9-ba99fa02f35b'] }] },
     )
     const narrowed = stepOf(restricted)
-    assert.equal(implementationOffered(narrowed), false, 'a strength that restricts what it accepts is not the author’s')
+    assert.equal(unavailableReason(narrowed), 'missing-object', 'a strength that restricts what it accepts is not the author’s')
     assert.deepEqual(operationsOf(narrowed), [], 'and there is no operation to run')
     assert.deepEqual(
       (narrowed.action.missing ?? []).filter((m) => m.token.toLowerCase() === AUTHORS_STRENGTH).map((m) => m.stepId),
@@ -177,7 +179,7 @@ test('the author’s own authentication strength is never handed over: a tenant 
       return rest
     })
     const unknown = stepOf(unread)
-    assert.equal(implementationOffered(unknown), false, 'restrictions nobody read cannot be shown to match')
+    assert.equal(unavailableReason(unknown), 'missing-object', 'restrictions nobody read cannot be shown to match')
     assert.deepEqual(operationsOf(unknown), [], 'and there is no operation to run')
   }
 
@@ -264,12 +266,13 @@ test('a group of the author’s that nothing settles waits on a person’s answe
     const r = runFixture(base)
     const step = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')
     assert.ok(step, 'the device-registration step is on the plan')
-    assert.equal(implementationOffered(step), true, 'the policy can be written once the readings are settled')
+    // Created On since Phase 2e, the readiness gate on everyone it covers is all that may still hold its create.
+    assert.ok(implementationOffered(step) || unavailableReason(step) === 'readiness-unmet', `the policy can be written once the readings are settled (${unavailableReason(step)})`)
     const reported = step.action.authorOnly ?? []
     assert.ok(reported.length >= 3, `and what it does without is named (${reported.length})`)
     for (const id of reported) {
       assert.ok(unsettledGroups().includes(id.toLowerCase()), `${id} is one of the settled readings, not a guess`)
-      for (const op of operationsOf(step)) assert.doesNotMatch(JSON.stringify(op.body).toLowerCase(), new RegExp(id.toLowerCase()), `${step.id}: ${id} is in a body`)
+      for (const op of validOperations(step.action)) assert.doesNotMatch(JSON.stringify(op.body).toLowerCase(), new RegExp(id.toLowerCase()), `${step.id}: ${id} is in a body`)
     }
     assert.deepEqual((step.action.missing ?? []).filter((m) => m.unreadable), [], 'and nothing is waiting on them')
   }

@@ -103,7 +103,8 @@ test('a dated plan and a long explanation each head with the step’s own words'
   // Once Direction is approved the engine dates its milestones; the column does not.
   const approved = withDirectionApproved(fixture('demo-week2'))
   const run = runFixture(approved, {}, null, approved.snapshot.asOf)
-  for (const id of ['s-goal-register-info-protected', 's-goal-block-auth-transfer', 's-goal-token-protection']) {
+  // (The registration policy was the third: created On since Phase 2e, readiness holds its create undated.)
+  for (const id of ['s-goal-block-auth-transfer', 's-goal-token-protection']) {
     const { lane, body } = openedIn(approved, run, id)
     assert.notEqual(lane.lane, 'Completed', `the premise: ${id} is open`)
     assert.match(body.contract.milestone.label, DAY, `the premise: ${id}'s engine milestone carries its day`)

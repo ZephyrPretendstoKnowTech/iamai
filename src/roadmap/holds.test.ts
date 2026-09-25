@@ -18,7 +18,8 @@ import { readFileSync } from 'node:fs'
 import { allCuratedFixtures, allFixtures, curatedFixture, fixture, noExclusionsAnswer, withExternalMfa } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withDirectionApproved } from './fixtures/run.ts'
-import { DIRECTION_STEP, directionBlockerStep } from './directionAnswers.ts'
+import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, directionBlockerStep } from './directionAnswers.ts'
+import { answerKey } from './answers.ts'
 import { observationsOf } from './tracking.ts'
 import { FOUNDATION_WAIT, holdOf, isHeld, markHoldChains } from './holds.ts'
 import { heldForReview, nextMilestone, raiseCondition } from './lifecycle.ts'
@@ -228,10 +229,14 @@ test('Step 4 E: once the exclusions group is answered the same policy is Ready t
 // ---- the calendar books the canonical event ----
 
 test('C5: the calendar books a readiness-gated create on its report-only creation day, in the Plan rail’s words, and dates no enforcement', () => {
-  // Curated: small's device-registration step is written from the pinned policy
-  // (q-pin), which names a group of the author's this baseline has not settled.
+  // Curated small: Require Phishing-Resistant MFA for Admins waits for every
+  // admin's method to turn on. It was Require MFA to Register a Device, which is
+  // created On since Phase 2e, so its create waits with its turn-on (below).
   const p = planOf(curatedFixture('small'))
-  const s = stepOf(p, 's-goal-device-registration-mfa')
+  const on = stepOf(p, 's-goal-device-registration-mfa')
+  assert.equal(scheduledEventOf(on), null, 'a policy created On has no creation day while readiness holds it')
+  assert.equal(on.reportOnlyAt, null)
+  const s = stepOf(p, 's-goal-admins-phishing-resistant')
   assert.ok(isHeld(s), 'the premise: a readiness threshold holds it')
   const event = scheduledEventOf(s)
   assert.deepEqual(event, { transition: 'createReportOnly', start: s.reportOnlyAt, end: s.reportOnlyAt }, 'the canonical event is its creation day')
@@ -442,7 +447,10 @@ test('Step 4 correction 4: a step waiting on a held step is held too; waiting on
   // The plan's foundation is settled, so a wait on another step is sequencing
   // again (roadmap/foundations.ts): A is an object the schedule dates, B a policy
   // dated after it.
-  const g = planOf(withDirectionApproved(curatedFixture('demo-week2')))
+  // With an office: a remote team's service-accounts group doesn't apply (Phase 2d).
+  const office = withDirectionApproved(curatedFixture('demo-week2'))
+  office.mapping.questionAnswers = { ...(office.mapping.questionAnswers ?? {}), [answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')]: 'office' }
+  const g = planOf(office)
   // (The allowed-countries location was A; since Stage 3 it is the countries policy's own task.)
   const a = stepOf(g, 's-prereq-service-accounts-group')
   const b = stepOf(g, 's-goal-block-unsupported-platforms')
@@ -506,15 +514,15 @@ test('Step 4: no row says now unless the step is work a person can do today', ()
 
 // ---- a Direction answer holds the step (owner, 2026-09-19) ----
 
-test('Step 4: on the demo first visit a policy waiting only on a Direction answer is undated in the row, the schedule and the calendar; approving that step dates it', () => {
-  // The security-info registration policy waits on one Direction step and, on the
-  // demo, on MFA readiness for its turn-on only. It was the managed-device policy,
-  // whose create now waits on device readiness as well (operations.ts
-  // createWaitsOnReadiness; owner, 2026-09-23), so approving its Direction step no
-  // longer dates it.
-  const STEP = 's-goal-register-info-protected'
-  const d = demoTenant(false)
-  const f: Fixture = { ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
+test('Step 4: on the demo a policy waiting only on a Direction answer is undated in the row, the schedule and the calendar; approving that step dates it', () => {
+  // Week two, where the foundation is settled: Block Unsupported Device Platforms
+  // waits on one Direction step, the phones answer, which the demo leaves open.
+  // It was the security-info registration policy on the first visit, which is
+  // created On since Phase 2e, so MFA readiness holds its create too; on the
+  // first visit every other create also waits on the exclusions group.
+  const STEP = 's-goal-block-unsupported-platforms'
+  // Every Direction step approved but the one it waits on.
+  const f = withDirectionApproved(curatedFixture('demo-week2'), Object.values(DIRECTION_STEP).filter((id) => id !== DIRECTION_STEP.devices))
   const first = planOf(f)
   const waiting = stepOf(first, STEP)
   assert.deepEqual(waiting.blockers.map(directionBlockerStep).filter((id) => id !== null), [DIRECTION_STEP.devices], 'the premise: it waits on Decide How and Where People Sign In, which asks the office network (Stage 3)')
@@ -534,14 +542,8 @@ test('Step 4: on the demo first visit a policy waiting only on a Direction answe
   assert.equal(scheduleOf(dated).class, 'scheduled')
   assert.ok(scheduleOf(dated).at !== null, 'the schedule gives it a day')
   assert.match(rowWhen(dated), YEAR, 'the row dates it')
-  // Its milestone still names no day: Establish Emergency Access is unsettled on
-  // the demo's first visit, and the foundation withdraws the create with it
-  // (roadmap/holds.ts waitsOnFoundation). With that wait cleared too, the
-  // milestone is the day the schedule gives it.
-  assert.equal(nextMilestone(dated).at, null, 'the foundation still holds it')
-  const released = structuredClone(dated)
-  released.blockers = released.blockers.filter((b) => b.label !== FOUNDATION_WAIT)
-  assert.equal(nextMilestone(released).at, scheduleOf(released).at, 'its next milestone is that day')
+  // The foundation is settled in week two, so the milestone is the day the schedule gives it.
+  assert.equal(nextMilestone(dated).at, scheduleOf(dated).at, 'its next milestone is that day')
   assert.ok(booked(approved, STEP), 'and the calendar books it')
   // The rollout's estimate is the schedule as drawn before anything was withdrawn: the wait does not move it.
   assert.equal(first.r.schedule.estimate?.targetEnd, approved.r.schedule.estimate?.targetEnd)

@@ -1,5 +1,6 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
+import { createdOn } from './evidenceStrategy.ts'
 import { goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
@@ -94,6 +95,7 @@ import { proposedStart } from '../derive/planStart.ts'
 import { checksNotRun } from '../validation/report.ts'
 import {
   READINESS_THRESHOLD_ADMINS_PERCENT,
+  READINESS_EVERYONE_GOALS,
   READINESS_THRESHOLD_DEVICES_PERCENT,
   READINESS_THRESHOLD_MFA_PERCENT,
   SEVERITY_BLOCK,
@@ -580,8 +582,9 @@ export function buildCreateAction(
     delete body.modifiedDateTime
     // The pinned baseline's own placeholder map names the author's objects; it is not a policy field.
     delete body.placeholders
-    // A new policy starts in report-only; a policy already there keeps its state.
-    body.state = p.target ? p.target.state : 'enabledForReportingButNotEnforced'
+    // A new policy starts in report-only, save a User Action policy, which is
+    // created On (evidenceStrategy.ts createdOn); a policy already there keeps its state.
+    body.state = p.target ? p.target.state : createdOn(body) ? 'enabled' : 'enabledForReportingButNotEnforced'
     if (p.displayName) body.displayName = p.displayName
     body.description = `${tag}${typeof sourceDescription === 'string' && sourceDescription ? ' ' + sourceDescription : ''}`
     return body
@@ -2306,7 +2309,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (blindSource !== null) readiness.blind = blindSource
 
     // Gating (roadmap.md §6).
-    const threshold =
+    const familyThreshold =
       readiness.family === 'mfa' || readiness.family === 'guest'
         ? READINESS_THRESHOLD_MFA_PERCENT
         : readiness.family === 'admin'
@@ -2314,6 +2317,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           : readiness.family === 'device'
             ? READINESS_THRESHOLD_DEVICES_PERCENT
             : null
+    // Require MFA to Register a Device waits for everyone it covers (constants.ts READINESS_EVERYONE_GOALS).
+    const threshold = familyThreshold !== null && READINESS_EVERYONE_GOALS.has(goal.id) ? 100 : familyThreshold
     // A readiness threshold the plan itself says to wait for, unmet — or never
     // measured, which is not the same as met. The gate used to require a
     // number: a family with a threshold whose readiness the scan could not
@@ -3277,6 +3282,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       setState(s, { setAside: true })
     }
   }
+  // A step set aside above is rolled out in no rings: they were proposed before
+  // the answers took it off the plan, and the schedule dates none of them.
+  for (const s of steps) if (s.state.setAside) s.rings = []
   // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {

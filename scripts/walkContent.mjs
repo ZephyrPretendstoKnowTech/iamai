@@ -206,7 +206,8 @@ export const ACCEPTANCE = [
   // is Yes, "Conditional Access policies with this user action aren't properly
   // enforced" — and the three conditions are unavailable, not unwise.
   { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'this policy is not properly enforced', mustNot: 'After it is enforced for the intended registration or join scope' },
-  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'on the day it is enforced for the intended registration or join scope' },
+  // Created On since Phase 2e: the setting goes to No with the create.
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'Set that setting to No when you create the policy' },
   { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', mustNot: 'Do not add device-state conditions to this policy; a first join has no device to check.' },
   { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Client apps, Filters for devices and Device state are not available for this user action' },
   { item: '29', step: 'device-registration-mfa', path: 'more.risks', must: 'Windows Hello for Business and a device-bound passkey cannot answer this policy' },

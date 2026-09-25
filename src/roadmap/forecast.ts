@@ -28,6 +28,7 @@
 // says which of the two the step's enforcement date is. Nothing here writes a
 // lifecycle, moves a step forward, or lets a forecast satisfy a gate.
 import type { Step, StepEvents } from './types.ts'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import type { Schedule } from './schedule.ts'
 import { addDays, observationDaysFor, readBackPlacement, ringlessSoakDays, toWeekday } from './schedule.ts'
 import { awaitsOwnObject, policyHold } from './operations.ts'
@@ -454,7 +455,8 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
     }
     // Created in report-only on its day and watched for its window; a policy the
     // tenant already has is turned on from its own day (its review, its change).
-    const creates = s.kind === 'create' && s.state.lifecycle === 'not-deployed'
+    // Not a policy created On: its create is its turn-on (evidenceStrategy.ts stepCreatedOn).
+    const creates = s.kind === 'create' && s.state.lifecycle === 'not-deployed' && !stepCreatedOn(s)
     const observation = creates ? observationDaysFor(s) : null
     let turnOn = observation !== null ? addDays(at, observation) : at
     // No earlier than the forecast placement put the turn-on: the cap on change

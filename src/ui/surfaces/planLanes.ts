@@ -1,5 +1,6 @@
 import { EXCLUSION_GROUP_STEP_ID } from '../../roadmap/stepIds.ts'
 import { workflowReviewIsCurrent } from '../../roadmap/lifecycle.ts'
+import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
 import { PASSKEY_SETTINGS_STEP_ID } from '../../roadmap/passkeySettings.ts'
 // The Plan's lanes: the actionability engine (src/actionability) read over the
 // plan as this scan left it (S3).
@@ -52,10 +53,10 @@ import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { PlanState } from './planState.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { readinessFamilyOf } from '../../copy/reasons.ts'
+import { everyoneGate, readinessFamilyOf } from '../../copy/reasons.ts'
 
 /** The row sub-lines a gate or a blocker writes for itself (pages.plan.when; walk list 4.x item 27). */
-const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; notExcluded: string } }).when
+const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; readinessEveryone: string; notExcluded: string } }).when
 
 /**
  * A readiness wait as its row says it (walk list 4.x item 27, owner
@@ -65,8 +66,8 @@ const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; notExcl
  */
 function readinessRowWords(step: Step, label: string, binding: string): string {
   const gate = step.action.readinessGate
-  const count = label === 'readiness' && gate !== undefined && readinessFamilyOf(gate) === 'admin' ? /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '') : null
-  if (count !== null) return fillText(ROW.readinessAdmins, { ready: count[1], total: count[2] })
+  const count = label === 'readiness' && gate !== undefined && everyoneGate(gate) ? /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '') : null
+  if (count !== null) return fillText(readinessFamilyOf(gate!) === 'admin' ? ROW.readinessAdmins : ROW.readinessEveryone, { ready: count[1], total: count[2] })
   return binding.charAt(0).toUpperCase() + binding.slice(1)
 }
 
@@ -179,8 +180,9 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   const waitsOn: ObservedEdge[] = []
   // The readiness threshold holds a compliant-device policy's report-only
   // preparation: its create, or, found switched off, its Report-only patch
-  // (roadmap/operations.ts createWaitsOnReadiness).
-  const holdsCreate = policy && (!exists || switchedOff) && createWaitsOnReadiness(step)
+  // (roadmap/operations.ts createWaitsOnReadiness). And the create of a policy
+  // created On, which is its turn-on (roadmap/evidenceStrategy.ts stepCreatedOn; Phase 2e).
+  const holdsCreate = policy && (!exists || switchedOff) && (createWaitsOnReadiness(step) || stepCreatedOn(step))
   const conflict = step.state.condition === 'baseline-conflict'
   if (conflict) blockers.push({ kind: 'sourceConflict', id: step.state.conflictSource ?? 'baseline-conflict' })
   // Drift is a policy a person has to look at, or one the plan's own update

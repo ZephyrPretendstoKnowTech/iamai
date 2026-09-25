@@ -26,6 +26,7 @@
 // writer. That is the whole point of the module: one authority, one direction,
 // no two representations to keep in step. Pure, no DOM.
 import { engine, shared } from '../content/content.ts'
+import { stepCreatedOn } from './evidenceStrategy.ts'
 import { fillText } from '../content/render.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
@@ -517,5 +518,6 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
   // in report-only." above the steps that open and correct it was two instructions.
   const ops = operationsOf(step)
   const correcting = ops.length > 0 && ops.every((o) => o.mode === 'update')
-  return { kind: 'deploy', label: correcting ? MILESTONE.correct : MILESTONE.deploy, at: undated ? null : step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
+  // A User Action policy is created On (evidenceStrategy.ts stepCreatedOn; Phase 2e).
+  return { kind: 'deploy', label: correcting ? MILESTONE.correct : stepCreatedOn(step) ? MILESTONE.deployOn : MILESTONE.deploy, at: undated ? null : step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
 }

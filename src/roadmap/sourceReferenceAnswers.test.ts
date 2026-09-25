@@ -6,7 +6,7 @@
 // missing.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { fixture, withExternalMfa } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
@@ -38,8 +38,9 @@ function withDecisions(f: Fixture, decisions: Record<string, StepDecision>): Fix
   return { ...f, mapping: applyStepDecisions(f.mapping, decisions) }
 }
 
-// mid: the one sample with references still waiting on an answer (demo's exclude-only groups use the approved V1 assumption).
-const base = fixture('mid')
+// mid: the one sample with references still waiting on an answer (demo's exclude-only groups use the approved V1 assumption),
+// with an external MFA provider, so Jon's EAM population is one of them (Phase 2c, coverage/companions.ts).
+const base = withExternalMfa(fixture('mid'))
 const pending = sourceMappingsOf(runFixture(base).steps).sort((a, b) => Number(b.answer === 'pending') - Number(a.answer === 'pending'))
 const at = base.snapshot.asOf
 const group = [...base.groups.keys()].find((id) => !pending.some((r) => r.id.toLowerCase() === id.toLowerCase()))!
@@ -52,17 +53,20 @@ function onlyNaming(id: string): string[] {
 
 test('each reference is answered on its own: changing an answer replaces it in every policy that names it, and taking one back returns only its policies to waiting and keeps every unrelated decision', () => {
   assert.ok(pending.length >= 2, 'the premise: more than one reference is asked')
+  // a: the one reference still unanswered (Jon's EAM population, a target of his
+  // EAM policy); b: an exclusion the V1 assumption leaves out, answered anyway.
   const [a, b] = pending
-  const both = runFixture(withDecisions(base, { [SOURCE]: { answers: { [a.id]: OMIT(), [b.id]: MAP(group) }, at } }))
+  assert.equal(a.answer, 'pending', 'the premise: one reference waits on an answer')
+  const both = runFixture(withDecisions(base, { [SOURCE]: { answers: { [a.id]: MAP(group), [b.id]: OMIT() }, at } }))
   const refs = (steps: Step[]) => new Map(sourceMappingsOf(steps).map((r) => [r.id, r.answer]))
-  assert.equal(refs(both.steps).get(a.id), 'omitted')
-  assert.equal(refs(both.steps).get(b.id), 'mapped')
-  const cleared = withDecisions(base, { [SOURCE]: { answers: { [b.id]: MAP(group) }, at } })
+  assert.equal(refs(both.steps).get(a.id), 'mapped')
+  assert.equal(refs(both.steps).get(b.id), 'omitted')
+  const cleared = withDecisions(base, { [SOURCE]: { answers: { [b.id]: OMIT() }, at } })
   const r = runFixture(cleared)
   assert.equal(refs(r.steps).get(a.id), 'pending', 'the answer taken back is unanswered again')
-  assert.equal(refs(r.steps).get(b.id), 'mapped', 'the other answer stays')
-  assert.equal((cleared.mapping.omittedReferences ?? []).includes(a.id.toLowerCase()), false)
-  assert.equal(cleared.mapping.records[b.id.toLowerCase()]?.resolvedId, group)
+  assert.equal(refs(r.steps).get(b.id), 'omitted', 'the other answer stays')
+  assert.equal(cleared.mapping.records[a.id.toLowerCase()]?.resolvedId ?? null, null)
+  assert.ok((cleared.mapping.omittedReferences ?? []).includes(b.id.toLowerCase()))
   const waiting = onlyNaming(a.id).map((id) => stepOf(r.steps, id)).filter((s) => s.status !== 'done')
   for (const s of waiting) {
     assert.ok((s.action.missing ?? []).some((m) => m.decision && m.token.toLowerCase() === a.id.toLowerCase()), `${s.id} waits on the reference again`)

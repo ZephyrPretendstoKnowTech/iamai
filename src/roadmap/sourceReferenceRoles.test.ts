@@ -182,10 +182,12 @@ test('a changed answer invalidates what was confirmed against the old one; takin
   const omitted = read({ ...others, [BROAD]: OMIT() })
   const mapped = read({ ...others, [BROAD]: MAP(group) })
   const takenBack = read(others)
-  const pkgOf = implementationPackageFor(omitted.step)
-  assert.ok(pkgOf, 'the device-registration package applies')
-  const pr = (pkgOf.meta.prerequisites ?? []).find((p) => (p.invalidatedBy ?? []).includes('policy.target.excludeGroups'))
-  assert.ok(pr, 'the premise: a prerequisite is confirmed against the exclusions')
+  const pkg = implementationPackageFor(omitted.step)
+  assert.ok(pkg, 'the device-registration package applies')
+  // A check confirmed against the exclusions, as the enrollment-workflow check this
+  // package carried until Phase 2e was (owner decision 3: no registration test); test-only here.
+  const pr = { id: 'exclusions-check', class: 'human-validation', requiredBefore: 'readyToEnforce->inPlace', invalidatedBy: ['policy.current.id', 'policy.target.excludeGroups'] }
+  const pkgOf = { ...pkg, meta: { ...pkg.meta, prerequisites: [...(pkg.meta.prerequisites ?? []), pr] } }
   assert.notDeepEqual(omitted.bindings['policy.target.excludeGroups'], mapped.bindings['policy.target.excludeGroups'], 'the answer changed the exclusions bound')
   const confirmations = { [pr.id]: { at: AT, basis: prerequisiteBasis(pr, omitted.bindings) } }
   const standing = (x: typeof omitted) => prerequisiteStatus(pkgOf, x.state, x.bindings, confirmations, null).find((s) => s.id === pr.id)!
