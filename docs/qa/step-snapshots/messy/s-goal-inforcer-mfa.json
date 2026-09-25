@@ -1,39 +1,22 @@
 {
-  "lane": "On Hold",
+  "lane": "Completed",
   "substatus": null,
-  "reason": "until a scan rebuilds this step",
+  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
   "fact": "Enforced",
-  "badge": "On Hold",
-  "bar": "After Turn Off Security Defaults",
-  "rail": "Require MFA for Inforcer Access",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Inforcer Application",
-      "state": "Application not established"
-    },
-    {
-      "label": "Prerequisites",
-      "state": "Inforcer application"
-    },
-    {
-      "label": "Prepare Emergency Access Accounts",
-      "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Turn Off Security Defaults",
-      "state": "Prerequisite · Waiting"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "AI Info",
     "Email"
   ],
-  "when": "Est. Sep 22, 2026"
+  "when": "Aug 28, 2026"
 }
