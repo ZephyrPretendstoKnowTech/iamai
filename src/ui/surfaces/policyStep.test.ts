@@ -155,10 +155,16 @@ test('every policy state the fixtures actually produce renders from recorded sta
 
 test('the frame: a full-width header holding the track, a body split beside the action column, and the footer band under both', () => {
   {
-    assert.match(CONTENT_STEP, /<StepFooter controls=\{exceptions\.length > 0 \? exceptions : null\} onScan=\{printing \? null : \(onScan \?\? null\)\}/, 'the footer is not handed the exception and the scan')
+    // Every control lives in the rail and the footer holds only the scan (step
+    // template rule 2; owner, 2026-09-25): the exception sits last in the column.
+    assert.match(CONTENT_STEP, /<StepFooter onScan=\{printing \? null : \(onScan \?\? null\)\} \/>/, 'the footer is handed more than the scan')
+    const rail = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<StepActionColumn'), CONTENT_STEP.indexOf('</StepActionColumn>'))
+    assert.match(rail, /<div className="rail-exceptions">\{exceptions\}<\/div>/, 'the exception is not in the rail')
+    // A finished step offers neither Defer nor Doesn't apply here.
+    assert.match(CONTENT_STEP, /offersDoesntApply\(cs, step\) && onDoesntApply && laneView\.lane !== 'Completed'/, 'Doesn\'t apply here is offered on a Completed step')
     // A footer with nothing to offer is not drawn.
     const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('/** A tile'))
-    assert.match(footer, /\{onScan && \(/, 'the scan control is unconditional')
+    assert.match(footer, /if \(!onScan\) return null/, 'a footer with no scan is drawn')
   }
   {
     // The head is a sibling of the body, not a row inside it: the lifecycle track

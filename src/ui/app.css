@@ -2467,6 +2467,12 @@ footer.app a {
   display: grid;
   gap: 12px;
 }
+/* The rollout exception and Doesn't apply here, last among the controls. */
+.step-action-column .rail-exceptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .step-action-column .rail-settings > details > summary {
   cursor: pointer;
   font-size: var(--t-2);

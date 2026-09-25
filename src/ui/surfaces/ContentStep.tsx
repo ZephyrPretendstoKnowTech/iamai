@@ -401,7 +401,7 @@ export function ContentStep({
       ? [<Button key="put-back" variant="secondary" onClick={onUnskip}>{app.plan.putBack}</Button>]
       : [
           deferrable ? <Button key="exclude" variant="secondary" className="rollout-exception" onClick={() => setDialog('rollout')}>{RO.control}</Button> : null,
-          offersDoesntApply(cs, step) && onDoesntApply ? <Button key="doesnt-apply" variant="secondary" onClick={() => setDialog('doesnt-apply')}>{SHARED.doesntApplyControl}</Button> : null,
+          offersDoesntApply(cs, step) && onDoesntApply && laneView.lane !== 'Completed' ? <Button key="doesnt-apply" variant="secondary" onClick={() => setDialog('doesnt-apply')}>{SHARED.doesntApplyControl}</Button> : null,
         ].filter((x) => x !== null)
   const partnerLink = step.id === 's-prereq-exclusion-group' ? null : partnerLinkOf(cs)
 
@@ -546,6 +546,10 @@ export function ContentStep({
               </details>
             </div>
           )}
+          {/* The rollout exception and Doesn't apply here, last in the column: every
+              control a step takes lives here, and the footer holds only the scan
+              (step template rule 2; owner, 2026-09-25). */}
+          {exceptions.length > 0 && <div className="rail-exceptions">{exceptions}</div>}
         </StepActionColumn>
 
         <div className="step-main step-main-rest">
@@ -632,7 +636,7 @@ export function ContentStep({
         </div>
       </div>
       {!printing && (saveStatus === 'saving' || saveStatus === 'failed') && <p className="reason step-save-feedback" role="status">{saveStatus === 'saving' ? CONTRACT.saving : CONTRACT.saveFailed}</p>}
-      <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
+      <StepFooter onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
         <>
           <StepDialog open={dialog === 'readiness'} onClose={closeDialog} eyebrow={CONTRACT.readiness.dialogEyebrow} title={CONTRACT.readiness.dialogTitle} closeLabel={CONTRACT.readiness.close}>

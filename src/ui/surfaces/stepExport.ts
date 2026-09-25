@@ -52,6 +52,7 @@ import { objectTaskOwner } from '../../roadmap/stepIds.ts'
 export type { ExportStep }
 
 /** The shared lines this module fills; the words live in content.json, as every other line's do. */
+import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
 const SHARED = content.shared as unknown as { commsForecastNote: string }
 
 /**
@@ -92,6 +93,9 @@ export function datesLineFor(step: Step, cs: Record<string, unknown>): string | 
   // step the plan still dates is a create only readiness holds: its report-only
   // creation day (roadmap/stepSchedule.ts scheduledEventOf), enforcement undated.
   if (isHeld(step) && !heldForReview(step)) return scheduledEventOf(step)?.transition === 'createReportOnly' ? '{datesDeploy}' : null
+  // Created On (a User Action policy): no report-only day to state, so the line
+  // says the announcement and the day it is created On (owner, 2026-09-25).
+  if (stepCreatedOn(step) && (awaitingDeployment(step) || createsNewPolicy(step))) return '{datesCreateOn}'
   if (awaitingDeployment(step)) return '{datesDeploy}'
   // Held only on a difference IAMAI does not write, the policy is held like any
   // other and has no Dates line: {datesReview} says "Held until the change
