@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Review",
-  "reason": "until both policies of the pair can be matched",
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Prepare Emergency Access Accounts",
   "fact": null,
-  "badge": "Ready · Review",
-  "bar": "Complete the review below",
-  "rail": "Require MFA for Guests",
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,16 +14,16 @@
   ],
   "tiles": [
     {
-      "label": "Threshold",
-      "state": "not measured"
-    },
-    {
       "label": "Configure Emergency Exclusions",
       "state": "Prerequisite · To do"
     },
     {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
+    },
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [
@@ -31,5 +31,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Review now"
+  "when": "Est. Sep 7, 2026"
 }
