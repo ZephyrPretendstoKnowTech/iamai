@@ -157,19 +157,6 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
   return out
 }
 
-/**
- * Whether the authentication methods policy the scan read has an external
- * authentication method (a third-party MFA provider) enabled; null where the
- * policy was not read.
- *
- * Confirm What You Use asked about this until Stage 3 retired the question
- * (roadmap-flow V1 decision 4: nothing read its answer). The detection is kept,
- * unasked, because a later release may need it.
- */
-export function externalMethodsEnabled(snapshot: Pick<TenantSnapshot, 'config'>): boolean | null {
-  const methods = snapshot.config.authMethodsPolicy?.status === 'ok' ? (snapshot.config.authMethodsPolicy.rows ?? []) : null
-  return methods === null ? null : methods.some((row) => ((row as { authenticationMethodConfigurations?: { '@odata.type'?: string; state?: string }[] }).authenticationMethodConfigurations ?? []).some((c) => /externalAuthenticationMethod/i.test(c['@odata.type'] ?? '') && c.state === 'enabled'))
-}
 
 // ---- D2 Identify Service and Shared Accounts ----
 

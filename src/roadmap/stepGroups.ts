@@ -139,7 +139,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'extend-mfa',
     titleKey: 'pages.app.plan.groups.extendMfa.title',
     completedTitleKey: 'pages.app.plan.groups.extendMfa.completedTitle',
-    members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-user-risk-medium', 's-goal-azure-management-mfa'],
+    members: ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-risky-users-register-block', 's-goal-user-risk-medium', 's-goal-azure-management-mfa'],
     anatomy: 'task',
   },
   // What nobody should legitimately use: a sign-in flow, a platform, a place,

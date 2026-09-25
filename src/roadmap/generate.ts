@@ -1,5 +1,6 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
+import { goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
@@ -977,7 +978,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // them — so the author's custom strength can find the tenant's own by what it
   // demands rather than by its id, which is the author's (resolvePolicy.ts
   // tenantStrengthFor).
-  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot))
+  // A companion this tenant does not use (coverage/companions.ts: Jon's EAM
+  // High-Risk Users, with no external MFA provider enabled) targets people who
+  // have no counterpart here, so the groups it targets are left out wherever
+  // another policy excludes them, as a person's "none needed" would leave them.
+  const companionTargets = (() => {
+    const keys = new Set(unusedCompanionKeys(input.goalMap ?? PINNED_GOAL_MAP, snapshot))
+    if (keys.size === 0) return []
+    const source = [...input.baseline.policies, ...pinnedSource(input.baseline.policies)]
+    return [...new Set(source.filter((p) => keys.has(policyKey(p))).flatMap((p) => ((p as unknown as { conditions?: { users?: { includeGroups?: string[] } } }).conditions?.users?.includeGroups ?? []).map((g) => g.toLowerCase())))]
+  })()
+  const tenantObjectsBase = tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot))
+  const tenantObjects = companionTargets.length === 0 ? tenantObjectsBase : { ...tenantObjectsBase, omitted: new Set([...(tenantObjectsBase.omitted ?? []), ...companionTargets]) }
   /**
    * The resolved policy with its authentication strength as the request may
    * carry it: the tenant's id, and nothing that describes the object it points
@@ -1130,7 +1142,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // never a render-time match. The signature match above remains only as the
   // fallback for a package that does not carry the mapped policy — the
   // synthetic test fixtures, which stand in for the pinned baseline.
-  const goalMap = input.goalMap ?? PINNED_GOAL_MAP
+  // A companion this tenant does not use is not part of its goal (coverage/companions.ts).
+  const goalMap = goalMapInUse(input.goalMap ?? PINNED_GOAL_MAP, snapshot)
   const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
   const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
   // The map describes this package when its keys resolve in it (the pinned

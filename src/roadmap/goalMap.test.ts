@@ -62,8 +62,11 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   // merge partner block-downloads-unmanaged (no app-enforced / cloud-app-security
   // policy — O365-Timeout was removed), mobile-app-protection (no app-protection).
   assert.deepEqual(built.unmappedGoals.slice().sort(), ['azure-management-mfa', 'block-downloads-unmanaged', 'byod-session-controls', 'mobile-app-protection', 'register-info-protected'])
-  // Includes the approved Inforcer app-scoped MFA goal, and since Phase 2b Jon's AVD
-  // and SharePoint blocks outside the trusted network; source policies are unchanged.
-  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 25, 'the mapped-goal count changed — reconcile the baseline report')
+  // Includes the approved Inforcer app-scoped MFA goal, since Phase 2b Jon's AVD and
+  // SharePoint blocks outside the trusted network, and since Phase 2c his risky-users
+  // registration block; source policies are unchanged.
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 26, 'the mapped-goal count changed — reconcile the baseline report')
+  // Remediate High-Risk Users carries its EAM companion, paired by structure (goalIdentity.ts companionOf).
+  assert.deepEqual(PINNED_GOAL_MAP['user-risk'], ['544cd9ef-5e37-4568-9ad8-b8e151be1814', 'bb6a814e-808a-467c-9475-06f89140ce99'])
   assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])
 })

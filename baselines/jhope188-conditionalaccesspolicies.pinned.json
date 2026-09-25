@@ -1,6 +1,6 @@
 {
   "commit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
-  "generatedAt": "2026-09-25T03:24:55.811Z",
+  "generatedAt": "2026-09-25T03:59:18.156Z",
   "policies": [
     {
       "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
@@ -2277,7 +2277,8 @@
       "53a8df0b-4658-4835-ace2-100b5d287aac"
     ],
     "user-risk": [
-      "544cd9ef-5e37-4568-9ad8-b8e151be1814"
+      "544cd9ef-5e37-4568-9ad8-b8e151be1814",
+      "bb6a814e-808a-467c-9475-06f89140ce99"
     ],
     "device-registration-mfa": [
       "aeb49474-5250-4b65-8b0a-56c47127ee0f"
@@ -2314,6 +2315,9 @@
     ],
     "sharepoint-trusted-network": [
       "1f960ec9-885f-4032-a6b2-a5c559279274"
+    ],
+    "risky-users-register-block": [
+      "768858bd-a5ad-47de-8acb-5e815cde0857"
     ]
   }
 }
