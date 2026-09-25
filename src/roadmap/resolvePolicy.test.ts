@@ -698,7 +698,9 @@ test('a single-policy change is one update operation, and every channel carries 
   assert.ok(!portal.some((l) => /New policy/.test(l)), 'it never says New policy')
   assert.ok(!portal.some((l) => /^Name: /.test(l)), 'and never names a policy to create')
   assert.ok(portal.some((l) => /^Grant → /.test(l)), 'the field the body changes is listed')
-  assert.ok(portal.some((l) => /leave every other setting on this policy as it is/.test(l)), 'and the rest is left alone')
+  // Its role list and session control are not the plan's either (every control is exact, owner 2026-09-25):
+  // they are a person's correction, so nothing tells them to leave the rest as it is.
+  assert.ok(!portal.some((l) => /leave every other setting on this policy as it is/.test(l)), 'the rest is not the plan’s, so it is not left alone')
   // The fields the update body does not carry are not instructed.
   assert.ok(!portal.some((l) => /^Users → /.test(l)), 'the users are not touched')
   assert.ok(!portal.some((l) => /^Target resources → /.test(l)), 'the resources are not touched')

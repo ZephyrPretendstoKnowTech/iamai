@@ -968,7 +968,7 @@ export function trackExecution(
       const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : m.op.body ?? null) : sole ? step.action.intended ?? null : null
       const unwritten =
         policyRow && intended && (step.action.missing ?? []).length === 0 && (observedState === 'report-only' || observedState === 'enforced')
-          ? unwrittenDifferences(intended, m.op?.mode === 'update' ? m.op.body : null, policyRow as Record<string, unknown>, judged)
+          ? unwrittenDifferences(withTenantContext(intended, policyRow as Record<string, unknown>), m.op?.mode === 'update' ? m.op.body : null, policyRow as Record<string, unknown>, judged)
           : []
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this
@@ -1403,4 +1403,20 @@ function plannedNameOf(step: Step, m: MemberMatch, sole: boolean): string | null
   const name = (op?.body as { displayName?: unknown } | undefined)?.displayName
   if (typeof name === 'string' && name.trim() !== '') return name
   return sole && step.createName ? step.createName : null
+}
+
+/**
+ * The plan's policy with the tenant's own authentication context in place of the
+ * one the plan proposes to create, where both target one: IAMAI reads no
+ * authentication contexts, so the ID is the tenant's object standing in for the
+ * plan's proposal, as the tenant's exclusions group stands in for the baseline
+ * author's. Never a setting to correct (every control is exact: owner, 2026-09-25).
+ */
+function withTenantContext(intended: Record<string, unknown>, deployed: Record<string, unknown>): Record<string, unknown> {
+  const refs = (p: Record<string, unknown>): unknown[] => ((p.conditions as { applications?: { includeAuthenticationContextClassReferences?: unknown } } | undefined)?.applications?.includeAuthenticationContextClassReferences as unknown[] | undefined) ?? []
+  const theirs = refs(deployed)
+  if (refs(intended).length === 0 || theirs.length === 0) return intended
+  const out = structuredClone(intended) as { conditions: { applications: Record<string, unknown> } }
+  out.conditions.applications.includeAuthenticationContextClassReferences = structuredClone(theirs)
+  return out as unknown as Record<string, unknown>
 }

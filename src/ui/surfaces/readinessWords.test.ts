@@ -3,6 +3,7 @@
 // transitive prerequisite, the two account checks, and a policy waiting on an
 // exclusions group the scan found but nobody confirmed.
 import { test } from 'node:test'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 import { everyoneGate } from '../../copy/reasons.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -427,7 +428,7 @@ test('a tenant whose methods cannot be read states no floor, and no zero percent
 test('a readiness gate that names the step moving its number links to that step', () => {
   let checked = 0
   for (const name of ['midflight', 'mid', 'demo'] as const) {
-    const f = fixture(name)
+    const f = asPlanned(fixture(name), 's-goal-admins-phishing-resistant')
     const r = runFixture(f, {}, null, f.snapshot.asOf)
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
     const readings = laneReadings(r.steps, [])
@@ -528,7 +529,7 @@ test('the campaign promises nothing a scan cannot show while its source is refus
 test('a readiness number is labelled by the strength its policies require, so two requirements never share a label', async () => {
   const { pinnedPackage } = await import('../../baseline/pinned.ts')
   const { planFinish } = await import('../../derive/finish.ts')
-  const f = fixture('demo')
+  const f = asPlanned(fixture('demo'), 's-goal-admins-phishing-resistant')
   const bodies = bodiesOf(f)
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const gateTile = (b: StepBody | undefined) => b?.readiness.tiles.find((t) => t.key === 'gate')

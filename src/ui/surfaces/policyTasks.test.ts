@@ -5,6 +5,7 @@
 // steps (their own producers, frozen) and the four Direction steps (the decision
 // anatomy) are outside it.
 import { test } from 'node:test'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -21,7 +22,7 @@ import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
 import { cardCheckOf, cardWordsOf, drawsTaskAnatomy, isPolicyProcedureTask, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
-import { CONTRACT, FINISHED_READING } from './stepContract.ts'
+import { CONTRACT, FINISHED_READING, isAllClear } from './stepContract.ts'
 import type { ContractReadiness, ReadinessTile, StepContract } from './stepContract.ts'
 import { SNAPSHOT_FIXTURES } from '../../testing/stepSnapshots.ts'
 
@@ -86,7 +87,8 @@ test('a step with no policy of its own heads its card with the thing the card is
     assert.notEqual(subject, body.eyebrow, `${id}: the card is headed by the step's kind`)
     const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, subject, cardWordsOf(step)?.check ?? null)
     assert.equal(card.heading, subject, id)
-    assert.equal(card.detail, body.contract.whatToDo.text, id)
+    // The all-clear is never a line (owner, 2026-09-25): the card carries it as nothing.
+    assert.equal(card.detail, isAllClear(body.contract.whatToDo.text) ? '' : body.contract.whatToDo.text, id)
     if (!card.satisfied) assert.equal(card.title, check, id)
     assert.notEqual(card.title, body.title, `${id}: the next check is the step's own title`)
   }
@@ -312,7 +314,8 @@ test('a policy card states no stage it is not at, and no check the plan never re
     }
     // The two cards the audit named: one read `Ready to enforce` over a policy
     // report-only and blocked, the other `Enforced` over one needing correction.
-    const held = bodyOf('s-goal-admins-phishing-resistant', 'demo')
+    // The admin policy built exactly as planned (every control is exact, owner 2026-09-25), so only the way back in holds it.
+    const held = bodyOf('s-goal-admins-phishing-resistant', 'demo', false, {}, (x) => asPlanned(x, 's-goal-admins-phishing-resistant'))
     assert.equal(held.body.contract.state.lifecycle, 'report-only', 'the premise: the policy is sitting in report-only')
     const firstTask = (b: typeof held.body): string => b.emergencyAccountTasks!.tasks.find((t) => t.required)!.title
     // Emergency access is not proven: the procedure still stands, and its

@@ -1,4 +1,5 @@
 import { readyEvidence } from '../../roadmap/fixtures/readyEvidence.ts'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 // Emergency access is a foundation: on every plan, In place when every bg.*
 // check passes, Ready otherwise, never removed by a pick or a detection. A
 // change to an existing policy carries a Dates line and a calendar entry, and
@@ -98,7 +99,8 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
   for (const c of cases) {
     // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access and
     // Direction are, every policy step is held and carries no Dates line.
-    const f = withFoundationSettled(fixture(c.name))
+    // Week two's admins policy built exactly as planned, so it meets the baseline as the case says (every control is exact, owner 2026-09-25).
+    const f = withFoundationSettled(c.name === 'demo-week2' ? asPlanned(fixture(c.name), c.stepId) : fixture(c.name))
     const snapshot = c.snapshot ? c.snapshot(f) : f.snapshot
     readyEvidence(f, snapshot)
     const first = c.snapshot ? runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>) : runFixture(f)

@@ -22,7 +22,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { exportViewsOf, stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { CONTRACT, NO_POLICY_REASONS, badgeLabel, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, NO_POLICY_REASONS, badgeLabel, isAllClear, readinessOf, stepContract } from './stepContract.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { isGroupMember } from '../../roadmap/stepGroups.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
@@ -121,7 +121,8 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
         // finished supporting step's procedure stands as its What to do, with no
         // no-op line in front of it (walk list item 19, stepExport.ts procedureStands).
         const procedureStands = k.state.lane?.lane === 'Completed' && (contentStepFor(s) as { kind?: string } | undefined)?.kind !== 'policy' && v.whatToDo.length > 0
-        assert.ok(procedureStands || v.whatToDo.includes(k.whatToDo.text), `${where}: the artifact drops the screen's action — ${v.whatToDo.join(' | ')}`)
+        // The all-clear is never a line (owner, 2026-09-25), on the screen or in the artifact.
+        assert.ok(procedureStands || isAllClear(k.whatToDo.text) || v.whatToDo.includes(k.whatToDo.text), `${where}: the artifact drops the screen's action — ${v.whatToDo.join(' | ')}`)
         checked += 1
       }
     }
