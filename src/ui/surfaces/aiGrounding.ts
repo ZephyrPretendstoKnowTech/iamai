@@ -294,7 +294,10 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
   // step's own focus for the assistant.
   // A policy in Turn On MFA for Everyone asks to be walked through creating it
   // and turning it on (walk list 4.x item 31), which is nothing to ask once it is on.
-  const done = c.policyFact !== null && c.state.satisfied
+  // Any finished step asks nothing: a goal the tenant's own policy delivers has
+  // no plan policy fact, and read "Walk me through creating this policy" (owner
+  // audit, 2026-09-24).
+  const done = c.state.satisfied
   // By where the policy is (walk list 4.x item 31): "creating this policy" read
   // on a policy already in the tenant.
   const P = PROCEDURE as unknown as { focusTurnOn: string; focusCorrect: string }

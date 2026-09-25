@@ -109,3 +109,20 @@ test('a policy briefing names the tenant policy, its state and resolved exclusio
     assert.doesNotMatch(facts, new RegExp(`^${F.observed}:`, 'm'))
   }
 })
+
+test('a finished step asks the assistant for nothing: no Focus line on any Completed step, the policy its own or the tenant’s', () => {
+  // Owner audit, 2026-09-24: every Completed policy step delivered by the
+  // tenant's own policy read "Focus for this step: Walk me through creating
+  // this policy in Report-only and turning it on after its report-only period."
+  let seen = 0
+  for (const name of ['demo', 'demo-week2'] as const) {
+    opened(name, 's-goal-mfa-all-users')
+    for (const step of runs.get(name)!.run.steps.filter((s) => s.state.satisfied)) {
+      const o = opened(name, step.id)
+      if (o.unavailable) continue
+      seen++
+      assert.ok(!o.ai.includes(`${F.focus}:`), `${name}/${step.id}: ${o.ai.slice(o.ai.indexOf(F.focus), o.ai.indexOf(F.focus) + 120)}`)
+    }
+  }
+  assert.ok(seen > 5, 'the premise: the samples finish steps')
+})
