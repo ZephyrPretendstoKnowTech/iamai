@@ -14,7 +14,7 @@ import { passkeyReadiness } from './passkeyPresentation.ts'
 import { consolidateEmergencyReadiness, emergencySubjectsOf, recoverySubjectsOf } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
-import { emergencyVerificationAiInfo, emergencyVerificationJson, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { emergencyVerificationAiInfo, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { RECOVERY_PREPARATION_WORKFLOW } from '../../roadmap/cleanupDone.ts'
 import type { CleanupCheckpoint } from '../../roadmap/cleanupDone.ts'
 
@@ -150,7 +150,7 @@ test('Step 4 draws no Verification results card in any state, on screen, in prin
   for (const [name, value] of runs) {
     const { phase, tiles } = recoveryOf(value)
     assert.equal(tiles.some(tile => tile.heading === 'Verification results'), false, `${name}: the screen draws it`)
-    for (const text of [emergencyVerificationJson(phase), emergencyVerificationAiInfo(phase)]) assert.doesNotMatch(text, /Verification results|recovery-confirmation|Verification needed/, `${name}: an export carries it`)
+    for (const text of [emergencyVerificationAiInfo(phase)]) assert.doesNotMatch(text, /Verification results|recovery-confirmation|Verification needed/, `${name}: an export carries it`)
   }
 })
 
@@ -181,10 +181,10 @@ test('Step 4: a waiting account asks for a sign-in since the most recent change,
   // The one pointer to the procedure stays: the sentence does not say where it is.
   assert.equal(signIn.instruction, 'Follow Verify emergency sign-in in Implementation Tasks.')
   assert.equal(signIn.completed.length, 1)
-  // The print draws the finding's value; the JSON export and AI Info carry it as the account's result.
+  // The print draws the finding's value; AI Info carries it on the account's line.
   const item = phase.recoveryFindings?.find(finding => finding.key === 'recovery-sign-ins')?.items?.find(row => row.accountId === second)
   assert.equal(item?.value, lines.join('\n'))
-  assert.equal(JSON.parse(emergencyVerificationJson(phase)).accounts.find((account: { id: string }) => account.id === second).result, lines.join('\n'))
+  assert.ok(emergencyVerificationAiInfo(phase).includes(lines.join('; ')), 'AI Info carries the account’s reading')
 })
 
 // "Last sign-in" read passkey sign-ins only. A password, Temporary Access Pass or
@@ -232,7 +232,7 @@ test('no channel of any emergency step asks for a sign-in after a date', () => {
   for (const [name, value] of runs) {
     const { phase, tiles } = recoveryOf(value)
     const print = (phase.recoveryFindings ?? []).flatMap(finding => [finding.value, finding.detail, ...(finding.items ?? []).map(item => item.value)])
-    for (const text of [...tiles.flatMap(linesOf), ...print, emergencyVerificationJson(phase), emergencyVerificationAiInfo(phase)]) assert.doesNotMatch(text, after, `${name}: ${text}`)
+    for (const text of [...tiles.flatMap(linesOf), ...print, emergencyVerificationAiInfo(phase)]) assert.doesNotMatch(text, after, `${name}: ${text}`)
     for (const id of ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings']) {
       for (const tile of subjectsOf(structuredClone(value), id)) for (const line of linesOf(tile)) assert.doesNotMatch(line, after, `${name}/${id}: ${line}`)
     }
