@@ -48,4 +48,6 @@ test('an emergency account sharing its Authenticator device says so on its card,
   const shared = accounts.filter((a) => (a.notes ?? []).some((n) => /SM-S918U/.test(n.value)))
   assert.equal(shared.length, 2, 'the premise: both getiamai emergency accounts share one phone')
   for (const a of shared) assert.ok(a.notes!.some((n) => /^The Authenticator device "SM-S918U" is also registered by .+ Move an emergency account off the shared Authenticator device "SM-S918U"\./.test(n.value)))
+  // Its label names the finding, not the rule it fails ("No two emergency accounts share...").
+  for (const a of shared) assert.ok(a.notes!.some((n) => n.label === 'Shared Authenticator device' && /SM-S918U/.test(n.value)), JSON.stringify(a.notes))
 })

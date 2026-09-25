@@ -2019,6 +2019,7 @@
           "lockedOutItem": "No other way in",
           "$commentSignedInAccount": "The one line on an emergency access account card when that account is the one signed in to IAMAI (the scan's /me, by object id or sign-in name; emergencyAccountTasks.ts). A fact, not a check: it replaces the bg.notPersonal note on that card and gates nothing. Owner wording, 2026-09-23.",
           "signedInAccount": "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day.",
+          "sharedDeviceLabel": "Shared Authenticator device",
           "$commentChooseAccounts": "Prepare Emergency Access Accounts' milestone under Next milestone while no emergency access account is saved (stepBody.ts), in place of its package's \"Complete the remaining emergency access checks.\": the choice is the next thing to do. Owner wording, 2026-09-23.",
           "chooseAccounts": "Choose your two emergency access accounts.",
           "$commentChooseSecondAccount": "The same milestone once one emergency access account is saved: the second is the next thing to choose (stepBody.ts).",

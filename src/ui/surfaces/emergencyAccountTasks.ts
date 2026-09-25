@@ -94,7 +94,7 @@ export type EmergencyTaskProjection = {
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */
-const WORDS = (app.plan as unknown as { emergencyTasks: Record<'passkeyNeededOne' | 'passkeyNeededMany' | 'variantsLead' | 'signedInAccount', string> }).emergencyTasks
+const WORDS = (app.plan as unknown as { emergencyTasks: Record<'passkeyNeededOne' | 'passkeyNeededMany' | 'variantsLead' | 'signedInAccount' | 'sharedDeviceLabel', string> }).emergencyTasks
 
 const safe = (value: string): string => oneLine(value).trim()
 const userOf = (ctx: StepVarContext, id: string) => ctx.snapshot.users.find(user => user.id.toLowerCase() === id.toLowerCase())
@@ -176,7 +176,11 @@ function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string;
     const sentence = `${item.value.charAt(0).toUpperCase()}${item.value.slice(1)}`
     const value = rule === 'bg.separateDevices' ? `${sentence} ${RULE_ACTION['bg.separateDevices'](item.value)}` : item.value
     if ((notes.get(id) ?? []).some((n) => n.value === value)) continue
-    notes.set(id, [...(notes.get(id) ?? []), { label: item.factLabel ?? item.label, value }])
+    // The shared-device note names the finding, never the rule's requirement
+    // ("No two emergency accounts share an Authenticator device", over the line
+    // saying this one does, read as a pass then a fail: owner audit, 2026-09-24).
+    const label = rule === 'bg.separateDevices' ? WORDS.sharedDeviceLabel : item.factLabel ?? item.label
+    notes.set(id, [...(notes.get(id) ?? []), { label, value }])
   }
   return notes
 }
