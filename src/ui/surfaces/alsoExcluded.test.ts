@@ -1,9 +1,8 @@
-// The tenant's own policy delivers the goal and also leaves out a group the
-// plan's policy does not (owner audit, 2026-09-24). Real case: the policy that
-// delivers Require Phishing-Resistant MFA for Admins also excluded a passkey
-// bootstrap group. The step read Completed and named the policy, but never said
-// it left out more than the plan's, or who was in the group: an admin added
-// there skips phishing-resistant MFA. The step stays Completed and states it.
+// The tenant's own policy for a goal also leaves out a group the plan's policy does
+// not (owner audit, 2026-09-24: the policy for Require Phishing-Resistant MFA for
+// Admins also excluded a passkey bootstrap group). It read Completed with the group
+// named; every control is exact now (owner, 2026-09-25), so it is a users setting
+// to correct.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture } from '../../roadmap/fixtures/index.ts'
@@ -11,7 +10,6 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { adminUserIdsWithEligible } from '../../roles.ts'
 
 const ADMINS = 's-goal-admins-phishing-resistant'
 const BOOTSTRAP = 'c0100000-0000-4000-8000-0000000b0075'
@@ -42,22 +40,13 @@ function opened(f: Fixture) {
   return { step, run, r, tile: r.satisfied.find((t) => t.key === 'also-excluded') ?? null, open: r.tiles.find((t) => t.key === 'also-excluded') ?? null }
 }
 
-test("a tenant's own policy that also excludes a group: Completed, the group and who is in it named, under Satisfied", () => {
+test("a tenant's own policy that also excludes a group is not Completed: the extra group is a users setting to correct", () => {
+  // Every control is exact (owner, 2026-09-25): an extra excluded group is who the
+  // policy applies to, so the step is not delivered until a person corrects it.
   const empty = opened(withBootstrapGroup(curatedFixture('small'), []))
-  assert.equal(empty.step.state.satisfied, true, 'the goal reads delivered')
-  assert.deepEqual(empty.step.action.alsoExcluded, { policyName: 'Core - Allow - MFA for Admins', groupIds: [BOOTSTRAP] })
-  assert.ok(empty.tile, 'the extra exclusion is stated')
-  assert.equal(empty.open, null, 'as a fact of the finished step, not a task')
-  assert.equal(empty.tile.value, 'SG - Passkey Bootstrap')
-  assert.equal(empty.tile.note, "Core - Allow - MFA for Admins also leaves out SG - Passkey Bootstrap, which the plan's policy does not. Nobody is in it today. Anyone added there skips this policy.")
-
-  // Somebody in it who is not an admin: the goal still reads delivered, and they are named.
-  const f = curatedFixture('small')
-  const admins = adminUserIdsWithEligible(f.snapshot.roles)
-  const someone = f.snapshot.users.find((u) => u.userType !== 'guest' && !admins.has(u.id) && !f.mapping.breakGlassUserIds.includes(u.id))!
-  const named = opened(withBootstrapGroup(f, [someone.id]))
-  assert.equal(named.step.state.satisfied, true)
-  assert.match(named.tile?.note ?? '', new RegExp(`In it today: ${named.run.input.names!.label(someone.id)}\\.`), named.tile?.note ?? '')
+  assert.equal(empty.step.state.satisfied, false, 'the goal is not read as delivered while it leaves out more than the plan')
+  assert.ok(empty.step.state.members.some((m) => m.change.unwritten.includes('conditions.users')), 'who it applies to is the setting to correct')
+  assert.deepEqual(empty.step.action.alsoExcluded, { policyName: 'Core - Allow - MFA for Admins', groupIds: [BOOTSTRAP] }, 'the step still knows which group it is')
 
   // The control: the plan's own exclusions draw nothing.
   const plan = runFixture(curatedFixture('small')).steps.find((s) => s.id === ADMINS)!

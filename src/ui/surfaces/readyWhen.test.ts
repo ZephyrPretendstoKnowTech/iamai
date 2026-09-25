@@ -5,6 +5,7 @@
 // date column, the step's Done-when and the status word read one derivation;
 // nothing asks the person to mark anything. Over the demo and its week two.
 import { test } from 'node:test'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
 // policy that can be written, not about the source groups this baseline has not
@@ -108,7 +109,7 @@ test('week one: a policy the scan first sees in report-only is watched from the 
 test('week two: the report-only policy with clean, complete records is ready now; the one seen for 24 people waits for its window; the one the tenant turned on is In place', () => {
   // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access
   // and Direction are, every policy step is held and the plan dates nothing.
-  const f = withFoundationSettled(fixture('demo-week2'))
+  const f = withFoundationSettled(asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant'))
   const run = runFixture(f)
   const token = run.steps.find((s) => s.id === TOKEN)!
   assert.equal(token.status, 'ready-to-enforce')
@@ -269,7 +270,8 @@ test('the app\'s demo: final emergency verification holds the turn-on everywhere
   assert.equal(laneReadings(run.steps).get(TRANSFER)?.lane, 'Up Next', 'its evidence gate remains open independently of the safe token-policy path')
   // And the tenant's own admins policy, which no tag of this plan's touches,
   // reads as what it is: a control already in place, not one the plan enforced.
-  assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'In place')
+  // (In place where it is the plan's policy in every setting; the sample's differs, so it reads its correction: every control is exact, owner 2026-09-25.)
+  assert.doesNotMatch(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, /^Enforced/)
 })
 
 test('a policy the tenant enforces never finishes on a report-only period it is past, and says so where IAMAI watched none', () => {

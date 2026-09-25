@@ -1,24 +1,13 @@
-// A policy the tenant wrote delivers the goal and differs from the baseline's
-// in a part coverage does not judge (owner, 2026-09-22, "warning tile, no
-// instruction"). Real case: the tenant already enforces its own "Contoso token
-// binding" policy without the baseline's Cloud PC exclusion. IAMAI read the goal
-// as delivered and said nothing about the difference; telling the tenant to
-// change a policy that works could weaken it (a compliant-device policy on every
-// platform, narrowed to the plan's shape, protects less). The step stays
-// Completed and states the difference, and asks for nothing.
+// A policy the tenant wrote for a goal, differing from the baseline's in one setting.
+// The 2026-09-22 rule read it as delivered with a warning tile; every control is
+// exact now (owner, 2026-09-25), so the step asks a person to correct the setting.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { implementationOffered } from '../../roadmap/operations.ts'
 import { readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepBodyOf } from './stepBody.ts'
-import { policyBarOf, policySubjectsOf } from './policyTasks.ts'
-import { laneReadings } from './planLanes.ts'
-import { laneViewOf } from './planBoard.ts'
-import type { Step } from '../../roadmap/types.ts'
 
 const TOKEN = 's-goal-token-protection'
 type Row = Record<string, unknown>
@@ -48,7 +37,10 @@ function opened(f: Fixture) {
   return { step, c, tile }
 }
 
-test("a tenant's own policy that differs from the baseline in a part coverage does not judge: Completed, the difference stated, nothing asked", () => {
+test("a tenant's own policy that differs from the baseline in any setting is not Completed: the step asks a person to correct it, naming the setting", () => {
+  // Every control is exact (owner, 2026-09-25), superseding the 2026-09-22
+  // warning tile: the tenant's own policy is corrected toward the baseline's for
+  // its own step, never read as delivered while a setting differs.
   const base = curatedFixture('demo')
   const f = withOwnPolicy(base, (row) => {
     const conditions = row.conditions as Row
@@ -56,40 +48,12 @@ test("a tenant's own policy that differs from the baseline in a part coverage do
     delete conditions.devices
   })
   const { step, tile, c } = opened(f)
-  assert.equal(step.state.satisfied, true, 'the goal reads delivered')
-  assert.equal(step.state.inPlace, true, "by the tenant's own policy")
-  assert.equal(implementationOffered(step), false, 'nothing is handed over to change it')
-  assert.ok(tile, 'the difference is stated')
-  // A fact under Satisfied: a Completed step shows no open card (walk list 4.x item 2).
-  assert.equal(tile.tone, 'good')
-  assert.match(tile.note ?? '', /^Contoso token binding delivers this goal and differs from the baseline's policy in the device filter\./, tile.note ?? '')
-  assert.match(tile.note ?? '', /does not ask you to change it/)
-  assert.doesNotMatch([tile.note, ...c.doneWhen, c.whatToDo.text].join(' '), /\b(add|remove|change|update) the device filter\b/i, 'no instruction to reshape it')
-  // The control: the tenant's own policy exactly as the baseline has it draws no tile.
+  assert.equal(step.state.satisfied, false, 'the goal is not read as delivered while a setting differs')
+  assert.ok(step.state.members.some((m) => m.change.unwritten.includes('conditions.devices')), 'the device filter is the setting to correct')
+  assert.match(c.milestone.label, /the device filter/, 'the step names it')
+  assert.equal(tile, null, 'no "does not ask you to change it" tile over a policy it asks to correct')
+  // The control: the tenant's own policy exactly as the baseline has it is Completed, with no tile.
   const same = opened(withOwnPolicy(base, () => {}))
   assert.equal(same.step.state.satisfied, true)
   assert.equal(same.tile, null)
-})
-
-test("a Completed step's own-policy finding is stated, and never turns it into Readiness work", () => {
-  // Both tiles say IAMAI asks for no change (owner, 2026-09-22). On a Completed
-  // step, the one below drew them beside "Complete the next task shown for each
-  // item." over the evidence link, and an Implementation box that read "Waiting
-  // on Readiness: Clear what Readiness lists first." - work nothing on the step
-  // offers, over a policy the tile says not to change.
-  const f = withOwnPolicy(curatedFixture('demo'), (row) => {
-    delete (row.conditions as Row).devices
-  })
-  const run = runFixture(f)
-  const step = run.steps.find((s) => s.id === TOKEN)!
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  assert.equal(laneViewOf(laneReadings(run.steps).get(TOKEN)!, (x) => x).label, 'Completed', 'the premise: the board files it Completed')
-  const finished = (s: Step, label: string, keys: string[]): void => {
-    const body = stepBodyOf(s, ctx)
-    assert.deepEqual(body.readiness.tiles.map((x) => x.key), keys, `the premise (${label}): the findings are its only open tiles`)
-    assert.equal(body.empty.key, 'inPlace', `${label}: ${body.empty.title}`)
-    assert.equal(policyBarOf(policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)), keys.length === 0 ? 'Every task on this step is complete.' : 'Every task on this step is complete, and it left something behind.', label)
-  }
-  // The difference is a fact under Satisfied (walk list 4.x item 2): no open tile.
-  finished(step, "the tenant's own policy", [])
 })

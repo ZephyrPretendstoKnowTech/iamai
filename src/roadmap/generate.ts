@@ -1908,7 +1908,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // A step is done if and only if its goal's verdict is inPlace (target-state
     // §8.2, prompt 46 item 9). Not the status, and never the plan's own idea of
     // whether a policy exists: the verdict is decided once, in coverage.
-    if (result.verdict === 'inPlace') {
+    // A policy doing another step's job (owner, 2026-09-25): it carries a grant and
+    // this step's own policy carries none, as a session-only step. It is never this
+    // step's correction target, and a goal that only such policies stand for is
+    // not delivered for this step: the step creates the baseline's policy, and the
+    // policy stays its own step's (tracking.ts anotherStepsJob reads the same rule).
+    const grants = (g: unknown): boolean => {
+      const x = (g ?? null) as { builtInControls?: unknown[]; authenticationStrength?: unknown } | null
+      return x !== null && ((x.builtInControls ?? []).length > 0 || (x.authenticationStrength ?? null) !== null)
+    }
+    const planGrants = (stepSources.length > 0 ? stepPolicies() : templatePolicy()).some((p) => grants((p.resolved.body as RawPolicy).grantControls))
+    const anotherStepsJob = (policyId: string): boolean => {
+      if (planGrants) return false
+      const row = (snapshot.config.caPolicies?.rows ?? []).find((raw) => (raw as RawPolicy).id === policyId) as RawPolicy | undefined
+      return grants(row?.grantControls)
+    }
+    const standing = result.verdict === 'inPlace' ? (result.satisfaction?.policyIds ?? []) : result.candidates.filter((c) => c.ownScope && c.contribution !== 'disabled').map((c) => c.policyId)
+    const anotherJobOnly = result.status !== 'absent' && result.status !== 'unknown' && claimedPolicy() === null && standing.length > 0 && standing.every(anotherStepsJob)
+    if (result.verdict === 'inPlace' && !anotherJobOnly) {
       kind = 'create'
       // Delivered — and by whom decides which of the two done outcomes this is.
       //
@@ -1949,7 +1966,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // narrowing of a policy the plan never built (an owner question).
       const claimed = claimedPolicy()
       const own = planDeployed || (claimed !== null && (result.satisfaction?.policyIds ?? []).includes(String(claimed.id)))
-      const policies = !own ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
+      // Every control is exact (owner, 2026-09-25): the one policy delivering the
+      // goal as its own step's policy is read against the plan's whoever wrote it,
+      // so a policy the tenant wrote that is not the plan's is corrected toward it.
+      // Several policies delivering it together are not one policy to compare.
+      const delivers = result.satisfaction?.policyIds ?? []
+      const ownStep = delivers.length === 1 && result.candidates.some((c) => c.policyId === delivers[0] && c.ownScope)
+      const policies = !own && !ownStep ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
       const would = policies.length === 1 ? buildCreateAction(named(policies, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
       const intended = would && (would.missing ?? []).length === 0 ? would.resolution?.policies[0]?.body : undefined
       // The same create, whoever's policy delivers the goal, for the step's
@@ -2025,7 +2048,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const one = named(stepPolicies(), String(claimed.displayName ?? proposedPolicyName(goal, naming)))
       one[0] = { ...one[0], target: { policyId: String(claimed.id), state: String(claimed.state ?? 'enabled'), policy: claimed } }
       action = changesFor(buildCreateAction(one, mapping, planId, stepId, goal.id, { sections: new Set() }), new Set(), claimed)
-    } else if (result.status === 'absent') {
+    } else if (result.status === 'absent' || anotherJobOnly) {
       kind = 'create'
       if (source) {
         const proposed = uniqueName(goal, stepId)
@@ -2072,12 +2095,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       existing = null
       for (const fits of tiers) {
         const hit = ownCandidate(result.candidates, candidate => {
-          if (goal.id === 'admin-session') {
-            const row = snapshot.config.caPolicies.rows.find(raw => (raw as RawPolicy).id === candidate.policyId) as RawPolicy | undefined
-            // A grant policy can contribute session coverage without belonging to
-            // this session-only step. Never repurpose its MFA or block controls.
-            if (row?.grantControls != null) return false
-          }
+          // A grant policy can contribute session coverage without belonging to a
+          // session-only step. Never repurpose its MFA or block controls (anotherStepsJob).
+          if (anotherStepsJob(candidate.policyId)) return false
           return fits(candidate)
         })
         if (hit === 'ambiguous') {

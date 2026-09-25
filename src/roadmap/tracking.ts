@@ -310,7 +310,7 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     // could never take: a risk policy for a goal that takes none (Require a Fresh
     // Sign-in for Intune Enrollment read "Core - Require - Sign-in risk", owner
     // 2026-09-25). No tag and no target make it this step's.
-    if (by === 'owned' && riskOnlyFor(step, coverage, policy)) continue
+    if (by === 'owned' && (riskOnlyFor(step, coverage, policy) || anotherStepsJob(step, m, policy))) continue
     claim(m, policy, by)
   }
 
@@ -392,7 +392,8 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     })()
     const candidate = own ?? (tied ? null : find((c) => delivering.has(c.policyId))) ?? null
     const policy = candidate ? byId.get(candidate.policyId) : undefined
-    if (policy && !claimed.has(policy.id as string)) claim(out[0], policy, 'fingerprint')
+    // Nor by its settings where it does another step's job (anotherStepsJob).
+    if (policy && !claimed.has(policy.id as string) && !anotherStepsJob(step, out[0], policy)) claim(out[0], policy, 'fingerprint')
   }
 
   // 5. a switched-off policy carrying the exact name the plan gives the member:
@@ -966,10 +967,16 @@ export function trackExecution(
       // create's member is read against the whole body the create writes: the
       // policy built from it is exactly that, or it has a setting to correct.
       const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : m.op.body ?? null) : sole ? step.action.intended ?? null : null
-      const unwritten =
+      const found =
         policyRow && intended && (step.action.missing ?? []).length === 0 && (observedState === 'report-only' || observedState === 'enforced')
           ? unwrittenDifferences(withTenantContext(intended, policyRow as Record<string, unknown>), m.op?.mode === 'update' ? m.op.body : null, policyRow as Record<string, unknown>, judged)
           : []
+      // The plan never weakens a grant (CLAUDE.md): a grant or session at least as
+      // strict as the goal's floor, which the baseline's own strength raises
+      // (coverage.ts meetsFloor), is no setting to correct, however exact the rest.
+      const floor = result?.goal.implementations[0]?.floor
+      const strictEnough = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id && c.meetsFloor)
+      const unwritten = strictEnough ? found.filter((d) => !(d === 'grantControls' && floor?.grant !== undefined) && !(d === 'sessionControls' && floor?.session !== undefined)) : found
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this
         // is; it never says which policy is delivering it, and the two were being
@@ -1170,7 +1177,11 @@ export function trackExecution(
     // the filter. It is not finished: a person corrects that part
     // (operations.ts manual-correction), and the next scan reads it again.
     const unplanned = lifecycle === 'enforced' && memberObservations.some((o) => o.change.unwritten.length > 0)
-    if (unplanned && step.state.satisfied) setState(step, { satisfied: false, inPlace: false })
+    if (unplanned && step.state.satisfied) {
+      setState(step, { satisfied: false, inPlace: false })
+      // Reopened, it carries no finished step's reading (Action.enforcedBelowReadiness).
+      delete step.action.enforcedBelowReadiness
+    }
 
     const since = step.history.at(-1)?.at ?? snapshot.asOf
     const sinceText = absoluteDate(since)
@@ -1208,7 +1219,10 @@ export function trackExecution(
     }
 
     if (!memberTracking.some((m) => m.policyId !== null)) {
-      if (result?.verdict === 'inPlace') {
+      // Not where the step creates its policy though coverage finds the goal in place:
+      // only policies doing another step's job stand for it (generate.ts anotherJobOnly).
+      const creates = (step.action.resolution?.policies ?? []).some((o) => o.mode === 'create')
+      if (result?.verdict === 'inPlace' && !creates) {
         advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: satisfierOf(result) ?? 'an existing policy' }), now)
       }
       continue
@@ -1419,4 +1433,25 @@ function withTenantContext(intended: Record<string, unknown>, deployed: Record<s
   const out = structuredClone(intended) as { conditions: { applications: Record<string, unknown> } }
   out.conditions.applications.includeAuthenticationContextClassReferences = structuredClone(theirs)
   return out as unknown as Record<string, unknown>
+}
+
+/**
+ * A policy doing another step's job (owner, 2026-09-25): it carries a grant (MFA,
+ * a strength, block) and this step's own policy carries none, as a session-only
+ * step such as Shorten Admin Sessions. GetIAMAI's "Core - Allow - MFA for Admins"
+ * requires phishing-resistant MFA and also sets a sign-in frequency; tied to
+ * Shorten Admin Sessions by its settings, the step asked to correct its users,
+ * client apps, grant and session into the baseline's session policy, which would
+ * have taken the MFA off it. It is never tied here by its settings or by the record
+ * alone: the step creates the baseline's policy, and the policy stays its own
+ * step's (generate.ts reads the same rule for its correction target).
+ */
+function anotherStepsJob(step: Step, m: MemberMatch, policy: PolicyRow): boolean {
+  const body = (m.op?.mode === 'create' ? m.op.body : step.action.intended ?? step.action.planned?.policies[0]?.body) as { grantControls?: unknown } | undefined
+  if (!body) return false
+  const grants = (g: unknown): boolean => {
+    const x = (g ?? null) as { builtInControls?: unknown[]; authenticationStrength?: unknown } | null
+    return x !== null && ((x.builtInControls ?? []).length > 0 || (x.authenticationStrength ?? null) !== null)
+  }
+  return !grants(body.grantControls) && grants((policy as { grantControls?: unknown }).grantControls)
 }

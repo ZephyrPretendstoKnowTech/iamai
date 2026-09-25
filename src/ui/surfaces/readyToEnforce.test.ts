@@ -1,4 +1,5 @@
 import { recoveryAccountBasis } from '../../roadmap/cleanupDone.ts'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 import { stepBodyOf } from './stepBody.ts'
 // The canonical Plan case: Ready to enforce (task 007).
 //
@@ -827,22 +828,28 @@ test('007.4/6: the one operation updates the exact matched policy and enforces t
 
 // ---- 5. only the controlled field changes ----
 
-test('007.5: a setting the tenant added that the plan does not have is a correction: the turn-on waits, and nothing IAMAI writes carries it away', () => {
-  // The tenant put a sign-in frequency on the policy that the plan's policy does
-  // not have. Every control is exact (owner, 2026-09-25): the policy is not the
-  // step's as planned until a person corrects it, and the step names the setting.
+test('007.5: the update submits the one field it controls, and an unrelated tenant setting survives it on every channel', () => {
+  // The tenant put a sign-in frequency on the policy that the plan's enforcement
+  // does not control. The patch must not carry it away, and the whole policy the
+  // operation leaves behind must still have it.
   const stronger = { signInFrequency: { isEnabled: true, type: 'hours', value: 4 } }
   const c = freshScan({
     edit: (row) => {
       row.sessionControls = { ...(row.sessionControls as Row), ...stronger }
     },
   })
-  assert.deepEqual([...new Set(c.step.state.members.flatMap((m) => [...m.change.unwritten]))], ['sessionControls'])
-  assert.notEqual(c.step.state.lifecycle, 'ready-to-enforce', 'a setting that is not the plan’s holds the turn-on')
-  assert.match(stepContract(c.step, c.ctx).milestone.label, /session controls/, 'the step names the setting to correct')
-  // Nothing IAMAI hands over rewrites it: the correction is a person's, in Entra.
-  for (const op of operationsOf(c.step)) assert.ok(!('sessionControls' in (op.body as Row)), JSON.stringify(op.body))
-  assert.doesNotMatch(powershellFor(stepOperations(c.step)), /signInFrequency/, 'the PowerShell does not rewrite the setting')
+  assert.equal(c.step.state.lifecycle, 'ready-to-enforce', 'a stronger unrelated setting does not stop the enforcement')
+  const [op] = operationsOf(c.step)
+  assert.equal(op.mode, 'update')
+  assert.deepEqual(op.body, { state: 'enabled' }, 'the patch is the one controlled field and nothing else')
+  const target = finalTargets(c.step)[0] as Record<string, Row>
+  assert.deepEqual((target.sessionControls as Row).signInFrequency, stronger.signInFrequency, 'the tenant keeps its own stronger setting')
+  // And every channel carries that same bounded body.
+  assert.equal(policyJsonText(c.step), JSON.stringify({ state: 'enabled' }, null, 2))
+  const ps = powershellFor(stepOperations(c.step))
+  assert.match(ps, /Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId '/)
+  assert.doesNotMatch(ps, /signInFrequency/, 'the PowerShell does not rewrite a setting nobody asked to change')
+  assert.ok(portalOf(c.step, c.ctx)!.some((l) => /leave every other setting on this policy as it is/i.test(l)))
 })
 
 // ---- 7. the rollback is the inverse of what was submitted ----
@@ -1080,6 +1087,13 @@ test("007.14: an enforced policy, found on by a later scan or the tenant's own, 
         assert.deepEqual(operationsOf(step), [], `${step.id}: moving mail accounts invents a policy mutation`)
         continue
       }
+      if (unavailableReason(step) === 'manual-correction') {
+        // On, with a setting that is not the plan's (every control is exact, owner
+        // 2026-09-25): not finished, and the correction is a person's, never a second enforcement.
+        assert.equal(step.state.satisfied, false, `${step.id}: finished while a setting differs from the plan`)
+        for (const op of operationsOf(step)) assert.equal((op.body as Record<string, unknown>).state, undefined, `${step.id}: a second enforcement`)
+        continue
+      }
       assert.equal(step.state.satisfied, true, `${step.id}: enforced and not delivered`)
       assert.equal(step.status, 'done', step.id)
       assert.deepEqual(findTaggedPolicies(run.input.snapshot, run.input.planId, step.id), [], `${step.id}: this plan deployed a policy for it after all`)
@@ -1148,7 +1162,7 @@ test('a policy ready to enforce with a later date says the wait is the notice, n
   {
     // The recovery test recorded on the settled tenant: it is one of the plan's own
     // prerequisites of turning a policy on, and this case is about the notice.
-    const run = runFixture(withRecoveryTested(withFoundationSettled(structuredClone(shippedFixture('demo-week2')))))
+    const run = runFixture(withRecoveryTested(withFoundationSettled(structuredClone(asPlanned(shippedFixture('demo-week2'), 's-goal-admins-phishing-resistant')))))
     const step = run.steps.find((s) => s.id === 's-goal-token-protection')
     assert.ok(step, 'the premise: demo-week2 plans the token-protection step')
     assert.equal(step.action.enforceWaitsOn, undefined, 'the premise: nothing the plan itself asks for first is outstanding')

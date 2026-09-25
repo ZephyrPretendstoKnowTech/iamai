@@ -20,7 +20,8 @@ import type { Step } from './types.ts'
 type Edge = { step: string; action: string; prerequisite: string; prerequisiteKind: string; milestone: string; condition: string | null; edgeKind: string }
 const EDGES = (data as { edges: Edge[] }).edges
 const FIXTURES: FixtureName[] = ['demo', 'demo-week2', 'hostile', 'large', 'messy', 'mid', 'midflight', 'small']
-const open = (s: Step): boolean => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.status !== 'skipped' && !s.state.satisfied && !s.state.setAside
+// Open, with a turn-on still ahead of it: a policy already On (an open step whose On policy has a setting to correct) has no turn-on left to wait on.
+const open = (s: Step): boolean => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.status !== 'skipped' && !s.state.satisfied && !s.state.setAside && s.state.lifecycle !== 'enforced'
 
 test('a risk policy waits on the MFA campaign, which no readiness threshold covers', () => {
   const f = curatedFixture('mid')

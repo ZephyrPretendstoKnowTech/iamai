@@ -1,4 +1,5 @@
 import { readyEvidence } from './fixtures/readyEvidence.ts'
+import { asPlanned } from './fixtures/asPlanned.ts'
 import { recoveryAccountBasis } from './cleanupDone.ts'
 import { stepCreatedOn } from './evidenceStrategy.ts'
 // The readiness prerequisite, as an implementation fact.
@@ -301,8 +302,9 @@ test('5 + 6: a material change to an already-enabled policy is held while its re
   {
     // Week two: the tenant turned the admins policy on and the goal is delivered.
     // There is nothing to write, which is a result of its own — being below the
-    // threshold must not turn a preservation into a failure.
-    const f = fixture('demo-week2')
+    // threshold must not turn a preservation into a failure. The policy built
+    // exactly as planned (every control is exact, owner 2026-09-25).
+    const f = asPlanned(fixture('demo-week2'), ADMINS)
     const r = runFixture(f)
     const step = r.steps.find((s) => s.id === ADMINS) as Step
     assert.equal(step.status, 'done')

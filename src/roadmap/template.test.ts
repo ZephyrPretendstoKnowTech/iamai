@@ -3,6 +3,7 @@
 // baseline policy would, and every placeholder either resolves from the
 // assumptions or names the Wave 0 step that creates the missing object.
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
+import { unavailableReason } from './operations.ts'
 import { createdOn } from './evidenceStrategy.ts'
 import { REVIEWED_SOURCES, inBaselineConflict } from './baselineConflict.ts'
 import { test } from 'node:test'
@@ -121,6 +122,8 @@ test('item 12: with no baseline at all, every create step still carries a body, 
         assert.equal(s.manualReview.confirmedAt, null, `${s.id}: the remaining action is a workflow test, not policy creation`)
         continue
       }
+      // The tenant's own policy delivers it with a setting that is not the plan's: a person corrects it (every control is exact, owner 2026-09-25).
+      if (unavailableReason(s) === 'manual-correction') continue
       assert.ok((s.action.missing ?? []).length > 0, `${s.id}: no body, and it says why`)
       continue
     }
