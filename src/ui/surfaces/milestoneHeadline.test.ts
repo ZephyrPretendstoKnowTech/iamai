@@ -5,6 +5,7 @@
 // day — and never a lane word, which is the badge's.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
@@ -148,8 +149,10 @@ test('1.1 and 1.2 read their milestone in words over their instruction line, and
   assert.equal(accounts.body.rail.instruction, 'Select the accounts dedicated to emergency access, then select Done.')
   const doneAccounts = opened('demo-week2', 's-prereq-break-glass').body.rail
   assert.equal(doneAccounts.headline, 'Completed')
-  // A Completed step asks for nothing (owner audit, 2026-09-24): no instruction over its picker.
+  // A Completed step asks for nothing (owner audit, 2026-09-24): no instruction over its picker,
+  // and the picker does not draw its help in the rail's place.
   assert.equal(doneAccounts.instruction, null)
+  assert.match(readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8'), /railInstruction=\{!taskDecision && \(rail\.instruction !== null \|\| finishedChoice\(step\.id, contract\.state\.satisfied\)\)\}/)
   // Configure Emergency Exclusions (owner audit 1.2 #1, #2): the group line is the
   // instruction under the bar until it is Completed, as 1.1's picker line is; the
   // milestone above it names what is left, moving on once a group is chosen.
