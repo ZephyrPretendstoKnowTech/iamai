@@ -93,8 +93,10 @@ export function dormantTasksOf(step: Step, ctx: StepVarContext): EmergencyTaskPr
  * onmicrosoft.com domain, the address its notices go to, the Temporary Access
  * Pass its first sign-in uses, and each admin role to assign to it and then take
  * off the everyday account. A role held eligible stays eligible; on a tenant
- * with Privileged Identity Management an active role is added as Active, which
- * is not the wizard's default there.
+ * with Privileged Identity Management an active role is added there, as Active
+ * and Permanently assigned, which is not the wizard's default; elsewhere Roles &
+ * admins asks for no assignment type, and the line says what to choose if it
+ * does, as Prepare Emergency Access Accounts' does (owner audit, 2026-09-24).
  *
  * With no admin to move the same procedure stands in general terms, so a
  * finished step still says how it is done (step template rule 7).
