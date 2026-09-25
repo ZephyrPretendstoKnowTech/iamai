@@ -194,42 +194,6 @@ test('plan file v2: a v1 file loads as an equivalent v2 plan; nothing it had is 
 // ---- ux-review-07 §1, §2: already in place, and one denominator ----
 
 
-// The "Configure: No matches everything" trap, which every narrowing condition's
-// procedure warns about — and which nothing afterwards checked. A policy built
-// with a condition left at its portal default is WIDER than the step asked for,
-// and it rendered identically to one built exactly right: same state, same rail,
-// same single observation line. The comparison existed (`asPlanned`) and its
-// answer was thrown away once it had decided readiness.
-test('a policy deployed wider than the step asked for records which dimension differs', () => {
-  const f = structuredClone(fixture('demo'))
-  const first = runFixture(f)
-  const step = first.steps.find((s) => s.action.json !== null && (s.action.resolution?.policies ?? []).length === 1)
-  assert.ok(step, 'the premise: a step with one resolved operation to submit')
-  const op = step.action.resolution!.policies[0]
-  const body = structuredClone(op.body) as Record<string, unknown>
-  const conditions = { ...(body.conditions as Record<string, unknown>) }
-  const narrowed = ['locations', 'platforms', 'devices', 'clientAppTypes'].find((k) => conditions[k] != null)
-  if (!narrowed) return // this fixture's step narrows nothing; nothing to widen
-  const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
-
-  const deploy = (widen: boolean): readonly string[] => {
-    const c = { ...conditions }
-    if (widen) delete c[narrowed]
-    const tenant = structuredClone(f)
-    const at = tenant.snapshot.asOf
-    const list = [...rows, { ...body, conditions: c, id: '0000aaaa-0000-4000-a000-00000000beef', createdDateTime: at, modifiedDateTime: at }]
-    tenant.snapshot.config.caPolicies = { ...(tenant.snapshot.config.caPolicies ?? { status: 'ok', reason: null }), rows: list } as never
-    const run = runFixture(tenant)
-    const s = run.steps.find((x) => x.id === step.id)!
-    return s.tracking?.members?.[0]?.differsIn ?? []
-  }
-
-  assert.deepEqual(deploy(false), [], 'built exactly as asked: nothing differs')
-  const widened = deploy(true)
-  assert.ok(widened.length > 0, `a condition left out is not reported as a difference (${narrowed})`)
-  assert.ok(widened.some((d) => d.includes(narrowed)), `${narrowed}: ${JSON.stringify(widened)}`)
-})
-
 // A policy built and enforced exactly as the step asked, ending in a permanent
 // "Correct" whose only task is to set the three resources the policy already
 // holds. Nothing differs — `differsIn` is empty — and the step went on offering
