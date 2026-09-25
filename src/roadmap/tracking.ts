@@ -115,7 +115,7 @@ function advance(step: Step, to: Partial<StepState>, note: string, at: string): 
   // completed by a policy that looks like its target (roadmap/workloadIdentity.ts):
   // the policy is observed and kept as it is, and the step stays on its hold. What
   // the scan saw of the policy's lifecycle still records.
-  if (to.satisfied === true && step.blockers.some((b) => b.label === WORKLOAD_IDENTITY_BLOCKER || b.kind === 'evidence' && b.label === 'inforcer-application')) return
+  if (to.satisfied === true && step.blockers.some((b) => b.label === WORKLOAD_IDENTITY_BLOCKER)) return
   // Observing an enforced policy proves deployment, not the separately recorded
   // workflow check. Keep that lifecycle visible without completing its task.
   if (to.satisfied === true && step.manualReview && !step.manualReview.confirmedAt) return

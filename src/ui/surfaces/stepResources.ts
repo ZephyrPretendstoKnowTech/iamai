@@ -191,12 +191,6 @@ export function switchedOffResources(step: Step, ctx: StepVarContext): Artifact[
 
 /** Read-only portal work when an executable policy target is not yet resolved. */
 export function policyInspectionLines(step: Step): string[] {
-  if (step.id === 's-goal-inforcer-mfa') return [
-    'Open Entra admin center → Entra ID → Enterprise applications → All applications.',
-    'Find Inforcer by Application ID 708861da-226e-4d65-a57a-24128df64524. Review its users and sign-in logs to confirm the application used by this tenant.',
-    'Open Conditional Access → Policies and review policies targeting this application, including broader policies that apply to all resources. Check user assignments, exclusions, MFA access controls and policy state.',
-    'After a representative Inforcer sign-in, scan again to update the application evidence and policy findings.',
-  ]
   // A policy step whose procedures the plan can state draws them in every state
   // (policyTasks.ts policyProcedureOf): a Completed step no longer switches to
   // "Open “{policy}” … and check its assignments, conditions, access controls

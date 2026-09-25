@@ -2841,22 +2841,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             : null,
     })
 
-    if (goal.id === 'inforcer-mfa') {
-      const s = steps[steps.length - 1]
-      const appId = '708861da-226e-4d65-a57a-24128df64524'
-      const observed = (['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status ?? '') && snapshot.appSignInSummary.some(raw => String((raw as { appId?: string }).appId ?? '').toLowerCase() === appId))
-        || (['ok', 'partial'].includes(snapshot.sources.spActivity?.status ?? '') && snapshot.spActivity.some(raw => String((raw as { appId?: string }).appId ?? '').toLowerCase() === appId))
-        || (snapshot.config.caPolicies?.status === 'ok' && snapshot.config.caPolicies.rows.some(raw => ((raw as { conditions?: { applications?: { includeApplications?: string[] } } }).conditions?.applications?.includeApplications ?? []).some(id => id.toLowerCase() === appId)))
-      const tenantApplicationName = [
-        ...(['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status ?? '') ? snapshot.appSignInSummary : []),
-        ...(['ok', 'partial'].includes(snapshot.sources.spActivity?.status ?? '') ? snapshot.spActivity : []),
-      ].map(raw => raw as { appId?: string; appDisplayName?: string }).find(row => row.appId?.toLowerCase() === appId && row.appDisplayName)?.appDisplayName
-      s.configurationFindings = [{ key: 'inforcerApplication', label: 'Inforcer Application', value: observed ? 'Exact application ID found' : 'Application not established', detail: observed ? `The tenant contains application ${tenantApplicationName ? `${tenantApplicationName} (${appId})` : appId}, the exact target of the pinned policy IAC - APP - inforcer - RequireMFA.` : `The current scan has no exact application match for Inforcer (${appId}). Check the enterprise application's Application ID in Entra; collect its sign-in evidence or rescan its application-scoped policy. A matching display name is insufficient.`, outcome: observed ? 'pass' : 'unknown' }]
-      if (!observed) {
-        s.blockers.push({ kind: 'evidence', label: 'inforcer-application', binding: BLOCKED_REASON.after('Identify the Inforcer application'), unverified: true })
-        setState(s, { satisfied: false, inPlace: false, condition: 'blocked' })
-      }
-    }
+    // Require MFA for Inforcer Access follows Confirm What You Use (owner decision
+    // 17, 2026-09-25): the answer says whether Inforcer is used, not whether this
+    // scan happened to see it sign in. Used, the goal's coverage decides it like any
+    // other: an all-applications MFA policy already delivers it, and nothing that
+    // delivers it leaves Jon's policy to create. There is no application card, and
+    // no step to identify the application.
 
     // The workload step restricts the identity that performs synchronization, and
     // nothing the scan reads establishes that identity or that workload Conditional
