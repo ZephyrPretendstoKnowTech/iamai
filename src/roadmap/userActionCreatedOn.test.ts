@@ -20,6 +20,11 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { createLines } from './policyProcedure.ts'
 import { plannedPackageStateOf } from '../ui/surfaces/stepPackage.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
+import { policyProcedureOf } from '../ui/surfaces/policyTasks.ts'
+import type { PolicyProcedureInput } from '../ui/surfaces/policyTasks.ts'
+import { datesLineFor } from '../ui/surfaces/stepExport.ts'
+import { nextMilestone } from './lifecycle.ts'
+import type { Step } from './types.ts'
 
 const USER_ACTION = ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-risky-users-register-block']
 const DEVICE = 's-goal-device-registration-mfa'
@@ -103,4 +108,58 @@ test('Require MFA to Register a Device waits for everyone it covers, and its car
     assert.ok(!a || a.unavailable, `${id}: a runnable create handed over while it waits`)
   }
   assert.doesNotMatch(body.artifacts.map((a) => (a.unavailable ? '' : a.text())).join('\n'), /"state": "enabled"|POST \/identity\/conditionalAccess\/policies/)
+})
+
+// Phase 3, 5.x (owner, 2026-09-25): the procedure stands whole in every state,
+// a created-On step is dated as it runs (announced, then created On), and a User
+// Action policy found in Report-only claims no report-only result, because
+// Microsoft never evaluated it there.
+
+/** The step with nothing holding it: what it reads once its waits are done. */
+const released = (s: Step, state: Partial<Step['state']> = {}): Step => ({ ...s, status: 'ready', blockers: [], blockedBy: [], state: { ...s.state, condition: 'healthy', ...state }, action: { ...s.action, readinessGate: undefined, escapeHatch: undefined } })
+
+test('held, a created-On create keeps its whole procedure: the user action, the strength, and On', () => {
+  const f = withDirectionApproved(curatedFixture('demo-week2'))
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === DEVICE)!
+  assert.ok(step.action.readinessGate, 'the premise: held on readiness')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const create = stepBodyOf(step, ctx).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
+  assert.ok(create, 'the create task')
+  const text = create.steps.join('\n')
+  assert.match(text, /Register or join devices/)
+  assert.match(text, /Modern MFA \+ TAP/)
+  assert.ok(text.includes('Set **Enable policy** to **On** and select **Create**.'), text)
+})
+
+test('a created-On step is dated as it runs: its Dates line announces it and creates it On, and its card says both days', () => {
+  const run = runFixture(mid())
+  const held = run.steps.find((s) => s.id === DEVICE)!
+  assert.equal(datesLineFor(held, contentStepFor(held) as Record<string, unknown>), null, 'held, it has no Dates line')
+  const step = released(held)
+  assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesCreateOn}')
+  const proposed = { exclusionsGroup: 'Core - Exclusions', serviceAccountsGroup: 'Core - Service Accounts', trustedLocation: 'Office', allowedCountries: 'Allowed countries' }
+  const dated = { ...step, events: { ...step.events, announce: { at: '2026-10-06T12:00:00.000Z' } } } as Step
+  // The contract's two readings the card uses: the lifecycle, and the milestone's day.
+  const contract = { state: { lifecycle: dated.state.lifecycle }, milestone: { kind: 'deploy', label: '', at: '2026-10-13T12:00:00.000Z', gatedBy: null, line: '' } } as unknown as PolicyProcedureInput['contract']
+  const tasks = policyProcedureOf(dated, { nameOf: (id) => id, strengthNameOf: () => 'Modern MFA + TAP', rows: [], before: [], contract, outstanding: [], estimate: false, proposed })?.tasks ?? []
+  const create = tasks.find((t) => t.id === 'create') ?? null
+  assert.ok(create, 'the create task')
+  assert.match(create.readinessTitle ?? '', /^Announce it .*Oct 6.*; create it On .*Oct 13/)
+  assert.equal(tasks.some((t) => t.id === 'turn-on'), false, 'its create is its turn-on')
+})
+
+test('a User Action policy found in Report-only claims no report-only result: its milestone and its turn-on card never say Report-only blocked no one', () => {
+  const f = structuredClone(fixture('small'))
+  const create = runFixture(structuredClone(f)).steps.find((s) => s.id === 's-goal-register-info-protected')!.action.resolution!.policies![0]
+  ;(f.snapshot.config.caPolicies as { rows: unknown[] }).rows.push({ ...structuredClone(create.body), id: 'tenant-registration', displayName: 'Tenant registration', state: REPORT_ONLY, createdDateTime: '2026-01-01T00:00:00Z', modifiedDateTime: '2026-01-01T00:00:00Z' })
+  const run = runFixture(f)
+  const found = run.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  assert.equal(found.state.lifecycle, 'report-only', 'the premise: found in Report-only')
+  const step = released(found, { lifecycle: 'ready-to-enforce' })
+  const m = nextMilestone(step)
+  assert.doesNotMatch(m.label, /Report-only|blocked no one/, m.label)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const cards = (stepBodyOf(step, ctx).emergencyAccountTasks?.tasks ?? []).map((t) => `${t.readinessTitle ?? ''} ${t.readinessDirection ?? ''}`).join(' ')
+  assert.doesNotMatch(cards, /blocked no one/)
 })

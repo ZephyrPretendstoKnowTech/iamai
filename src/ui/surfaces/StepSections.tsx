@@ -261,30 +261,26 @@ export function StepActionColumn({ rail, children = null }: { rail: StepRail; ch
 
 /**
  * The step's own footer, under both columns (the approved `.step-footer`): the
- * rollout exception on the left where the step offers one, and the existing
- * scan on the right. It offers only what production already does — the
- * exception is the existing skip and Doesn't apply here, the scan is the existing
- * action on the existing routing — and it renders nothing where it has nothing
- * to offer. The row above the step is what closes it: no step draws a Close.
+ * existing scan, and nothing else. Every control a step takes lives in the rail,
+ * the rollout exception and Doesn't apply here included (step template rule 2;
+ * owner, 2026-09-25). It renders nothing where there is no scan to offer. The
+ * row above the step is what closes it: no step draws a Close.
  */
-export function StepFooter({ controls = null, onScan }: { controls?: ReactNode; onScan?: (() => void) | null }) {
+export function StepFooter({ onScan }: { onScan?: (() => void) | null }) {
   // A scan in flight (owner item 10): the person who pressed Scan here is down
   // in the step, out of sight of the line under the header, so the same line
   // (ScanProgress.tsx scanLineText) stands over the button, which waits. The
   // header's line is the one that announces it.
   const { scan } = useSession()
   const scanning = scan.state === 'running' || scan.state === 'paused'
-  if (!controls && !onScan) return null
+  if (!onScan) return null
   return (
     <footer className="step-footer no-print">
-      {controls}
       <div className="step-footer-end">
-        {onScan && scanning && <p className="step-footer-scan-status">{scanLineText(scan)}</p>}
-        {onScan && (
-          <Button variant="primary" className="step-footer-scan" onClick={onScan} disabled={scanning}>
-            {FOOTER.scan}
-          </Button>
-        )}
+        {scanning && <p className="step-footer-scan-status">{scanLineText(scan)}</p>}
+        <Button variant="primary" className="step-footer-scan" onClick={onScan} disabled={scanning}>
+          {FOOTER.scan}
+        </Button>
       </div>
     </footer>
   )

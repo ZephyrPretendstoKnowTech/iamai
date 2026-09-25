@@ -91,7 +91,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
   const sharedRefs: Record<string, unknown> = {
     portalRoot: S.portalRoot, reportOnlyLine: S.reportOnlyLine, exclusionsLine: S.exclusionsLine,
     signature: ex && ex.signature !== undefined ? ex.signature : S.signatureDefault,
-    policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, enforceIfWrong: S.enforceIfWrong, datesNew: S.datesNew, datesChange: S.datesChange, datesDeploy: S.datesDeploy, datesObserve: S.datesObserve, datesReview: S.datesReview,
+    policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, enforceIfWrong: S.enforceIfWrong, datesNew: S.datesNew, datesCreateOn: S.datesCreateOn, datesChange: S.datesChange, datesDeploy: S.datesDeploy, datesObserve: S.datesObserve, datesReview: S.datesReview,
     portalOpen: S.portalOpen, existingCoverage: S.existingCoverage ?? '', syncRoleNote: S.syncRoleNote ?? '', strengthName: (ex && ex.strengthName) ?? '',
     certificatePrompt: S.certificatePrompt ?? '',
     registerPasskeyLine: sharedRefText('registerPasskeyLine'), methodGuidePointer: sharedRefText('methodGuidePointer'), guestNoTap: sharedRefText('guestNoTap'),
@@ -136,7 +136,7 @@ export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'strengths']
  * anything this tenant was read for. A line whose only variables are these says
  * nothing about the tenant (stepExport.ts readsTenant).
  */
-export const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap', 'passkeyOpen', 'passkeyCreate', 'passkeyPrompts', 'passkeyProvider', 'passkeySignIn', 'tapEnable'])
+export const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesCreateOn', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap', 'passkeyOpen', 'passkeyCreate', 'passkeyPrompts', 'passkeyProvider', 'passkeySignIn', 'tapEnable'])
 
 /**
  * The string behind a shared reference. Most are a key of `shared`; the three
@@ -331,6 +331,7 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     changeIfWrong: S.changeIfWrong,
     enforceIfWrong: S.enforceIfWrong,
     datesNew: S.datesNew,
+    datesCreateOn: S.datesCreateOn,
     datesChange: S.datesChange,
     datesDeploy: S.datesDeploy,
     datesObserve: S.datesObserve,

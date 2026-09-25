@@ -33,6 +33,7 @@ import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf, waitsOnFoundation } from './holds.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { LEGACY_AUTH_STEP_ID } from './blockSignIns.ts'
+import { stepEvidenceStrategy } from './evidenceStrategy.ts'
 import { addsExclusionsToEnforced, awaitsMailMove, awaitsPimSettings, awaitsWorkflowRecord, implementationOffered, operationsOf, policyHold, unavailableReason } from './operations.ts'
 import { SECURITY_DEFAULTS_STEP_ID } from './enforceWaits.ts'
 import { list } from '../copy/statements.ts'
@@ -463,8 +464,9 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     if (waits.length > 0) {
       const items = list(waits.map((w) => w.title))
       const sd = waits.find((w) => w.id === SECURITY_DEFAULTS_STEP_ID)
+      const unevaluated = stepEvidenceStrategy(step) === 'configuration'
       const label = [
-        fillText(waits.length === 1 ? MILESTONE.enforceWaitsOne : MILESTONE.enforceWaitsMany, { items }),
+        fillText(unevaluated ? MILESTONE.enforceUnevaluatedWaits : waits.length === 1 ? MILESTONE.enforceWaitsOne : MILESTONE.enforceWaitsMany, { items }),
         sd ? fillText(MILESTONE.enforceWaitsSecurityDefaults, { step: sd.title }) : null,
       ].filter((x): x is string => x !== null).join(' ')
       return { kind: 'resolve', label, at: undated ? null : at, gatedBy: null }
@@ -480,11 +482,16 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
     // notice" at a scan a day after the announce day).
     const announceAt = step.events?.announce?.at ?? null
     const noticeAhead = announceAt === null || today === null || Date.parse(announceAt) >= Date.parse(today)
+    // A User Action policy found in Report-only: Microsoft never evaluated it there,
+    // so the words claim no report-only result (owner, 2026-09-25).
+    const unevaluated = stepEvidenceStrategy(step) === 'configuration'
     const label = !later
-      ? MILESTONE.enforce
-      : days > 0 && noticeAhead
-        ? fillText(MILESTONE.enforceScheduled, { date: shownDay(at, estimatedDay(step), 'sentence'), days: String(days) })
-        : fillText(MILESTONE.enforceScheduledOther, { date: shownDay(at, estimatedDay(step), 'sentence') })
+      ? unevaluated ? MILESTONE.enforceUnevaluated : MILESTONE.enforce
+      : unevaluated
+        ? fillText(MILESTONE.enforceUnevaluatedScheduled, { date: shownDay(at, estimatedDay(step), 'sentence') })
+        : days > 0 && noticeAhead
+          ? fillText(MILESTONE.enforceScheduled, { date: shownDay(at, estimatedDay(step), 'sentence'), days: String(days) })
+          : fillText(MILESTONE.enforceScheduledOther, { date: shownDay(at, estimatedDay(step), 'sentence') })
     return { kind: 'enforce', label, at, gatedBy: null }
   }
   if (s.lifecycle === 'report-only') {

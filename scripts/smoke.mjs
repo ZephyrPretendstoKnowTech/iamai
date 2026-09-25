@@ -722,10 +722,10 @@ try {
   )
   check('Plan: the opened step is a frame attached under the row that opened it', !!framed && framed.tag === 'ARTICLE' && framed.head && framed.main && framed.row === 'plan-row|true', JSON.stringify(framed))
   // The frame's own footer: under BOTH columns, not the last line of the main
-  // column. It carries the rollout exception where the step is excludable and the
-  // scan; the row above the step is what closes it (the approved Plan design).
+  // column. It carries only the scan; the rollout exception and Doesn't apply here
+  // are the rail's (step template rule 2); the row above the step closes it.
   check('Plan: the opened step ends in the frame’s own footer, under both columns', await evaluate(`(() => { const st = document.querySelector('main.page .step'); const f = st && st.querySelector(':scope > .step-footer'); const body = st && st.querySelector(':scope > .step-body'); return !!(f && body && body.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING) })()`))
-  check('Plan: the footer offers the rollout exception and the scan, and nothing else', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Scan to update the plan')) return false; return b.every((t) => ['Scan to update the plan', 'Defer this step', "Doesn't apply here", 'Put this step back'].includes(t)) && !f.querySelector('button[disabled]') })()`))
+  check('Plan: the footer offers the scan and nothing else', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); return b.length === 1 && b[0] === 'Scan to update the plan' && !f.querySelector('button[disabled]') })()`))
   // The subject region (the task anatomy's cards, or the older readiness tiles)
   // and the action column, led by the Next milestone, are on every opened step (U2).
   check('Plan: the opened step draws Readiness and the action column with its Next milestone', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return false; const tiles = st.querySelectorAll('.readiness-strip .readiness-tile, .emergency-account-status-grid > .emergency-account-status').length; const rail = st.querySelector('.step-body > .step-action-column'); return (tiles >= 1 || !!st.querySelector('.readiness-clear')) && !!rail && /Next milestone/i.test(rail.textContent || '') && rail.querySelectorAll('.side-block').length === 1 })()`))
@@ -1153,19 +1153,19 @@ try {
     await sleep(400)
   }
   check('Demo: a picker decision is saved', decided, decideNote || openNote)
-  // A rollout exception: Require MFA for Guests, from its footer,
+  // A rollout exception: Require MFA for Guests, from its rail,
   // with the operator's reason recorded (the approved Plan design's dialog).
   await demoGo('plan')
   let skipped = false
   let skipNote = ''
   if (await openRow('/Require MFA for Guests/')) {
-    if (await clickText('/^Put this step back$/', 'main.page .step .step-footer')) {
+    if (await clickText('/^Put this step back$/', 'main.page .step .rail-exceptions')) {
       await sleep(400)
       await demoGo('plan')
       await openRow('/Require MFA for Guests/')
     }
-    skipNote = await evaluate(`[...document.querySelectorAll('main.page .step .step-footer button')].map((b) => b.textContent.trim()).join('|')`)
-    if (await clickText('/^Defer this step$/', 'main.page .step .step-footer')) {
+    skipNote = await evaluate(`[...document.querySelectorAll('main.page .step .rail-exceptions button')].map((b) => b.textContent.trim()).join('|')`)
+    if (await clickText('/^Defer this step$/', 'main.page .step .rail-exceptions')) {
       await waitFor(`!!document.querySelector('main.page .step dialog[open] textarea')`, 3000)
       await evaluate(`(() => { const el = document.querySelector('main.page .step dialog[open] textarea'); if (!el) return false; const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(el, 'Not needed for this tenant'); el.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
       await sleep(150)
