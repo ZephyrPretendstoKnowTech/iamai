@@ -46,7 +46,6 @@ import { inventoryReferences, unresolvedReferences } from '../baseline/reference
 import { implementationOffered, operationsOf } from './operations.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
-import { holdWaitsOn } from './stateReason.ts'
 import { policyKey } from '../baseline/interpretation.ts'
 
 const FIXTURES: FixtureName[] = ['demo', 'demo-week2', 'getiamai', 'small', 'mid', 'messy', 'midflight']
@@ -213,15 +212,24 @@ test('a group of the author’s that nothing settles waits on a person’s answe
   // It used to be dropped and the policy offered anyway; then it held the policy
   // with no step that could ever end the wait. Now the question is asked, once,
   // in Plan settings → Baseline mappings, and the policy holds until it is answered.
-  const r = runFixture(fixture('demo-week2'))
-  const step = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')
-  assert.ok(step, 'the device-registration step is on the demo plan')
+  // Those three are exclude-only and fall under the approved V1 assumption now,
+  // 5628ad67 with them (owner, 2026-09-19: a second break-glass group), so
+  // Device Registration waits on none of them. The group the author both
+  // includes and excludes still waits: his EAM population, carved out of the
+  // High-Risk Users policy (mid).
+  {
+    const demo = runFixture(fixture('demo-week2')).steps.find((s) => s.id === 's-goal-device-registration-mfa')!
+    assert.deepEqual((demo.action.missing ?? []).filter((m) => unsettledGroups().includes(m.token.toLowerCase())), [], 'Device Registration waits on no unexplained group')
+  }
+  const r = runFixture(fixture('mid'))
+  const step = r.steps.find((s) => s.id === 's-goal-user-risk')
+  assert.ok(step, 'the high-risk users step is on the mid plan')
   const unsettled = unsettledGroups()
   const held = (step.action.missing ?? []).filter((m) => unsettled.includes(m.token.toLowerCase()))
-  assert.deepEqual(held.map(m => m.token.toLowerCase()), ['5628ad67-f9d1-4495-abe3-99dc8f9074f1'], 'documented emergency reference is preserved while optional unexplained exclusions use the approved V1 assumption')
+  assert.deepEqual(held.map(m => m.token.toLowerCase()), ['8d0564e5-ab28-4283-9a94-9883c581adde'], 'the EAM population is not guessed away')
   assert.ok(held.every((m) => m.decision === true && m.stepId === null && m.unreadable === undefined), 'each waits on a person’s mapping, and on no step')
   assert.equal(step.blockedReason, BLOCKED_REASON.sourceMapping, 'and what holds it is the unmapped reference')
-  assert.deepEqual(holdWaitsOn(step), [], 'no step of the plan ends the wait')
+  // The step's other waits are plan steps (mid: passkey settings); none of them ends this one.
   assert.equal(implementationOffered(step), false, 'no channel offers a policy this tenant cannot honestly copy')
   assert.deepEqual(operationsOf(step), [], 'and there is no operation to run')
   assert.equal(step.action.json, null, 'nothing is written for the plan file or the exports either')

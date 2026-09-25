@@ -33,7 +33,9 @@ const MAP = (id: string): string => answerTextFor(referenceOptions()[1], [id])
 const AT = '2026-09-11T00:00:00Z'
 
 // The pinned baseline's own references, one for each part a reference plays.
-const BROAD = '5628ad67-f9d1-4495-abe3-99dc8f9074f1' // excluded from 23 policies, included by none
+// Excluded from five policies and included by none: the owner takes it as a second break-glass group
+// (2026-09-19), so it is left out unless a person maps it (sourceMappings.ts assumedAbsentSourceGroups).
+const BROAD = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
 const PASSKEY_PILOT = '1178bb5d-4f19-4b69-b33b-44eb7f5b39c9' // the whole of who one policy reaches
 const ADMIN_PASSKEYS = '5f96c57d-380f-4872-97ff-cfd74ef1ac1a' // the whole of who another reaches
 const BLOCKED_COUNTRIES = '1267ac22-ce4d-4a2e-ae00-fd3a3a7f4748' // the only location a block policy names
@@ -64,8 +66,13 @@ function resolve(policy: RawPolicy, answers: Record<string, string>) {
 }
 
 test('an exception left out keeps the people it spared in scope, mapped it is the tenant’s group, and a reference that is also a target stands left out only as the exception', () => {
-  const pending = resolve(policyOf(DEVICE_REGISTRATION), {})
-  assert.deepEqual(pending.waitsOn(BROAD), { token: pending.waitsOn(BROAD)?.token, stepId: null, decision: true })
+  // Unanswered, the second break-glass group is left out as the owner decided; mapped, it is the tenant's group.
+  const assumed = resolve(policyOf(DEVICE_REGISTRATION), {})
+  assert.equal(assumed.waitsOn(BROAD), undefined, 'the owner’s assumption holds nothing')
+  assert.equal(assumed.text.includes(BROAD), false)
+  // An exception the author also targets waits on the answer: the EAM population in High-Risk Users.
+  const pending = resolve(policyOf(RISK), {})
+  assert.deepEqual(pending.waitsOn(EAM), { token: pending.waitsOn(EAM)?.token, stepId: null, decision: true })
   const omit = resolve(policyOf(DEVICE_REGISTRATION), { [BROAD]: OMIT() })
   assert.equal(omit.waitsOn(BROAD), undefined, 'an exception left out holds nothing')
   assert.ok(omit.whole.omitted.map((x) => x.toLowerCase()).includes(BROAD), 'and is reported as the person’s answer')
@@ -184,9 +191,11 @@ test('a changed answer invalidates what was confirmed against the old one; takin
   const standing = (x: typeof omitted) => prerequisiteStatus(pkgOf, x.state, x.bindings, confirmations, null).find((s) => s.id === pr.id)!
   assert.equal(standing(omitted).satisfied, true, 'the confirmation stands for the answer it was given against')
   assert.equal(standing(mapped).satisfied, false, 'a confirmation given against the old answer still counted')
-  assert.ok((takenBack.step.action.missing ?? []).some((m) => m.decision && m.token.toLowerCase() === BROAD), 'taken back, the policy waits again')
-  assert.equal(Object.hasOwn(takenBack.bindings, 'policy.target.excludeGroups'), false, 'an exclusion set short of the open answer was bound')
-  assert.equal(standing(takenBack).satisfied, false)
+  // Taken back, the owner's assumption stands in for the answer (the group is left
+  // out, as omitted): the policy holds on nothing and binds the exclusions it had.
+  assert.equal((takenBack.step.action.missing ?? []).some((m) => m.token.toLowerCase() === BROAD), false, 'taken back, the assumption stands')
+  assert.deepEqual(takenBack.bindings['policy.target.excludeGroups'], omitted.bindings['policy.target.excludeGroups'])
+  assert.equal(standing(takenBack).satisfied, true)
 })
 
 test('no author id reaches a package binding or an operation target, whichever answers are given or taken back', () => {
