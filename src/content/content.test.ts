@@ -282,7 +282,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The example's methods policy is a complete read with key restrictions off.
   // The configuration gate's human check (editorial batch C): the example's steps are
   // evaluated from sign-in records, so no step renders the configuration gate.
-  '.shared.policyDoneWhenConfiguration[1]',
   // The device-code and authentication-transfer usage lines (editorial batch C): the
   // example lists nobody. They only read as rendered before because a fragment matched
   // the old none line, which now says the records are not proof of no use.

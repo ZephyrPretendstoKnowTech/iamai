@@ -65,7 +65,7 @@ Paste the prompt below into a new chat. This file carries no tenant data, and no
 8. **SharePoint on 2.1:** Yes keeps the step. Confirm the question's words say what each answer does.
 9. **The wider-built-policy gap** (parked in round 1): a tenant policy built wider than Jon's is adopted as-is.
 10. **6.2 pitfall:** with phones blocked, Jon's Block Unsupported Device Platforms stops a phone from registering an Authenticator passkey. Say so where the answer is chosen, before the block is created.
-11. **The demo's follow-up scan is a remote team.** Its service-accounts group and block, and its AVD and SharePoint blocks, now read Doesn't apply there. That is Phase 5's demo refresh, not a Phase 3 fix.
+11. **The demo-week2 test fixture answers "everyone remote",** so its service-accounts group and block, and its AVD and SharePoint blocks, read Doesn't apply. The live demo follows the visitor's own 2.3 answer. What the demo shows is Phase 5's refresh, not a Phase 3 fix.
 12. **planState's floor-dated rule has no fixture left.** 5.1 is the fixtures' only floor row, and readiness now holds it undated.
 13. **A created-On step has no Dates line.** A step waiting to deploy reads `{datesDeploy}` ("Report-only from …"), and a created-On step has no report-only day, so the line is dropped rather than wrong. Decide its words, for example "Announce … · Create On …".
 14. **The Plan → MFA Readiness handoff isn't drawn anywhere.** The block "N people are not yet confirmed ready for this sign-in requirement", with its link, sits under the plain readiness layout. Since 2a, every step held on its own sign-in requirement uses the task layout (4.3, 4.4, 5.1, 5.2), so no step draws it. The smoke opens the scoped MFA Readiness page directly instead. Options:
