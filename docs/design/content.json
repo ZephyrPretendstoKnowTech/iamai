@@ -2216,6 +2216,11 @@
             "label": "Policy Name",
             "note": "This step names it {planned}. Only the name differs: rename it in Entra to match."
           },
+          "stricterThanBaseline": {
+            "$comment": "Owner, 2026-09-25 (deviations, option A): a tenant policy stricter than the baseline's (it covers more people, or asks a stronger grant or session) is accepted, never a correction, and the step always says where it differs (tracking.ts MemberTracking.stricter).",
+            "label": "Stricter Than the Baseline",
+            "note": "{policy} is stricter than the baseline's policy in {dimensions}. IAMAI accepts it as it is."
+          },
           "alsoExcluded": {
             "$comment": "Owner audit, 2026-09-24: the tenant's policy delivering Require MFA for Admins also excluded a group the plan's policy does not. The step stays Completed and names the group and who is in it; anyone added there skips the policy.",
             "label": "Also Excluded",

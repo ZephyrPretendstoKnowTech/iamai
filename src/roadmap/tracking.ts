@@ -976,7 +976,12 @@ export function trackExecution(
       // (coverage.ts meetsFloor), is no setting to correct, however exact the rest.
       const floor = result?.goal.implementations[0]?.floor
       const strictEnough = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id && c.meetsFloor)
-      const unwritten = strictEnough ? found.filter((d) => !(d === 'grantControls' && floor?.grant !== undefined) && !(d === 'sessionControls' && floor?.session !== undefined)) : found
+      // And who it applies to where it covers everyone the plan's does and leaves out
+      // nobody more (owner, 2026-09-25: stricter than the baseline is accepted, and noted).
+      const stricter = found.filter((d) =>
+        (strictEnough && ((d === 'grantControls' && floor?.grant !== undefined) || (d === 'sessionControls' && floor?.session !== undefined))) ||
+        (d === 'conditions.users' && intended !== null && policyRow !== undefined && usersWider(intended, policyRow as Record<string, unknown>)))
+      const unwritten = found.filter((d) => !stricter.includes(d))
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this
         // is; it never says which policy is delivering it, and the two were being
@@ -1109,6 +1114,7 @@ export function trackExecution(
         sourceName: m.sourceName,
         policyId: policyRow?.id ?? null,
         policyName: policyRow?.displayName ?? null,
+        ...(stricter.length > 0 ? { stricter } : {}),
         // The name the step's create gives it, where that is not the tenant's: only the
         // name may differ from the plan (owner, 2026-09-25), and the step says so.
         ...(() => {
@@ -1454,4 +1460,28 @@ function anotherStepsJob(step: Step, m: MemberMatch, policy: PolicyRow): boolean
     return x !== null && ((x.builtInControls ?? []).length > 0 || (x.authenticationStrength ?? null) !== null)
   }
   return !grants(body.grantControls) && grants((policy as { grantControls?: unknown }).grantControls)
+}
+
+/**
+ * Whether a policy applies to everyone the plan's policy does and leaves out
+ * nobody it does not: all users where the plan names all users, every group,
+ * role and guest kind it includes, and no exclusion beyond the plan's. Such a
+ * policy is wider than the baseline's, which is stricter, never a correction
+ * (owner, 2026-09-25: GetIAMAI's admins policy covers 133 roles, the baseline's 46).
+ */
+export function usersWider(intended: Record<string, unknown>, deployed: Record<string, unknown>): boolean {
+  type Users = { includeUsers?: unknown[]; includeGroups?: unknown[]; includeRoles?: unknown[]; excludeUsers?: unknown[]; excludeGroups?: unknown[]; excludeRoles?: unknown[]; includeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string } | null; excludeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string } | null }
+  const usersOf = (p: Record<string, unknown>): Users => (((p.conditions ?? {}) as { users?: Users }).users ?? {})
+  const set = (a: unknown[] | undefined): Set<string> => new Set((a ?? []).map((x) => String(x).toLowerCase()))
+  const kinds = (g: { guestOrExternalUserTypes?: string } | null | undefined): Set<string> => new Set(String(g?.guestOrExternalUserTypes ?? '').split(',').map((k) => k.trim().toLowerCase()).filter(Boolean))
+  const within = (a: Set<string>, b: Set<string>): boolean => [...a].every((x) => b.has(x))
+  const I = usersOf(intended)
+  const D = usersOf(deployed)
+  const all = set(D.includeUsers).has('all')
+  if (!all) {
+    if (!within(set(I.includeUsers), set(D.includeUsers)) || !within(set(I.includeGroups), set(D.includeGroups)) || !within(set(I.includeRoles), set(D.includeRoles))) return false
+    if (I.includeGuestsOrExternalUsers && !within(kinds(I.includeGuestsOrExternalUsers), kinds(D.includeGuestsOrExternalUsers))) return false
+  }
+  if (!within(set(D.excludeUsers), set(I.excludeUsers)) || !within(set(D.excludeGroups), set(I.excludeGroups)) || !within(set(D.excludeRoles), set(I.excludeRoles))) return false
+  return within(kinds(D.excludeGuestsOrExternalUsers), kinds(I.excludeGuestsOrExternalUsers))
 }
