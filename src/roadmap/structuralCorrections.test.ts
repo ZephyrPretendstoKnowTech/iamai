@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { hiddenPolicy } from './workflows.ts'
+import { fixture, withReviewRow } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { directionSteps } from './direction.ts'
@@ -22,10 +23,11 @@ import type { Step } from './types.ts'
 const at = '2026-09-14T12:00:00Z'
 
 test('workloads: unknown stays open; no is reversible; each unassessed policy has an individual review', () => {
-  const f = fixture('demo')
+  // A baseline with a policy no goal holds (Jon's pin has none drawn since Phase 2b).
+  const f = withReviewRow(fixture('demo'))
   const original = runFixture(f)
-  const policies = original.coverage.organisation.notAssessed
-  assert.ok(policies.length > 1)
+  const policies = original.coverage.organisation.notAssessed.filter((p) => !hiddenPolicy(p.name))
+  assert.ok(policies.length > 0)
   const render = () => { const steps: Step[] = []; addWorkflowSteps(steps, policies, f.mapping); return steps }
   f.mapping.facetOverrides = {}
   const first = render()
@@ -46,7 +48,7 @@ test('workloads: unknown stays open; no is reversible; each unassessed policy ha
 })
 
 test('manual review survives unrelated scan changes and reopens on a material one (a policy’s baseline source, a changed guest population), and never overrides an unsatisfied scan requirement', () => {
-  const f = fixture('demo')
+  const f = withReviewRow(fixture('demo'))
   const policies = runFixture(f).coverage.organisation.notAssessed
   f.mapping.workflowAnswers = { sharepoint: 'yes', avd: 'yes', inforcer: 'yes', agents: 'yes', azureManagement: 'yes' }
   const first: Step[] = []

@@ -53,7 +53,6 @@ const UNPRODUCED: readonly string[] = [
   "location.target.ipRanges",
   "mfa.perUser.accounts",
   "operator.displayName",
-  "peoplePolicies.resolvedPatches",
   "pim.roleManagementPolicyIds",
   "policies.guests.mixed.current.id",
   "policies.guests.mixed.target.conditions",
@@ -93,7 +92,13 @@ const UNPRODUCED: readonly string[] = [
 
 function emittedKeys(): Set<string> {
   const out = new Set<string>()
-  const preps: ((f: Fixture) => Fixture)[] = [(f) => f, withDirectionApproved, withEmergencyAccessSettled, withFoundationSettled]
+  // No sample names a trusted network, so one prep marks its IP locations as the
+  // office: the trusted-network bindings are produced only where a tenant has one.
+  const withTrustedNetwork = (f: Fixture): Fixture => {
+    const ids = ((f.snapshot.config.namedLocations?.rows ?? []) as { id?: string; '@odata.type'?: string }[]).filter((l) => /ipNamedLocation/i.test(String(l['@odata.type'] ?? ''))).map((l) => String(l.id))
+    return ids.length === 0 ? f : { ...f, mapping: { ...f.mapping, trustedLocationIds: ids } }
+  }
+  const preps: ((f: Fixture) => Fixture)[] = [(f) => f, withDirectionApproved, withEmergencyAccessSettled, withFoundationSettled, (f) => withTrustedNetwork(withFoundationSettled(f))]
   for (const raw of allFixtures()) {
     for (const prep of preps) {
       const f = prep(structuredClone(raw))

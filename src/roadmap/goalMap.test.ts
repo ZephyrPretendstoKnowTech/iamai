@@ -62,7 +62,8 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   // merge partner block-downloads-unmanaged (no app-enforced / cloud-app-security
   // policy — O365-Timeout was removed), mobile-app-protection (no app-protection).
   assert.deepEqual(built.unmappedGoals.slice().sort(), ['azure-management-mfa', 'block-downloads-unmanaged', 'byod-session-controls', 'mobile-app-protection', 'register-info-protected'])
-  // Includes the approved Inforcer app-scoped MFA goal; source policies are unchanged.
-  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 23, 'the mapped-goal count changed — reconcile the baseline report')
+  // Includes the approved Inforcer app-scoped MFA goal, and since Phase 2b Jon's AVD
+  // and SharePoint blocks outside the trusted network; source policies are unchanged.
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 25, 'the mapped-goal count changed — reconcile the baseline report')
   assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])
 })

@@ -7824,6 +7824,114 @@
         "createdReportOnly": "In Report-only",
         "milestone": "{n} policies to create in Report-only"
       }
+    },
+    {
+      "id": "avd-trusted-network",
+      "kind": "policy",
+      "$comment": "Phase 2b (owner, 2026-09-24): the baseline's review row became a policy step. Its Direction service answer puts it on the plan; with everyone working remotely it does not apply (Phase 2d).",
+      "title": "Restrict Azure Virtual Desktop to the Trusted Network",
+      "changeLine": null,
+      "why": "Virtual desktops open only from the office network, so a stolen password cannot start a desktop session from anywhere else.",
+      "learn": {
+        "url": "https://learn.microsoft.com/azure/virtual-desktop/set-up-mfa",
+        "checkedOn": "2026-09-25"
+      },
+      "who": {
+        "lead": "{active} active people",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}"
+      ],
+      "ifWrong": "{policyIfWrong}",
+      "comms": null,
+      "doesntApply": true,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "Anyone who opens a virtual desktop from home or on the road is blocked once this is on.",
+            "applies": "always"
+          },
+          {
+            "text": "It blocks the Windows 365 app as well as Azure Virtual Desktop, because the Windows App signs in to both, so a Cloud PC opened outside the office is blocked too.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "A person who cannot open their virtual desktop: check that the sign-in came from outside the trusted network before changing anything."
+        ],
+        "manager": "Virtual desktops open only from the office network.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso",
+        "active": 12,
+        "policyName": "Core - Block - Azure Virtual Desktop outside the trusted network",
+        "signature": "IT",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain the two applications the policy blocks and the network it leaves open. Do not widen the trusted network to let a blocked sign-in through."
+    },
+    {
+      "id": "sharepoint-trusted-network",
+      "kind": "policy",
+      "$comment": "Phase 2b (owner, 2026-09-24): the baseline's review row became a policy step. Its Direction service answer puts it on the plan; with everyone working remotely it does not apply (Phase 2d).",
+      "title": "Restrict SharePoint and OneDrive to the Trusted Network",
+      "changeLine": null,
+      "why": "Company files open only from the office network, so a stolen password cannot reach them from anywhere else.",
+      "learn": {
+        "url": "https://learn.microsoft.com/sharepoint/control-access-based-on-network-location",
+        "checkedOn": "2026-09-25"
+      },
+      "who": {
+        "lead": "{active} active people",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}"
+      ],
+      "ifWrong": "{policyIfWrong}",
+      "comms": null,
+      "doesntApply": true,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "Anyone working from home loses SharePoint and OneDrive once this is on, and the OneDrive app stops syncing their files there.",
+            "applies": "always"
+          },
+          {
+            "text": "Guests you share files with are blocked too, unless they sign in from your trusted network.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "A person who cannot open a file: check that the sign-in came from outside the trusted network before changing anything."
+        ],
+        "manager": "Company files in SharePoint and OneDrive open only from the office network.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso",
+        "active": 12,
+        "policyName": "Core - Block - SharePoint and OneDrive outside the trusted network",
+        "signature": "IT",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain what the block stops outside the office, including OneDrive sync and guests. Do not widen the trusted network to let a blocked sign-in through."
     }
   ]
 }

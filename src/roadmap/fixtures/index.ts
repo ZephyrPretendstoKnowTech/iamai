@@ -1044,6 +1044,30 @@ export function withSyntheticBaseline(f: Fixture): Fixture {
   return { ...f, baseline: syntheticBaseline(f.name) }
 }
 
+/**
+ * The fixture with one baseline policy no catalogue goal holds, so the plan
+ * draws a review row for it (roadmap/workflows.ts addWorkflowSteps). Jon's pin
+ * draws none since Phase 2b: its AVD and SharePoint blocks became goals, and its
+ * other unassessed policies are hidden for v1.0. The rows remain for any
+ * baseline that carries such a policy: here MFA on SharePoint and OneDrive alone,
+ * which keeps the row's service and its SharePoint words.
+ */
+export function withReviewRow(f: Fixture): Fixture {
+  const policy = {
+    id: '6f1f0e00-0000-4000-8000-00000000c0de',
+    displayName: 'IAC - APP - GRANT - SharePoint-OneDrive - MFA',
+    state: 'enabledForReportingButNotEnforced',
+    conditions: {
+      users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: ['b63c3682-06c6-45f0-9692-ee76b604b4f9'], includeRoles: [], excludeRoles: [] },
+      applications: { includeApplications: ['00000003-0000-0ff1-ce00-000000000000'], excludeApplications: [], includeUserActions: [], includeAuthenticationContextClassReferences: [] },
+      clientAppTypes: ['all'],
+    },
+    grantControls: { operator: 'OR', builtInControls: ['mfa'], customAuthenticationFactors: [], termsOfUse: [] },
+    sessionControls: null,
+  }
+  return { ...f, baseline: { ...f.baseline, policies: [...f.baseline.policies, policy as never] } }
+}
+
 /** Every fixture on its curated baseline, for a sweep that needs a policy to be writable at all. */
 export function allCuratedFixtures(): Fixture[] {
   return allFixtures().map((f) => ({ ...f, baseline: asCuratedBaseline(f.baseline) }))

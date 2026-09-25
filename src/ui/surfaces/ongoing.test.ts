@@ -15,7 +15,7 @@
 // off `content.cleanup` and through `cleanupEntry`.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, withReviewRow } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
@@ -54,10 +54,10 @@ const ONGOING = [
 ]
 
 /** Every step's body on a fixture, as the Plan composes it (closeDoors.test.ts bodiesOf). */
-function bodiesOf(name: FixtureName, mapping?: MappingState): Map<string, StepBody> {
+function bodiesOf(name: FixtureName, mapping?: MappingState, shape: (f: Fixture) => Fixture = (f) => f): Map<string, StepBody> {
   setDisplayTimeZone('UTC')
   try {
-    const f: Fixture = mapping ? { ...fixture(name), mapping } : fixture(name)
+    const f: Fixture = shape(mapping ? { ...fixture(name), mapping } : fixture(name))
     const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
     const readings = laneReadings(r.steps, [])
     const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
@@ -153,7 +153,8 @@ test('C5: the step reaches no create on the demo, and its Completion Criteria is
 
 /** One generated row's instruction lines, as the opened step draws them. */
 function reviewSteps(name: FixtureName): string[] {
-  const bodies = bodiesOf(name)
+  // A baseline with a policy no goal holds (Jon's pin has none drawn since Phase 2b).
+  const bodies = bodiesOf(name, undefined, withReviewRow)
   for (const [id, b] of bodies) {
     if (!id.startsWith('s-review-baseline-')) continue
     const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])

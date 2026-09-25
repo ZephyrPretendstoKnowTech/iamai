@@ -79,6 +79,10 @@ test('demo first visit: neither group is settled, no policy step is Ready, and e
       assert.equal(wait.kind === 'step' && wait.stepId, gate.id)
       assert.equal(wait.binding, `after: ${gate.title}`)
       assert.notEqual(holdOf(step), null, `${step.id} is not held`)
+      // A create only a readiness threshold holds keeps its report-only day
+      // (owner decision 2026-09-11; stepSchedule.test.ts): Device Registration,
+      // since no unmapped group holds it (Phase 2a). Its milestone is still the wait.
+      if (step.scheduled?.transition === 'createReportOnly' && holdOf(step)?.kind === 'readiness') continue
       assert.equal(step.scheduled ? scheduleOf(step).at : null, null, `${step.id} carries a date while held`)
     }
   }

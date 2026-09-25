@@ -16,6 +16,15 @@ import { SERVICE_KEYS, answeredReasonOf } from './directionAnswers.ts'
 
 /** Incomplete pinned definitions retained in source, hidden for the V1 journey. */
 export const HIDDEN_AGENT_POLICY = /IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i
+/**
+ * Jon's AVD allow-list block and WindowsAzureAD-BaselineScopes each depend on a
+ * group his baseline never identifies (the allowed desktop users; the excluded
+ * group): hidden from every surface for v1.0 (owner, 2026-09-24, decision 2;
+ * docs/plans/roadmap-flow/v1.1-list.md).
+ */
+export const HIDDEN_V1_POLICY = /AVD.*AllowedAVDUsers|WindowsAzureAD-BaselineScopes/i
+/** A pinned policy no surface draws in v1.0. */
+export const hiddenPolicy = (name: string): boolean => HIDDEN_AGENT_POLICY.test(name) || HIDDEN_V1_POLICY.test(name)
 const W = workflowWords
 /**
  * The one Microsoft page every generated review row cites, and the day the
@@ -79,7 +88,7 @@ export function serviceEvidence(key: string, signal: ServiceSignal): string | nu
 export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotAssessed[], availableGoalIds: readonly string[], people?: ReadonlySet<string>): { keys: string[]; signal: (key: string) => ServiceSignal } {
   const existing = new Set(availableGoalIds)
   const goalFacets = goals.goals.filter((g) => existing.has(g.id) && g.applicability).map((g) => String(g.applicability))
-  const keys = [...new Set([...goalFacets, ...policies.filter((p) => !HIDDEN_AGENT_POLICY.test(p.name)).map(serviceOf).filter((s): s is string => s !== null)])].sort()
+  const keys = [...new Set([...goalFacets, ...policies.filter((p) => !hiddenPolicy(p.name)).map(serviceOf).filter((s): s is string => s !== null)])].sort()
   const detected = detectFacets(snapshot, {})
   const reliable = detectFacets({ ...snapshot, appSignInSummary: ['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status) ? snapshot.appSignInSummary : [], spActivity: ['ok', 'partial'].includes(snapshot.sources.spActivity?.status) ? snapshot.spActivity : [] }, {})
   // The people who signed in to each service Confirm What You Use asks about,
@@ -110,7 +119,7 @@ export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotA
 export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping: MappingState, confirmations: Record<string, Record<string, OwnerConfirmation>> = {}): void {
   const answer = (key: string): string => mapping.workflowAnswers?.[key] ?? (mapping.facetOverrides[key] ? mapping.facetOverrides[key].on ? 'yes' : 'no' : 'unsure')
   for (const policy of policies) {
-    if (HIDDEN_AGENT_POLICY.test(policy.name)) continue
+    if (hiddenPolicy(policy.name)) continue
     const key = serviceOf(policy)
     const name = key ? (W.names as Record<string, string>)[key] : policy.name
     const title = fillText(W.reviewTitle, { service: name, policy: policy.name })

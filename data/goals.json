@@ -2119,6 +2119,164 @@
       "learnUrl": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-policy-all-users-mfa",
       "tldr": "Inforcer access requires multifactor authentication.",
       "cis": []
+    },
+    {
+      "id": "avd-trusted-network",
+      "name": "Azure Virtual Desktop restricted to the trusted network",
+      "shortName": "Azure Virtual Desktop outside the trusted network",
+      "description": "Azure Virtual Desktop can be reached only from the trusted network.",
+      "phase": 2,
+      "domain": "Specialist services",
+      "securityValue": 3,
+      "baseEffort": 1,
+      "applicability": "avd",
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "appsIdsInclude": [
+              "9cdead84-a844-4324-93f2-b2e6bb768d07",
+              "0af06dc6-e4b5-4f28-818e-e78e62d137a5"
+            ],
+            "locationsPresent": true,
+            "grantBlock": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "avd",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Azure Virtual Desktop outside the trusted network",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "9cdead84-a844-4324-93f2-b2e6bb768d07",
+                  "0af06dc6-e4b5-4f28-818e-e78e62d137a5"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "locations": {
+                "includeLocations": [
+                  "All"
+                ],
+                "excludeLocations": [
+                  "{trustedLocations}"
+                ]
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/azure/virtual-desktop/set-up-mfa",
+      "tldr": "Virtual desktops open only from the office network, so a stolen password cannot open one from anywhere else.",
+      "cis": []
+    },
+    {
+      "id": "sharepoint-trusted-network",
+      "name": "SharePoint and OneDrive restricted to the trusted network",
+      "shortName": "SharePoint and OneDrive outside the trusted network",
+      "description": "SharePoint and OneDrive can be reached only from the trusted network.",
+      "phase": 2,
+      "domain": "Specialist services",
+      "securityValue": 3,
+      "baseEffort": 1,
+      "applicability": "sharepoint",
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "appsIdsInclude": [
+              "00000003-0000-0ff1-ce00-000000000000"
+            ],
+            "locationsPresent": true,
+            "grantBlock": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "sharepoint",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - SharePoint and OneDrive outside the trusted network",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "00000003-0000-0ff1-ce00-000000000000"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "locations": {
+                "includeLocations": [
+                  "All"
+                ],
+                "excludeLocations": [
+                  "{trustedLocations}"
+                ]
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/sharepoint/control-access-based-on-network-location",
+      "tldr": "Company files open only from the office network, so a stolen password cannot reach them from anywhere else.",
+      "cis": []
     }
   ]
 }

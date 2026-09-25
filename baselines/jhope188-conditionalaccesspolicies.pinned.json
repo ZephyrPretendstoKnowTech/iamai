@@ -1,6 +1,6 @@
 {
   "commit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
-  "generatedAt": "2026-09-08T04:02:40.518Z",
+  "generatedAt": "2026-09-25T03:24:55.811Z",
   "policies": [
     {
       "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
@@ -2308,6 +2308,12 @@
     ],
     "inforcer-mfa": [
       "1d3a7677-a723-4c56-924c-2e1dc63df105"
+    ],
+    "avd-trusted-network": [
+      "b13dd393-f644-45c8-81bf-aa7f4032ebd3"
+    ],
+    "sharepoint-trusted-network": [
+      "1f960ec9-885f-4032-a6b2-a5c559279274"
     ]
   }
 }

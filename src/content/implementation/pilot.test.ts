@@ -8,6 +8,7 @@
 // fixture supplies state, bindings and confirmations; every word of content is
 // read from the package itself.
 import { test } from 'node:test'
+import { EXCLUSIONS_RECORD_KEY } from '../../mapping/safetyChoice.ts'
 import { RUNTIME_META_KEYS } from './library.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -296,8 +297,8 @@ test('the source date comes from the package’s verified sources, never a clock
 
 // --------------------------------------------------------------- runtime adapter
 
-function stepAndContext(name: 'small' | 'demo'): { step: Step; ctx: StepVarContext } {
-  const f = fixture(name)
+function stepAndContext(name: 'small' | 'demo', shape: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture> = (f) => f): { step: Step; ctx: StepVarContext } {
+  const f = shape(structuredClone(fixture(name)))
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === PILOT_STEP_ID)!
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
@@ -338,7 +339,12 @@ test('a real fixture step reaches all five channels through the runtime adapter 
   }
   // where Foundation A withholds the operation, the target is unresolved and Exclusions is not Ready
   {
-    const { step, ctx } = stepAndContext('demo')
+    // With no exclusions group chosen, Foundation A has nothing to exclude and
+    // withholds the operation (the demo's unmapped group did this until Phase 2a).
+    const { step, ctx } = stepAndContext('demo', (f) => {
+      f.mapping.records = Object.fromEntries(Object.entries(f.mapping.records ?? {}).filter(([k]) => k !== EXCLUSIONS_RECORD_KEY))
+      return f
+    })
     const c = stepContract(step, ctx)
     const bindings = packageBindings(step, ctx, c)
     assert.equal(bindings['policy.target.excludeGroups'], undefined)

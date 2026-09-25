@@ -4,7 +4,7 @@ import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
-import { answeredReasonOf, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
+import { SERVICE_KEYS, answeredReasonOf, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, mailAnswerMoot, settleBlockSignIns } from './blockSignIns.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
@@ -15,6 +15,7 @@ import { docFor } from '../baseline/index.ts'
 import { referenceUsage } from '../baseline/interpretation.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
+import { scopedToGoalApps } from '../coverage/goalIdentity.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
 import { applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
@@ -340,7 +341,7 @@ const EXTRAS = STEP_EXTRAS
 // The step ids live in stepIds.ts (the answer readers name them without
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
-import { idFor, BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
+import { idFor, stepIdForGoal, BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import { passkeyRestrictionReading } from './passkeyRestrictions.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, operatorSignInOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
@@ -1118,7 +1119,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // "NoExclusions" variants are never considered.
   const baselineMatchesFor = (goal: Goal): typeof baselineFactsList => {
     const impl = goal.implementations[0]
-    return baselineFactsList.filter((b) => matchesSignature(b.facts, impl.signature)).filter((b) => !/no[-_ ]?exclusions?/i.test(b.facts.name))
+    // A goal scoped to one service's apps is only that service's policy: the
+    // signature's app list also accepts All resources, and the synthetic
+    // package's countries block stood in for the AVD and SharePoint blocks (Phase 2b).
+    return baselineFactsList.filter((b) => matchesSignature(b.facts, impl.signature) && scopedToGoalApps(goal.id, b.facts.apps)).filter((b) => !/no[-_ ]?exclusions?/i.test(b.facts.name))
   }
   // The goal map decides what renders (walk-51 item 9, goalMap.ts): a goal the
   // baseline does not hold never renders, in the demo and the product alike, and
@@ -1734,10 +1738,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   for (const result of input.coverage.results) {
     if (result.status === 'not-applicable' || result.status === 'licence-limited') {
-      if (result.goal.id === 'inforcer-mfa' && result.status === 'not-applicable' && inBaseline(result.goal)) {
-        const s = prereq('s-goal-inforcer-mfa', 'Require MFA for Inforcer Access')
+      // A goal a Direction service answer decides, answered No, reads Doesn't apply
+      // rather than vanishing (Inforcer; since Phase 2b, Jon's AVD and SharePoint blocks).
+      const service = typeof result.goal.applicability === 'string' && (SERVICE_KEYS as readonly string[]).includes(result.goal.applicability) ? result.goal.applicability : null
+      if (service !== null && result.status === 'not-applicable' && inBaseline(result.goal)) {
+        const s = prereq(stepIdForGoal(result.goal.id), stepById[result.goal.id]?.title ?? result.goal.name)
         s.goalId = result.goal.id
-        s.doesntApply = answeredReasonOf('service:inforcer', 'no')
+        s.doesntApply = answeredReasonOf(`service:${service}`, 'no')
         s.doesntApplyByAnswer = true
         setState(s, { setAside: true })
         steps.push(s)
@@ -3242,7 +3249,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
   if (canUseConditionalAccess) {
-    const availableGoalIds = input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id)
+    // Only goals the baseline holds ask a service question: the catalogue's Azure
+    // management goal is not Jon's, and it kept 2.1 asking a question that took
+    // nothing off the plan once the BaselineScopes row was hidden (Phase 2b).
+    const availableGoalIds = input.coverage.results.filter((r) => r.status !== 'licence-limited' && inBaseline(r.goal)).map((r) => r.goal.id)
     steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds, nameOf }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
     countDirectionImpact(steps, availableGoalIds)

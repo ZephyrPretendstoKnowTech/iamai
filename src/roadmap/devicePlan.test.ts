@@ -92,7 +92,8 @@ test('open: the step asks, phones are out of readiness, and only the device step
   }
   // D3 asks the office network too since Stage 3: a step waits on it for its
   // devices or for its office network, never for anything else.
-  for (const s of r.steps) if (!DEVICE_GOALS.has(s.goalId) && !directionDependenciesOf(s).includes('officeNetwork')) assert.ok(!s.blockers.some((b) => b.label === `direction:${D3}`), `${s.id}: does not wait on the device decision`)
+  // Jon's unsupported-platforms block waits on the phones answer since Phase 2a (Blocked widens it).
+  for (const s of r.steps) if (!DEVICE_GOALS.has(s.goalId) && s.goalId !== 'block-unsupported-platforms' && !directionDependenciesOf(s).includes('officeNetwork')) assert.ok(!s.blockers.some((b) => b.label === `direction:${D3}`), `${s.id}: does not wait on the device decision`)
   // Device readiness against the open decision: compliant computers only, phones out.
   const compliant = r.steps.find((x) => x.goalId === COMPLIANT_DEVICE_GOAL)!
   const all = r.viability.map((v) => v.userId)

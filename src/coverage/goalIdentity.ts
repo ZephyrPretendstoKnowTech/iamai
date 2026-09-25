@@ -25,6 +25,28 @@ const CATALOGUE = goalsData.goals as unknown as Goal[]
 // app, not the management plane, so it does not scope the "Azure management" goal
 // (owner: if a policy targets it, the goal is not in this baseline).
 const AZURE_MGMT_APP_IDS = new Set(['797f4846-ba00-4fd7-ba43-dac1f8f63013'])
+/**
+ * The goals scoped to one service's own applications, by the ids that are the
+ * whole of that scope (Phase 2b: the baseline's AVD and SharePoint and OneDrive
+ * blocks outside the trusted network became goals). A policy on exactly these
+ * ids is that service's; the class decides the goal, as for Inforcer.
+ */
+export const APP_SCOPED_GOALS: Readonly<Record<string, readonly string[]>> = {
+  'inforcer-mfa': ['708861da-226e-4d65-a57a-24128df64524'],
+  'avd-trusted-network': ['9cdead84-a844-4324-93f2-b2e6bb768d07', '0af06dc6-e4b5-4f28-818e-e78e62d137a5'],
+  'sharepoint-trusted-network': ['00000003-0000-0ff1-ce00-000000000000'],
+}
+/** True when the policy's applications are exactly the goal's own, nothing wider. */
+export function scopedToGoalApps(goalId: string, apps: { all: boolean; ids: ReadonlySet<string> }): boolean {
+  const own = APP_SCOPED_GOALS[goalId]
+  if (!own) return true
+  const ids = new Set([...apps.ids].map((id) => id.toLowerCase()))
+  return !apps.all && ids.size === own.length && own.every((id) => ids.has(id))
+}
+const sameIds = (ids: ReadonlySet<string>, own: readonly string[]): boolean => {
+  const lower = new Set([...ids].map((id) => id.toLowerCase()))
+  return lower.size === own.length && own.every((id) => lower.has(id))
+}
 
 /** A policy for the map; `placeholders` (the pin's tokens for the author's objects) says which group is the service-accounts group. */
 export type PolicyForMap = { id: string; name: string; facts: PolicyFacts; placeholders?: Record<string, string> }
@@ -63,7 +85,9 @@ function userClass(f: PolicyFacts, placeholders: Record<string, string> = {}): U
 
 function appsClass(f: PolicyFacts): string {
   const a = f.apps
-  if (a.ids.size === 1 && a.ids.has('708861da-226e-4d65-a57a-24128df64524')) return 'inforcer'
+  if (sameIds(a.ids, APP_SCOPED_GOALS['inforcer-mfa'])) return 'inforcer'
+  if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['avd-trusted-network'])) return 'avd'
+  if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['sharepoint-trusted-network'])) return 'sharepoint'
   if (a.adminPortals) return 'adminPortals'
   if ([...a.ids].some((id) => AZURE_MGMT_APP_IDS.has(id))) return 'azureManagement'
   if (a.userActions.size > 0) return 'userAction'

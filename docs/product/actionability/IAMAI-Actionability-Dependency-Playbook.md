@@ -273,6 +273,8 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-geo-restriction` | Block Sign-ins From Countries Not Allowed | CA policy | all-users | portal | | yes |
 | `s-goal-guests-mfa` | Require MFA for Guests | CA policy pair | guests | portal | | yes |
 | `s-goal-service-accounts-trusted-network` | Restrict Service Accounts to the Trusted Network | CA policy | service-accounts | portal | | yes |
+| `s-goal-sharepoint-trusted-network` | Restrict SharePoint and OneDrive to the Trusted Network | CA policy | all-users | portal | | yes |
+| `s-goal-avd-trusted-network` | Restrict Azure Virtual Desktop to the Trusted Network | CA policy | all-users | portal | | yes |
 | `s-goal-workload-identity-block` | Restrict the Entra Connect Sync Account to Its Address | identity-type-dependent | workload-identity (pending) | portal | | yes |
 | `s-goal-sign-in-risk` | Challenge High-Risk Sign-ins | Identity Protection CA | all-users | portal | | yes |
 | `s-goal-sign-in-risk-medium` | Challenge Medium-Risk Sign-ins | Identity Protection CA | all-users | portal | | yes |
@@ -361,6 +363,10 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-guests-mfa:enforce` | `s-question-partner` | step | `complete` | `partner-accounts-exist` | conditional | package | ok |
 | `s-goal-service-accounts-trusted-network:create` | `s-prereq-service-accounts-group` | step | `complete` | — | hard | package | ok |
 | `s-goal-service-accounts-trusted-network:create` | `s-prereq-trusted-location` | step | `complete` | — | hard | package | ok |
+| `s-goal-sharepoint-trusted-network:create` | `s-prereq-trusted-location` | step | `complete` | — | hard | pinned | ok |
+| `s-goal-sharepoint-trusted-network:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
+| `s-goal-avd-trusted-network:create` | `s-prereq-trusted-location` | step | `complete` | — | hard | pinned | ok |
+| `s-goal-avd-trusted-network:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-workload-identity-block:create` | `decision:workload-identity-type` | decision | `resolved` | — | hard | audit | ok |
 
 ### 10.5 Identity Protection and privileged activation controls
@@ -624,6 +630,18 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Non-step blockers: `evidence:` confirmed membership and trusted IP ranges match actual workflows.
 - Observation predicate: Report-only shows no service-account sign-ins outside the trusted network that are legitimate.
 - Rationale: clean two-object construction dependency.
+
+#### `s-goal-sharepoint-trusted-network` — Restrict SharePoint and OneDrive to the Trusted Network
+- Work type: CA policy · scope_class: all-users · effort_kind: portal · actions: create → observe → enforce
+- Non-step blockers: `decision:` Confirm What You Use's SharePoint answer (No: Doesn't apply); `decision:` the office network (everyone remote: Doesn't apply).
+- Observation predicate: Report-only shows no legitimate SharePoint or OneDrive sign-in from outside the trusted network.
+- Rationale: Jon's baseline review row, a policy step since Phase 2b (owner, 2026-09-24).
+
+#### `s-goal-avd-trusted-network` — Restrict Azure Virtual Desktop to the Trusted Network
+- Work type: CA policy · scope_class: all-users · effort_kind: portal · actions: create → observe → enforce
+- Non-step blockers: `decision:` Confirm What You Use's Azure Virtual Desktop answer (No: Doesn't apply); `decision:` the office network (everyone remote: Doesn't apply).
+- Observation predicate: Report-only shows no legitimate Azure Virtual Desktop or Windows 365 sign-in from outside the trusted network.
+- Rationale: Jon's baseline review row, a policy step since Phase 2b (owner, 2026-09-24).
 
 #### `s-goal-workload-identity-block` — Restrict the Entra Connect Sync Account to Its Address
 - Work type: identity-type-dependent · scope_class: workload-identity (pending) · effort_kind: portal · actions: create → observe → enforce
