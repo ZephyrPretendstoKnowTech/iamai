@@ -185,7 +185,8 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
       suggested: shared.length > 0 ? answer('some', shared) : answer('none'),
       evidence: seen(Q.sharedDevices, shared.length),
       // Picked, they join the service-accounts group (owner, 2026-09-24): Jon's baseline has no policy of its own for them.
-      chosen: shared.length > 0 || (mapping.sharedDeviceUserIds ?? []).length > 0 ? { none: Q.sharedDevices.note, some: Q.sharedDevices.joins } : null,
+      // With everyone remote there is no office to keep them to (Phase 2d): they count as people.
+      chosen: shared.length > 0 || (mapping.sharedDeviceUserIds ?? []).length > 0 ? { none: Q.sharedDevices.note, some: savedAnswerOf('officeNetwork', mapping)?.value === 'remote' ? Q.sharedDevices.joinsRemote : Q.sharedDevices.joins } : null,
     }),
   ]
 }

@@ -119,6 +119,8 @@ import { DEVICE_GOALS, applyDeviations, asksAPerson, deviceStepDoesntApply, serv
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
 export const SERVICE_ACCOUNTS_TRUSTED_GOAL = 'service-accounts-trusted-network'
+/** The policies whose only purpose is blocking sign-ins from outside the trusted network (owner decision 5, Phase 2d). */
+export const TRUSTED_NETWORK_ONLY_GOALS: ReadonlySet<string> = new Set([SERVICE_ACCOUNTS_TRUSTED_GOAL, 'avd-trusted-network', 'sharepoint-trusted-network'])
 
 /** The combinations that are a passkey or a security key and nothing weaker. */
 const PASSKEY_ONLY = new Set(['fido2', 'windowshelloforbusiness', 'x509certificatemultifactor', 'x509certificatesinglefactor', 'temporaryaccesspassonetime', 'temporaryaccesspassmultiuse'])
@@ -3258,6 +3260,22 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.doesntApplyByAnswer = true
     s.skipReason = reason
     setState(s, { setAside: true })
+  }
+  // Everyone works remotely (owner decision 5, Phase 2d): a policy whose only
+  // purpose is blocking sign-ins from outside the trusted network has no network
+  // to trust, so it reads Doesn't apply with the answer as the reason — and so
+  // does the service-accounts group, which only that block and the exclusion an
+  // office makes due (deviations.ts) use.
+  if (officeNetworkRemote) {
+    const reason = answeredReasonOf('officeNetwork', 'remote')
+    for (const s of steps) {
+      if (s.status === 'done' || s.status === 'skipped' || s.doesntApply != null) continue
+      if (!(TRUSTED_NETWORK_ONLY_GOALS.has(s.goalId) || s.id === saStepId)) continue
+      s.doesntApply = reason
+      s.doesntApplyByAnswer = true
+      s.skipReason = reason
+      setState(s, { setAside: true })
+    }
   }
   // Define Your Rollout Scope (roadmap/direction.ts): the four decision
   // steps, and the review rows whose services D1 asks about.
