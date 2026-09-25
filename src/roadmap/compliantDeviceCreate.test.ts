@@ -13,6 +13,7 @@ import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withDevicesReady, withFoundationSettled } from './fixtures/run.ts'
 import { createWaitsOnReadiness, implementationOffered, switchedOffPolicies, toReportOnly, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
+import { effectsOf } from './strand.ts'
 import { boardReadingsOf, laneLabelOf, holdLabelOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
@@ -95,7 +96,12 @@ test('demo and mid: every other create is unchanged — creatable early, on the 
     for (const s of r.steps.filter((x) => x.id !== DEVICE)) assert.equal(createWaitsOnReadiness(s), false, `${name}: ${s.id} has no compliant-device grant`)
     const now = creates(f)
     assert.ok(now.length > 3, `${name}: creates remain Ready`)
-    const days = new Set(now.map((c) => c.at))
+    // A policy that asks for a sign-in method is placed after Prepare Your Team for
+    // MFA (schedule.ts, reason 'registration'): the demo's Require MFA for Guests
+    // creates B2B-Guest since the tenant's guest policies are credited (owner,
+    // 2026-09-25). Every other Ready create is dated the same first day.
+    const asksForMethod = (id: string): boolean => (effectsOf(r.steps.find((s) => s.id === id)!) ?? []).some((e) => e.asksForMethod)
+    const days = new Set(now.filter((c) => !asksForMethod(c.id)).map((c) => c.at))
     assert.equal(days.size, 1, `${name}: every Ready create is dated the same first day (${[...days].join(', ')})`)
     // The creates a tenant with ready devices would offer, less the managed-device one: nothing else moved.
     const ready = creates(withDevicesReady(f)).filter((c) => c.id !== DEVICE)

@@ -272,6 +272,10 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     m.matchedBy = by
     claimed.add(policy.id as string)
   }
+  // The policies a partly credited pair credits (Action.creditedMembers) deliver
+  // the other half: no member the step writes is ever one of them, whatever an
+  // older record of this step said.
+  for (const m of step.action.creditedMembers ?? []) for (const id of m.policyIds) claimed.add(id)
   const sole = out.length === 1
   // A step with ONE required policy has one member, so a tag naming this step
   // names that member whatever key it carries. Generation writes the key as a

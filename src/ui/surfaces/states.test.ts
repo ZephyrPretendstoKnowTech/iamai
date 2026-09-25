@@ -67,9 +67,14 @@ test('a step whose policy exists and is switched off says so, instead of asking 
     snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id),
     signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups,
   }
-  // A real step that already resolves to no-operation, so only the members move.
-  const base = run.steps.find((s) => unavailableReason(s) === 'no-operation' && (s.state.members ?? []).length > 0)
-  assert.ok(base, 'midflight no longer carries a step with no operation to offer')
+  // A delivered step held open, so it has no operation to offer and only the
+  // members move. The fixtures' own case was Require MFA for Inforcer Access,
+  // which now completes from the policy that delivers it (owner decision 17,
+  // 2026-09-25).
+  const delivered = run.steps.find((s) => s.id === 's-goal-inforcer-mfa' && s.status === 'done' && (s.state.members ?? []).length > 0)
+  assert.ok(delivered, 'midflight no longer carries its delivered Inforcer step')
+  const base = { ...delivered, status: 'ready' as const }
+  assert.equal(unavailableReason(base), 'no-operation', 'the premise: nothing to write')
   const because = (x: typeof base): string => { const impl = stepContract(x, ctx).implementation; return impl.offered ? '' : (impl.because ?? '') }
   // The control: whatever else it says, it says IAMAI is writing nothing here
   // and does not claim the policy is switched off. There are two wordings for
