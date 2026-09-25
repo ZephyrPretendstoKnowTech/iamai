@@ -136,7 +136,7 @@ function openedIn(value: Fixture, run: ReturnType<typeof runFixture>, id: string
 
 test('1.1 and 1.2 read their milestone in words over their instruction line, and say each once', () => {
   const T = (app.plan as unknown as { emergencyTasks: { chooseAccounts: string; chooseSecondAccount: string }; exclusionsGroupRailSub: string })
-  // Prepare Emergency Access Accounts: the choice while it is still to make, then its checks; the decision's help under it in every state.
+  // Prepare Emergency Access Accounts: the choice while it is still to make, then its checks; the decision's help under it until the step is Completed.
   const none = opened('small', 's-prereq-break-glass', (f) => { f.mapping.breakGlassUserIds = [] }).body.rail
   const one = opened('small', 's-prereq-break-glass', (f) => { f.mapping.breakGlassUserIds = f.mapping.breakGlassUserIds.slice(0, 1) }).body.rail
   assert.equal(none.headline, T.emergencyTasks.chooseAccounts)
@@ -146,9 +146,12 @@ test('1.1 and 1.2 read their milestone in words over their instruction line, and
   assert.equal(accounts.lane.lane === 'Completed', false, 'the premise: 1.1 is open on the initial scan')
   assert.doesNotMatch(accounts.body.rail.headline, DAY)
   assert.equal(accounts.body.rail.instruction, 'Select the accounts dedicated to emergency access, then select Done.')
-  assert.equal(opened('demo-week2', 's-prereq-break-glass').body.rail.headline, 'Completed')
+  const doneAccounts = opened('demo-week2', 's-prereq-break-glass').body.rail
+  assert.equal(doneAccounts.headline, 'Completed')
+  // A Completed step asks for nothing (owner audit, 2026-09-24): no instruction over its picker.
+  assert.equal(doneAccounts.instruction, null)
   // Configure Emergency Exclusions (owner audit 1.2 #1, #2): the group line is the
-  // instruction under the bar in every state, as 1.1's picker line is; the
+  // instruction under the bar until it is Completed, as 1.1's picker line is; the
   // milestone above it names what is left, moving on once a group is chosen.
   const G = (app.plan as unknown as { emergencyTasks: Record<string, string> }).emergencyTasks
   const unchosen = opened('demo', 's-prereq-exclusion-group', (f) => { f.mapping.records = Object.fromEntries(Object.entries(f.mapping.records ?? {}).filter(([k]) => k !== EXCLUSIONS_RECORD_KEY)) }).body.rail
@@ -160,7 +163,9 @@ test('1.1 and 1.2 read their milestone in words over their instruction line, and
   assert.equal(group.instruction, T.exclusionsGroupRailSub)
   // messy: the chosen group holds members that are not the emergency accounts.
   assert.equal(opened('messy', 's-prereq-exclusion-group').body.rail.headline, "Remove the members that aren't emergency access accounts from Core - Exclusions.")
-  assert.equal(opened('demo-week2', 's-prereq-exclusion-group').body.rail.headline, 'Completed')
+  const doneGroup = opened('demo-week2', 's-prereq-exclusion-group').body.rail
+  assert.equal(doneGroup.headline, 'Completed')
+  assert.equal(doneGroup.instruction, null)
   // Configure Passkey Settings takes no control of its own and still leads with words.
   const passkeys = opened('demo', 's-prereq-passkey-settings').body.rail
   assert.equal(passkeys.instruction, null)

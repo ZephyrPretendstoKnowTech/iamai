@@ -445,8 +445,11 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // list item 17), and a finished step draws none (item 29).
   const keeping = step.id === DORMANT_STEP_ID && (step.dormantChoices ?? []).some((row) => !row.kept) ? DORMANT_WORDS.keep.instruction : null
   // 1.1's decision help, 1.2's group line, and 3.7's group picker line: the
-  // instruction under the milestone of a step whose rail takes a choice.
-  const railInstruction = step.id === 's-prereq-break-glass' || (step.id === PREREQ_STEP_ID.serviceAccountsGroup && !noServicePicker) ? help : step.id === PREREQ_STEP_ID.serviceAccountsGroup ? null : exclusions ? EXCLUSIONS_MILESTONE : keeping ?? prepare?.instruction ?? null
+  // instruction under the milestone of a step whose rail takes a choice. A
+  // Completed 1.1 or 1.2 asks for nothing (owner audit, 2026-09-24): its
+  // picker still shows the choice, with no instruction over it.
+  const finishedChoice = contract.state.satisfied && (step.id === 's-prereq-break-glass' || exclusions)
+  const railInstruction = finishedChoice ? null : step.id === 's-prereq-break-glass' || (step.id === PREREQ_STEP_ID.serviceAccountsGroup && !noServicePicker) ? help : step.id === PREREQ_STEP_ID.serviceAccountsGroup ? null : exclusions ? EXCLUSIONS_MILESTONE : keeping ?? prepare?.instruction ?? null
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
