@@ -4224,7 +4224,7 @@
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Protect Sign-in Method Registration, Require a Managed Device Outside the Office and Restrict Service Accounts to the Trusted Network wait on this."
+        "waits": "Require a Managed Device Outside the Office and Restrict Service Accounts to the Trusted Network wait on this."
       },
       "example": {
         "tenant": "Contoso Pty Ltd",

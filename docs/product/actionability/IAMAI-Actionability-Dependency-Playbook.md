@@ -338,7 +338,6 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-device-registration-mfa:create` | `s-prereq-auth-strength` | step | `complete` | — | hard | package | ok |
 | `s-goal-device-registration-mfa:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | package | ok |
 | `s-goal-intune-enrollment-reauth:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | package | ok |
-| `s-goal-register-info-protected:create` | `s-prereq-trusted-location` | step | `complete` | — | hard | package | ok |
 | `s-goal-register-info-protected:create` | `s-prereq-auth-strength` | step | `complete` | — | hard | package | ok |
 | `s-goal-register-info-protected:enforce` | `s-prereq-passkey-settings` | step | `complete` | — | hard | package | ok |
 | `s-goal-register-info-protected:enforce` | `s-verify-mfa` | step | `complete` | — | hard | package | ok |
@@ -585,6 +584,7 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Non-step blockers: `fact:` combined security-information registration enabled; `decision:` policy.target.mode authoring; `fact:` Temporary Access Pass or another bootstrap path for users who cannot yet satisfy the requirement; `sourceConflict:` current package authoring needs correction against Microsoft's current pattern (Register security information, any location excluding trusted, MFA/strength grant).
 - Observation predicate: pilot scope plus human validation; no Observing evidence path (Appendix C, V9: User Actions scope is not evaluated in report-only mode).
 - Emergency-access relationship: none (V2 — no pinned member in evidence; `memberStableId` is null).
+- Since 2026-09-25 the step is Jon's UserRegistration policy as he confirmed it (baseline/authorCorrections.ts): his strength, no location condition, so its create waits on no trusted network.
 
 #### `s-goal-require-managed-device` — Require a Managed Device Outside the Office
 - Work type: CA + Intune composite · scope_class: all-users · effort_kind: external-platform · actions: create → observe → enforce
@@ -753,7 +753,7 @@ Computed over action nodes, counting distinct downstream steps. **Excludes** the
 | `s-prereq-passkey-settings` | 4 | 10 | operator-passkey, verify-mfa, admins-phishing-resistant, register-info-protected |
 | `s-prereq-auth-strength` | 8 | 8 | admins-phishing-resistant, device-registration-mfa, register-info-protected, guests-mfa, sign-in-risk, user-risk, user-risk-medium, pim-activation-reauth |
 | `s-verify-mfa` | 7 | 8 | mfa-all-users, admins-phishing-resistant, register-info-protected, sign-in-risk, sign-in-risk-medium, user-risk, user-risk-medium |
-| `s-prereq-trusted-location` | 4 | 5 | shared-devices, register-info-protected, require-managed-device, service-accounts-trusted-network |
+| `s-prereq-trusted-location` | 4 | 4 | shared-devices, require-managed-device, service-accounts-trusted-network, sharepoint-trusted-network |
 | `s-prereq-device-plan` | 1 | 3 | require-managed-device |
 | `s-prereq-service-accounts-group` | 2 | 2 | block-legacy-auth, service-accounts-trusted-network |
 | `s-question-partner` | 2 | 2 | geo-restriction (conditional), guests-mfa (conditional) |

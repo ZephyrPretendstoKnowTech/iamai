@@ -357,7 +357,8 @@ test('§12.1 unlock counts: direct and transitive, Security Defaults cutover edg
   expect('s-prereq-passkey-settings', 4, 30)
   expect('s-prereq-auth-strength', 8, 8)
   expect('s-verify-mfa', 7, 8)
-  expect('s-prereq-trusted-location', 5, 5)
+  // One fewer since Protect Sign-in Method Registration is Jon's policy, which names no location (2026-09-25).
+  expect('s-prereq-trusted-location', 4, 4)
   expect('s-prereq-device-plan', 1, 1)
   // Block Legacy Authentication's turn-on no longer waits on the group (walk list 4.x item 5): Restrict Service Accounts alone.
   expect('s-prereq-service-accounts-group', 1, 1)

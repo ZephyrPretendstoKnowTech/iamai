@@ -155,6 +155,12 @@ function grantOf(effects: readonly PolicyEffect[], strengths: Map<string, string
 /** The registration user actions, as Graph writes them. */
 const REGISTER_SECURITY_INFO = 'urn:user:registersecurityinfo'
 /**
+ * The goals whose readiness counts no guest (owner, 2026-09-25): registering a
+ * device, and registering a sign-in method, both ask for a method a guest cannot
+ * hold in this tenant. The policies still cover whom the baseline says.
+ */
+const NO_GUEST_READINESS: ReadonlySet<string> = new Set(['device-registration-mfa', 'register-info-protected'])
+/**
  * The two resources IAMAI names by their own identifier: Graph's own
  * `MicrosoftAdminPortals` target (coverage/facts.ts reads the same string) and
  * the Windows Azure Service Management API's application id
@@ -2317,13 +2323,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // Require MFA to Register a Device counts no guest (owner decision 1,
       // 2026-09-25): a device registers in the tenant of the account doing it,
       // which for a guest is their own, so the policy never asks a guest for
-      // anything and a guest's missing passkey cannot hold it.
+      // anything and a guest's missing passkey cannot hold it. Protect Sign-in
+      // Method Registration counts no guest either (owner, 2026-09-25): Jon's
+      // policy still covers All users, but a guest cannot hold a passkey here, so
+      // counting them would hold the step for good.
       // Require MFA for Guests counts only the guests whose methods the scan reads
       // (owner decision 7, 2026-09-25): a guest's methods live in their own
       // organisation, so one with no registration record here is not a reading,
       // and with nobody left to count the step has no gate.
       const registered = readinessKey === 'guest' ? new Set(snapshot.registrationDetails.map((r) => r.id)) : null
-      const counted = [...popIndex.active].filter((id) => !(popIndex.guests.has(id) && (goal.id === 'device-registration-mfa' || (registered !== null && !registered.has(id)))))
+      const counted = [...popIndex.active].filter((id) => !(popIndex.guests.has(id) && (NO_GUEST_READINESS.has(goal.id) || (registered !== null && !registered.has(id)))))
       policyPreparation = methodPreparation(effects, counted, snapshot, strandContext, methodPreparationCache)
       // Nor anyone the directory cannot place: which kind of guest or external
       // user an account is (a B2B member reads as a member) is not in the
