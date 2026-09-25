@@ -103,17 +103,24 @@ export function settleReportOnlyBatch(steps: Step[], tenant: TenantPolicies = ne
   const batch = steps[at]
   const create: string[] = []
   const created: string[] = []
+  const correct: string[] = []
   for (const s of steps) {
     const member = batchMemberOf(s, tenant)
     if (member === 'create') create.push(s.id)
-    else if (member === 'created') created.push(s.id)
+    else if (member === 'created') {
+      created.push(s.id)
+      // Every control is exact (owner, 2026-09-25): a created policy with a
+      // setting that is not the plan's is not done until it is corrected.
+      if (s.state.members.some((m) => m.change.unwritten.length > 0)) correct.push(s.id)
+    }
   }
   if (create.length === 0 && created.length === 0) {
     steps.splice(at, 1)
     return
   }
-  batch.reportOnlyBatch = { create, created }
-  // Impact counts what the step changes: the policies still to create, and once none is left, the ones it lists.
-  batch.impactCount = create.length > 0 ? create.length : created.length
-  setState(batch, { satisfied: create.length === 0 })
+  batch.reportOnlyBatch = { create, created, correct }
+  // Impact counts what the step changes: the policies still to create or correct, and once none is left, the ones it lists.
+  const open = create.length + correct.length
+  batch.impactCount = open > 0 ? open : created.length
+  setState(batch, { satisfied: open === 0 })
 }

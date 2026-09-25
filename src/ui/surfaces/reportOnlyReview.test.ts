@@ -539,8 +539,9 @@ test('006.9: the Step Contract states the stage, the condition, what changed, wh
   )
   // Fix before continuing names the policy that has to be looked at.
   assert.equal(contract.fix.length, 1)
-  assert.equal(contract.fix[0].key, `review:${SOLE_MEMBER}`)
-  assert.ok(contract.fix[0].text.includes(c.step.tracking!.policyName!), `the fix does not name the policy: ${contract.fix[0].text}`)
+  // Every control is exact (owner, 2026-09-25): the account excluded by hand is a setting to correct as well as a change to look at.
+  assert.equal(contract.fix[0].key, `review:${SOLE_MEMBER}:unwritten`)
+  assert.match(contract.fix[0].text, /Users/, `the fix does not name the setting: ${contract.fix[0].text}`)
   assert.notEqual(contract.fix[0].text, c.step.state.observation!.note, 'and it is not the finding said twice')
   // What to do is to keep watching, look at the change and scan again — and it
   // is never an instruction to change the tenant.

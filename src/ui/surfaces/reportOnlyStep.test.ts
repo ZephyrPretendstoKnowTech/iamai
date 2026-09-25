@@ -35,17 +35,19 @@ test('each task is its policy step’s own create procedure, word for word, in p
   assert.ok(tasks.every((t) => t.steps.some((l) => /Report-only/.test(l))), 'every create lands in Report-only')
 })
 
-test('one card per policy: to create, headed by its step and naming the policy; created, a Satisfied fact', () => {
+test('one card per policy: to create, headed by its step and naming the policy; created with a setting off the plan, to correct; created as planned, a Satisfied fact', () => {
   const { r, step, body } = plan('demo')
   const { create, created } = step.reportOnlyBatch!
+  const correct = step.reportOnlyBatch!.correct ?? []
   const open = body.readiness.tiles.filter((t) => t.key.startsWith('batch:'))
   const done = body.readiness.satisfied.filter((t) => t.key.startsWith('batch:'))
-  assert.equal(open.length, create.length)
-  assert.equal(done.length, created.length)
+  assert.equal(open.length, create.length + correct.length)
+  assert.equal(done.length, created.length - correct.length)
   for (const t of open) {
     const member = r.steps.find((s) => `batch:${s.id}` === t.key)!
     assert.equal(t.label, contentTitle(member))
-    assert.equal(t.value, 'Create in Report-only')
+    if (correct.includes(member.id)) assert.match(t.value, /^Correct /)
+    else assert.equal(t.value, 'Create in Report-only')
     assert.equal(t.names?.length, 1, 'the policy it creates, by name')
   }
   for (const t of done) assert.match(t.value, /^(On|In Report-only|Report-only until .+)$/)

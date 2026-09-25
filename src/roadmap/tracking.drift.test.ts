@@ -17,6 +17,7 @@ import assert from 'node:assert/strict'
 import { allFixtures, curatedFixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
+import { asPlanned } from './fixtures/asPlanned.ts'
 import { applyProgress } from './progress.ts'
 import { stepIdForGoal } from './generate.ts'
 import { holdOf } from './holds.ts'
@@ -35,9 +36,11 @@ import type { Step } from './types.ts'
 
 type Row = Record<string, unknown>
 const fixtures = allFixtures()
-const DEMO = fixtures.find((f) => f.name === 'demo')!
-const WEEK2 = fixtures.find((f) => f.name === 'demo-week2')!
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
+
+// The admins policy built exactly as planned, so each case tests only its own edit (fixtures/asPlanned.ts).
+const DEMO = asPlanned(fixtures.find((f) => f.name === 'demo')!, ADMINS)
+const WEEK2 = asPlanned(fixtures.find((f) => f.name === 'demo-week2')!, ADMINS)
 const TEN_DAYS = 10 * 86_400_000
 const OUTCOMES: DriftOutcome[] = ['correctable', 'review-required', 'on-hold']
 

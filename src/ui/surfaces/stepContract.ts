@@ -151,6 +151,8 @@ type ContractWords = {
   foundEnforcedUnmeasured: string
   /** A tenant's own policy delivering the goal, where it differs from the baseline's (Action.ownPolicyDiffers). */
   ownPolicyDiffers: { label: string; note: string }
+  /** The tenant's policy carries another name than the step gives it (MemberTracking.plannedName). */
+  policyName: { label: string; note: string }
   /** The groups a tenant's own delivering policy also leaves out, and who is in them (Action.alsoExcluded). */
   alsoExcluded: { label: string; note: string; nobody: string; nobodyMany: string; members: string; membersMany: string }
   /** Require MFA for Everyone's dormant accounts with no method (walk list 4.x item 10). */
@@ -2220,6 +2222,20 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
   return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'good', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
 }
 
+/** The key of the tile below: a fact about the tenant's policy, never a task (FINISHED_FINDINGS). */
+export const POLICY_NAME = 'policy-name'
+
+/**
+ * Where the tenant's policy is the step's in every setting and only its name is
+ * not the one the step gives it: said, and never holding the step (owner,
+ * 2026-09-25: controls are exact, the name may differ, and the step says so).
+ */
+function policyNameTiles(step: Step): ReadinessTile[] {
+  return (step.tracking?.members ?? []).flatMap((m) =>
+    m.plannedName && m.policyName ? [{ key: `${POLICY_NAME}:${m.key}`, label: CONTRACT.policyName.label, tone: 'good' as const, value: m.policyName, note: fillText(CONTRACT.policyName.note, { planned: m.plannedName }) }] : [],
+  )
+}
+
 /** The key of the tile below: a fact about the tenant's own policy, never a task (FINISHED_FINDINGS). */
 export const ALSO_EXCLUDED = 'also-excluded'
 
@@ -2909,7 +2925,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
   // step's own state tile, never in its place.
   const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), guestsCoveredTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c)].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), ...policyNameTiles(step), guestsCoveredTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c)].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   // The drift card is the review's one card, and the exclusions card the exposure's

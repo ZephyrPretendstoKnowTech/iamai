@@ -18,13 +18,15 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
+import { CONTRACT } from './stepContract.ts'
 import type { ReadinessTile } from './stepContract.ts'
+import { dimensionWords } from '../../roadmap/observation.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-type BatchWords = { createValue: string; createdOn: string; createdUntil: string; createdReportOnly: string; milestone: string }
+type BatchWords = { createValue: string; createdOn: string; createdUntil: string; createdReportOnly: string; correctValue: string; milestone: string }
 const W = (): BatchWords => (stepById[REPORT_ONLY_STEP_ID] as unknown as { batch: BatchWords }).batch
 
-type Member = { id: string; step: Step; toCreate: boolean }
+type Member = { id: string; step: Step; toCreate: boolean; toCorrect: boolean }
 
 /** The batch's policy steps, in plan order: still to create first-come, created alike. */
 function membersOf(step: Step, ctx: StepVarContext): Member[] {
@@ -32,8 +34,9 @@ function membersOf(step: Step, ctx: StepVarContext): Member[] {
   const plan = ctx.planSteps ?? []
   if (!batch || plan.length === 0) return []
   const toCreate = new Set(batch.create)
+  const toCorrect = new Set(batch.correct ?? [])
   const listed = new Set([...batch.create, ...batch.created])
-  return plan.filter((s) => listed.has(s.id)).map((s) => ({ id: s.id, step: s, toCreate: toCreate.has(s.id) }))
+  return plan.filter((s) => listed.has(s.id)).map((s) => ({ id: s.id, step: s, toCreate: toCreate.has(s.id), toCorrect: toCorrect.has(s.id) }))
 }
 
 /** The policy a member creates, by the name its create gives it; the tenant's own name once it exists. */
@@ -53,16 +56,28 @@ function createdValue(s: Step): string {
   return typeof until === 'string' && until !== '' ? fillText(w.createdUntil, { date: absoluteDate(until) }) : w.createdReportOnly
 }
 
-/** Each policy as a card: to create (a task), or created (a Satisfied fact). None on any other step. */
+/**
+ * Each policy as a card: to create (a task); created with a setting that is not
+ * the plan's, to correct (every control is exact: owner, 2026-09-25); or created
+ * as planned, a Satisfied fact, naming the step's own name where the tenant's
+ * differs. None on any other step.
+ */
 export function reportOnlyTilesOf(step: Step, ctx: StepVarContext): ReadinessTile[] {
   if (step.id !== REPORT_ONLY_STEP_ID) return []
   const w = W()
   return membersOf(step, ctx).map((m) => {
     const names = policyNames(m)
-    return m.toCreate
+    if (m.toCreate) {
       // Its instruction is its task's (emergencyReadiness.ts: "Follow {title} in Implementation Tasks.").
-      ? { key: `batch:${m.id}`, label: contentTitle(m.step), tone: 'warn' as const, value: w.createValue, note: null, names }
-      : { key: `batch:${m.id}`, label: contentTitle(m.step), tone: 'good' as const, value: createdValue(m.step), note: names.join(', ') || null }
+      return { key: `batch:${m.id}`, label: contentTitle(m.step), tone: 'warn' as const, value: w.createValue, note: null, names }
+    }
+    if (m.toCorrect) {
+      const fields = dimensionWords([...new Set(m.step.state.members.flatMap((o) => [...o.change.unwritten]))])
+      return { key: `batch:${m.id}`, label: contentTitle(m.step), tone: 'warn' as const, value: fillText(w.correctValue, { fields }), note: null, names }
+    }
+    const planned = (m.step.tracking?.members ?? []).flatMap((t) => (t.plannedName ? [t.plannedName] : []))
+    const note = [names.join(', '), ...planned.map((p) => fillText(CONTRACT.policyName.note, { planned: p }))].filter((x) => x !== '').join(' ')
+    return { key: `batch:${m.id}`, label: contentTitle(m.step), tone: 'good' as const, value: createdValue(m.step), note: note || null }
   })
 }
 
@@ -87,9 +102,9 @@ export function reportOnlyTasksOf(step: Step, ctx: StepVarContext, createOf: (me
     const steps = createOf(m.step)
     if (steps === null || steps.length === 0) return []
     const title = contentTitle(m.step)
-    return [{ id: `create:${m.id}`, accountId: null, title, targetUpn: null, required: m.toCreate, readinessKey: `batch:${m.id}`, evidence: null, actionLabel: title, steps }]
+    return [{ id: `create:${m.id}`, accountId: null, title, targetUpn: null, required: m.toCreate || m.toCorrect, readinessKey: `batch:${m.id}`, evidence: null, actionLabel: title, steps }]
   })
   if (tasks.length === 0) return null
-  const next = members.find((m) => m.toCreate && tasks.some((t) => t.id === `create:${m.id}`))
+  const next = members.find((m) => (m.toCreate || m.toCorrect) && tasks.some((t) => t.id === `create:${m.id}`))
   return { tasks, recommendedTaskId: next ? `create:${next.id}` : tasks[0].id, printAll: true }
 }

@@ -827,28 +827,22 @@ test('007.4/6: the one operation updates the exact matched policy and enforces t
 
 // ---- 5. only the controlled field changes ----
 
-test('007.5: the update submits the one field it controls, and an unrelated tenant setting survives it on every channel', () => {
-  // The tenant put a sign-in frequency on the policy that the plan's enforcement
-  // does not control. The patch must not carry it away, and the whole policy the
-  // operation leaves behind must still have it.
+test('007.5: a setting the tenant added that the plan does not have is a correction: the turn-on waits, and nothing IAMAI writes carries it away', () => {
+  // The tenant put a sign-in frequency on the policy that the plan's policy does
+  // not have. Every control is exact (owner, 2026-09-25): the policy is not the
+  // step's as planned until a person corrects it, and the step names the setting.
   const stronger = { signInFrequency: { isEnabled: true, type: 'hours', value: 4 } }
   const c = freshScan({
     edit: (row) => {
       row.sessionControls = { ...(row.sessionControls as Row), ...stronger }
     },
   })
-  assert.equal(c.step.state.lifecycle, 'ready-to-enforce', 'a stronger unrelated setting does not stop the enforcement')
-  const [op] = operationsOf(c.step)
-  assert.equal(op.mode, 'update')
-  assert.deepEqual(op.body, { state: 'enabled' }, 'the patch is the one controlled field and nothing else')
-  const target = finalTargets(c.step)[0] as Record<string, Row>
-  assert.deepEqual((target.sessionControls as Row).signInFrequency, stronger.signInFrequency, 'the tenant keeps its own stronger setting')
-  // And every channel carries that same bounded body.
-  assert.equal(policyJsonText(c.step), JSON.stringify({ state: 'enabled' }, null, 2))
-  const ps = powershellFor(stepOperations(c.step))
-  assert.match(ps, /Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId '/)
-  assert.doesNotMatch(ps, /signInFrequency/, 'the PowerShell does not rewrite a setting nobody asked to change')
-  assert.ok(portalOf(c.step, c.ctx)!.some((l) => /leave every other setting on this policy as it is/i.test(l)))
+  assert.deepEqual([...new Set(c.step.state.members.flatMap((m) => [...m.change.unwritten]))], ['sessionControls'])
+  assert.notEqual(c.step.state.lifecycle, 'ready-to-enforce', 'a setting that is not the plan’s holds the turn-on')
+  assert.match(stepContract(c.step, c.ctx).milestone.label, /session controls/, 'the step names the setting to correct')
+  // Nothing IAMAI hands over rewrites it: the correction is a person's, in Entra.
+  for (const op of operationsOf(c.step)) assert.ok(!('sessionControls' in (op.body as Row)), JSON.stringify(op.body))
+  assert.doesNotMatch(powershellFor(stepOperations(c.step)), /signInFrequency/, 'the PowerShell does not rewrite the setting')
 })
 
 // ---- 7. the rollback is the inverse of what was submitted ----

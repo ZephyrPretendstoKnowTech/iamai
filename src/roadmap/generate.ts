@@ -2842,6 +2842,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...(measured !== null ? { measured: { ids: measured } } : {}),
       // A step that changes the tenant's own policy names that policy, never the
       // step's title; a step that creates one names the proposed name.
+      // The name the step's own create gives its policy, whatever the step does now:
+      // only the name may differ from the plan (owner, 2026-09-25; tracking.ts plannedName).
+      createName: namingNote?.name ?? proposedPolicyName(goal, naming),
       naming:
         kind === 'create' && !state.satisfied
           ? { proposed: namingNote?.name ?? proposedPolicyName(goal, naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
