@@ -405,7 +405,8 @@ test('a delivered step says whether the signed-in account is in scope from the d
 // verdict (operatorSafe false) that turned its tone from wait to stop. Nothing
 // the step creates reaches that account, and none of it was said before.
 test('a step reopened after the scan found it delivered does not answer for the signed-in account from the policies that delivered it', () => {
-  for (const name of ['small', 'mid'] as const) {
+  // small has no guest, so its guests step now completes with the policy On (owner, 2026-09-24): messy stands in.
+  for (const name of ['messy', 'mid'] as const) {
     const f = fixture(name)
     const r = runFixture(f)
     const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')
@@ -419,10 +420,8 @@ test('a step reopened after the scan found it delivered does not answer for the 
     const vars = stepVars(guests, ctx)
     assert.equal(vars.operatorSignIns, undefined, `${name}: "Your account is in scope" on the guests step`)
     assert.equal(vars.operatorNoRecords, undefined, `${name}: the no-records line on the guests step`)
-    if (name === 'small') {
-      assert.equal(guests.operatorSafe, null, 'small: a stranding verdict from policies the step does not create')
-      assert.equal(statusOf(guests).tone, 'wait', 'small: the tone a stranding verdict gives')
-    }
+    assert.equal(guests.operatorSafe, null, `${name}: a stranding verdict from policies the step does not create`)
+    if (name === 'messy') assert.equal(statusOf(guests).tone, 'wait', 'messy: the tone a stranding verdict gives')
   }
 })
 

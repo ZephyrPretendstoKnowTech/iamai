@@ -467,8 +467,9 @@ test('audit, guests: the guest policy is named on the coverage, the step and the
   assert.deepEqual(g1.satisfaction?.policyIds, [guestId])
   const s1 = goalStep(withGuestPolicy, 'guests-mfa')
   assert.equal(s1.state.lifecycle, 'enforced')
-  assert.notEqual(s1.status, 'done', 'a policy with no current guests is not proof of a guest workflow test')
-  assert.equal(s1.manualReview?.confirmedAt, null)
+  // With no guest to test with, the policy On completes the step (owner, 2026-09-24, 5.3).
+  assert.equal(s1.status, 'done', 'a guest policy On with no guest account completes the step')
+  assert.equal(s1.manualReview, undefined)
   assert.equal(s1.satisfiedBy?.sufficient, rowsOf(base).find((p) => p.id === guestId)?.displayName)
 })
 
