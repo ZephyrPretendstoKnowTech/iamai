@@ -36,7 +36,7 @@ test('Direction use suggests a service from actual activity or a detected role, 
  }
  {const f=fixture('demo');assert.equal(useQuestions(f).some(c=>c.key==='service:intune'),false)}
 })
-test('device answers: all nine choices keep their scope through a second save, old labels still resolve, and no-data-on-phones adds a manual restriction review',()=>{
+test('device answers: all nine choices keep their scope through a second save, old labels still resolve, and no-data-on-phones widens Jon’s platform block rather than adding a step',()=>{
  {
   for(const [phoneIndex,phone] of questionOptions(QUESTION_STEP.devices,'decision').entries()) for(const [computerIndex,computer] of questionOptions(QUESTION_STEP.devices,'question').entries()){
    const f=curatedFixture('demo');const decision={[QUESTION_STEP.devices]:{at:f.snapshot.asOf,option:phone,answers:{Computers:computer}}}
@@ -53,7 +53,9 @@ test('device answers: all nine choices keep their scope through a second save, o
  {
   for(const computer of questionOptions(QUESTION_STEP.devices,'question')){
   const f=curatedFixture('demo');f.mapping=applyStepDecisions(f.mapping,{[QUESTION_STEP.devices]:{at:f.snapshot.asOf,picked:[],option:'Keep company data off phones',answers:{Computers:computer}}})
-  const run=runFixture(f);const step=run.steps.find(s=>s.id==='s-ladder-phone-access-restriction');assert.ok(step,computer);assert.equal(step.state.satisfied,false);assert.ok(step.manualReview)
+  const run=runFixture(f);assert.equal(run.steps.find(s=>s.id==='s-ladder-phone-access-restriction'),undefined,computer)
+  const block=run.steps.find(s=>s.goalId==='block-unsupported-platforms')!;const body=block.action.resolution!.policies[0].body as {conditions:{platforms:{excludePlatforms:string[]}}}
+  assert.equal(body.conditions.platforms.excludePlatforms.some(p=>/^(android|ios)$/i.test(p)),false,computer)
   }
  }
 })

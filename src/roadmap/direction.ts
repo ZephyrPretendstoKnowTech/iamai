@@ -380,6 +380,8 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   // own decision until one is saved; travel was retired (Stage 3).
   'geo-restriction': ['partner'],
   'service-accounts-trusted-network': ['serviceAccounts', 'sharedDevices', 'officeNetwork'],
+  // Phones Blocked from company data widens Jon's block to iOS and Android (deviations.ts BLOCK_PLATFORMS_GOAL).
+  'block-unsupported-platforms': ['phones'],
   'register-info-protected': ['officeNetwork'],
   // Define the Trusted Network holds until the office question is answered, as
   // the policies that use the office do (walk list item 60): before it, the step
@@ -400,15 +402,13 @@ export function directionDependenciesOf(step: Pick<Step, 'goalId' | 'baselineRev
 
 /**
  * The steps only an answer puts on the plan, so the plan may not hold them
- * now: Keep Company Data Off Phones while phones are Blocked from company data
- * (generate.ts); the service accounts group and Restrict Service Accounts to
+ * now: the service accounts group and Restrict Service Accounts to
  * the Trusted Network while service or shared-device accounts are picked (walk
  * list 45; shared-device accounts join the service-accounts group under Jon's
  * baseline, owner 2026-09-24). A goal's step is one only where the plan's
  * baseline holds that goal.
  */
 const ADDED_BY_ANSWER: Readonly<Record<string, { keys: readonly DirectionQuestionKey[]; goal?: string }>> = {
-  's-ladder-phone-access-restriction': { keys: ['phones'] },
   [PREREQ_STEP_ID.serviceAccountsGroup]: { keys: ['serviceAccounts', 'sharedDevices'] },
   [stepIdForGoal('service-accounts-trusted-network')]: { keys: GOAL_DEPENDS['service-accounts-trusted-network'], goal: 'service-accounts-trusted-network' },
 }

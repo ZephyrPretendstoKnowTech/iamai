@@ -31,7 +31,6 @@ import type { MappingState } from '../../mapping/types.ts'
 /** The spec's four steps (docs/plans/require-healthy-devices-spec.md), in its order. */
 
 const MANAGED = 's-goal-require-managed-device'
-const PHONES = 's-ladder-phone-access-restriction'
 
 /**
  * The device answer that keeps company data off phones: the one answer that
@@ -139,25 +138,5 @@ test('D4: the device answer that narrows the platforms puts them in the Entra pr
     assert.doesNotMatch(entra, /\[omit |\{\{/)
     assert.match(entra, /Under \*\*Conditions → Locations\*\*, set \*\*Configure\*\* to \*\*Yes\*\*/)
   }
-})
-
-// ---------------------------------------------------------------------------
-// Keep Company Data Off Phones (spec section 5)
-//
-// The step exists only where the device answer keeps company data off phones
-// (roadmap/generate.ts), so every reading here carries that answer.
-// ---------------------------------------------------------------------------
-
-test('P2-P4: the phone policy sets Configure to Yes on Device platforms (at No, Block would lock out every computer), excludes the emergency exclusions group and never an account by name, and is created in Report-only', () => {
-  const b = bodyOf('demo', PHONES, withPhonesBlocked)
-  const entra = drawn(b, 'portal')
-  assert.match(entra, /Conditions → Device platforms: set Configure to Yes, then Include: Android and iOS\./)
-  assert.match(entra, /Left at No the condition applies to every platform, and Block access there would lock out every computer as well\./)
-  assert.match(entra, /Exclude → Groups: the emergency exclusions group\. Never exclude an emergency account by name\./)
-  assert.match(entra, /Enable policy: Report-only/)
-  assert.match(entra, /Test from a real iPhone and a real Android phone/)
-  assert.match(entra, /Record the policy, its scope and the test result/)
-  // The outcome the step is done by is the policy, not a general "restricted as agreed".
-  assert.ok(b.contract.doneWhen.some((l) => /iOS and Android are blocked by a policy of this tenant's own/.test(l)), b.contract.doneWhen.join(' | '))
 })
 

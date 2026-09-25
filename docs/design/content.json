@@ -3093,8 +3093,7 @@
           "s-ladder-per-user-mfa-cleanup": "Per-user MFA",
           "s-prereq-break-glass": "Emergency access accounts",
           "s-prereq-exclusion-group": "Policy exclusions",
-          "s-prereq-device-plan": "Phones and computers",
-          "s-ladder-phone-access-restriction": "Phone access"
+          "s-prereq-device-plan": "Phones and computers"
         },
         "impactDefault": "Tenant settings",
         "impactPolicy": "Policy scope",
@@ -3284,13 +3283,14 @@
               "label": "Phones",
               "options": {
                 "enrolled": "Enrolled in Intune",
-                "apps": "Protected apps only",
+                "apps": "Not enrolled",
                 "blocked": "Blocked from company data"
               },
               "chosen": {
                 "enrolled": "Phones must be enrolled in Intune to reach company data outside the office.",
-                "apps": "Phones aren't enrolled; company data stays in protected apps like Outlook and Teams.",
-                "blocked": "Phones can't reach company data. Adds Keep Company Data Off Phones: a block policy you build, a report-only week, then a test from an iPhone and an Android phone."
+                "$commentPhones": "Owner, Phase 2a (Jon's policies only): the baseline has no app-protection policy, so Not enrolled promises none, and Blocked widens Jon's Block Unsupported Device Platforms instead of adding a policy of IAMAI's own.",
+                "apps": "Phones can reach company data without being enrolled.",
+                "blocked": "Phones can't sign in: Block Unsupported Device Platforms also blocks iPhone and Android. Set up everyone's passkey first, since a blocked phone can't register one in Authenticator."
               }
             },
             "officeNetwork": {
@@ -7701,59 +7701,6 @@
         "The strength has the intended combinations."
       ],
       "aiFocus": "Include the current and intended combinations, affected policies and TAP where present.",
-      "skip": false,
-      "scanControl": true
-    },
-    {
-      "id": "s-ladder-phone-access-restriction",
-      "kind": "ladder",
-      "title": "Keep Company Data Off Phones",
-      "why": "You said company data does not belong on phones, so a policy of your own has to say no to them: leaving iOS and Android out of the managed-device rule only means that rule never asks them anything. A Conditional Access policy that includes those two platforms and blocks access is the rule that says no.",
-      "who": {
-        "lead": "People who access company resources from iOS or Android."
-      },
-      "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions"
-      },
-      "whatToDo": {
-        "lead": "Implement and test the phone access restriction before marking this review complete.",
-        "steps": [
-          "Entra admin center → Conditional Access → Policies → New policy. Name it for what it does, so the next person reading the list can see it.",
-          "Users → Include: All users. Exclude → Groups: the emergency exclusions group. Never exclude an emergency account by name.",
-          "Target resources → Resources → All resources.",
-          "Conditions → Device platforms: set Configure to Yes, then Include: Android and iOS. Left at No the condition applies to every platform, and Block access there would lock out every computer as well.",
-          "Grant → Block access.",
-          "Enable policy: Report-only, then read the report-only results for a working week. They name the people and the apps this would have stopped, which is who will call.",
-          "Test from a real iPhone and a real Android phone, in a work app and in the browser, and check that recovery and administrator access still work from a computer. Then enable the policy.",
-          "Record the policy, its scope and the test result in your change record. Confirm this step only when the restriction is enforced and the tests pass."
-        ]
-      },
-      "doneWhen": [
-        "iOS and Android are blocked by a policy of this tenant's own, the affected access paths have been tested, and you have recorded the result."
-      ],
-      "more": {
-        "risks": [
-          {
-            "text": "The platform is what the client reports about itself, in the user agent string, and Microsoft does not verify it. A phone whose browser claims to be a computer is not stopped by this policy.",
-            "applies": "always"
-          },
-          {
-            "text": "This blocks a phone from signing in. It is not a data-loss control: company data already on a phone, and any route that does not go through Microsoft Entra sign-in, are untouched.",
-            "applies": "always"
-          },
-          {
-            "text": "Everyone loses phone access, including the people on call. Agree the exception route — a laptop, or a named exclusion — before the policy is enabled, not after the first call.",
-            "applies": "always"
-          }
-        ],
-        "helpDesk": [
-          "A person blocked on their phone: confirm the sign-in shows iOS or Android, and answer with the agreed route rather than widening the policy.",
-          "Microsoft's own guidance is that the device-platform condition belongs either with Intune compliance or in a block statement. This is the block statement."
-        ],
-        "manager": "Phones cannot reach company accounts at all, which is what the device answer asked for. Anyone who needs access away from a desk needs a computer or an agreed exception.",
-        "waits": null
-      },
-      "aiFocus": "Explain the difference between leaving phones out of a compliance requirement and actively blocking access. Help the administrator scope and test the restriction without changing baseline policies or emergency access blindly.",
       "skip": false,
       "scanControl": true
     },

@@ -31,6 +31,12 @@ export const APP_PROTECTION_GOAL = 'mobile-app-protection'
 export const INTUNE_ENROLMENT_GOAL = 'intune-enrollment-reauth'
 /** Every goal the device decision touches. */
 export const DEVICE_GOALS = new Set([COMPLIANT_DEVICE_GOAL, APP_PROTECTION_GOAL, INTUNE_ENROLMENT_GOAL])
+/**
+ * The goal whose block the phones answer widens (owner, Phase 2a): with phones
+ * Blocked from company data, Jon's Block Unsupported Device Platforms blocks
+ * iOS and Android too, in place of a phone policy of IAMAI's own.
+ */
+export const BLOCK_PLATFORMS_GOAL = 'block-unsupported-platforms'
 /** The goal whose first enforcement may be plain MFA (E8): the high-risk sign-in policy. */
 export const SIGN_IN_RISK_GOAL = 'sign-in-risk'
 
@@ -133,6 +139,17 @@ function excludeGroup(body: RawPolicy, groupId: string): RawPolicy {
   return { ...body, conditions }
 }
 
+/** The block with phones taken off the platforms it leaves alone, so it blocks them too. */
+function blockPhones(body: RawPolicy): RawPolicy {
+  const conditions = { ...((body.conditions ?? {}) as RawPolicy) }
+  const prev = (conditions.platforms ?? null) as { includePlatforms?: string[]; excludePlatforms?: string[] } | null
+  const phones = new Set(PHONE_PLATFORMS.map((p) => p.toLowerCase()))
+  const exclude = (prev?.excludePlatforms ?? []).filter((p) => !phones.has(p.toLowerCase()))
+  if (prev && exclude.length === (prev.excludePlatforms ?? []).length) return body
+  conditions.platforms = { ...(prev ?? {}), includePlatforms: prev?.includePlatforms && prev.includePlatforms.length > 0 ? prev.includePlatforms : ['all'], excludePlatforms: exclude }
+  return { ...body, conditions }
+}
+
 /**
  * The goal's policy with every recorded deviation the mapping's answers call
  * for; the body untouched when none applies. The caller shows each changed
@@ -150,6 +167,7 @@ export function applyDeviations(body: RawPolicy, goalId: string, mapping: Pick<M
     if (platforms.length > 0) out = excludePlatforms(out, platforms)
   }
   if (goalId === SIGN_IN_RISK_GOAL && plainMfaFirst(mapping)) out = plainMfaGrant(out)
+  if (goalId === BLOCK_PLATFORMS_GOAL && phonesOf(mapping) === 'blocked') out = blockPhones(out)
   if (serviceAccountsGroupId && mapping.serviceAccountUserIds && serviceAccountsExclusionDue(mapping as AccountAnswers) && asksAPerson(out)) out = excludeGroup(out, serviceAccountsGroupId)
   return out
 }

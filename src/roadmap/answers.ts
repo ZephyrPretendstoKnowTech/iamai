@@ -276,7 +276,7 @@ export function devicePlanOf(mapping: Pick<MappingState, 'questionAnswers'>): De
       // Unmanaged answer stored not-required and reads as No device requirement.
       phoneAppProtection: management === 'blocked' ? 'not-required' : 'required',
       noWorkPhones: management === 'blocked',
-      phonesText: ({ enrolled: 'Enrolled in Intune', registered: 'Registered in Entra', unmanaged: 'No device management', blocked: 'Keep company data off phones' })[phoneManagement],
+      phonesText: ({ enrolled: 'Enrolled in Intune', registered: 'Registered in Entra', unmanaged: 'No device management', blocked: 'Blocked from company data' })[phoneManagement],
       computersText: ({ enrolled: 'Enrolled in Intune', hybrid: 'Hybrid-joined Windows computers', unmanaged: 'Unmanaged computers' })[computer as 'enrolled' | 'hybrid' | 'unmanaged'],
     }
   }

@@ -12,7 +12,7 @@ import { namedAccounts, population, populationIndex } from '../derive/population
 import type { PopulationIndex } from '../derive/population.ts'
 
 export const MANUAL_REVIEW_ID = 'manual-review'
-const REVIEWS = new Set(['legacy-auth-inventory', 'app-passwords', 'guest-review', 'global-admin-count', 'authenticator-over-sms', 'per-user-mfa-cleanup', 'phone-access-restriction'])
+const REVIEWS = new Set(['legacy-auth-inventory', 'app-passwords', 'guest-review', 'global-admin-count', 'authenticator-over-sms', 'per-user-mfa-cleanup'])
 const SCAN_REQUIRED = new Set(['global-admin-count', 'authenticator-over-sms'])
 function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
   const matched = new Set([...(step.tracking?.members.map(m => m.policyId).filter((id): id is string => !!id) ?? []), ...(step.satisfiedBy?.policies ?? [])])
@@ -24,7 +24,6 @@ function relevantPolicies(step: Step, snapshot: TenantSnapshot): unknown[] {
     const targets = c.users ?? {}
     const available = selected.filter(id => !(targets.excludeUsers ?? []).includes(id))
     const potentiallyTargeted = selected.length === 0 || available.length > 0 && ((targets.includeUsers ?? []).includes('All') || (targets.includeUsers ?? []).some((id: string) => available.includes(id)) || (targets.includeGroups ?? []).length > 0 || !!targets.includeGuestsOrExternalUsers || (targets.includeRoles ?? []).some((role: string) => available.some(id => (snapshot.roles.active[id] ?? []).includes(role))))
-    if (step.id === 's-ladder-phone-access-restriction') return (c.platforms?.includePlatforms ?? []).some((x: string) => ['android', 'iOS'].includes(x)) && (p.grantControls?.builtInControls ?? []).includes('block')
     return false
   }).map(raw => { const p = raw as Record<string, unknown>; return [p.id, p.state, p.conditions, p.grantControls, p.sessionControls] }).sort((a, b) => String(a[0]).localeCompare(String(b[0])))
 }
@@ -206,7 +205,6 @@ export function manualBasis(step: Step, snapshot: TenantSnapshot, mapping?: Mapp
   if (item === 'legacy-auth-inventory') basis.push(Object.keys(snapshot.evidenceUsage?.legacyAuth.byDetail ?? {}).sort())
   // Preserve the persisted basis of existing manual reviews. Only this new
   // review depends on the policies that can restrict phone access.
-  if (item === 'phone-access-restriction') basis.push(relevantPolicies(step, snapshot))
   return JSON.stringify(basis)
 }
 
