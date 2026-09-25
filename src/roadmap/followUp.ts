@@ -16,7 +16,8 @@
 // and only a person's Save marks anyone — a detection never does.
 import data from '../actionability/dependency-data.json' with { type: 'json' }
 import type { MappingState } from '../mapping/types.ts'
-import { MFA_FOLLOW_UP_KEY, SPECIAL_CARE_STEP_ID as CAMPAIGN_STEP_ID } from './answers.ts'
+import { MFA_FOLLOW_UP_KEY } from './answers.ts'
+import { CAMPAIGN_STEP_ID } from './stepIds.ts'
 import { rolloutCohort } from './rings.ts'
 import type { Step } from './types.ts'
 

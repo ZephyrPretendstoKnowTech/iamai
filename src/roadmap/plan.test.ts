@@ -41,7 +41,7 @@ const generate = (mapping = emptyMappingState(snapshot.tenantId)) =>
 
 test('round trip: steps, Setup answers and checkpoints survive save, forget, load', () => {
   // Answers made in Setup travel with the plan.
-  const mapping = { ...emptyMappingState(snapshot.tenantId), breakGlassUserIds: ['u-4'], highCareUserIds: ['u-3'], allowedCountries: ['AU'] }
+  const mapping = { ...emptyMappingState(snapshot.tenantId), breakGlassUserIds: ['u-4'], allowedCountries: ['AU'] }
   const steps = generate(mapping)
   // Emergency access is refused, and everything else is not (prompt 44 item 6).
   const emergency = steps.find((s) => isEmergencyAccess(s) && s.status !== 'done')

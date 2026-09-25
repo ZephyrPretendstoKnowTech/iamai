@@ -82,7 +82,6 @@ const UNPRODUCED: readonly string[] = [
   "readiness.activeCount",
   "readiness.adminsNeedingPasskey",
   "readiness.percent",
-  "readiness.specialCare",
   "securityDefaults.current.isEnabled",
   "serviceAccounts.group.id",
   "sharepoint.unmanagedDevices.currentMode",

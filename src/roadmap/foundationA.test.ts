@@ -166,7 +166,7 @@ test('a ring plan does not remove an account the policy keeps: the safety bounda
     rings: [],
     action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', memberKey: 'p', body }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
   } as unknown as Step
-  const ringCtx = { snapshot, viability: new Map(), highCareIds: new Set<string>(), operatorId: null, naming: { style: 'none' }, activeUsers: 2, departmentOf: new Map(), deviceReady: new Set<string>() }
+  const ringCtx = { snapshot, viability: new Map(), notInPilotIds: new Set<string>(), operatorId: null, naming: { style: 'none' }, activeUsers: 2, departmentOf: new Map(), deviceReady: new Set<string>() }
   const rings = proposeRings(step, ringCtx as never)
   assert.deepEqual(rings.flatMap((x) => x.targeting.suggestedMemberIds).sort(), ['bg', 'u1'], 'the account the policy keeps is in the rollout')
   // And the safety boundary is what has something to say about it: the policy
@@ -214,7 +214,7 @@ test('a policy the plan cannot resolve a scope for proposes no rollout at all', 
   assert.equal(rolloutCohort(step), null, 'the step has no cohort')
   assert.equal(reached(step), null, 'and no population a surface may show')
   assert.equal(stepPopulation(step), null, 'so no count is claimed')
-  const ringCtx = { snapshot, viability: new Map(), highCareIds: new Set<string>(), operatorId: null, naming: { style: 'none' }, activeUsers: 2, departmentOf: new Map(), deviceReady: new Set<string>() }
+  const ringCtx = { snapshot, viability: new Map(), notInPilotIds: new Set<string>(), operatorId: null, naming: { style: 'none' }, activeUsers: 2, departmentOf: new Map(), deviceReady: new Set<string>() }
   assert.deepEqual(proposeRings(step, ringCtx as never), [], 'and no ring names people nobody has established are in scope')
   // The goal's population is right there, and none of it came from there.
   assert.equal(step.population.ids.length, 2)
@@ -423,7 +423,7 @@ function readingOf(step: Step, f: Fixture, r: FixtureRun, others: Step[]): strin
   const plan = others.map((x) => (x.id === step.id ? step : x))
   const graph = dependencyGraph(plan)
   const schedule = buildSchedule(plan, r.schedule.start, r.viability.length)
-  const ringCtx = { snapshot: f.snapshot, viability: new Map(r.viability.map((v) => [v.userId, v])), highCareIds: new Set<string>(), operatorId: f.operatorId, naming: r.coverage.organisation.naming, activeUsers: r.viability.length, ...ringContextIndexes(f.snapshot) }
+  const ringCtx = { snapshot: f.snapshot, viability: new Map(r.viability.map((v) => [v.userId, v])), notInPilotIds: new Set<string>(), operatorId: f.operatorId, naming: r.coverage.organisation.naming, activeUsers: r.viability.length, ...ringContextIndexes(f.snapshot) }
   return JSON.stringify([
     // Applicability, operator safety and strand.
     stepApplicability(step, anyone, f.snapshot),
@@ -695,7 +695,7 @@ test('a policy IAMAI cannot read in full is not safe or zero, waits on everythin
   const verdict = stepAccountVerdict(held, r.viability[0]?.userId ?? 'nobody', f.snapshot)
   assert.ok(!verdict.stranded || verdict.unknown, 'and no confident verdict about a person')
   assert.deepEqual(
-    proposeRings(held, { snapshot: f.snapshot, viability: new Map(), breakGlassIds: new Set(), highCareIds: new Set(), operatorId: null, naming: r.coverage.organisation.naming, activeUsers: 10, ...ringContextIndexes(f.snapshot) } as never),
+    proposeRings(held, { snapshot: f.snapshot, viability: new Map(), breakGlassIds: new Set(), notInPilotIds: new Set(), operatorId: null, naming: r.coverage.organisation.naming, activeUsers: 10, ...ringContextIndexes(f.snapshot) } as never),
     [],
     'and no ring plan for a policy nobody can read',
   )

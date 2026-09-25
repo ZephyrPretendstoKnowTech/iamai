@@ -361,7 +361,7 @@ test('7: regression after done → re-opened with a dated note (missing policy: 
 test('9 + 13: valid break-glass answers keep the emergency-access step standing by its checks and build no drill step; confirmed service accounts with no group build the phase-0 step that creates it', () => {
   const mapping = emptyMappingState('t')
   // Every shown question is required now (prompt 26): answer them all so only the break-glass branch is under test.
-  for (const id of ['breakGlass', 'globalExclusion', 'countries', 'highCare', 'trustedLocations', 'serviceAccounts', 'timeZone', 'frameworks', 'applicability']) mapping.wizardAnswered[id] = true
+  for (const id of ['breakGlass', 'globalExclusion', 'countries', 'trustedLocations', 'serviceAccounts', 'timeZone', 'frameworks', 'applicability']) mapping.wizardAnswered[id] = true
   mapping.breakGlassUserIds = ['u1', 'u2']
   const snapshot = mkSnapshot()
   snapshot.users[1].lastSuccessfulSignIn = '2026-01-01T00:00:00Z' // u1 stale

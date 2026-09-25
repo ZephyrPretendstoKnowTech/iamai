@@ -202,12 +202,10 @@ export function mailDevicesOf(mapping: Pick<MappingState, 'questionAnswers'>): s
  * changes; evidence may pre-fill one, and only an approval records it, "None"
  * included. Until then the step it changes is short of Completed.
  */
-/** The registration campaign, whose special-care list a person confirms (S-MC-2). */
-export const SPECIAL_CARE_STEP_ID = 's-verify-mfa'
 /** Not a step: the campaign's "Turn on without them for now" list persists under this key (followUp.ts). */
 export const MFA_FOLLOW_UP_KEY = 's-verify-mfa-follow-up'
 
-type InputRecord = Pick<MappingState, 'questionAnswers' | 'specialCareConfirmed'>
+type InputRecord = Pick<MappingState, 'questionAnswers'>
 
 /**
  * `prefilled`: IAMAI has an answer already and is waiting to have it

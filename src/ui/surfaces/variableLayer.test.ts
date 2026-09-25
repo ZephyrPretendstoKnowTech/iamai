@@ -72,10 +72,6 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   assert.equal(cl.needsProof.length, tv.counts.confirm + tv.counts.device, 'Needs proof is Confirm it and Needs a device on MFA Readiness')
   assert.equal(cl.readinessUnknown.length, tv.counts.unknown, 'Unknown matches MFA Readiness')
   assert.ok(cl.noMethod.length > 0 && cl.needsProof.length > 0, 'the demo has people in these buckets')
-  assert.ok(cl.specialCare.length > 0, 'the special-care picker has people')
-  for (const row of cl.specialCare) {
-    assert.match(row, /\S · \S/, `"${row}" has a name and a state, not an empty "·"`)
-  }
 })
 
 // Prompt 52, walk-51 item 5: one short date format everywhere, the long form

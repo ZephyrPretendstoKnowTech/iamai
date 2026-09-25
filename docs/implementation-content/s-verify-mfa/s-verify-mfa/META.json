@@ -42,7 +42,6 @@
     "campaign.snoozeDurationInDays",
     "readiness.activeCount",
     "readiness.percent",
-    "readiness.specialCare",
     "readiness.adminsNeedingPasskey"
   ],
   "optionalBindings": [

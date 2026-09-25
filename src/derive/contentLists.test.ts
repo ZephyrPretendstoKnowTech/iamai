@@ -43,7 +43,7 @@ test('a service principal never appears in a people list or an admins note', () 
   assert.equal(principals.length, 1, 'GetIAMAI has one role holder that is not a user account')
   const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
   const userNames = new Set(f.snapshot.users.map((u) => nameOf(u.id)))
-  for (const key of ['adminNames', 'eligible', 'specialCare', 'adminsWithout', 'adminsNotReady', 'emergencyAccounts'] as const) for (const name of lists[key] ?? []) assert.ok(userNames.has(name.split(' · ')[0]), `${key} names a user account: ${name}`)
+  for (const key of ['adminNames', 'eligible', 'adminsWithout', 'adminsNotReady', 'emergencyAccounts'] as const) for (const name of lists[key] ?? []) assert.ok(userNames.has(name.split(' · ')[0]), `${key} names a user account: ${name}`)
   for (const id of principals) {
     assert.ok(!lists.adminNames.includes(nameOf(id)), `${nameOf(id)} is not in the admins note`)
     assert.ok(!Object.values(lists).some((list) => Array.isArray(list) && list.some((x) => String(x).split(' · ')[0] === nameOf(id))), `${nameOf(id)} is in no people list`)

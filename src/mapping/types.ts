@@ -86,16 +86,6 @@ export type MappingState = {
   /** Credential identity covered by the custody confirmation, per selected
    * account. A method replacement invalidates only the affected confirmation. */
   breakGlassCustodyBasis?: Record<string, string>
-  /** High-priority care targets: changes still apply; the plan takes extra
-   *  caution (verify-before-enforce, white-glove callouts, sequenced last). */
-  highCareUserIds: string[]
-  /**
-   * The special-care people a person confirmed on the registration campaign
-   * (B10 P0-10, S-MC-2): written only by that picker's Save. An empty list is
-   * "nobody needs special care", confirmed; null or absent is not yet addressed,
-   * and the campaign stays open.
-   */
-  specialCareConfirmed?: string[] | null
   /**
    * The campaign's people a person marked "Turn on without them for now" (owner
    * decision 9): someone on leave need not hold every policy that waits on the
@@ -144,7 +134,6 @@ export function emptyMappingState(tenantId: string): MappingState {
     targetState: {},
     breakGlassUserIds: [],
     breakGlassAnswers: { credentialStorage: null, signInMonitoring: null },
-    highCareUserIds: [],
     trustedLocationIds: [],
     serviceAccountsGroupId: null,
     serviceAccountUserIds: [],

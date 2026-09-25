@@ -1738,7 +1738,7 @@
         "blocked"
       ],
       "correctionModules": 0,
-      "requiredBindings": 6,
+      "requiredBindings": 5,
       "optionalBindings": 6,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
@@ -1746,7 +1746,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "campaign",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 5,
       "registered": true,
       "provenance": "workflow-check",
       "review": "current"
@@ -5289,18 +5289,6 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "readiness.specialCare",
-      "requiredBy": [
-        "s-verify-mfa"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-verify-mfa"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "resource.intuneEnrollment.exists",
       "requiredBy": [],
       "optionalBy": [
@@ -6170,14 +6158,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 922,
-    "uniqueBindings": 272,
-    "bindingsRequiredByAtLeastOneProjection": 86,
+    "uniqueBindings": 271,
+    "bindingsRequiredByAtLeastOneProjection": 85,
     "bindingsOptionalInAtLeastOnePackage": 190,
     "bindingDefinitionsCarriedForward": 42,
-    "bindingDefinitionsPendingHolisticReview": 230,
+    "bindingDefinitionsPendingHolisticReview": 229,
     "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 230,
+    "knownIAMAIInputUnreviewed": 229,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

@@ -55,7 +55,7 @@ import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { ownCandidate } from '../coverage/coverage.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
-import { proposeRings, ringContextIndexes } from './rings.ts'
+import { pilotExclusionsOf, proposeRings, ringContextIndexes } from './rings.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
 import type { PolicyEffect as MethodTarget } from './operations.ts'
 import { campaignIds, isActivePerson, namedAccounts, population, populationIndex } from '../derive/population.ts'
@@ -88,7 +88,6 @@ import type { NameDirectory } from '../names.ts'
 import { personLabels } from '../names.ts'
 import { isAllowlistGeoPolicy, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate, displayZone } from '../copy/dates.ts'
-import { detectHighCare } from '../derive/highCare.ts'
 import { proposedStart } from '../derive/planStart.ts'
 import { checksNotRun } from '../validation/report.ts'
 import {
@@ -839,10 +838,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // out, compliant computers only, and the device steps wait on the decision.
   const devicePlan = devicePlanOf(mapping)
   const deviceScope = deviceScopeOf(devicePlan)
-  // Detection only (prompt 46 item 19): admins, the emergency-access accounts,
-  // confirmed service accounts, and active people with no method. A list saved
-  // by an older Setup is not read.
-  const highCareIds = detectHighCare({ snapshot, breakGlassUserIds: mapping.breakGlassUserIds, serviceAccountUserIds: mapping.serviceAccountUserIds, viability })
+  // The accounts a pilot never starts with (rings.ts pilotExclusionsOf).
+  const notInPilotIds = pilotExclusionsOf({ snapshot, breakGlassUserIds: mapping.breakGlassUserIds, serviceAccountUserIds: mapping.serviceAccountUserIds, viability })
   const operatorId = input.operatorUserId ?? null
   const viabilityById = new Map(viability.map((v) => [v.userId, v]))
   // One lookup, built once. This was a linear search of the directory per call,
@@ -3187,7 +3184,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const ringCtx = {
     snapshot,
     viability: viabilityById,
-    highCareIds,
+    notInPilotIds,
     operatorId,
     naming,
     activeUsers: activeTotal,

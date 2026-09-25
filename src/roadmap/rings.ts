@@ -7,6 +7,7 @@ import type { NamingConvention } from '../coverage/naming.ts'
 import { proposedGroupName } from '../coverage/naming.ts'
 import type { Ring, RingTargeting, Step } from './types.ts'
 import { analysisUnknown, canDenyAccess, effectsOf } from './strand.ts'
+import { adminUsers } from '../derive/sets.ts'
 
 /** Ring counts and sizes by active users (roadmap-v2.md §1 table). */
 export type RingBand = {
@@ -94,7 +95,8 @@ export function rolloutCohort(step: Step): string[] | null {
 export type RingContext = {
   snapshot: TenantSnapshot
   viability: Map<string, MfaViability>
-  highCareIds: Set<string>
+  /** The accounts a pilot never starts with (pilotExclusionsOf). */
+  notInPilotIds: Set<string>
   operatorId: string | null
   naming: NamingConvention
   activeUsers: number
@@ -156,7 +158,7 @@ function spreadByDepartment(wanted: Set<string>, ctx: RingContext, limit = Numbe
 
 function pickPilot(pool: Set<string>, size: number, ctx: RingContext): string[] {
   const adminSet = new Set([...pool].filter((id) => ctx.viability.get(id)?.isAdmin))
-  const ordered = spreadByDepartment(pool, ctx, size, (id) => adminSet.has(id) || ctx.highCareIds.has(id))
+  const ordered = spreadByDepartment(pool, ctx, size, (id) => adminSet.has(id) || ctx.notInPilotIds.has(id))
   const admin = [...adminSet].sort((a, b) => {
     const va = ctx.viability.get(a)
     const vb = ctx.viability.get(b)
@@ -166,7 +168,7 @@ function pickPilot(pool: Set<string>, size: number, ctx: RingContext): string[] 
   // A population made only of admins (an admin-strength step) still pilots with a few of them.
   if (picked.length < Math.min(size, pool.size)) {
     const pickedSet = new Set(picked)
-    for (const id of spreadByDepartment(pool, ctx, size, (id) => pickedSet.has(id) || ctx.highCareIds.has(id))) {
+    for (const id of spreadByDepartment(pool, ctx, size, (id) => pickedSet.has(id) || ctx.notInPilotIds.has(id))) {
       if (picked.length >= size) break
       picked.push(id)
     }
@@ -288,3 +290,23 @@ function addDaysIso(iso: string, days: number): string {
   return d.toISOString()
 }
 
+
+/**
+ * The accounts a policy's pilot ring never starts with: the admins, the
+ * emergency access accounts, the confirmed service accounts, and every active
+ * person with no MFA method yet. A lock-out there hurts most, so the pilot is
+ * drawn from everyone else first. Pure.
+ */
+export function pilotExclusionsOf(args: {
+  snapshot: TenantSnapshot
+  breakGlassUserIds: readonly string[]
+  serviceAccountUserIds: readonly string[]
+  viability: readonly MfaViability[]
+}): Set<string> {
+  const out = new Set<string>()
+  for (const u of adminUsers(args.snapshot, new Set(args.serviceAccountUserIds))) out.add(u.id)
+  for (const id of args.breakGlassUserIds) out.add(id)
+  for (const id of args.serviceAccountUserIds) out.add(id)
+  for (const v of args.viability) if (v.activity === 'active' && v.mfa === 'none') out.add(v.userId)
+  return out
+}

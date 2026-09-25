@@ -46,7 +46,6 @@ export const POPULATION = {
     admin: 'admin',
     neverSignedIn: 'never signed in',
     unverified: 'unverified',
-    highCare: 'handle with care',
     noDevice: 'no compliant device',
     seen: 'seen using what this blocks',
   },
