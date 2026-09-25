@@ -47,11 +47,8 @@
     ],
     "$commentPolicyDoneWhenUnobserved": "What an enforced policy IAMAI watched no report-only period for says in place of the two report-only gates of policyDoneWhen (ui/surfaces/doneWhen.ts: every member first seen already enforced, observation.ts neverObserved, with no scan's sign-in records showing it in report-only since). An enforced policy does not finish on a report-only period it is past, and the gates were dropped for it; dropped silently, nothing on the step recorded that no window had been watched. A policy an administrator created On, skipping report-only, then finished on the same lines as one IAMAI had watched through its period, and the unmet gate had been the only line that said otherwise (R4-19, Priya D4; the impatient administrator on Marcus's tenant). It says what IAMAI watched, and never when the policy went on, which IAMAI cannot know.",
     "policyDoneWhenUnobserved": "IAMAI watched no report-only period for this policy before it found the policy enforced, so none is part of finishing it.",
-    "$commentPolicyVerifyAfter": "The person's own check once the policy has changed, and the one line of the policy block a finished policy still owes (ui/surfaces/doneWhen.ts, stepContract.ts doneWhenOf). It was the last line of policyDoneWhen, and a policy the scan found enforced and in place finished on 'The scan found the assessed configuration in place.' alone: on the scan that watched a sign-in-risk policy leave report-only, the check that catches a lockout - review the sign-in failures of the people it reaches - disappeared exactly when it applied, and the step read Completed. Every sign-in-records policy block still ends on it; a finished policy keeps it where IAMAI watched the change (observation.ts watchedArrive), and one the scan found already in place does not, because nobody watched a change to verify after.",
-    "policyVerifyAfter": "Verify after the change: review sign-in failures for the people affected, and resolve any legitimate access problem you find.",
     "changeDoneWhen": [
-      "A later scan confirms the intended settings on the same policy.",
-      "Verify after the change: review affected sign-ins and complete the step-specific checks."
+      "A later scan confirms the intended settings on the same policy."
     ],
     "policyDoneWhenTracked": [
       "Time: in report-only since {reportOnly}, {timeGate}.",
@@ -2334,7 +2331,11 @@
             "$commentExceptMore": "More than two exclusions: the first by name and the rest counted (owner, 2026-09-24: 4.4's criterion read as a run-on list).",
             "exceptMore": "{who} except {first} and {n} other exclusions",
             "resources": "across All resources",
-            "resourcesExcept": "across All resources except {apps}"
+            "resourcesExcept": "across All resources except {apps}",
+            "$commentFactWhen": "A policy in Extend MFA Coverage applies at a moment, not to every sign-in (owner, 2026-09-25: section 5 finishes on 4.x's two lines): the registration it protects, the risk it answers, the authentication context or the application it is scoped to. A condition with no words here gives no fact at all (ui/surfaces/policyFact.ts whenOf).",
+            "factWhen": "{verb} {what} {when}, for {who}",
+            "when": { "registerSecurityInfo": "to register security information", "registerDevice": "to register or join a device", "signInRisk": "on {levels}-risk sign-ins", "userRisk": "on {levels}-risk accounts", "authContext": "for authentication context {ids}", "applications": "to reach {apps}" },
+            "registration": { "registerSecurityInfo": "security information registration", "registerDevice": "device registration" }
           },
           "$commentDoneOn": "Completion Criteria on a policy in Turn On MFA for Everyone (walk list 4.x item 26, owner 2026-09-24): two lines, the same in every state. doneOn is what IAMAI will see ({fact} is policyFact's participle form); the second line is the report-only period the policy has to pass (\"period\", not the owner's \"week\": Block Legacy Authentication and Block Device Code Sign-in watch 3 days where nobody used the flow), left out where the scan found the policy already On, and shared.policyVerifyAfter in its place where the policy went On without a report-only period IAMAI watched (owner, 2026-09-22). doneOnPlain is the first line where IAMAI holds no fact for the policy.",
           "doneOn": "IAMAI sees {policy} On, {fact}.",
@@ -5262,7 +5263,7 @@
       "kind": "policy",
       "title": "Require MFA for Guests",
       "changeLine": null,
-      "why": "External accounts can authenticate differently depending on their home organization and account type. Reviewing those differences helps require MFA without cutting off legitimate collaboration.",
+      "why": "Guests sign in with accounts another organization manages. These policies ask every guest for MFA before they reach your files and apps.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/external-id/authentication-conditional-access"
       },
@@ -6751,7 +6752,7 @@
       "licence": "Microsoft Entra ID P2 or Microsoft Entra ID Governance",
       "title": "Require MFA at Every Role Activation",
       "changeLine": null,
-      "why": "Role activation is a useful point to verify the person requesting privileged access. Checking the context, policy and role settings together helps catch a requirement that was configured but is never invoked.",
+      "why": "Activating an admin role is the moment an attacker most wants to hijack. This policy asks for a fresh strong sign-in every time someone activates a role.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings"
       },
@@ -6910,7 +6911,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge High-Risk Sign-ins",
       "changeLine": null,
-      "why": "Sign-in risk is Microsoft's reading of one authentication request: how likely it is that the request did not come from the person who owns the account. A high reading stops the sign-in until it is answered with a method the baseline's authentication strength accepts.",
+      "why": "A high-risk sign-in was probably not made by the account's owner. This policy stops it until the person signs in with a passkey, Windows Hello or a Temporary Access Pass.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
@@ -6944,8 +6945,7 @@
       "dates": "{datesNew}",
       "doneEnd": "A sign-in {tenant} rates high risk cannot continue until it is answered with a method the selected grant accepts, and the exclusions group is applied.",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "Available risky sign-ins were reviewed, and affected people can satisfy the selected requirement."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -7014,7 +7014,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Remediate High-Risk Users",
       "changeLine": null,
-      "why": "User risk is Microsoft's reading of the account rather than one sign-in: how likely it is that the account itself is compromised. Most of that reading is worked out after a sign-in, so this policy is what stops a compromised account the next time it is used.",
+      "why": "A high-risk account is probably compromised. This policy makes the person sign in with a strong method and clear the risk before they get back in.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
@@ -7042,8 +7042,7 @@
       "dates": "{datesNew}",
       "doneEnd": "An account {tenant} rates high risk cannot be used again until its owner has completed the remediation the baseline's authentication strength accepts, and the exclusions group is applied.",
       "doneWhen": [
-        "A scan confirms the high-risk user policy is On with the intended recovery controls and exclusions.",
-        "People rated at risk were reviewed. Affected users can complete the required remediation, including the on-premises password route where their account is synchronized."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -7103,7 +7102,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge Medium-Risk Sign-ins",
       "changeLine": null,
-      "why": "A medium rating means Microsoft saw one or more moderate anomalies in the sign-in and is less confident than it is at high. This rule asks for multifactor authentication at that level, and leaves the High-risk rule its own stronger requirement.",
+      "why": "A medium-risk sign-in shows signs it may not be the account's owner. This policy asks for MFA before it goes through.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
@@ -7120,7 +7119,7 @@
       "dates": "{datesNew}",
       "doneEnd": "A sign-in {tenant} rates medium risk cannot continue until it is answered with multifactor authentication, and the exclusions group is applied.",
       "doneWhen": [
-        "A scan confirms the medium-risk sign-in policy is On and requires the intended MFA controls for the intended users, with the correct exclusions."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -7174,7 +7173,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Reset Passwords for Medium-Risk Users",
       "changeLine": null,
-      "why": "A medium rating means Microsoft saw moderate anomalies on the account and is less confident than it is at high. This rule answers that with the baseline's authentication strength and a secure password change, and leaves the separate High-risk control in place.",
+      "why": "A medium-risk account shows signs its password may be known to someone else. This policy makes the person sign in with a strong method and change their password.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
@@ -7694,8 +7693,7 @@
       "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}",
-        "The intended user can access Inforcer with an accepted MFA method."
+        "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {

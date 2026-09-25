@@ -454,9 +454,8 @@ export function ifWrongFor(st: object | null | undefined, ex: Ex): string | null
 function doneWhen(items: string[], ex: Ex): string {
   const out: string[] = []
   for (const i of items) {
-    // The person's own check after the change has its own key (shared.policyVerifyAfter)
     // and still closes the policy block, as ui/surfaces/doneWhen.ts expands it.
-    if (i === '{policyDoneWhen}') out.push(...S.policyDoneWhen, S.policyVerifyAfter)
+    if (i === '{policyDoneWhen}') out.push(...S.policyDoneWhen)
     else if (i === '{changeDoneWhen}') out.push(...S.changeDoneWhen)
     else out.push(i)
   }

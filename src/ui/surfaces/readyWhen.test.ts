@@ -30,7 +30,7 @@ import { statusOf } from './statusWord.ts'
 import { laneReadings } from './planLanes.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { POLICY_UNOBSERVED, POLICY_VERIFY_AFTER, doneWhenTemplates } from './doneWhen.ts'
+import { POLICY_UNOBSERVED, doneWhenTemplates } from './doneWhen.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { content } from '../../content/content.ts'
 import { RE } from '../../content/contentChecks.ts'
@@ -345,6 +345,6 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
     for (const row of (g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]) if (owned.includes(String(row.id))) row.state = 'enabled'
     const watched = runFixture(g, {}, observationsOf(first.steps), g.snapshot.asOf).steps.find((s) => s.id === before.id)!
     assert.equal(watched.state.lifecycle, 'enforced', 'the premise: the next scan finds it on')
-    assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']), [shared.policyDoneWhen[2], POLICY_VERIFY_AFTER])
+    assert.deepEqual(doneWhenTemplates(watched, ['{policyDoneWhen}']), [shared.policyDoneWhen[2]])
   }
 })

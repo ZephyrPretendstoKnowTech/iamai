@@ -234,9 +234,10 @@ test('013.B: unresolved operations retain useful portal guidance without invente
       // on that object's completion first, as its first task, then on the
       // answer it still asks for, where it asks one, then on its own end state,
       // whatever else holds it.
-      // A policy in Turn On MFA for Everyone finishes on the same two lines in every state, held
-      // included (walk list 4.x item 26, owner 2026-09-24): what IAMAI will see, and its report-only period.
-      if (isGroupMember(s.id, 'core')) continue
+      // A policy in Turn On MFA for Everyone or Extend MFA Coverage finishes on the same two lines in
+      // every state, held included (walk list 4.x item 26, owner 2026-09-24; section 5, owner
+      // 2026-09-25): what IAMAI will see, and its report-only period.
+      if (isGroupMember(s.id, 'core') || isGroupMember(s.id, 'extend-mfa')) continue
       const taskDone = s.objectTask !== undefined ? stepContract(s.objectTask, c.ctx(s)).doneWhen : []
       const decided = s.objectTask !== undefined && s.state.condition === 'needs-decision' ? [CONTRACT.doneDecision] : []
       const lead = [...taskDone, ...decided]
