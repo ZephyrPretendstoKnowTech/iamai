@@ -7,7 +7,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { fixture } from '../roadmap/fixtures/index.ts'
+import { fixture, withReviewRow } from '../roadmap/fixtures/index.ts'
+import { HIDDEN_V1_POLICY } from '../roadmap/workflows.ts'
 import type { FixtureName } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
@@ -40,6 +41,11 @@ test('every pinned baseline policy is shown somewhere in the plan: a step, Not l
     const listed = new Map(rows.map((r) => [r.policy, r]))
     const nowhere: string[] = []
     for (const p of policies) {
+      // Hidden from every surface for v1.0 (owner, decision 2): drawn nowhere, the footer included.
+      if (HIDDEN_V1_POLICY.test(p.displayName)) {
+        assert.ok(!listed.has(p.displayName), `${name}: "${p.displayName}" is hidden and listed`)
+        continue
+      }
       const goals = goalsOf(p)
       const byStep = steps.some((s) => goals.includes(s.goalId))
       const byLicence = goals.some((g) => licenceTexts.some((t) => t.includes(titleOf(g))))
@@ -67,10 +73,16 @@ test('the list is derived from what the Plan draws, never a fixed set of policie
   const withPortal = notInPlanRows(policies, run.steps, run.coverage, PINNED_GOAL_MAP)
   assert.ok(!withPortal.some((r) => r.policy === portal.displayName), 'a drawn step takes its policy off the list')
   // A review row takes its policy off the list; without the review rows, their policies are listed.
-  const reviewed = steps.filter((s) => s.baselineReviewSource).map((s) => s.baselineReviewSource!.name)
-  assert.ok(reviewed.length > 0, 'the premise: the demo draws review rows')
-  const noReviews = notInPlanRows(policies, steps.filter((s) => !s.baselineReviewSource), run.coverage, PINNED_GOAL_MAP)
-  for (const name of reviewed) assert.ok(noReviews.some((r) => r.policy === name), `${name}: listed once its review row is gone`)
+  // (Jon's pin draws none since Phase 2b; a baseline carrying a policy no goal holds does.)
+  {
+    const f = withReviewRow({ ...fixture('demo'), baseline: pinnedPackage() })
+    const r = runFixture(f)
+    const drawn = customerPlanSteps(r.steps)
+    const reviewed = drawn.filter((s) => s.baselineReviewSource).map((s) => s.baselineReviewSource!.name)
+    assert.ok(reviewed.length > 0, 'the premise: the plan draws a review row')
+    const noReviews = notInPlanRows(f.baseline.policies, drawn.filter((s) => !s.baselineReviewSource), r.coverage, PINNED_GOAL_MAP)
+    for (const name of reviewed) assert.ok(noReviews.some((row) => row.policy === name), `${name}: listed once its review row is gone`)
+  }
   // A Not licensed row's policies are never listed; with every goal licensed
   // away from the map, the same policies would have to be.
   const licensed = notLicensedRows(run.coverage, PINNED_GOAL_MAP)

@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { effectiveFirstDeployment, proposedFirstDeployment, proposedStart } from '../../derive/planStart.ts'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, withReviewRow } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { dateSpan } from '../../copy/dates.ts'
@@ -187,6 +187,15 @@ test('every row reads an Impact value: a count, No user impact, or a non-policy 
         assert.doesNotMatch(impact, /^(No user impact|—|Not established)/, `${name}/${s.id}`)
         seen.add('known')
       }
+    }
+  }
+  // A generated review row is the configuration case: Jon's pin draws none since Phase 2b, so a baseline with a policy no goal holds stands in.
+  for (const s of runFixture(withReviewRow(fixture('demo'))).steps as Step[]) {
+    if (!s.id.startsWith('s-review-baseline-')) continue
+    const pop = reached(s)
+    if (pop !== null && s.impactCount === undefined && (pop.activeIds ?? pop.ids).length === 0 && effectsOf(s) === null) {
+      assert.equal(rowWho(s).split(' · ')[0], s.impactLabel ?? rowWho(s).split(' · ')[0], s.id)
+      seen.add('configuration')
     }
   }
   for (const k of ['unknown', 'configuration', 'known']) assert.ok(seen.has(k), `no fixture row shows the ${k} impact case`)

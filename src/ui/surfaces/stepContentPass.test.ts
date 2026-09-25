@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, withReviewRow } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { CONTRACT } from './stepContract.ts'
@@ -77,11 +77,15 @@ test('a Learn link shows the day it was checked where no package is current: a s
   // in docs/plans/ongoing-spec.md section 1 (`ms-plan-ca`, checked 2026-09-20).
   const rowLine = sourceCheckedLine('2026-09-25', CONTRACT.implementation)
   assert.ok(rowLine, 'no Source checked line for a recorded date')
-  const rows = demo.r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
-  assert.equal(rows.length, 4, 'the demo generates four review rows')
+  // Jon's pin draws no review row since Phase 2b; a baseline carrying a policy no goal holds does.
+  const withRow = withReviewRow(fixture('demo'))
+  const rowRun = runFixture(withRow)
+  const rowCtx: StepVarContext = { snapshot: withRow.snapshot, mapping: withRow.mapping, nameOf: (x: string) => rowRun.input.names!.label(x), signature: 'IT', operatorId: withRow.operatorId, now: withRow.snapshot.asOf, groups: withRow.groups }
+  const rows = rowRun.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
+  assert.equal(rows.length, 1, 'the premise: the baseline generates a review row')
   for (const step of rows) {
     assert.equal((step.guidance as { learn?: { checkedOn?: string } } | undefined)?.learn?.checkedOn, '2026-09-25', step.id)
-    const b = stepBodyOf(step, demo.ctx)
+    const b = stepBodyOf(step, rowCtx)
     assert.equal(b.learnUrl, 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access', step.id)
     assert.equal(b.sourceLine, rowLine, `${step.id}: the Learn link shows no checked date`)
   }

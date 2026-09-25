@@ -380,6 +380,9 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   // own decision until one is saved; travel was retired (Stage 3).
   'geo-restriction': ['partner'],
   'service-accounts-trusted-network': ['serviceAccounts', 'sharedDevices', 'officeNetwork'],
+  // Jon's AVD and SharePoint blocks outside the trusted network (Phase 2b): the office decides them; the service question comes from the goal's applicability.
+  'avd-trusted-network': ['officeNetwork'],
+  'sharepoint-trusted-network': ['officeNetwork'],
   // Phones Blocked from company data widens Jon's block to iOS and Android (deviations.ts BLOCK_PLATFORMS_GOAL).
   'block-unsupported-platforms': ['phones'],
   'register-info-protected': ['officeNetwork'],

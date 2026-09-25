@@ -5,8 +5,9 @@
 // existingCoverage line rendered; the not-assessed row's note names the policy
 // and the reason.
 import { test } from 'node:test'
+import { hiddenPolicy } from './workflows.ts'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { fixture, withReviewRow } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, latestRecoveryTest, recoveryCandidateReadings, reconcileAutomaticRecovery, withCleanupDone, recoveryAccountBasis, recoveryEvidenceOf, RECOVERY_AUTOMATIC_WORKFLOW, RECOVERY_INVALIDATION_WORKFLOW, RECOVERY_PREPARATION_WORKFLOW } from './cleanupDone.ts'
 import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
@@ -310,14 +311,13 @@ test('the consolidation row exists whenever a step\'s existingCoverage line rend
 })
 
 test('unassessed baseline policies become individual reviews, with no catch-all completion', () => {
-  const r = runFixture(fixture('demo'))
+  // A baseline with a policy no goal holds (Jon's pin has none drawn since Phase 2b).
+  const r = runFixture(withReviewRow(fixture('demo')))
   assert.equal(r.schedule.cleanup!.rows.some((x) => (x.kind as string) === 'notAssessed'), false)
   const reviews = r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
-  assert.equal(reviews.length, r.coverage.organisation.notAssessed.filter(p => !/IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i.test(p.name)).length)
-  assert.ok(reviews.every((s) => s.guidance?.doneWhen && (s.manualReview || s.configurationFindings?.some(f => f.key === 'avd-allowed-population' && f.outcome === 'unknown'))))
-  const avd = reviews.find(s => s.configurationFindings?.some(f => f.key === 'avd-allowed-population'))!
-  assert.equal(avd.state.satisfied, false, 'an unresolved allowed-user definition is not verified protection')
-  assert.equal(avd.manualReview, undefined, 'generic acknowledgement cannot clear the source gate')
+  assert.ok(reviews.length > 0, 'the premise: a review row is drawn')
+  assert.equal(reviews.length, r.coverage.organisation.notAssessed.filter(p => !hiddenPolicy(p.name)).length)
+  assert.ok(reviews.every((s) => s.guidance?.doneWhen && s.manualReview))
   assert.ok(r.steps.some(s => s.id === 's-goal-inforcer-mfa'), 'Inforcer uses its ordinary application-scoped goal')
   assert.ok(!reviews.some(s => /inforcer/i.test(s.id)), 'the old Inforcer review is not duplicated')
 })

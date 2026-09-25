@@ -157,10 +157,11 @@ test('no at-pace finish is stated from a rollout that placed none of the held wo
   assert.equal(line.includes('at pace'), false, `the cover states an at-pace finish: ${line}`)
   assert.ok(line.endsWith('cannot finish until the held steps'), line)
   // A rollout that did place held work keeps its estimate: the demo's is the
-  // three weeks two changes prompting the same people take.
+  // weeks two changes prompting the same people take (four since Phase 2a, when
+  // Require MFA to Register a Device, no longer held on an unmapped group, is placed).
   const demo = plan('demo')
   assert.ok(planFinish(demo.steps, demo.schedule.cleanup?.end ?? null).held, 'the premise: the demo holds required work')
-  assert.ok(demo.schedule.estimate && demo.schedule.estimate.weeks === 3, `the demo lost its estimate: ${JSON.stringify(demo.schedule.estimate)}`)
+  assert.ok(demo.schedule.estimate && demo.schedule.estimate.weeks === 4, `the demo lost its estimate: ${JSON.stringify(demo.schedule.estimate)}`)
   // The Plan's tile and its tip read the board's forecast instead (owner,
   // 2026-09-23; derive/estimatedFinish.test.ts): a date from the first scan on,
   // and the step that sets it, never "Nothing is left to schedule." over held work.
@@ -323,7 +324,8 @@ test('the cover names every kind of hold on the plan, the readiness waits and th
   const cover = coverDatesOf(p.schedule.start, finish, holds)
   const held = finish.unwritable
   assert.ok(held.named > 0 && held.named < held.count, 'the premise: some of the held steps wait on a named step and some do not')
-  assert.equal(cover, `${absoluteDate(p.schedule.start)} · 1 device step waits for device readiness · ${held.count} steps are held, ${held.named} of them waiting on ${list(held.waitsOn.map(titleOf))}`)
+  // Device Registration waits for its Modern MFA + TAP number since no unmapped group holds it (Phase 2a).
+  assert.equal(cover, `${absoluteDate(p.schedule.start)} · 1 device step waits for device readiness · 1 MFA step waits for Modern MFA + TAP readiness · ${held.count} steps are held, ${held.named} of them waiting on ${list(held.waitsOn.map(titleOf))}`)
   assert.equal(/are cleared|is cleared/.test(cover), false, `the cover states the held steps are cleared: ${cover}`)
   // Each shape stands alone: nothing named, every one waiting on a named step, one step.
   assert.equal(holdsOf({ ...finish, waiting: [], unwritable: { count: 3, waitsOn: [], named: 0 } }, titleOf), '3 steps are held')

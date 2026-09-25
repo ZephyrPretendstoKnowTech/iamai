@@ -266,6 +266,22 @@
       "iamaiOrder": null
     },
     {
+      "id": "s-goal-sharepoint-trusted-network",
+      "title": "Restrict SharePoint and OneDrive to the Trusted Network",
+      "workType": "CA policy",
+      "scopeClass": "all-users",
+      "effortKind": "portal",
+      "iamaiOrder": null
+    },
+    {
+      "id": "s-goal-avd-trusted-network",
+      "title": "Restrict Azure Virtual Desktop to the Trusted Network",
+      "workType": "CA policy",
+      "scopeClass": "all-users",
+      "effortKind": "portal",
+      "iamaiOrder": null
+    },
+    {
       "id": "s-goal-workload-identity-block",
       "title": "Restrict the Entra Connect Sync Account to Its Address",
       "workType": "identity-type-dependent",
@@ -729,6 +745,32 @@
       "table": "10.1"
     },
     {
+      "step": "s-goal-sharepoint-trusted-network",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "s-prereq-security-defaults",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": "sd-enabled",
+      "edgeKind": "conditional",
+      "source": "ms-doc",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
+      "step": "s-goal-avd-trusted-network",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "s-prereq-security-defaults",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": "sd-enabled",
+      "edgeKind": "conditional",
+      "source": "ms-doc",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
       "step": "s-goal-workload-identity-block",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
@@ -1028,6 +1070,32 @@
       "table": "10.1"
     },
     {
+      "step": "s-goal-sharepoint-trusted-network",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "s-prereq-break-glass",
+      "prerequisiteKind": "step",
+      "milestone": "minimum-satisfied",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
+      "step": "s-goal-avd-trusted-network",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "s-prereq-break-glass",
+      "prerequisiteKind": "step",
+      "milestone": "minimum-satisfied",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
       "step": "s-goal-workload-identity-block",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
@@ -1315,6 +1383,32 @@
     },
     {
       "step": "s-goal-service-accounts-trusted-network",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "cleanup-drill",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
+      "step": "s-goal-sharepoint-trusted-network",
+      "action": "enforce",
+      "expandedFrom": "<every CA policy step in §11 E–H>",
+      "prerequisite": "cleanup-drill",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "owner",
+      "status": "ok",
+      "table": "10.1"
+    },
+    {
+      "step": "s-goal-avd-trusted-network",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
       "prerequisite": "cleanup-drill",
@@ -1797,6 +1891,54 @@
       "condition": null,
       "edgeKind": "hard",
       "source": "package",
+      "status": "ok",
+      "table": "10.4"
+    },
+    {
+      "step": "s-goal-sharepoint-trusted-network",
+      "action": "create",
+      "prerequisite": "s-prereq-trusted-location",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "pinned",
+      "status": "ok",
+      "table": "10.4"
+    },
+    {
+      "step": "s-goal-sharepoint-trusted-network",
+      "action": "create",
+      "prerequisite": "s-prereq-exclusion-group",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "pinned",
+      "status": "ok",
+      "table": "10.4"
+    },
+    {
+      "step": "s-goal-avd-trusted-network",
+      "action": "create",
+      "prerequisite": "s-prereq-trusted-location",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "pinned",
+      "status": "ok",
+      "table": "10.4"
+    },
+    {
+      "step": "s-goal-avd-trusted-network",
+      "action": "create",
+      "prerequisite": "s-prereq-exclusion-group",
+      "prerequisiteKind": "step",
+      "milestone": "complete",
+      "condition": null,
+      "edgeKind": "hard",
+      "source": "pinned",
       "status": "ok",
       "table": "10.4"
     },

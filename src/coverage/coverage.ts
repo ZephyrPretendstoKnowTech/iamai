@@ -1,5 +1,6 @@
 // The coverage algorithm (intents.md §7) and statements (§8). Pure.
 import goalsData from '../../data/goals.json' with { type: 'json' }
+import { scopedToGoalApps } from './goalIdentity.ts'
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
 import { guestKindsReached, matchesSignature, narrowerApps, narrowerConditions, populationReach, raiseFloor } from './classify.ts'
@@ -186,8 +187,10 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
       return facts
     })
   const goals: { goal: Goal; baselineMatches: PolicyFacts[]; goalPolicies: PolicyFacts[]; written: PolicyFacts | null }[] = CATALOGUE.map((goal) => {
+    // A goal scoped to one service's apps matches only that service's policies:
+    // the signature's app list also accepts All resources (goalIdentity.ts scopedToGoalApps).
     const signatureMatches = baselineFacts.filter((f) =>
-      goal.implementations.some((impl) => matchesSignature(f, impl.signature)),
+      goal.implementations.some((impl) => matchesSignature(f, impl.signature)) && scopedToGoalApps(goal.id, f.apps),
     )
     for (const b of signatureMatches) matchedBaseline.add(b.name)
     // The map's policies, in order (A first), when the package carries them;
@@ -589,7 +592,7 @@ function evaluateGoal(
       (c.apps.userActions.size > 0 || (impl.expectedWho.kind === 'all'
         ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null && !(floor.grant !== undefined && grantExceedsFloor(c.grant, floor.grant)))
         : !c.who.all)) && carriesFloorControl(c, floor)
-      && (goal.id !== 'inforcer-mfa' || (!c.apps.all && c.apps.ids.size === 1 && c.apps.ids.has('708861da-226e-4d65-a57a-24128df64524')))
+      && scopedToGoalApps(goal.id, c.apps)
     contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope, meetsFloor, reachesWhole: reachesWhole.has(c.id), assignedToAll: c.who.all })
     // Stated for an enforced policy that meets the floor. A report-only or weaker
     // policy's gap is its state or its control, and its enforcement carries only

@@ -106,17 +106,3 @@ test('MFA preparation requires every suitable registration but not a recent proo
   assert.ok(missing.preparation!.missingIds.includes(admin.userId))
 })
 
-test('unresolved allowed-AVD-user definition cannot become completed through a generic acknowledgement', () => {
-  const f = fixture('demo')
-  f.mapping.workflowAnswers = { avd: 'yes' }
-  const source = [{ name: 'IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers', json: { conditions: { users: { includeUsers: ['All'], excludeGroups: ['unknown'] } } }, reason: 'unmapped' }] as never
-  const first: Step[] = []; addWorkflowSteps(first, source, f.mapping)
-  const row = first.find(s => s.id.startsWith('s-review-baseline'))!
-  const next: Step[] = []; addWorkflowSteps(next, source, f.mapping, { [row.id]: { [MANUAL_REVIEW_ID]: { at: f.snapshot.asOf, basis: row.manualReview?.basis ?? '' } } })
-  const current = next.find(s => s.id === row.id)!
-  assert.equal(current.state.satisfied, false)
-  assert.equal(current.state.condition, 'blocked')
-  assert.equal(current.manualReview, undefined)
-  assert.ok(Array.isArray(current.guidance?.whatToDo?.steps) && current.guidance.whatToDo.steps.length > 0)
-  assert.ok(current.configurationFindings?.some(f => f.key === 'avd-allowed-population'))
-})

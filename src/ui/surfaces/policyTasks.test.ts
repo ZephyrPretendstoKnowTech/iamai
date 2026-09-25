@@ -8,8 +8,8 @@ import { test } from 'node:test'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { fixture } from '../../roadmap/fixtures/index.ts'
-import type { FixtureName } from '../../roadmap/fixtures/index.ts'
+import { fixture, withReviewRow } from '../../roadmap/fixtures/index.ts'
+import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
@@ -28,8 +28,8 @@ import { SNAPSHOT_FIXTURES } from '../../testing/stepSnapshots.ts'
 const PILOT = 's-goal-admin-session'
 
 /** `settled` settles the plan's foundation, so nothing holds the step (roadmap/foundations.ts). */
-function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false, over: Partial<RoadmapInput> = {}) {
-  const value = settled ? withRecoveryTested(withFoundationSettled(fixture(name))) : fixture(name)
+function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false, over: Partial<RoadmapInput> = {}, shape: (f: Fixture) => Fixture = (f) => f) {
+  const value = shape(settled ? withRecoveryTested(withFoundationSettled(fixture(name))) : fixture(name))
   const run = runFixture(value, over)
   // An object a step makes itself is that step's task, not a step (Stage 3): found on its owner.
   const step = run.steps.find((row) => row.id === stepId) ?? run.steps.map((row) => row.objectTask).find((task) => task?.id === stepId)!
@@ -122,7 +122,8 @@ test('every step projects its own Entra procedure as its Implementation Task, an
     }
   }
   {
-    const { step, body } = bodyOf('s-review-baseline-iac-app-block-avd-exclude-allowedavdusers-1cq4mc9')
+    // A generated review row (Jon's pin draws none since Phase 2b; a baseline with a policy no goal holds does).
+    const { step, body } = bodyOf('s-review-baseline-iac-app-grant-sharepoint-onedrive-mfa-1fsryb1', 'demo', false, {}, withReviewRow)
     assert.equal(body.emergencyAccountTasks?.tasks[0].title, 'Review this baseline policy')
     assert.match(body.emergencyAccountTasks!.tasks[0].steps[0], /Baseline reference:/)
     const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks, taskSubjectOf(step, body.eyebrow, body.title), cardWordsOf(step)?.check ?? null)
