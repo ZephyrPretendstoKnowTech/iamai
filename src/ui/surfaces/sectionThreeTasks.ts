@@ -32,7 +32,7 @@ export const DORMANT_STEP_ID = 's-check-dormant-accounts'
 type DormantWords = {
   taskTitle: string
   keep: { label: string; instruction: string; noSignIn: string; lastSignIn: string; kept: string }
-  procedure: { list: string; account: string; noSignIn: string; lastSignIn: string; each: string; choices: string[]; scan: string }
+  procedure: { list: string; account: string; noSignIn: string; lastSignIn: string; each: string; choices: string[]; keepWithoutPicker: string; scan: string }
 }
 type AdminValues = { name: string; newUpn: string; displayName: string; upn: string; everyday: string; mail: string; role: string }
 type AdminWords = {
@@ -59,7 +59,8 @@ export function lastSignInWords(lastSignIn: string | null, words: { noSignIn: st
  * open, one per line with the last sign-in the scan holds, then the two choices
  * under one line, then the scan. A kept account is not listed: it is done. The
  * procedure stands whole with no account open, as every procedure does on a
- * finished step (step template rule 7).
+ * finished step (step template rule 7); with no dormant account at all the keep
+ * picker is not drawn, and the keep choice does not point at it.
  */
 export function dormantTasksOf(step: Step, ctx: StepVarContext): EmergencyTaskProjection {
   const P = DORMANT_WORDS.procedure
@@ -69,7 +70,7 @@ export function dormantTasksOf(step: Step, ctx: StepVarContext): EmergencyTaskPr
   const rows = open.map((row) => fillText(P.account, { account: accountOf(row.id, row.name), signIn: lastSignInWords(row.lastSignIn, P) }))
   const steps = [
     ...(rows.length > 0 ? [[fillText(P.list, { n: rows.length }), ...rows.map((row) => `- ${row}`)].join('\n')] : []),
-    [P.each, ...P.choices.map((choice) => `- ${choice}`)].join('\n'),
+    [P.each, ...((step.dormantChoices ?? []).length > 0 ? P.choices : [...P.choices.slice(0, -1), P.keepWithoutPicker]).map((choice) => `- ${choice}`)].join('\n'),
     P.scan,
   ]
   const task: EmergencyAccountTask = {
