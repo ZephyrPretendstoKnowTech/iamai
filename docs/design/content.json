@@ -3990,6 +3990,8 @@
           "Not needed: as at least a User Administrator, open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users →** the account **→ Edit properties → Settings**, clear **Account enabled**, and select **Save**.",
           "Still needed: select it under **Accounts you are keeping**, then select **Done**."
         ],
+        "$commentKeepWithoutPicker": "Owner audit, 2026-09-24: with no dormant account the keep picker is not drawn, so the last choice cannot point at it.",
+        "keepWithoutPicker": "Still needed: leave it enabled.",
         "scan": "Return to IAMAI and select **Scan to update the plan**."
       }
     },
