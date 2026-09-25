@@ -31,7 +31,7 @@ import type { Step, StepEvents } from './types.ts'
 import { stepCreatedOn } from './evidenceStrategy.ts'
 import type { Schedule } from './schedule.ts'
 import { addDays, observationDaysFor, readBackPlacement, ringlessSoakDays, toWeekday } from './schedule.ts'
-import { awaitsOwnObject, policyHold } from './operations.ts'
+import { awaitsOwnObject, policyHold, unavailableReason } from './operations.ts'
 import { isHeld, markHoldChains } from './holds.ts'
 import { heldRequired } from '../derive/finish.ts'
 import { basisOf, createsWhileGated, settleSchedule } from './stepSchedule.ts'
@@ -297,6 +297,14 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
       // create only a threshold holds keeps the day it is made in report-only.
       if (!createsWhileGated(step, basisOf(step, schedule, byId))) step.reportOnlyAt = null
     }
+  }
+  // A policy the plan could write when the schedule was drawn and cannot once
+  // tracking has read it (a deployed policy with a setting that is not the plan's,
+  // corrected by hand: operations.ts manual-correction) leaves its wave, as the
+  // generator leaves out any policy it cannot write (schedule.ts nothingToRun).
+  for (const step of steps) {
+    if (unavailableReason(step) === null || awaitsOwnObject(step) || schedule.waveOf[step.id] === undefined) continue
+    forecastOnly[step.id] ??= { wave: schedule.waveOf[step.id] ?? null, events: step.events, startAt: schedule.startAt[step.id] ?? null, batchWith: schedule.batchWith[step.id] ?? [], extended: schedule.extendedBy.includes(step.id) }
   }
   schedule.forecastOnly = forecastOnly
   const withdrawn = new Set(Object.keys(forecastOnly))

@@ -14,7 +14,7 @@ import { operationsOf } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract, CONTRACT } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
-import { bindingLabel, implementationPackageFor, incompleteFieldsOf, memberBindings, packageBindings, touches } from '../../ui/surfaces/stepPackage.ts'
+import { bindingLabel, implementationPackageFor, incompleteFieldsOf, memberBindings, packageBindings, touches, unwrittenFieldsOf } from '../../ui/surfaces/stepPackage.ts'
 import { NO_RUNTIME, bindText, bound, projectSafely } from './project.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { referenceOptions } from '../../roadmap/answers.ts'
@@ -145,7 +145,8 @@ test('a hold does not erase a target IAMAI knows, and a whole policy that sets n
         const b = bindingsOf(step, ctx)
         const whole = (op.target ?? op.body) as Record<string, unknown>
         for (const root of ['conditions', 'grantControls', 'sessionControls']) {
-          if (touches(open, root)) assert.equal(Object.hasOwn(b, `policy.target.${root}`), false, `${name}/${step.id}: ${root} bound while a reference in it waits`)
+          // A setting the scan found is not the plan's keeps the tenant's value, and is not bound as the plan's (stepPackage.ts unwrittenFieldsOf).
+          if (touches(open, root) || touches(unwrittenFieldsOf(step), root)) assert.equal(Object.hasOwn(b, `policy.target.${root}`), false, `${name}/${step.id}: ${root} bound while a reference in it waits or it differs from the plan`)
           else {
             assert.deepEqual(b[`policy.target.${root}`], whole[root] ?? null, `${name}/${step.id}: a held step's ${root} was not bound`)
             found++

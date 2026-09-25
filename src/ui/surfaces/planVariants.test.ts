@@ -423,6 +423,8 @@ const INVENTORY: string[] = [
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo-week2+rescan/s-goal-block-auth-transfer
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo-week2+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · members · who-known', // demo-week2+half-pair/s-goal-guests-mfa
+  // Every control is exact (owner, 2026-09-25): a policy with a setting to correct, waiting on a foundation, reads Blocked, never Ready (foundations.ts).
+  'policy · create · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // midflight/s-goal-guests-mfa
   'policy · adjust · not-deployed · review-required · open · do:observe · track · implementation · found · fix · members · who-known', // demo-week2+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
   'decision · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-direction-use

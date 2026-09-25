@@ -236,6 +236,15 @@ export function conditionFor(blockers: Blocker[]): Condition {
   return 'blocked'
 }
 
+/**
+ * What a correction by hand is gated by: the observation that found it, and on a
+ * Blocked row the reason the row shows (a blocked step's milestone names its row's
+ * reason; a correction waiting on a foundation reads Blocked, foundations.ts).
+ */
+function correctionGate(step: Step): string | null {
+  return step.status === 'blocked' ? step.blockedReason : step.state.observation?.note ?? null
+}
+
 /** Precedence when two passes each have something to say: the most binding wins. */
 const CONDITION_RANK: Record<Condition, number> = { healthy: 0, 'review-required': 1, 'needs-decision': 2, blocked: 3, 'baseline-conflict': 4 }
 
@@ -375,7 +384,7 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
   // and there is nothing to find out: the next thing is the correction, in the
   // words the manual-correction hold below uses (R4-25).
   if (heldForCorrection(step)) {
-    return { kind: 'resolve', label: fillText(MILESTONE.correctManual, { fields: dimensionWords(reviewCauses(step).unwritten) }), at: null, gatedBy: s.observation?.note ?? null }
+    return { kind: 'resolve', label: fillText(MILESTONE.correctManual, { fields: dimensionWords(reviewCauses(step).unwritten) }), at: null, gatedBy: correctionGate(step) }
   }
   if (heldForReview(step)) return { kind: 'resolve', label: MILESTONE.review, at: null, gatedBy: s.observation?.note ?? null }
   // Anything else that holds the step comes before the stage's own next move too
@@ -389,7 +398,7 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
   // write (roadmap/operations.ts manual-correction): the next thing is a person's
   // correction, named by where to look, and what has to clear is the observation.
   if (hold?.kind === 'unavailable' && unavailableReason(step) === 'manual-correction') {
-    return { kind: 'resolve', label: fillText(MILESTONE.correctManual, { fields: dimensionWords(s.observation?.unwritten ?? []) }), at: null, gatedBy: s.observation?.note ?? null }
+    return { kind: 'resolve', label: fillText(MILESTONE.correctManual, { fields: dimensionWords(s.observation?.unwritten ?? []) }), at: null, gatedBy: correctionGate(step) }
   }
   // Held on its records, it is still being watched: until they are clear, with no date.
   // Block Legacy Authentication's week that would have blocked someone names the

@@ -8,6 +8,7 @@
 // evidence stays readable behind its own disclosure. Fix before continuing, the
 // hardening section and the prerequisites count tile are gone from the step.
 import { test } from 'node:test'
+import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
@@ -324,7 +325,7 @@ test('a Threshold card on people’s methods names the campaign that gets them r
     const { cleanupTitleOf } = await import('./stepContract.ts')
     const seen = { held: 0, clear: 0 }
     for (const name of ['demo', 'mid', 'midflight'] as const) {
-      const f = fixture(name)
+      const f = asPlanned(fixture(name), 's-goal-admins-phishing-resistant')
       const r = runFixture(f, {}, null, f.snapshot.asOf)
       const rows = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, f.mapping.breakGlassAnswers ?? null), afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) }))
       const readings = laneReadings(r.steps, rows)
@@ -394,7 +395,7 @@ test('the Threshold card, its finding and the AI Info briefing say the same sent
   const { stepBodyOf } = await import('./stepBody.ts')
   let held = 0
   for (const name of ['small', 'midflight', 'messy'] as const) {
-    const f = fixture(name)
+    const f = asPlanned(fixture(name), 's-goal-admins-phishing-resistant')
     const r = runFixture(f, {}, null, f.snapshot.asOf)
     const rows = (r.schedule.cleanup?.rows ?? []).filter((row) => cleanupEntry(row.kind) !== null).map((row) => ({ id: `cleanup-${row.kind}`, complete: cleanupComplete(row, f.mapping.breakGlassAnswers ?? null), afterRollout: ['alerting', 'consolidation', 'naming'].includes(row.kind) }))
     const readings = laneReadings(r.steps, rows)

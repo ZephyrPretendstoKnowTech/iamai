@@ -49,7 +49,13 @@ test('item 5: with a named mail account still on legacy authentication, the repo
 })
 
 test('item 7: the exclusions edit Configure Emergency Exclusions asks for is not asked again, and making it raises no review', () => {
-  const demo = fixture('demo')
+  // The demo's legacy policy also excludes a group the plan's does not, which is a
+  // correction of its own (every control is exact, owner 2026-09-25): taken out, so
+  // the exclusions group is all it lacks.
+  const demo = structuredClone(fixture('demo'))
+  for (const row of demo.snapshot.config.caPolicies!.rows as { displayName?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]) {
+    if (/Legacy authentication/.test(row.displayName ?? '') && row.conditions?.users) row.conditions.users.excludeGroups = []
+  }
   const first = runFixture(demo)
   const legacy = first.steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)!
   assert.equal(legacy.action.correctionAskedBy, EXCLUSION_GROUP_STEP_ID, 'the premise: the policy lacks only the exclusions group')
