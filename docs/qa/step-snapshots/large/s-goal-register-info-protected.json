@@ -22,10 +22,6 @@
       "state": "Temporary Access Pass"
     },
     {
-      "label": "Prerequisites",
-      "state": "People without a method"
-    },
-    {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
     }
