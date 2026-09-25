@@ -26,6 +26,10 @@
       "state": "Create in Report-only"
     },
     {
+      "label": "Require Phishing-Resistant MFA for Admins",
+      "state": "Correct who it applies to, grant controls"
+    },
+    {
       "label": "Shorten Admin Sessions",
       "state": "Create in Report-only"
     },
