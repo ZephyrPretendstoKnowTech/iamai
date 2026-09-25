@@ -302,7 +302,11 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   const lockedOut = affected.users.length || affected.state === 'known' ? [] : passkeyRestrictionReading(snapshot, mapping, groups).lockedOut
   // Applied, and every account whose passkey it stops keeps another way in: a fact, not work (net-new 4).
   const settled = reading.state === 'inPlace' && !affected.users.length && lockedOut.length === 0
-  const affectedFinding: ConfigurationFinding | null = !affected.users.length && affected.state !== 'known' && !affected.stranded.length ? null : {
+  // Applied, and it stopped no passkey: nothing to say about a change already
+  // made (owner audit, 2026-09-24: "No existing passkey stops working under
+  // this change." on a finished step).
+  const madeHarmless = reading.state === 'inPlace' && affected.state === 'known' && !affected.users.length
+  const affectedFinding: ConfigurationFinding | null = madeHarmless || (!affected.users.length && affected.state !== 'known' && !affected.stranded.length) ? null : {
     key: 'affected-passkeys',
     label: 'Existing passkeys affected',
     value: affected.users.length
