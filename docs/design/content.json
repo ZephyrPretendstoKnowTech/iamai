@@ -2266,6 +2266,8 @@
             "differs": "{dimensions} differ from the plan",
             "set": "Set {dimension} to {value}.",
             "setTasks": "Set {dimension} as Implementation Tasks shows.",
+            "$commentCorrect": "A policy's correction card, in one shape wherever a policy is to correct (owner, 2026-09-26): Conditional Access policy, its name, this, then the correction's own settings (policyTasks.ts policySubjectsOf). {fields} are the portal sections the correction sets, lower case (policyProcedure.ts correctionSectionOf).",
+            "correct": "Correct {fields}",
             "anyExcept": "Any device except {platforms}",
             "notConfigured": "Not configured",
             "names": {

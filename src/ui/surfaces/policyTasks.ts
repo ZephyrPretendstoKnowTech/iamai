@@ -33,7 +33,7 @@ import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import { CONTRACT, FINISHED_FINDINGS, isAllClear } from './stepContract.ts'
 import { createWaitsOnReadiness, enforcementHeld, implementationOffered, operationsOf, policyHold, switchedOffPolicies, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import type { UnavailableReason } from '../../roadmap/operations.ts'
-import { PROCEDURE, besideBaseline, correctionLines, correctionSettings, createLines, reportOnlyLines, turnOnLines } from '../../roadmap/policyProcedure.ts'
+import { PROCEDURE, besideBaseline, correctionLines, correctionSectionOf, correctionSettings, createLines, reportOnlyLines, turnOnLines } from '../../roadmap/policyProcedure.ts'
 import type { CorrectionSection, ProcedureContext } from '../../roadmap/policyProcedure.ts'
 import { shownDay } from '../../roadmap/stepSchedule.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from '../../roadmap/stepIds.ts'
@@ -439,7 +439,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const off = [...new Set([...switchedOffPolicies(step).map((p) => p.name), ...members.filter((m) => m.off).map((m) => m.name)])]
   if (off.length > 0) tasks.push(task('report-only', 'reportOnly', off.flatMap((name) => reportOnlyLines(name)), true))
   const correct = members.filter((m) => m.correction.length > 0)
-  if (correct.length > 0) tasks.push(task('correct', 'correct', correct.flatMap((m) => correctionLines(m.name, m.correction)), true))
+  if (correct.length > 0) tasks.push({ ...task('correct', 'correct', correct.flatMap((m) => correctionLines(m.name, m.correction)), true), corrections: correct.map((m) => ({ name: m.name, settings: m.correction })) })
   // The turn-on is the same task in every state, but while the plan's own
   // prerequisites hold it (roadmap/enforceWaits.ts: the recovery test not
   // recorded, security defaults still on) it hands over no instruction that
@@ -921,7 +921,17 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
     const link = tile.link && 'href' in tile.link ? tile.link : null
     return { ...subject, satisfied, ...(only !== null && subject.instruction === only ? { instruction: '' } : {}), ...(link && !subject.link ? { link } : {}) }
   }
-  const rest = [...readiness.tiles.map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
+  // A policy to correct is one card in one shape (owner, 2026-09-26): the
+  // policy, "Correct users and session", and the changes themselves, in the
+  // correction's own words. It stands in for the drift card ("Users differ from
+  // the plan · Set Users as Implementation Tasks shows."), which named no change.
+  const correcting = projected?.tasks.find((t) => t.required && isPolicyProcedureTask(t))?.id === 'correct'
+  const corrections = correcting ? projected!.tasks.find((t) => t.id === 'correct')?.corrections ?? [] : []
+  const corrected: EmergencySubjectTile[] = corrections.map((c, i) => {
+    const fields = [...new Set(c.settings.map(correctionSectionOf).filter((f): f is string => f !== null).map((f) => f.toLowerCase()))]
+    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: c.settings.map((l) => l.replace(/\*\*/g, '')).join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
+  })
+  const rest = [...readiness.tiles.filter((tile) => corrected.length === 0 || tile.key !== 'drift').map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
   // One sentence, said once. The policy card's sentence is the contract's one
   // action, and on a step whose action is a tile's own words — a baseline
   // conflict says "This step is on hold until the baseline author resolves a
@@ -933,7 +943,6 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   // list 4.x item 24): the policy card saying "Correct the policy" beside it is
   // the same problem twice.
   const drifted = rest.some((c) => c.key === 'drift' && !c.satisfied)
-  const correcting = projected?.tasks.find((t) => t.required && isPolicyProcedureTask(t))?.id === 'correct'
-  const cards = drifted && correcting ? [] : policyCardsOf(contract, projected, subject, words?.check ?? check, words, own).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
-  return [...cards, ...rest]
+  const cards = (drifted || corrected.length > 0) && correcting ? [] : policyCardsOf(contract, projected, subject, words?.check ?? check, words, own).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
+  return [...corrected, ...cards, ...rest]
 }

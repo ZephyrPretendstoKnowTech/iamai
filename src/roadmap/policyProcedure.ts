@@ -482,6 +482,18 @@ function sameGrant(a: PolicyFacts, b: PolicyFacts): boolean {
 }
 
 /**
+ * The portal section a correction line sets, read from its own lead (PROCEDURE's
+ * "Under **Conditions → Locations**" is Locations; its Name line is the name),
+ * in the portal's words; null for a line that sets none. The correction card
+ * names these (owner, 2026-09-26: "Correct users and session").
+ */
+export function correctionSectionOf(line: string): string | null {
+  if (line.startsWith(PROCEDURE.name.split('{')[0])) return 'Name'
+  const lead = /^Under \*\*(?:Conditions → )?([^*→]+?)(?: →[^*]*)?\*\*/.exec(line)
+  return lead ? lead[1].trim() : null
+}
+
+/**
  * The whole correction of one policy: open it, the settings that differ, Save,
  * scan. Empty where nothing the correction writes differs.
  */
