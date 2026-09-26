@@ -58,27 +58,54 @@ function policiesOf(step: Step, tenant: TenantPolicies): Json[] {
   return (step.tracking?.members ?? []).flatMap((m) => (m.policyId && tenant.has(m.policyId) ? [tenant.get(m.policyId)!] : []))
 }
 
+/** Why report-only is left out for a policy: it has a user action, or it checks a device beyond Windows. */
+export type ReportOnlyOutlier = 'userAction' | 'deviceCheck'
+/** The order the step's note names them in. */
+const OUTLIERS: readonly ReportOnlyOutlier[] = ['userAction', 'deviceCheck']
+
 /**
- * Whether report-only would do harm or nothing for this policy: a user action
- * (report-only doesn't cover them), or a compliant- or managed-device check that
- * reaches beyond Windows (report-only can prompt macOS, iOS and Android users for
- * a device certificate).
+ * Why report-only would do harm or nothing for this policy, or null where it
+ * would not: a user action (report-only doesn't cover them), or a compliant- or
+ * managed-device check that reaches beyond Windows (report-only can prompt
+ * macOS, iOS and Android users for a device certificate).
  */
-export function reportOnlyOutlier(policy: Json): boolean {
+export function reportOnlyOutlierOf(policy: Json): ReportOnlyOutlier | null {
   const c = obj(policy.conditions)
-  if (strings(obj(c.applications).includeUserActions).length > 0) return true
+  if (strings(obj(c.applications).includeUserActions).length > 0) return 'userAction'
   const grant = strings(obj(policy.grantControls).builtInControls)
   const rule = String(obj(obj(c.devices).deviceFilter).rule ?? '')
   const deviceCheck = grant.includes('compliantDevice') || grant.includes('domainJoinedDevice') || /isCompliant|trustType/i.test(rule)
   const platforms = strings(obj(c.platforms).includePlatforms).map((p) => p.toLowerCase())
   const windowsOnly = platforms.length > 0 && platforms.every((p) => p === 'windows')
-  return deviceCheck && !windowsOnly
+  return deviceCheck && !windowsOnly ? 'deviceCheck' : null
+}
+
+/** Whether report-only would do harm or nothing for this policy (reportOnlyOutlierOf). */
+export function reportOnlyOutlier(policy: Json): boolean {
+  return reportOnlyOutlierOf(policy) !== null
+}
+
+/** A step the batch would otherwise list for the plan to create, or null. */
+const onThePlan = (step: Step): boolean => !(step.status === 'skipped' || step.state.setAside || step.doesntApply || step.goalId === COUNTRIES_GOAL)
+
+/**
+ * Why a policy still to create is left out of the batch (owner, 2026-09-26: the
+ * step says so, by the type of policy): a user action or a device check. A
+ * policy already created counts for nothing, and neither does a step set
+ * aside, deferred or not applying, nor the countries policy, whose own step
+ * says why it waits.
+ */
+function leftOutOf(step: Step): ReportOnlyOutlier[] {
+  if (step.kind !== 'create' || !onThePlan(step) || step.state.lifecycle !== 'not-deployed') return []
+  // The plan's own policies, whether or not their create can be written today:
+  // a policy held on something else is still never listed here, for this reason.
+  return (step.action.resolution?.policies ?? []).map((op) => reportOnlyOutlierOf(obj(op.body))).filter((r): r is ReportOnlyOutlier => r !== null)
 }
 
 /** A policy step the batch can ever list, whatever its lifecycle. */
 export function batchable(step: Step, tenant: TenantPolicies = new Map()): boolean {
   if (step.kind !== 'create' && step.kind !== 'adjust') return false
-  if (step.status === 'skipped' || step.state.setAside || step.doesntApply || step.goalId === COUNTRIES_GOAL) return false
+  if (!onThePlan(step)) return false
   const policies = policiesOf(step, tenant)
   return policies.length > 0 && !policies.some(reportOnlyOutlier)
 }
@@ -103,10 +130,12 @@ export function settleReportOnlyBatch(steps: Step[], tenant: TenantPolicies = ne
   const batch = steps[at]
   const create: string[] = []
   const created: string[] = []
+  const leftOut = new Set<ReportOnlyOutlier>()
   for (const s of steps) {
     const member = batchMemberOf(s, tenant)
     if (member === 'create') create.push(s.id)
     else if (member === 'created') created.push(s.id)
+    for (const why of leftOutOf(s)) leftOut.add(why)
   }
   if (create.length === 0 && created.length === 0) {
     steps.splice(at, 1)
@@ -115,7 +144,7 @@ export function settleReportOnlyBatch(steps: Step[], tenant: TenantPolicies = ne
   // Only the policies still to create (owner, 2026-09-26): a created policy with
   // a setting to correct is its own step's task, never listed here a second time,
   // and never holds this step open.
-  batch.reportOnlyBatch = { create, created }
+  batch.reportOnlyBatch = { create, created, ...(leftOut.size > 0 ? { leftOut: OUTLIERS.filter((k) => leftOut.has(k)) } : {}) }
   // Impact counts what the step changes: the policies still to create, and once none is left, the ones it created.
   batch.impactCount = create.length > 0 ? create.length : created.length
   setState(batch, { satisfied: create.length === 0 })

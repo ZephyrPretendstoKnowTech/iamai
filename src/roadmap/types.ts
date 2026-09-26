@@ -972,7 +972,12 @@ export type Step = {
    * Report-only or On, and of those the ones whose policy has a setting that is
    * not the plan's (`correct`, also in `created`), in plan order. Only on that step.
    */
-  reportOnlyBatch?: { create: string[]; created: string[] }
+  reportOnlyBatch?: {
+    create: string[]
+    created: string[]
+    /** Why policies still to create are left out, by type (reportOnlyBatch.ts reportOnlyOutlierOf); absent where none is. No policy names. */
+    leftOut?: ('userAction' | 'deviceCheck')[]
+  }
   /** A goal step's own name for its policy, the one its create gives it, whatever the step does now (generate.ts). */
   createName?: string
   /** The differences from the baseline a person accepted on this step, with a reason (MappingState.acceptedDeviations). */

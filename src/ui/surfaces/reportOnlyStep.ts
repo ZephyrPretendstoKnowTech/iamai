@@ -20,7 +20,7 @@ import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyA
 import type { ReadinessTile } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-type BatchWords = { createValue: string; milestone: string }
+type BatchWords = { createValue: string; milestone: string; leftOutBoth: string; leftOutUserAction: string; leftOutDeviceCheck: string }
 const W = (): BatchWords => (stepById[REPORT_ONLY_STEP_ID] as unknown as { batch: BatchWords }).batch
 
 type Member = { id: string; step: Step; toCreate: boolean }
@@ -59,6 +59,19 @@ export function reportOnlyTilesOf(step: Step, ctx: StepVarContext): ReadinessTil
     // Its instruction is its task's (emergencyReadiness.ts: "Follow {title} in Implementation Tasks.").
     return { key: `batch:${m.id}`, label: contentTitle(m.step), tone: 'warn' as const, value: w.createValue, note: null, names: policyNames(m) }
   })
+}
+
+/**
+ * The note under the cards, where a policy still to create was left out (owner,
+ * 2026-09-26): one whole sentence for the types this tenant's plan leaves out;
+ * null where none is. The screen, the print and the export read this one value.
+ */
+export function reportOnlyNoteOf(step: Step): string | null {
+  const why = step.id === REPORT_ONLY_STEP_ID ? step.reportOnlyBatch?.leftOut ?? [] : []
+  const w = W()
+  const user = why.includes('userAction')
+  const device = why.includes('deviceCheck')
+  return user && device ? w.leftOutBoth : user ? w.leftOutUserAction : device ? w.leftOutDeviceCheck : null
 }
 
 /** The rail's headline while any policy is left to create; null once none is. */

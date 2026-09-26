@@ -5429,3 +5429,5 @@ th .th-sort:focus-visible,
 .authored-list-items { columns: 3 13rem; column-gap: 24px; list-style: none; padding-left: 0; margin: 2px 0 6px; }
 .authored-list-items li { break-inside: avoid; }
 .authored-list-more > summary { cursor: pointer; color: var(--accent-text, inherit); margin: 2px 0; }
+/* A line under a step's cards that is no task: what Create the Policies in Report-only leaves out (reportOnlyStep.ts). */
+.readiness-note { margin: 12px 0 0; color: var(--secondary-text); }

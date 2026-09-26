@@ -174,7 +174,7 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
 }
 
 /** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under Satisfied · N (the Emergency Access steps are frozen: their words are what the owner approved). */
-export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, scanNote = true }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null; scanNote?: boolean }) {
+export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, scanNote = true, note = null }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null; scanNote?: boolean; note?: string | null }) {
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
   const tile = (subject: EmergencySubjectTile) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} />
@@ -190,6 +190,8 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, 
       <summary>Satisfied · {satisfied.length}</summary>
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
+    {/* A line under the cards that is no task: what Create the Policies in Report-only leaves out (reportOnlyStep.ts). */}
+    {note && <p className="emergency-account-scan-note readiness-note">{note}</p>}
     {scanNote && <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>}
     {bar}
   </section>
@@ -469,6 +471,7 @@ export function ContentStep({
             printing={printing}
             barMain={isOwnTaskStep ? policyBarOf(taskSubjects) : displayedReadiness.bar.main}
             onWhy={hasEvidence ? () => setDialog('readiness') : null}
+            note={contract.batchNote}
           /> : <ReadinessSection
             readiness={displayedReadiness}
             heading={taskHead?.remaining}
@@ -500,6 +503,8 @@ export function ContentStep({
             }}
           >
             {step.id === CAMPAIGN_STEP_ID ? <p><a href={TEAM_READINESS_HREF}>{String(cs.card?.link ?? '')}</a></p> : <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />}
+            {/* The printed step keeps the note under its cards, as the screen does (reportOnlyStep.ts). */}
+            {contract.batchNote && <p className="readiness-note">{contract.batchNote}</p>}
           </ReadinessSection>}
 
           {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):

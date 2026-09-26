@@ -79,7 +79,7 @@ import { isGroupMember } from '../../roadmap/stepGroups.ts'
 import { rowWho } from './rowWho.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
 import { personLines } from './personNext.ts'
-import { reportOnlyTilesOf } from './reportOnlyStep.ts'
+import { reportOnlyNoteOf, reportOnlyTilesOf } from './reportOnlyStep.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -523,6 +523,8 @@ export type StepContract = {
   gateNames: string[] | null
   /** Create the Policies in Report-only's cards, one per policy it lists (reportOnlyStep.ts); none on any other step. */
   batch: ReadinessTile[]
+  /** Create the Policies in Report-only's note on the types of policy it leaves out (reportOnlyStep.ts reportOnlyNoteOf); null elsewhere. */
+  batchNote: string | null
   /** The signed-in account this policy would leave with no method it accepts, named, with the step that fixes it (walk list 4.x item 43); null elsewhere. */
   operator: { text: string; id: string } | null
   whatToDo: ContractAction
@@ -1677,6 +1679,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     alsoExcluded: alsoExcludedTile(step, ctx),
     gateNames: adminGateNamesOf(step, ctx),
     batch: reportOnlyTilesOf(step, ctx),
+    batchNote: reportOnlyNoteOf(step),
     operator,
     whatToDo,
     fix,

@@ -646,6 +646,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // empty list on exactly those steps — the calendar entry said nothing and the
   // prompt pack filled the gap with "the next scan confirms it", a completion
   // no authority had stated.
+  // Create the Policies in Report-only's note on what it leaves out, last in What
+  // to do, as the screen draws it under the cards (reportOnlyStep.ts).
+  if (contract.batchNote !== null && !lines.includes(contract.batchNote)) lines.push(contract.batchNote)
   const doneWhen = contract.doneWhen
   return {
     title: viewTitleOf(step),
