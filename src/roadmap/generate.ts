@@ -3222,11 +3222,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // 4. No session control that can put the person applying it in a loop:
   // sign-in every time without MFA on that sign-in is Microsoft's own
   // documented hazard (steps/session-controls.md).
-  // The MFA may come from another policy: an On policy that asks for a method,
-  // reaches everyone this one reaches and covers its resources (Require MFA for
-  // everyone on All resources) prompts for MFA on the same sign-in. One that
-  // leaves the resource out, as the baseline's own MFA policy leaves out Intune
-  // Enrollment, does not.
+  // The MFA may come from other policies: On policies that ask for a method on
+  // the same resources and, between them, reach every account this one reaches
+  // (Require MFA for everyone on All resources, or one each for admins, internal
+  // users and guests) prompt for MFA on the same sign-in. One that leaves the
+  // resource out, as the baseline's own MFA policy leaves out Intune Enrollment,
+  // does not.
   // Each policy is read as the plan leaves it: an MFA policy another step will
   // correct to the baseline's, which leaves Intune Enrollment out, covers nothing
   // once that correction is made. An OR grant with a way through that is not a
@@ -3235,27 +3236,38 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const onMfa = ((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[])
     .filter((p) => p.state === 'enabled')
     .map((p) => effectOf(leftBehind.get(String(p.id ?? '').toLowerCase()) ?? p))
-    .filter((m) => m.asksForMethod && !m.blocks && m.unknown.length === 0 && (m.operator === 'AND' || m.requirements.every((r) => r.kind === 'mfa' || r.kind === 'strength')) && m.scope.allUsers && !m.scope.unreadable && m.narrowings.every((n) => n.kind === 'applications'))
+    .filter((m) => m.asksForMethod && !m.blocks && m.unknown.length === 0 && (m.operator === 'AND' || m.requirements.every((r) => r.kind === 'mfa' || r.kind === 'strength')) && !m.scope.unreadable && m.narrowings.every((n) => n.kind === 'applications') && m.scope.applications.userActions.length === 0 && m.scope.applications.authContexts.length === 0)
   const lower = (xs: readonly string[]): string[] => xs.map((x) => x.toLowerCase())
   const within = (xs: readonly string[], of: readonly string[]): boolean => lower(xs).every((x) => lower(of).includes(x))
-  // `e` is the step's own policy; with none, its resources and exclusions are
-  // unknown, and only a policy on every resource leaving out only the
-  // exclusions group answers for it.
-  const mfaCovers = (e: PolicyEffect | null): boolean =>
-    onMfa.some((m) => {
-      // A step policy on a user action or an authentication context, or naming no resource, is not a sign-in to an app this reads.
-      if (e !== null && (e.scope.applications.include.length === 0 || e.scope.applications.userActions.length > 0 || e.scope.applications.authContexts.length > 0)) return false
-      const apps = lower(e?.scope.applications.include ?? ['All'])
-      const mInclude = lower(m.scope.applications.include)
-      const mExclude = lower(m.scope.applications.exclude)
-      const reachesApps = apps.includes('all')
-        ? mInclude.includes('all') && mExclude.length === 0
-        : (mInclude.includes('all') || apps.every((a) => mInclude.includes(a))) && apps.every((a) => !mExclude.includes(a))
-      if (!reachesApps || m.scope.applications.userActions.length > 0 || m.scope.applications.authContexts.length > 0) return false
-      const excluded = e ? { users: e.scope.users.exclude, groups: e.scope.groups.exclude, roles: e.scope.roles.exclude } : { users: [], groups: [tenantObjects.exclusionsGroupId].filter((x): x is string => typeof x === 'string'), roles: [] }
-      const guestsLeftOut = m.scope.guests.exclude === null || (e?.scope.guests.exclude !== null && e?.scope.guests.exclude !== undefined && JSON.stringify(m.scope.guests.exclude) === JSON.stringify(e.scope.guests.exclude))
-      return within(m.scope.users.exclude, excluded.users) && within(m.scope.groups.exclude, excluded.groups) && within(m.scope.roles.exclude, excluded.roles) && guestsLeftOut
-    })
+  /** Whether an MFA policy reaches the step's resources: all of them, or each one it names, none left out. */
+  const onApps = (m: PolicyEffect, apps: readonly string[]): boolean => {
+    const mInclude = lower(m.scope.applications.include)
+    const mExclude = lower(m.scope.applications.exclude)
+    return apps.includes('all') ? mInclude.includes('all') && mExclude.length === 0 : (mInclude.includes('all') || apps.every((a) => mInclude.includes(a))) && apps.every((a) => !mExclude.includes(a))
+  }
+  const scopeEvidence = { groupMembers: knownGroupMembers }
+  // `e` is the step's own policy. Every account in the directory it reaches is
+  // reached by at least one of the MFA policies; an account either answer is
+  // unsure of holds it. With no policy of its own the step's resources and
+  // exclusions are unknown, and only one policy for everyone on every resource,
+  // leaving out only the exclusions group, answers for it.
+  const mfaCovers = (e: PolicyEffect | null): boolean => {
+    if (e === null) {
+      const excluded = [tenantObjects.exclusionsGroupId].filter((x): x is string => typeof x === 'string')
+      return onMfa.some((m) => m.scope.allUsers && onApps(m, ['all']) && m.scope.users.exclude.length === 0 && m.scope.roles.exclude.length === 0 && m.scope.guests.exclude === null && within(m.scope.groups.exclude, excluded))
+    }
+    // A step policy on a user action or an authentication context, or naming no resource, is not a sign-in to an app this reads.
+    if (e.scope.applications.include.length === 0 || e.scope.applications.userActions.length > 0 || e.scope.applications.authContexts.length > 0) return false
+    const covering = onMfa.filter((m) => onApps(m, lower(e.scope.applications.include)))
+    if (covering.length === 0) return false
+    for (const u of snapshot.users) {
+      const reached = applies(e, u.id, snapshot, scopeEvidence)
+      if (reached === 'out') continue
+      if (reached === 'unknown') return false
+      if (!covering.some((m) => applies(m, u.id, snapshot, scopeEvidence) === 'in')) return false
+    }
+    return true
+  }
   for (const s of steps) {
     // The policy the step will actually leave behind decides: a sign-in
     // frequency of "every time" with nothing granting a way through is the loop,
