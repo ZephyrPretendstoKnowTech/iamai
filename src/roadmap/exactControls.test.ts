@@ -77,6 +77,16 @@ test('Token Protection as Graph returns it: secureAppSessionMode at its unset de
   assert.equal(sameDimension({ secureSignInSession: { isEnabled: true } }, { secureSignInSession: { secureAppSessionMode: 'enforced', isEnabled: true } }), false)
 })
 
+test('an authentication strength is compared by its id: Graph’s expanded object is the same strength, and another id is not', () => {
+  // Owner, 2026-09-26: the expanded object read as a grant stricter than the baseline's.
+  const id = '00000000-0000-0000-0000-000000000004'
+  const planned = { operator: 'OR', builtInControls: [], authenticationStrength: { id } }
+  const expanded = { id, displayName: 'Phishing-resistant MFA', policyType: 'builtIn', requirementsSatisfied: 'mfa', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'], combinationConfigurations: [] }
+  assert.equal(sameDimension(planned, { ...planned, customAuthenticationFactors: [], termsOfUse: [], authenticationStrength: expanded }), true)
+  assert.equal(sameDimension(planned, { ...planned, authenticationStrength: { id, displayName: 'Phishing-resistant MFA' } }), true)
+  assert.equal(sameDimension(planned, { ...planned, authenticationStrength: { ...expanded, id: '00000000-0000-0000-0000-000000000002' } }), false)
+})
+
 test('only the name off the plan: the step completes as before, draws no name card, and Align Policy Names lists the rename', () => {
   const before = rescan(() => {})
   const { step, ctx, run } = rescan((row) => {
