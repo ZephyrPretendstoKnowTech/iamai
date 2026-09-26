@@ -191,24 +191,33 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
 export type Rename = { id: string; from: string; to: string }
 
 /**
- * The tenant's policies the plan tracks under a name that is not the
- * baseline's (owner, 2026-09-26: Jon's names), one each, in plan order: tracking
- * reads each member's name beside the one the step's create gives it
- * (MemberTracking.plannedName). A difference in capitals only is none, and a
- * step skipped, set aside or not applying renames nothing. A policy two steps
- * track takes the first step's name, and a name another policy already has or
- * takes first is none: two policies never share one.
+ * The tenant's policies a step holds to the plan's own settings under a name
+ * that is not the baseline's (owner, 2026-09-26: Jon's names), one each, in
+ * plan order: tracking reads each member's name beside the one the step's
+ * create gives it (MemberTracking.plannedName).
+ *
+ * Only a policy the step already compares exactly: the one it corrects (an
+ * update operation's target) or the one it reads against its whole policy
+ * (Action.intended). A tenant policy that only helps deliver the goal is
+ * adopted as it is, and the baseline's name would make it the plan's own
+ * (generate.ts claimedPolicy), so the next scan would read it against the plan
+ * and reopen a finished step: a rename that "changes no sign-in" must not.
+ *
+ * A difference in capitals only is none; a step skipped, set aside or not
+ * applying renames nothing; and a name any tenant policy already has, or an
+ * earlier rename takes, is none: two policies never share one.
  */
-export function renamesOf(steps: readonly Step[]): Rename[] {
+export function renamesOf(steps: readonly Step[], tenantNames: readonly string[] = []): Rename[] {
   const key = (n: string): string => n.trim().toLowerCase()
   const live = steps.filter((s) => s.status !== 'skipped' && !s.doesntApply && !s.state.setAside)
-  const members = live.flatMap((s) => s.tracking?.members ?? []).filter((m) => m.policyId && m.policyName)
+  const owned = live.flatMap((s) => {
+    const updates = new Set((s.action.resolution?.policies ?? []).filter((o) => o.mode === 'update' && o.policyId).map((o) => String(o.policyId).toLowerCase()))
+    return (s.tracking?.members ?? []).filter((m) => m.policyId && m.policyName && (s.action.intended !== undefined || updates.has(m.policyId.toLowerCase())))
+  })
+  const taken = new Set([...tenantNames, ...live.flatMap((s) => s.tracking?.members ?? []).map((m) => m.policyName ?? '')].filter((n) => n !== '').map(key))
   const out = new Map<string, Rename>()
-  const seen = new Set<string>()
-  const taken = new Set(members.map((m) => key(m.policyName!)))
-  for (const m of members) {
-    if (seen.has(m.policyId!)) continue
-    seen.add(m.policyId!)
+  for (const m of owned) {
+    if (out.has(m.policyId!)) continue
     const to = m.plannedName?.trim() ?? ''
     if (to === '' || key(to) === key(m.policyName!) || taken.has(key(to))) continue
     taken.add(key(to))
@@ -220,27 +229,25 @@ export function renamesOf(steps: readonly Step[]): Rename[] {
 /**
  * Align Policy Names, once tracking has read each policy's name
  * (roadmap/progress.ts applyProgress runs after the schedule is built): the
- * renames, in the row's list and as the phase's proposals, dated where
- * cleanup.ts orders the row, before Review Overlapping Policies. The row is in
- * the plan only while a policy is left to rename, so the scan that finds the
- * last baseline name completes it; nothing is recorded by hand.
+ * renames, in the row's list and as the phase's proposals, dated the working
+ * day after the last Ongoing row, where the board draws it (stepGroups.ts: last
+ * of Ongoing Checks and Cleanup). No other row moves. The row is in the plan
+ * only while a policy is left to rename, so the scan that finds the last
+ * baseline name completes it; nothing is recorded by hand.
  */
 export function settleRenames(schedule: Schedule, steps: readonly Step[]): void {
   const phase = schedule.cleanup
   if (!phase) return
-  const renames = renamesOf(steps)
   phase.rows = phase.rows.filter((r) => r.kind !== 'naming')
+  const renames = renamesOf(steps, (phase.policyOptions ?? []).map((p) => p.name))
   phase.namingProposals = renames.map((r) => ({ ...r, collision: false }))
-  // The rows after the rollout run one working day each from the last
-  // enforcement (cleanupPhaseFor); the drill is dated on its own. Naming comes
-  // before consolidation, which moves a day for it, and back without it.
+  if (renames.length === 0) return
+  // The drill is dated on its own; the rest run one working day each from the last enforcement.
   const ctx = schedule.rhythm ? { rhythm: schedule.rhythm } : undefined
-  const consolidation = phase.rows.find((r) => r.kind === 'consolidation')
-  const last = phase.rows.filter((r) => r.kind !== 'drill' && r.kind !== 'consolidation').map((r) => r.day).sort().at(-1)
+  const last = phase.rows.filter((r) => r.kind !== 'drill').map((r) => r.day).sort().at(-1)
   const day = addWorkingDays(last ?? schedule.targetEnd, 1, ctx)
-  if (consolidation) consolidation.day = renames.length > 0 ? addWorkingDays(day, 1, ctx) : day
-  if (renames.length > 0) phase.rows.push({ kind: 'naming', lists: { renames: renames.map((r) => `${r.from} → ${r.to} (ID: ${r.id})`) }, day, done: null })
+  phase.rows.push({ kind: 'naming', lists: { renames: renames.map((r) => `${r.from} → ${r.to} (ID: ${r.id})`) }, day, done: null })
   phase.rows.sort((x, y) => x.day.localeCompare(y.day))
   phase.start = phase.rows.map((r) => r.day).sort()[0]
-  phase.end = [schedule.targetEnd, ...phase.rows.map((r) => r.day)].sort().at(-1)!
+  phase.end = [phase.end, day].sort().at(-1)!
 }
