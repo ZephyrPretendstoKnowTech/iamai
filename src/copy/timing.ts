@@ -33,6 +33,7 @@ export const EVENT = {
     announceNoRhythm: 'The sign-in sample is too small to read a working pattern, so the calendar defaults apply.',
     announceNotice: (days: number) => `${count(days, 'working day')} of notice for a change of this size.`,
     announceCourtesy: 'One working day of notice, as a courtesy: the records show nobody affected.',
+    announceLate: (days: number) => `As soon as possible: the change is less than ${count(days, 'working day')} away, so it gets the notice that is left.`,
     announceCare: 'At least five working days, and the special-care people are contacted individually first.',
     remindDayBefore: 'The working day before, same time: short enough to still be in memory.',
     remindMorningOf: 'The morning of the change as well: two clear reminders for a high-disruption change.',

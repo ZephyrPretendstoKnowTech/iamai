@@ -25,6 +25,8 @@ const ENFORCE_EARLIEST = 9
 export type TimingContext = {
   rhythm: TenantRhythm
   timeZone: string
+  /** The plan's today (derive/planStart.ts proposedStart): no announcement is dated before it. */
+  today?: string
 }
 
 /** Monday-first weekday of an ISO date (0 = Monday). */
@@ -233,17 +235,28 @@ export function eventsFor(step: Step, ctx: TimingContext, placedStart: string | 
     if (d <= 3 && worksOn(d)) break
     announceDay = addDays(announceDay, -1)
   }
+  // Never before today (owner, 2026-09-26): a change nearer than its notice is
+  // announced on the first working day from today, with the notice that is
+  // left, and never on a day gone by.
+  const late = ctx.today !== undefined && announceDay.slice(0, 10) < ctx.today.slice(0, 10)
+  if (late) {
+    announceDay = `${ctx.today!.slice(0, 10)}${announceDay.slice(10)}`
+    for (let guard = 0; guard < 14 && !isWorkingDay(announceDay, ctx) && announceDay.slice(0, 10) < enforceDay.slice(0, 10); guard++) announceDay = addDays(announceDay, 1)
+  }
   const announceTime = '09:30'
   const chosenDay = WEEKDAY_NAMES[weekdayOf(announceDay)]
-  const announceReason = [
-    usable ? EVENT.reason.announceOn(chosenDay, announceTime) : `${EVENT.reason.announceDefaultDay(chosenDay, announceTime)} ${EVENT.reason.announceNoRhythm}`,
-    courtesy ? EVENT.reason.announceCourtesy : EVENT.reason.announceNotice(noticeDays),
-  ].join(' ')
+  const announceReason = late
+    ? EVENT.reason.announceLate(noticeDays)
+    : [
+        usable ? EVENT.reason.announceOn(chosenDay, announceTime) : `${EVENT.reason.announceDefaultDay(chosenDay, announceTime)} ${EVENT.reason.announceNoRhythm}`,
+        courtesy ? EVENT.reason.announceCourtesy : EVENT.reason.announceNotice(noticeDays),
+      ].join(' ')
   const announce = event(atLocalHour(announceDay, announceHour, ctx.timeZone), announceReason, ctx, 'announce')
   // The reminder is the working day before. With one working day of notice
-  // that is the announcement itself, so there is no second message.
+  // that is the announcement itself, so there is no second message, nor where
+  // it would come before an announcement made late.
   const remindDay = workingDaysBefore(enforceDay, 1, ctx)
-  const remind = remindDay.slice(0, 10) === announceDay.slice(0, 10) ? null : event(atLocalHour(remindDay, announceHour, ctx.timeZone), EVENT.reason.remindDayBefore, ctx, 'remind')
+  const remind = remindDay.slice(0, 10) <= announceDay.slice(0, 10) ? null : event(atLocalHour(remindDay, announceHour, ctx.timeZone), EVENT.reason.remindDayBefore, ctx, 'remind')
   const remindMorning = null
   return { announce, remind, remindMorning, enforce, noticeDays }
 }
