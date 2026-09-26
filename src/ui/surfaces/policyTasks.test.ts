@@ -329,14 +329,18 @@ test('a policy card states no stage it is not at, and no check the plan never re
     const [heldCard] = policySubjectsOf(held.body.contract, held.body.readiness, held.body.emergencyAccountTasks)
     assert.equal(heldCard.title, 'Turn the policy on')
     assert.match(heldCard.detail ?? '', /Configure Emergency Exclusions/)
-    // The exclusions edit is Configure Emergency Exclusions' own (item 7): the
-    // enforced legacy policy asks for no correction, and its card says who makes it.
+    // Adding the exclusions group is Configure Emergency Exclusions' own edit
+    // (item 7). The group the tenant excludes beyond the plan is asked to be
+    // removed (owner, 2026-09-26: every difference is corrected or accepted), and
+    // the card names the steps that must come first.
     const correction = bodyOf('s-goal-block-legacy-auth', 'demo')
     assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and lacks the exclusions group')
-    assert.equal((correction.body.emergencyAccountTasks?.tasks ?? []).some((t) => t.id === 'correct'), false, 'the step asks for the edit Configure Emergency Exclusions makes')
-    const [card] = policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)
-    assert.equal(card.title, 'On')
-    assert.equal(card.detail, 'Configure Emergency Exclusions adds Core - Exclusions to it.')
+    const correct = (correction.body.emergencyAccountTasks?.tasks ?? []).find((t) => t.id === 'correct')
+    assert.ok(correct?.steps.includes('Under **Users → Exclude**, remove the group **Core - Break glass**.'), JSON.stringify(correct?.steps))
+    assert.equal(correct!.steps.some((l) => l.includes('Core - Exclusions')), false, 'the step asks for the edit Configure Emergency Exclusions makes')
+    const [card, ...first] = policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)
+    assert.equal(card.title, 'Correct users')
+    assert.deepEqual(first.map((c) => c.heading), ['Configure Emergency Exclusions', 'Prepare Emergency Access Accounts'])
     void firstTask
   }
   {

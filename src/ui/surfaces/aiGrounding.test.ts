@@ -90,7 +90,8 @@ test('a policy briefing names the tenant policy, its state and resolved exclusio
     assert.match(facts, new RegExp(`^${F.currentState}: ${CONTRACT.lifecycle.enforced}$`, 'm'))
     // The raw field path is gone (walk list 4.x item 40): the Observed line says what differs in words.
     assert.doesNotMatch(facts, /conditions\.users\.excludeGroups/)
-    assert.doesNotMatch(facts, new RegExp(`^${F.removedExclusions}: Core - Break glass$`, 'm'), 'approved optional-source omission preserves existing tenant exclusions')
+    // An exclusion beyond the plan is asked to be removed (owner, 2026-09-26), held until Configure Emergency Exclusions adds the exclusions group.
+    assert.match(facts, new RegExp(`^${F.removedExclusions}: Core - Break glass$`, 'm'))
     assert.doesNotMatch(facts, /Map the baseline's reference under Plan settings, Baseline mappings/)
     // The package's own words are not repeated in the facts.
     assert.equal(facts.split('\n').filter((l) => l.trim().length > 20 && own.includes(l.replace(/^- /, '').trim())).length, 0)
