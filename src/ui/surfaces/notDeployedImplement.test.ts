@@ -209,7 +209,7 @@ test('004.8: the portal instructions name the policy, the objects and the state 
   const { step, ctx } = canonical()
   const portal = portalOf(step, ctx)
   const text = portal.join('\n')
-  assert.match(text, new RegExp(`Name: ${step.naming!.proposed}`), 'the instruction names the policy being created')
+  assert.ok(text.includes(`Name: ${step.naming!.proposed}`), 'the instruction names the policy being created')
   // The exclusions group by the name the tenant knows it by, never a raw id,
   // and never an emergency account by name.
   assert.match(text, /exclusions/i)

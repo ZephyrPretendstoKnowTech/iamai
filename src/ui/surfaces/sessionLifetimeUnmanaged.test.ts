@@ -41,7 +41,7 @@ test('with the excluded accounts held, the browser create is handed over in ever
   const json = p.channels.find((c) => c.channel === 'json')!
   assert.deepEqual(json.requests, [{ method: 'POST', endpoint: 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' }])
   const created = JSON.parse(json.text) as { displayName: string; state: string; conditions: { clientAppTypes: string[]; users: { excludeUsers: string[] } } }
-  assert.deepEqual([created.displayName, created.state, created.conditions.clientAppTypes, created.conditions.users.excludeUsers], ['Core - Session - Non-persistent browser sessions', 'enabledForReportingButNotEnforced', ['browser'], ['c0100000-0000-4000-8000-0000000000aa']])
+  assert.deepEqual([created.displayName, created.state, created.conditions.clientAppTypes, created.conditions.users.excludeUsers], ['IAC - GLOBAL – SESSION – All Users Persistence (9-12 Hours)', 'enabledForReportingButNotEnforced', ['browser'], ['c0100000-0000-4000-8000-0000000000aa']])
   for (const c of p.channels) assert.doesNotMatch(c.text, /‹|\{\{|\[omit /, c.channel)
   // The create body carries the resolved target's own session controls, not a number this package wrote.
   const session = (JSON.parse(json.text) as { sessionControls: { signInFrequency: { value: number; type: string }; persistentBrowser: { mode: string } } }).sessionControls
