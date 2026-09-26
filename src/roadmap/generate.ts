@@ -21,8 +21,8 @@ import { CORE_ADMIN_ROLE_IDS, guestKindsReached, matchesSignature } from '../cov
 import { scopedToGoalApps } from '../coverage/goalIdentity.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
-import type { PolicyEffect } from './operations.ts'
+import { accountApplicability, applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
+import type { PolicyEffect, RoleDirectory } from './operations.ts'
 import { REPORT_ONLY_STEP_ID, batchable } from './reportOnlyBatch.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -3237,6 +3237,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     .filter((p) => p.state === 'enabled')
     .map((p) => effectOf(leftBehind.get(String(p.id ?? '').toLowerCase()) ?? p))
     .filter((m) => m.asksForMethod && !m.blocks && m.unknown.length === 0 && (m.operator === 'AND' || m.requirements.every((r) => r.kind === 'mfa' || r.kind === 'strength')) && !m.scope.unreadable && m.narrowings.every((n) => n.kind === 'applications') && m.scope.applications.userActions.length === 0 && m.scope.applications.authContexts.length === 0)
+    // The legacy GuestsOrExternalUsers user value is a guest clause the scope reader keeps as an account id: nothing here settles whom it reaches.
+    .filter((m) => ![...m.scope.users.include, ...m.scope.users.exclude].some((u) => u.toLowerCase() === 'guestsorexternalusers'))
+  // A policy that leaves a role out is trusted only where the roles were read,
+  // and every holder of that role holds it on their own row: a role assigned to
+  // a role-assignable group sits on the group, and its members read as not
+  // holding it.
+  const accountIds = new Set(snapshot.users.map((u) => u.id.toLowerCase()))
+  const rolesByGroup = new Set([...Object.entries(snapshot.roles?.active ?? {}), ...Object.entries(snapshot.roles?.eligible ?? {})].filter(([id]) => !accountIds.has(id.toLowerCase())).flatMap(([, roles]) => roles))
+  const rolesRead = snapshot.config.roleAssignments?.status === 'ok' && ['ok', 'disabled', undefined].includes(snapshot.config.pimEligibility?.status)
+  const rolesTrusted = (m: PolicyEffect): boolean => m.scope.roles.exclude.length === 0 || (rolesRead && m.scope.roles.exclude.every((role) => !rolesByGroup.has(role)))
   const lower = (xs: readonly string[]): string[] => xs.map((x) => x.toLowerCase())
   const within = (xs: readonly string[], of: readonly string[]): boolean => lower(xs).every((x) => lower(of).includes(x))
   /** Whether an MFA policy reaches the step's resources: all of them, or each one it names, none left out. */
@@ -3245,10 +3255,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const mExclude = lower(m.scope.applications.exclude)
     return apps.includes('all') ? mInclude.includes('all') && mExclude.length === 0 : (mInclude.includes('all') || apps.every((a) => mInclude.includes(a))) && apps.every((a) => !mExclude.includes(a))
   }
-  const scopeEvidence = { groupMembers: knownGroupMembers }
-  // `e` is the step's own policy. Every account in the directory it reaches is
-  // reached by at least one of the MFA policies; an account either answer is
-  // unsure of holds it. With no policy of its own the step's resources and
+  const scopeEvidence = { groupMembers: knownGroupMembers, groupMemberSets: Object.fromEntries(Object.entries(knownGroupMembers).map(([id, ids]) => [id, new Set(ids.map((x) => x.toLowerCase()))])) }
+  // Each role state an account can sign in with: today's roles, and each PIM-eligible role activated.
+  const roleStates = (id: string): RoleDirectory[] => {
+    const active = snapshot.roles?.active ?? {}
+    return [{ users: snapshot.users, roles: { active } }, ...(snapshot.roles?.eligible?.[id] ?? []).map((role) => ({ users: snapshot.users, roles: { active: { ...active, [id]: [...(active[id] ?? []), role] } } }))]
+  }
+  // `e` is the step's own policy. Every enabled account in the directory it
+  // reaches, in every role state, is reached by at least one of the MFA
+  // policies; an account either answer is unsure of holds it, and so does a
+  // directory the scan did not read. With no policy of its own the step's resources and
   // exclusions are unknown, and only one policy for everyone on every resource,
   // leaving out only the exclusions group, answers for it.
   const mfaCovers = (e: PolicyEffect | null): boolean => {
@@ -3258,13 +3274,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     // A step policy on a user action or an authentication context, or naming no resource, is not a sign-in to an app this reads.
     if (e.scope.applications.include.length === 0 || e.scope.applications.userActions.length > 0 || e.scope.applications.authContexts.length > 0) return false
-    const covering = onMfa.filter((m) => onApps(m, lower(e.scope.applications.include)))
-    if (covering.length === 0) return false
+    const covering = onMfa.filter((m) => onApps(m, lower(e.scope.applications.include)) && rolesTrusted(m))
+    if (covering.length === 0 || snapshot.users.length === 0 || snapshot.sources.users?.status === 'error') return false
     for (const u of snapshot.users) {
-      const reached = applies(e, u.id, snapshot, scopeEvidence)
-      if (reached === 'out') continue
-      if (reached === 'unknown') return false
-      if (!covering.some((m) => applies(m, u.id, snapshot, scopeEvidence) === 'in')) return false
+      if (u.accountEnabled === false) continue
+      for (const state of roleStates(u.id)) {
+        const reached = accountApplicability(e.scope, u.id, state, scopeEvidence)
+        if (reached === 'out') continue
+        if (reached === 'unknown') return false
+        if (!covering.some((m) => accountApplicability(m.scope, u.id, state, scopeEvidence) === 'in')) return false
+      }
     }
     return true
   }
