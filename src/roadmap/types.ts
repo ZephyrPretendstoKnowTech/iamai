@@ -938,6 +938,13 @@ export type Step = {
   operatorNote?: string | null
   /** Proposed policy name in the tenant's convention, and the baseline's original. */
   naming?: { proposed: string; fromBaseline: string | null; note?: string | null } | null
+  /**
+   * The names IAMAI proposed for this step's policies before it used the
+   * baseline's own (owner, 2026-09-26), in the order of its operations: a tenant
+   * policy built from those instructions is still the step's own
+   * (tracking.ts matchMembers).
+   */
+  earlierNames?: string[]
   // ---- prompt 17 ----
   // ---- roadmap v2 ----
   /** Ordered rollout rings; one entry (or none) for steps that cannot deny access. */

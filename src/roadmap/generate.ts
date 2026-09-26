@@ -2876,6 +2876,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // The name the step's own create gives its policy, whatever the step does now:
       // only the name may differ from the plan (owner, 2026-09-25; tracking.ts plannedName).
       createName: namingNote?.name ?? planName,
+      earlierNames: (() => {
+        const earlier = proposedPolicyName(goal, naming)
+        const ops = action.resolution?.policies ?? []
+        return ops.length <= 1 ? [earlier] : ops.map((o, i) => (i === 0 ? earlier : policyPairNames(earlier, o.sourceName, naming ?? null).b))
+      })(),
       ...(mapping.acceptedDeviations?.[stepId] ? { acceptedDeviation: mapping.acceptedDeviations[stepId] } : {}),
       naming:
         kind === 'create' && !state.satisfied

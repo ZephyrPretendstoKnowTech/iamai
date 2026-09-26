@@ -360,7 +360,17 @@ export type ContractMilestone = { kind: Milestone['kind']; label: string; at: st
  * a finding's sentence into a headline and a detail, because production writes
  * one sentence and inventing the split would be inventing emphasis.
  */
-export type ContractFound = { key: string; label: string; text: string }
+export type ContractFound = {
+  key: string
+  label: string
+  text: string
+  /**
+   * The Threshold card's own wording where it says more than the finding: a
+   * create the threshold holds says why the create waits (owner, 2026-09-26),
+   * which the export already says in its What to do.
+   */
+  card?: string
+}
 
 /**
  * Who the step reaches. `known: false` is a real answer and never a zero: an
@@ -779,8 +789,8 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   const unmeasuredOn = step.state.lifecycle === 'enforced' && gate !== undefined && !/[0-9]/.test(gate.value)
   if (gate && step.status !== 'done' && step.status !== 'skipped' && !unmeasuredOn) {
     // The signed-in admin alone short is said by its own card (walk list 4.x item 43).
-    // A create the threshold holds says why the create waits, not only the turn-on (owner, 2026-09-26).
-    if (operatorId === null || !operatorAloneShort(step, gate, operatorId)) out.push(found('gate', readinessSentence(step, gate, routeStart, labels, operatorId, createWaitsOnReadiness(step) ? readinessHeldLine(step, tenant) : null)))
+    // A create the threshold holds says on its card why the create waits, not only the turn-on (owner, 2026-09-26).
+    if (operatorId === null || !operatorAloneShort(step, gate, operatorId)) out.push({ ...found('gate', readinessSentence(step, gate, routeStart, labels, operatorId)), ...(createWaitsOnReadiness(step) ? { card: readinessSentence(step, gate, routeStart, labels, operatorId, readinessHeldLine(step, tenant)) } : {}) })
   }
   // And on a step that has finished short of it, where the gate is already gone.
   else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', short.note)) }
@@ -2661,7 +2671,8 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     if (c.operator != null && operatorAloneShort(step, gate, c.operator.id)) return null
     const people = methodGateOf(step, gate) !== null
     const route = people ? gateRouteOf(step, gate) : c.routeStart ?? gateRouteOf(step, gate)
-    const note = c.found.find((f) => f.key === 'gate')?.text ?? readinessSentence(step, gate, c.routeStart)
+    const gateFound = c.found.find((f) => f.key === 'gate')
+    const note = gateFound?.card ?? gateFound?.text ?? readinessSentence(step, gate, c.routeStart)
     // The admin gate names each admin on the card with their next step (round 1),
     // and a gate in Extend MFA Coverage each person (owner decision 5, 2026-09-25).
     const admins = everyoneGate(gate) || isGroupMember(step.id, 'extend-mfa') ? c.gateNames : null
