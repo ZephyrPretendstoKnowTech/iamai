@@ -54,7 +54,8 @@ import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
-import { CONTRACT, acceptLeadOf, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
+import { CONTRACT, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
+import { ACCEPT_WORDS, acceptPanelOf } from './acceptPanel.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
@@ -149,7 +150,7 @@ function EmergencyFacts({ facts }: { facts: EmergencyFact[] }) {
 
 /** The Tasks Remaining tile standard, from Step 1's account tile: subject label, the subject(s) of the next check, the remaining count, the next check and what is wrong, one action, then Completed checks. */
 function EmergencyAccountStatusTile({ account, printing = false }: { account: EmergencySubjectTile; printing?: boolean }) {
-  return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}`} data-subject-key={account.key}>
+  return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}${account.caution ? ' is-caution' : ''}`} data-subject-key={account.key}>
     <p className="emergency-account-label">{account.heading}</p>
     {account.upn && <p className="emergency-account-upn">{account.upn.split('\n').map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>}
     {account.remainingCount !== null && account.remainingCount > 0 && <p className="emergency-account-count">{account.remainingCount} check{account.remainingCount === 1 ? '' : 's'} remaining</p>}
@@ -531,7 +532,7 @@ export function ContentStep({
           {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). A step whose own picker saves under a key of its own still draws it: Create or Correct Service Accounts Group's group picker (decisions.ts decisionKeyOf). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
           {ANSWERED_IN[step.id] && decisionKeyOf(step.id) === step.id ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)} ctx={ctx} printing={printing} railInstruction={!taskDecision && (rail.instruction !== null || finishedChoice(step.id, contract.state.satisfied))} />}
-          {deviation && !printing && <AcceptDeviation key={`${step.id}:deviation`} step={step} onDecide={deviation.onDecide} />}
+          {deviation && !printing && <AcceptDeviation key={`${step.id}:deviation`} step={step} ctx={ctx} onDecide={deviation.onDecide} />}
           {step.id === CAMPAIGN_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
@@ -1524,27 +1525,53 @@ function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: 
 }
 
 /**
- * Accept this difference (owner, 2026-09-25, deviations option B): where the
- * tenant's policy differs from the baseline's in a setting IAMAI does not write,
- * a person may accept it with a reason. The fingerprint of each setting as it
- * stands is kept with the reason in the plan record; the step completes with the
- * difference named, and reopens the moment an accepted setting changes.
+ * Accept this difference (owner, 2026-09-25, deviations option B; redrawn
+ * 2026-09-26): where the tenant's policy differs from the plan's, a person
+ * corrects it or accepts it with a reason. The panel lists each difference,
+ * marked Weaker, Stricter or Differs, says in amber what a weaker one leaves
+ * out, and takes the reason (ui/surfaces/acceptPanel.ts). What each accepted
+ * setting's gaps were is kept with the reason in the plan record; the step
+ * completes with the difference named, and reopens on a new gap. The
+ * exclusions group missing is never accepted.
  */
-function AcceptDeviation({ step, onDecide }: { step: Step; onDecide: (d: StepDecisionInput) => void }) {
-  const W = CONTRACT.acceptDeviation
-  const differs = (step.tracking?.members ?? []).reduce<Record<string, string>>((all, m) => ({ ...all, ...(m.differsFields ?? {}) }), {})
-  const accepted = step.acceptedDeviation
-  const [reason, setReason] = useState(accepted?.reason ?? '')
-  if (Object.keys(differs).length === 0 && !accepted) return null
+function AcceptDeviation({ step, ctx, onDecide }: { step: Step; ctx: StepVarContext; onDecide: (d: StepDecisionInput) => void }) {
+  const W = ACCEPT_WORDS()
+  const panel = acceptPanelOf(step, ctx)
+  const saved = step.acceptedDeviation
+  const [reason, setReason] = useState('')
+  const [asked, setAsked] = useState(false)
+  if (panel === null) return null
   const labelId = `deviation-${step.id}`
-  const save = (): void => onDecide(deviationDecision(reason, { ...(accepted?.fields ?? {}), ...differs }))
-  return <div className="decision">
-    <h5 className="dlabel" id={labelId}>{W.label}</h5>
-    {Object.keys(differs).length > 0 && <>
-      <p className="reason">{acceptLeadOf(Object.keys(differs))}</p>
-      <input type="text" aria-labelledby={labelId} placeholder={W.reason} value={reason} onChange={(e) => setReason(e.target.value)} />
-      <button type="button" className="btn" disabled={reason.trim() === ''} onClick={save}>{W.accept}</button>
+  const reasonId = `deviation-reason-${step.id}`
+  const acceptable = Object.keys(panel.acceptable).length > 0
+  // Accept is a real button: an empty reason says what is missing rather than a control that looks dead.
+  const save = (): void => {
+    if (reason.trim() === '') { setAsked(true); return }
+    onDecide(deviationDecision(reason, { ...(saved?.fields ?? {}), ...panel.acceptable }))
+  }
+  return <div className="decision accept-deviation">
+    {panel.lines.length > 0 && <>
+      <h5 className="dlabel" id={labelId}>{W.label}</h5>
+      <ul className="difference-lines">
+        {panel.lines.map((line, i) => <li key={i}><span className={`difference-mark difference-${line.tag}`}>{line.mark}</span><span className="difference-text"><Breakable text={line.text} /></span></li>)}
+      </ul>
+      {panel.leaves && <Callout kind="warning">{panel.leaves}</Callout>}
+      {panel.required && <p className="reason">{panel.required}</p>}
+      {acceptable && <>
+        <label className="accept-prompt" htmlFor={reasonId}>{W.prompt}</label>
+        <input id={reasonId} type="text" placeholder={W.reason} value={reason} aria-invalid={asked && reason.trim() === '' ? true : undefined} aria-describedby={asked && reason.trim() === '' ? `${reasonId}-first` : undefined} onChange={(e) => { setReason(e.target.value); setAsked(false) }} />
+        {asked && reason.trim() === '' && <p className="accept-reason-first" id={`${reasonId}-first`} role="alert">{W.reasonFirst}</p>}
+        <Button variant="secondary" className="accept-button" onClick={save}>{W.accept}</Button>
+        <p className="accept-caption">{W.caption}</p>
+      </>}
     </>}
-    {accepted && <button type="button" className="btn secondary" onClick={() => onDecide(deviationDecision('', {}))}>{W.remove}</button>}
+    {panel.accepted && <div className="accepted-deviation">
+      <h5 className="dlabel">{W.acceptedHead}</h5>
+      <p className="accepted-date">{panel.accepted.date}</p>
+      <p className="accepted-reason">“{panel.accepted.reason}”</p>
+      {panel.accepted.covers && <p className="accepted-covers">{panel.accepted.covers}</p>}
+      <Button variant="secondary" className="accept-button" onClick={() => onDecide(deviationDecision('', {}))}>{W.remove}</Button>
+      {panel.lines.length === 0 && <p className="accept-caption">{W.caption}</p>}
+    </div>}
   </div>
 }

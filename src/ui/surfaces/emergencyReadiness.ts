@@ -43,7 +43,7 @@ export type EmergencyFact = { label: string; value: string; link?: { label: stri
  * one action (the owning step's link or the Implementation Task), then the
  * completed checks. Everything else waits behind the remaining count. */
 /** `more`: the names a card holds past the first five (whoBlocks.ts NAMES_INLINE), drawn under a fold. */
-export type EmergencySubjectTile = EmergencyAccountStatus & { detail?: string; link?: { label: string; href: string }; more?: string[] }
+export type EmergencySubjectTile = EmergencyAccountStatus & { detail?: string; link?: { label: string; href: string }; more?: string[]; caution?: true }
 
 const rank = (outcome: string | undefined): number => outcome === 'fail' ? 0 : outcome === 'unknown' ? 1 : 2
 
@@ -65,7 +65,7 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
   const pending = findings.filter(item => !passed(item)).map((item, index) => ({ item, index })).sort((x, y) => rank(x.item.outcome) - rank(y.item.outcome) || x.index - y.index).map(row => row.item)
   const completed = findings.filter(passed).map(item => [item.subjectLabel, `${item.factLabel ?? item.label}${item.value ? `: ${item.value}` : ''}`].filter(Boolean).join(' · '))
   const direction = task ? task.readinessDirection ?? followTask(task.title) : null
-  const base = { key: tile.key, accountId: null, heading: tile.label, completed, remainingCount: pending.length || null, satisfied }
+  const base = { key: tile.key, accountId: null, heading: tile.label, completed, remainingCount: pending.length || null, satisfied, ...(tile.caution ? { caution: true as const } : {}) }
   const next = pending[0]
   if (!next) {
     const labels = [...new Set(findings.map(item => item.subjectLabel).filter((label): label is string => !!label))]

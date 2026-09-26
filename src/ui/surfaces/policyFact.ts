@@ -158,6 +158,17 @@ function actionOf(e: PolicyEffect, row: Row, strengthName: (id: string) => strin
   return { verb: 'requires', what: e.operator === 'OR' && named.length > 1 ? fillText(w.either, { a: named.slice(0, -1).join(', '), b: named[named.length - 1] }) : list(named) }
 }
 
+/**
+ * What one policy stops or asks for, in words ("requires", "Phishing-resistant
+ * MFA"), for any policy; null where the grant is one this does not read. The
+ * Accept panel says what a weaker difference leaves people without with it.
+ */
+export function actionWordsOf(row: Row, ctx: Pick<StepVarContext, 'snapshot' | 'mapping'>): { verb: 'blocks' | 'requires'; what: string } | null {
+  const e = effectOf(row)
+  if (e.unknown.length > 0) return null
+  return actionOf(e, row, (id) => strengthNameIn(id, ctx.snapshot, ctx.mapping))
+}
+
 const ACTIONS: Record<string, 'registerSecurityInfo' | 'registerDevice'> = { 'urn:user:registersecurityinfo': 'registerSecurityInfo', 'urn:user:registerdevice': 'registerDevice' }
 
 /** Risk levels as one adjective: "high", "high- and medium". */

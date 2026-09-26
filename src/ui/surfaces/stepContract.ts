@@ -26,7 +26,7 @@ import { stepCreatedOn, stepRegistersDevice } from '../../roadmap/evidenceStrate
 import { RULE_TO_FIX } from '../../validation/checkFixes.ts'
 import type { StepCheckItem } from '../../validation/checkFixes.ts'
 import { SET_LEVEL } from '../../validation/report.ts'
-import { appearedEnforced, dimensionList, dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
+import { appearedEnforced, dimensionWords, watchedArrive } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { BLOCKED_MILESTONES, heldForReview, nextMilestone, reviewCauses } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
@@ -154,7 +154,7 @@ type ContractWords = {
   /** The tenant's policy carries another name than the step gives it (MemberTracking.plannedName). */
   policyName: { label: string; note: string }
   /** Accept this difference: the control and the card (Step.acceptedDeviation, MemberTracking.accepted). */
-  acceptDeviation: { label: string; lead: string; leadMany: string; reason: string; accept: string; remove: string; acceptedLabel: string; acceptedNote: string }
+  acceptDeviation: { label: string; reason: string; accept: string; remove: string; acceptedLabel: string; acceptedNote: string }
   /** The groups a tenant's own delivering policy also leaves out, and who is in them (Action.alsoExcluded). */
   alsoExcluded: { label: string; note: string; nobody: string; nobodyMany: string; members: string; membersMany: string }
   /** Require MFA for Everyone's dormant accounts with no method (walk list 4.x item 10). */
@@ -1958,6 +1958,8 @@ export type ReadinessTile = {
   confirm?: { prerequisites: string[]; satisfied: boolean }
   /** Where the prerequisite is resolved (A1 §16.1): the step that makes it, or Plan settings → Baseline mappings. */
   link?: { label: string; href: string } | { label: string; mappings: true }
+  /** A fact under Satisfied that still leaves someone out: an accepted weaker difference (owner, 2026-09-26). Marked amber, never a task. */
+  caution?: true
 }
 
 /**
@@ -2259,16 +2261,6 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
   return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'good', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
 }
 
-/**
- * Accept This Difference's lead, in a sentence (owner, 2026-09-26): "If who it
- * applies to and session controls differ on purpose, …", where the list read
- * "who it applies to, session controls differs".
- */
-export function acceptLeadOf(dimensions: readonly string[]): string {
-  const words = dimensionList(dimensions)
-  return fillText(words.length > 1 ? CONTRACT.acceptDeviation.leadMany : CONTRACT.acceptDeviation.lead, { dimensions: list(words) })
-}
-
 /** Each difference a person accepted with a reason, while the policy holds it (owner, 2026-09-25, deviations option B). A fact, never a task. */
 function acceptedTiles(step: Step): ReadinessTile[] {
   const d = step.acceptedDeviation
@@ -2276,7 +2268,9 @@ function acceptedTiles(step: Step): ReadinessTile[] {
   return (step.tracking?.members ?? []).flatMap((m) => {
     if (!m.accepted?.length || !m.policyName) return []
     const dimensions = dimensionWords(m.accepted)
-    return [{ key: `accepted:${m.key}`, label: CONTRACT.acceptDeviation.acceptedLabel, tone: 'good' as const, value: dimensions, note: fillText(CONTRACT.acceptDeviation.acceptedNote, { policy: m.policyName, dimensions, date: absoluteDate(d.at), reason: d.reason }) }]
+    // A difference that leaves someone out is marked (owner, 2026-09-26), and stays a fact under Satisfied: the step is complete.
+    const weaker = (m.differences ?? []).some((p) => m.accepted!.includes(p.dimension) && p.direction === 'weaker')
+    return [{ key: `accepted:${m.key}`, label: CONTRACT.acceptDeviation.acceptedLabel, tone: 'good' as const, value: dimensions, note: fillText(CONTRACT.acceptDeviation.acceptedNote, { policy: m.policyName, dimensions, date: absoluteDate(d.at), reason: d.reason }), ...(weaker ? { caution: true as const } : {}) }]
   })
 }
 

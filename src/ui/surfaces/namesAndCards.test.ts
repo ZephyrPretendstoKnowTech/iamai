@@ -9,7 +9,6 @@ import { unavailableReason } from '../../roadmap/operations.ts'
 import { stepOperations } from './stepJson.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepExportView } from './stepExport.ts'
-import { acceptLeadOf } from './stepContract.ts'
 import { foldLineOf } from './authoredText.ts'
 import { learnRoleNames, roleNamesOf } from '../../roles.ts'
 import { planDates } from './stepVars.ts'
@@ -99,12 +98,6 @@ test('6.3: the countries decision comes first, About is two sentences, and a Rea
   const when = boardWhenOf(step, null, ready)
   assert.notEqual(when, 'Decide now')
   assert.equal(when, 'Aug 28, 2026')
-})
-
-test('Accept This Difference reads as a sentence however many settings differ', () => {
-  assert.equal(acceptLeadOf(['conditions.users', 'sessionControls']), 'If who it applies to and session controls differ on purpose, accept them with the reason. The step completes, and reopens if the policy changes again.')
-  // One setting may have a plural name ("session controls"), so the sentence needs no verb to agree with it.
-  assert.match(acceptLeadOf(['sessionControls']), /^If the difference in session controls is on purpose, accept it with the reason\./)
 })
 
 test('an untagged policy switched off under the name IAMAI proposed before is still the step’s own: set it to Report-only, never a second policy', () => {
