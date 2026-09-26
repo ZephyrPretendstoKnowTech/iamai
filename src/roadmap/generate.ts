@@ -3227,10 +3227,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // everyone on All resources) prompts for MFA on the same sign-in. One that
   // leaves the resource out, as the baseline's own MFA policy leaves out Intune
   // Enrollment, does not.
+  // Each policy is read as the plan leaves it: an MFA policy another step will
+  // correct to the baseline's, which leaves Intune Enrollment out, covers nothing
+  // once that correction is made. An OR grant with a way through that is not a
+  // method (a compliant or joined device) asks no MFA of that device.
+  const leftBehind = new Map(steps.filter(isOpenPolicy).flatMap((s) => s.action.resolution?.policies ?? []).flatMap((o) => (o.mode === 'update' && o.target ? [[o.policyId.toLowerCase(), o.target as RawPolicy] as const] : [])))
   const onMfa = ((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[])
     .filter((p) => p.state === 'enabled')
-    .map((p) => effectOf(p))
-    .filter((m) => m.asksForMethod && !m.blocks && m.unknown.length === 0 && m.scope.allUsers && !m.scope.unreadable && m.narrowings.every((n) => n.kind === 'applications'))
+    .map((p) => effectOf(leftBehind.get(String(p.id ?? '').toLowerCase()) ?? p))
+    .filter((m) => m.asksForMethod && !m.blocks && m.unknown.length === 0 && (m.operator === 'AND' || m.requirements.every((r) => r.kind === 'mfa' || r.kind === 'strength')) && m.scope.allUsers && !m.scope.unreadable && m.narrowings.every((n) => n.kind === 'applications'))
   const lower = (xs: readonly string[]): string[] => xs.map((x) => x.toLowerCase())
   const within = (xs: readonly string[], of: readonly string[]): boolean => lower(xs).every((x) => lower(of).includes(x))
   // `e` is the step's own policy; with none, its resources and exclusions are
@@ -3238,6 +3243,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // exclusions group answers for it.
   const mfaCovers = (e: PolicyEffect | null): boolean =>
     onMfa.some((m) => {
+      // A step policy on a user action or an authentication context, or naming no resource, is not a sign-in to an app this reads.
+      if (e !== null && (e.scope.applications.include.length === 0 || e.scope.applications.userActions.length > 0 || e.scope.applications.authContexts.length > 0)) return false
       const apps = lower(e?.scope.applications.include ?? ['All'])
       const mInclude = lower(m.scope.applications.include)
       const mExclude = lower(m.scope.applications.exclude)
