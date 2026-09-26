@@ -166,3 +166,23 @@ test('7.4: the held create’s Tasks Remaining card names the readiness it waits
   assert.equal(next?.id, 'create', 'the premise: the create is the first task still to do')
   assert.equal(next?.readinessTitle, 'Device readiness reaches 80%')
 })
+
+test('7.3: MFA split across policies covers the sign-in when, between them, they reach everyone the step reaches', () => {
+  // Internal users on one policy, guests on another, as the baseline splits them.
+  const split = (guestsOn: boolean): Fixture => {
+    const f = structuredClone(curatedFixture('demo-week2'))
+    const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]
+    const everyone = rows.find((p) => p.displayName === 'Core - Grant - MFA for all users')
+    const guests = rows.find((p) => p.displayName === 'Core - Grant - Guests MFA')
+    assert.ok(everyone && guests, 'the premise: week two has both policies')
+    const kinds = { guestOrExternalUserTypes: 'internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider', externalTenants: { membershipKind: 'all' } }
+    everyone.conditions.users.excludeGuestsOrExternalUsers = kinds
+    // The guest condition as Entra writes it today, not the legacy GuestsOrExternalUsers user value.
+    guests.conditions.users = { ...guests.conditions.users, includeUsers: [], includeGuestsOrExternalUsers: kinds }
+    if (!guestsOn) guests.state = 'disabled'
+    return f
+  }
+  assert.ok(curatedFixture('demo-week2').snapshot.users.some((u) => u.userType === 'guest'), 'the premise: the tenant has a guest')
+  assert.equal(loopHeld(split(true)), false, 'internal users on one policy and guests on the other: covered')
+  assert.equal(loopHeld(split(false)), true, 'with the guest policy off, the guest has no MFA on the sign-in')
+})
