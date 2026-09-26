@@ -29,14 +29,14 @@ test('the countries step shows the travellers question on the demo, and its answ
   const ex = stepVars(step, { snapshot: f.snapshot, mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }) as Record<string, unknown>
   const q = questionFor(cs.decision, ex)
   assert.ok(q, 'the question renders: its text has no hole')
-  assert.equal(q.label, 'Recurring Travel Countries')
+  assert.equal(q.label, 'Recurring travel countries')
   assert.match(fillText(q.text, ex), /Record recurring destinations separately/)
   assert.deepEqual(q.options.map((o) => o.needs), [null, 'travelCountries'], 'one none choice and one countries choice')
   assert.equal(valueSource(step.id), null, 'on the countries step the value picker is the countries picker')
 
   // A radio's answer: saved on the decision, in the mapping under stepId:label, read back as that option.
   const key = answerKey(step.id, q.label)
-  assert.equal(key, `${step.id}:Recurring Travel Countries`)
+  assert.equal(key, `${step.id}:Recurring travel countries`)
   const at = f.snapshot.asOf
   const radio = applyStepDecisions(mapping, { [step.id]: { answers: { [q.label]: answerText(q.options[0]) }, at } })
   assert.equal(radio.questionAnswers?.[key], q.options[0].text)

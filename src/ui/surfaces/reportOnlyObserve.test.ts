@@ -344,9 +344,9 @@ test('005.5/6/14: a gate is still open, so the step stays Report-only and What t
     assert.notEqual(step.status, 'ready-to-enforce')
     // Done when states the gates, so the operator can read what would clear it.
     const done = stepContract(step, ctx).doneWhen.join(' | ')
-    // The step says what is true of the tenant now, in its own words (close-doors
-    // spec, 2026-09-19): the policy is On and a session no longer travels.
-    assert.match(done, /policy is On.*no longer signs anyone in on another/i)
+    // A section 6 policy finishes as sections 4 and 5 do (owner, 2026-09-25): IAMAI
+    // sees the policy On, and its report-only period passes.
+    assert.match(done, /IAMAI sees .+ On/)
     assert.equal(step.tracking!.readyNow, false, 'concise completion text does not bypass observation')
   }
   {
@@ -562,7 +562,7 @@ test('005.10: with the records gone the step claims no clean window, no full obs
   }
   assert.doesNotMatch(rowWhen(step), /ready now/i, 'and the row does not call it ready')
   assert.equal(t.seenInScope, 0, 'the tracking evidence still reports zero observed people')
-  assert.match(c.doneWhen.join(' | '), /policy is On/, 'completion remains the final verified configuration')
+  assert.match(c.doneWhen.join(' | '), /IAMAI sees .+ On/, 'completion remains the final verified configuration')
   assert.doesNotMatch(v.whatToDo.join(' | '), /Enable policy/i, 'and the enforcement is still withheld')
   assert.equal(jsonOffered(step), false)
 })

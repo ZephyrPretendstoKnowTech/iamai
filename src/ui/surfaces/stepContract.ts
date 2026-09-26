@@ -1384,10 +1384,11 @@ function policyDoneWhen(step: Step, fact: PolicyFact | null, policy: string, mai
 }
 
 /**
- * A policy in Turn On MFA for Everyone or Extend MFA Coverage: the steps
- * policyDoneWhen finishes (walk list 4.x item 26; owner, 2026-09-25 for section 5).
+ * A policy in Turn On MFA for Everyone, Extend MFA Coverage or Close the Doors
+ * Nobody Should Use: the steps policyDoneWhen finishes (walk list 4.x item 26;
+ * owner, 2026-09-25 for sections 5 and 6).
  */
-const isSectionPolicy = (step: Step, cs: Record<string, unknown> | undefined): boolean => (isGroupMember(step.id, 'core') || isGroupMember(step.id, 'extend-mfa')) && cs?.kind === 'policy'
+const isSectionPolicy = (step: Step, cs: Record<string, unknown> | undefined): boolean => (isGroupMember(step.id, 'core') || isGroupMember(step.id, 'extend-mfa') || isGroupMember(step.id, 'remaining-doors')) && cs?.kind === 'policy'
 
 function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping'], ctx?: StepVarContext, fact: PolicyFact | null = null): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
@@ -2609,7 +2610,13 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
   const drift = s.satisfied ? null : driftCardOf(step)
   if (drift !== null) return drift
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
-  if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
+  // Named by the decision it is (its label and help), the step's own or the object's it makes (owner, 2026-09-25: 6.3 read "Decision · Decision").
+  if (s.condition === 'needs-decision') {
+    const d = (contentStepFor(step)?.decision ?? (step.objectTask ? contentStepFor(step.objectTask)?.decision : null)) as { label?: unknown; help?: unknown } | null | undefined
+    const label = typeof d?.label === 'string' && d.label.trim() !== '' ? d.label : t.decisionValue
+    const help = typeof d?.help === 'string' && d.help.trim() !== '' && !d.help.includes('{') ? d.help : c.decisionNote
+    return { key: 'decision', label: t.decision, tone: 'warn', value: label, note: help }
+  }
   // A finished step draws no "Existing coverage" card (walk list item 11, owner
   // 2026-09-23): "In place · IAMAI found an existing control that meets the
   // assessed goal" sat on every Completed step, a check or a preparation with no
