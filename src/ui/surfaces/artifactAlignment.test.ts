@@ -240,9 +240,14 @@ test('013.B: unresolved operations retain useful portal guidance without invente
       // 2026-09-25): what IAMAI will see, and its report-only period.
       if (isGroupMember(s.id, 'core') || isGroupMember(s.id, 'extend-mfa')) continue
       const taskDone = s.objectTask !== undefined ? stepContract(s.objectTask, c.ctx(s)).doneWhen : []
-      const decided = s.objectTask !== undefined && s.state.condition === 'needs-decision' ? [CONTRACT.doneDecision] : []
+      // A policy in Close the Doors Nobody Should Use or the devices and sessions
+      // section finishes on those two lines too, after the task's completion; its
+      // question is said once, on the step (owner, 2026-09-25, sections 6 and 7).
+      const section = isGroupMember(s.id, 'remaining-doors') || isGroupMember(s.id, 'devices-sessions')
+      const decided = !section && s.objectTask !== undefined && s.state.condition === 'needs-decision' ? [CONTRACT.doneDecision] : []
       const lead = [...taskDone, ...decided]
       assert.deepEqual(v.doneWhen.slice(0, lead.length), lead, `${where}: the task's completion and the answer do not lead: ${v.doneWhen.join(' | ')}`)
+      if (section && /^IAMAI sees /.test(v.doneWhen[lead.length] ?? '')) continue
       assert.equal(v.doneWhen.length, lead.length + 1, `${where}: ${v.doneWhen.join(' | ')}`)
       // The line is the step's own end state (steps[].doneEnd), or the shared
       // one where the step states none — checked as the sentence it is, not by

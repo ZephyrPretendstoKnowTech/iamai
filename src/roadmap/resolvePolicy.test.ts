@@ -326,16 +326,13 @@ test('4 + 5: an explicit serviceAccountsGroup means that object or nothing: miss
     assert.ok(!r.steps.some((x) => x.id === step.id && x.events), 'and no calendar entry can be made from it')
     const view = stepExportView(step, ctx)
     // The completion is the one the screen shows, and on a policy waiting on an
-    // object it is the policy's end state alone — what clears the wait is Fix
-    // before continuing's (owner, 2026-09-11) — never the rollout's gates.
+    // object it is the policy's end state — what clears the wait is Fix before
+    // continuing's (owner, 2026-09-11). Section 6 finishes on the section
+    // completion form (owner, 2026-09-25): the policy On, and its report-only period.
     assert.deepEqual(view.doneWhen, stepContract(step, ctx).doneWhen, "the completion is not the screen's")
-    assert.equal(view.doneWhen.length, 1, `the end state: ${view.doneWhen.join(' | ')}`)
-    // where-people-sign-in-spec.md §7 N1: the step now authors its own `doneEnd`,
-    // so the held step draws its outcome instead of the shared "The policy is
-    // enforced in {tenant}." Still the end state, and still not the blocker's removal.
-    assert.equal(view.doneWhen[0], 'The user-based service accounts in the group can sign in to Contoso Pty Ltd only from the approved trusted network, and every job that uses one has been run from there and recorded.', 'the end state, not the removal of the blocker')
-    assert.doesNotMatch(view.doneWhen[0], /Service Accounts Group|group is created|group exists/i, 'the completion is not the blocker being cleared')
-    assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout completion leaked: ${view.doneWhen.join(' | ')}`)
+    assert.equal(view.doneWhen.length, 2, `the end state: ${view.doneWhen.join(' | ')}`)
+    assert.match(view.doneWhen[0], /^IAMAI sees .+ On\.$/, 'the end state, not the removal of the blocker')
+    assert.doesNotMatch(view.doneWhen.join(' '), /Service Accounts Group|group is created|group exists/i, 'the completion is not the blocker being cleared')
     assert.equal(view.ifWrong, null, 'no rollback instructions')
     assert.equal(view.dates, null, 'no rollout dates')
     const cs = contentStepFor(step) as Record<string, unknown>
