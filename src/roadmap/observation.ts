@@ -546,10 +546,14 @@ export function sameDimension(a: unknown, b: unknown): boolean {
   return JSON.stringify(material(canonical(a)) ?? null) === JSON.stringify(material(canonical(b)) ?? null)
 }
 
-/** The dimensions in the operator's words, from shared.engine.observation.dimensions, in one list. */
+/** The dimensions in the operator's words, from shared.engine.observation.dimensions, once each. */
+export function dimensionList(dimensions: readonly string[]): string[] {
+  return [...new Set(dimensions.map((d) => OBS.dimensions[d.replace(/^conditions\./, '')] ?? OBS.dimensions.other))]
+}
+
+/** The dimensions in the operator's words, in one list. */
 export function dimensionWords(dimensions: readonly string[]): string {
-  const words = dimensions.map((d) => OBS.dimensions[d.replace(/^conditions\./, '')] ?? OBS.dimensions.other)
-  return [...new Set(words)].join(', ')
+  return dimensionList(dimensions).join(', ')
 }
 
 // ---- the comparison ----

@@ -1,5 +1,4 @@
 import { NETWORK_NAME, NETWORK_RANGES, validNetworkRanges } from '../../mapping/networkDraft.ts'
-import { dimensionWords } from '../../roadmap/observation.ts'
 import { passkeyReadiness } from './passkeyPresentation.ts'
 import { PasskeyModelDecision } from './PasskeyModelDecision.tsx'
 import { ManualReviewForm } from './ManualReviewForm.tsx'
@@ -55,7 +54,7 @@ import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
-import { CONTRACT, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
+import { CONTRACT, acceptLeadOf, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WHY_LINK_SHOWN, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
@@ -1542,7 +1541,7 @@ function AcceptDeviation({ step, onDecide }: { step: Step; onDecide: (d: StepDec
   return <div className="decision">
     <h5 className="dlabel" id={labelId}>{W.label}</h5>
     {Object.keys(differs).length > 0 && <>
-      <p className="reason">{fillText(W.lead, { dimensions: dimensionWords(Object.keys(differs)) })}</p>
+      <p className="reason">{acceptLeadOf(Object.keys(differs))}</p>
       <input type="text" aria-labelledby={labelId} placeholder={W.reason} value={reason} onChange={(e) => setReason(e.target.value)} />
       <button type="button" className="btn" disabled={reason.trim() === ''} onClick={save}>{W.accept}</button>
     </>}
