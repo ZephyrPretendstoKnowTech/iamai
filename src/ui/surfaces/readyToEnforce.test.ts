@@ -45,6 +45,7 @@ import assert from 'node:assert/strict'
 // roadmap/sourceIdentity.test.ts, and on the demo it is the true answer today.
 import { allFixtures, curatedFixture, fixture as shippedFixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
+import { DEVIATION_KEY, applyStepDecisions } from '../../roadmap/decisions.ts'
 import { boardWhenOf, laneViewOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 
@@ -172,8 +173,10 @@ function laterScan(over: { edit?: (row: Row) => void; days?: number; evidence?: 
  * under test here. A setting that was already there when the window opened is
  * what the window watched, and the enforcement is still the one change left.
  */
-function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; records?: (result: Row) => void; source?: Partial<TenantSnapshot['sources']['signInEvidence']> } = {}): Case {
-  const f = fixture(FIXTURE)
+function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; records?: (result: Row) => void; source?: Partial<TenantSnapshot['sources']['signInEvidence']>; accepted?: Record<string, string> } = {}): Case {
+  const shipped = fixture(FIXTURE)
+  // A difference accepted with a reason (Accept this difference), where a case needs one.
+  const f = over.accepted ? { ...shipped, mapping: applyStepDecisions(shipped.mapping, { [`${DEVIATION_KEY}${STEP_ID}`]: { answers: { reason: 'Kiosks sign in again every four hours', fields: JSON.stringify(over.accepted) }, at: shipped.snapshot.asOf } } as never) } : shipped
   const target = runFixture(f).steps.find((s) => s.id === STEP_ID)!.tracking!.policyId!
   const rows = ((f.snapshot.config.caPolicies?.rows ?? []) as Row[]).map((r) => {
     if (r.id !== target || !over.edit) return r
@@ -829,17 +832,22 @@ test('007.4/6: the one operation updates the exact matched policy and enforces t
 
 // ---- 5. only the controlled field changes ----
 
-test('007.5: the update submits the one field it controls, and an unrelated tenant setting survives it on every channel', () => {
-  // The tenant put a sign-in frequency on the policy that the plan's enforcement
-  // does not control. The patch must not carry it away, and the whole policy the
+test('007.5: the update submits the one field it controls, and a tenant setting accepted as a difference survives it on every channel', () => {
+  // The tenant put a sign-in frequency on the policy that the plan's policy does
+  // not have. It is a difference to correct or accept with a reason (owner,
+  // 2026-09-26: a stricter setting is never kept silently); once accepted, the
+  // patch that enforces must not carry it away, and the whole policy the
   // operation leaves behind must still have it.
   const stronger = { signInFrequency: { isEnabled: true, type: 'hours', value: 4 } }
-  const c = freshScan({
-    edit: (row) => {
-      row.sessionControls = { ...(row.sessionControls as Row), ...stronger }
-    },
-  })
-  assert.equal(c.step.state.lifecycle, 'ready-to-enforce', 'a stronger unrelated setting does not stop the enforcement')
+  const edit = (row: Row): void => {
+    row.sessionControls = { ...(row.sessionControls as Row), ...stronger }
+  }
+  const open = freshScan({ edit })
+  assert.notEqual(open.step.state.lifecycle, 'ready-to-enforce', 'a setting the plan does not have waits on a correction or an acceptance')
+  const accepted = open.step.tracking?.members?.[0]?.differsFields ?? {}
+  assert.deepEqual(Object.keys(accepted), ['sessionControls'], 'the premise: the session setting is the one difference')
+  const c = freshScan({ edit, accepted })
+  assert.equal(c.step.state.lifecycle, 'ready-to-enforce', 'an accepted stronger setting does not stop the enforcement')
   const [op] = operationsOf(c.step)
   assert.equal(op.mode, 'update')
   assert.deepEqual(op.body, { state: 'enabled' }, 'the patch is the one controlled field and nothing else')

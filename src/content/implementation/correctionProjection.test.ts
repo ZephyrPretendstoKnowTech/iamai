@@ -28,7 +28,10 @@ function plan(name: FixtureName) {
   return { f, r, ctx }
 }
 
-test('an omitted source exception preserves the tenant’s existing excluded person instead of creating a removal correction', () => {
+test('a person excluded by hand is asked to be removed, and the correction changes nothing else in the policy', () => {
+  // Owner, 2026-09-26: an exclusion the plan does not have is always asked to be
+  // removed. It replaced the 2026-09-19 rule this test held, that an omitted
+  // source exception kept the tenant's own excluded person.
   // Week two, the baseline's unsettled source references answered: emergency access
   // is in place and the legacy-authentication block is enforced and correct. Then
   // someone excludes one ordinary person from it by hand.
@@ -50,15 +53,12 @@ test('an omitted source exception preserves the tenant’s existing excluded per
   const step = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
   const c = stepContract(step, ctx)
   assert.equal(r.steps.find((s) => s.id === 's-prereq-break-glass')?.state.satisfied, true, 'emergency access is not sorted: the premise failed')
-  assert.deepEqual(correctionFieldsOf(step, f.snapshot), [], 'source omission must not create a removal of a tenant exception')
+  assert.deepEqual(correctionFieldsOf(step, f.snapshot), ['conditions.users.excludeUsers'], 'the correction changes who is excluded, and nothing else')
   const bindings = packageBindings(step, ctx, c)
-  assert.ok((bindings['policy.target.excludeUsers'] as string[]).includes(person), 'the target retains the existing excluded person')
-  assert.deepEqual(bindings['policy.target.excludeGroups'], tenantUsers.excludeGroups, 'existing excluded groups are retained')
+  assert.equal(((bindings['policy.target.excludeUsers'] as string[] | undefined) ?? []).includes(person), false, 'the target no longer excludes the person')
+  assert.deepEqual(bindings['policy.target.excludeGroups'], tenantUsers.excludeGroups, 'the excluded groups stand')
   assert.deepEqual({ grantControls: row.grantControls, sessionControls: row.sessionControls ?? null, state: row.state }, untouched)
-  for (const operation of plannedOperationsOf(step)) {
-    const users = (operation.body.conditions as { users?: { excludeUsers?: string[] } } | undefined)?.users
-    if (users) assert.ok(users.excludeUsers?.includes(person), 'any conditions request preserves the existing excluded person')
-  }
+  assert.ok(plannedOperationsOf(step).some((o) => o.removes?.ids.includes(person)), 'the change says it removes the person')
 
 })
 

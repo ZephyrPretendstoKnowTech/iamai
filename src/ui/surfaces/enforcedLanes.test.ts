@@ -161,7 +161,21 @@ test('U28/B7: a conditional input nobody saved keeps a step short of Completed a
 })
 
 test('U19: an enforced block policy missing the exclusions group is a safe correction, which Configure Emergency Exclusions asks for; a group taken out is not', () => {
-  const step = stepOf(demoRun, LEGACY)
+  // Demo's legacy block also excludes Core - Break glass, which the plan's policy
+  // does not: that exclusion is this step's own correction (owner, 2026-09-26),
+  // held until emergency access is proven. The edit Configure Emergency
+  // Exclusions asks for is read where it is the only difference.
+  {
+    const own = stepOf(demoRun, LEGACY)
+    assert.equal(own.action.correctionAskedBy, undefined, 'removing the extra group is this step’s own correction')
+    assert.ok(plannedOperationsOf(own).some((o) => (o.removes?.ids.length ?? 0) > 0))
+    assert.equal(packageStateOf(own, stepContract(own, ctxOf(demo, demoRun, demo.snapshot)), demo.snapshot), 'blocked', 'and it is held')
+  }
+  const onlyGroup = structuredClone(demo)
+  const legacyRow = (onlyGroup.snapshot.config.caPolicies!.rows as Record<string, any>[]).find((r) => r.displayName === 'Core - Block - Legacy authentication')!
+  legacyRow.conditions.users.excludeGroups = []
+  const onlyRun = runFixture(onlyGroup, {}, null, onlyGroup.snapshot.asOf)
+  const step = stepOf(onlyRun, LEGACY)
   assert.equal(step.state.lifecycle, 'enforced')
   // Walk list 4.x item 7: adding the exclusions group is Configure Emergency
   // Exclusions' own edit, so this step holds it and waits on that step rather
@@ -169,22 +183,22 @@ test('U19: an enforced block policy missing the exclusions group is a safe corre
   assert.equal(step.action.correctionAskedBy, 's-prereq-exclusion-group')
   assert.equal(policyResult(step).kind, 'held', 'the step hands over the edit Configure Emergency Exclusions asks for')
   const op = plannedOperationsOf(step)[0]
-  const rows = (demo.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
+  const rows = (onlyGroup.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
   const missing = rows.map((r) => {
     if (r.id !== op.policyId) return r
     const conditions = r.conditions as { users: Record<string, unknown> } & Record<string, unknown>
     return { ...r, conditions: { ...conditions, users: { ...conditions.users, excludeGroups: [] } } }
   })
-  const snapshot = { ...demo.snapshot, config: { ...demo.snapshot.config, caPolicies: { ...demo.snapshot.config.caPolicies!, rows: missing } } } as TenantSnapshot
+  const snapshot = { ...onlyGroup.snapshot, config: { ...onlyGroup.snapshot.config, caPolicies: { ...onlyGroup.snapshot.config.caPolicies!, rows: missing } } } as TenantSnapshot
   assert.deepEqual(correctionFieldsOf(step, snapshot), ['conditions.users.excludeGroups'])
   assert.equal(safeCorrectionOf(step, snapshot), true)
-  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, snapshot)), snapshot), 'blocked', 'the step projects the edit another step asks for')
+  assert.equal(packageStateOf(step, stepContract(step, ctxOf(onlyGroup, onlyRun, snapshot)), snapshot), 'blocked', 'the step projects the edit another step asks for')
   // A real removed tenant exclusion remains an unsafe automatic correction.
   const removed = structuredClone(snapshot)
   const row = removed.config.caPolicies!.rows.find((r: any) => r.id === op.policyId) as any
   row.conditions.users.excludeGroups = ['existing-tenant-exception']
   assert.equal(safeCorrectionOf(step, removed), false)
-  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, removed)), removed), 'blocked')
+  assert.equal(packageStateOf(step, stepContract(step, ctxOf(onlyGroup, onlyRun, removed)), removed), 'blocked')
 })
 
 test('a rollout that finished short of its own readiness states it under Satisfied, and its Completion Criteria reads what IAMAI sees', () => {

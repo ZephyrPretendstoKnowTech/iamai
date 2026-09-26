@@ -59,7 +59,7 @@ test('retained foundational rows re-evaluate and dormant Keep completes the step
   assert.ok(!after.steps.some(s => /s-review-baseline-iac-agent-block/.test(s.id)))
 })
 
-test('source assumptions omit optional exclusions, the second break-glass group among them, never AVD allowed users or include targets, and an update over one preserves the tenant’s actual exclusions', () => {
+test('source assumptions omit optional exclusions, the second break-glass group among them, never AVD allowed users or include targets, and an update over one asks to remove the tenant’s own exclusions', () => {
   const group = '62d67e66-2bc9-43cd-b00c-6326dae53d18'
   // The owner takes 5628ad67 as a second break-glass group (2026-09-19): the exclusions group every plan policy excludes stands where it stood.
   const emergency = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
@@ -68,15 +68,19 @@ test('source assumptions omit optional exclusions, the second break-glass group 
   assert.deepEqual(assumedAbsentSourceGroups({ ...policy, displayName: 'IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers' }, [policy]), [])
   assert.deepEqual(assumedAbsentSourceGroups(policy, [policy, { conditions: { users: { includeGroups: [group] } } }]), [emergency])
 
-  // Updating a source with an assumed absent group preserves actual tenant exclusions.
+  // Updating a source with an assumed absent group asks to remove the tenant's own
+  // exclusions (owner, 2026-09-26: every exclusion the plan does not have is asked
+  // to be removed, or accepted; it replaced the 2026-09-19 rule that kept them).
   {
     const f = fixture('demo')
     const source = { id: 'source', displayName: 'Example', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: ['62d67e66-2bc9-43cd-b00c-6326dae53d18'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
     const resolved = resolveTenantPolicy(source, { exclusionsGroupId: 'emergency', serviceAccountsGroupId: null, allowedCountriesLocationId: null }, 'mfa-all-users', [source] as never)
     const action = buildCreateAction([{ sourceName: source.displayName, resolved, target: { policyId: 'tenant-policy', state: 'enabled', policy: { ...source, conditions: { ...source.conditions, users: { includeUsers: ['All'], excludeGroups: ['actual-tenant-exception'], excludeUsers: ['actual-user-exception'] } } } } }], f.mapping, 'plan', 'step', 'mfa-all-users', { sections: new Set(['users']) })
-    const body = action.resolution!.policies[0].body as { conditions: { users: { excludeGroups: string[]; excludeUsers: string[] } } }
-    assert.ok(body.conditions.users.excludeGroups.includes('actual-tenant-exception'))
-    assert.ok(body.conditions.users.excludeUsers.includes('actual-user-exception'))
+    const op = action.resolution!.policies[0]
+    const body = op.body as { conditions: { users: { excludeGroups?: string[]; excludeUsers?: string[] } } }
+    assert.equal((body.conditions.users.excludeGroups ?? []).includes('actual-tenant-exception'), false)
+    assert.equal((body.conditions.users.excludeUsers ?? []).includes('actual-user-exception'), false)
+    assert.deepEqual([...(op.removes?.ids ?? [])].sort(), ['actual-tenant-exception', 'actual-user-exception'], 'the change says what it removes')
   }
 })
 
