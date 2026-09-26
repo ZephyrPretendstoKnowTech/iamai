@@ -75,7 +75,9 @@ export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, 
 /** Recorded checks remain evidence, never a substitute for current completion. */
 export function cleanupEvidenceLines(phase: CleanupPhase, row: CleanupPhase['rows'][number]): string[] {
   const record = row.record
-  if (!record) return []
+  // Alert on Emergency Account Sign-ins completes on its mark alone: a mark is no
+  // check to list. A test recorded before it did keeps its evidence.
+  if (!record || (row.kind === 'alerting' && !record.outcome)) return []
   const names = row.lists.emergencyAccounts ?? row.lists.emergencyAccountUpns ?? []
   const account = (id: string): string => {
     const index = phase.accountIds.indexOf(id)

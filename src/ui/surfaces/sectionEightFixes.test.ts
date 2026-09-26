@@ -14,6 +14,8 @@ import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { alertingAiInfo, alertingSteps, alertingSubjects } from './alertingTasks.ts'
 import { cleanupRowWho } from './rowWho.ts'
 import { cleanupExportView } from './cleanupExport.ts'
+import { boardReadingsOf } from './planBoard.ts'
+import { cleanupPhaseFor } from '../../roadmap/cleanupPhase.ts'
 
 const demo = () => {
   const f = fixture('demo')
@@ -82,4 +84,34 @@ test('8.2 Align Policy Names is left out of the plan until it proposes the basel
     const phase = runFixture(fixture(name)).schedule.cleanup
     assert.equal(phase?.rows.some((x) => x.kind === 'naming') ?? false, false, name)
   }
+})
+
+test('8.1: a saved Failed test does not complete it, and a marked-done 8.1 exports no Workflow Check', () => {
+  const { f } = demo()
+  const at = f.snapshot.asOf
+  const bg = f.mapping.breakGlassUserIds
+  const record = (outcome?: 'failed') => ({ at, date: at.slice(0, 10), cleanup: 'alerting' as const, accountIds: bg, basis: cleanupBasis('alerting', {}, bg), ...(outcome ? { outcome } : {}) })
+  const failed = runFixture({ ...f, checkpoints: [...(f.checkpoints ?? []), record('failed')] }).schedule.cleanup!
+  assert.equal(failed.rows.find((x) => x.kind === 'alerting')!.done, null)
+  const marked = runFixture({ ...f, checkpoints: [...(f.checkpoints ?? []), record()] }).schedule.cleanup!
+  const row = marked.rows.find((x) => x.kind === 'alerting')!
+  assert.ok(row.done)
+  assert.deepEqual(cleanupExportView(marked, row)!.manualEvidence, [])
+})
+
+test('8.1 reads Ready, is estimated after the drill, and takes no Ongoing day slot', () => {
+  const { f, r } = demo()
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const alerting = board.readings.get('cleanup-alerting')!
+  assert.notEqual(alerting.substatus, 'Review', 'its work is a rule to create, not a review')
+  const drill = board.readings.get('cleanup-drill')!
+  if (drill.estimate && alerting.estimate) assert.ok(alerting.estimate >= drill.estimate, `${alerting.estimate} before the drill's ${drill.estimate}`)
+  // The Ongoing rows fall on the same days with or without the emergency accounts' two early rows.
+  const at = f.snapshot.asOf
+  const base = { after: at, rhythm: null, organisation: r.coverage.organisation, policies: [], now: at, records: [], early: at, hardeningTracked: true }
+  const without = cleanupPhaseFor({ ...base, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [] })!
+  const withEa = cleanupPhaseFor({ ...base, emergencyAccountIds: ['a'], emergencyAccounts: ['A'], emergencyAccountUpns: ['a@contoso.onmicrosoft.com'] })!
+  const ongoing = (c: typeof withEa) => c.rows.filter((x) => x.kind !== 'drill' && x.kind !== 'alerting').map((x) => [x.kind, x.day])
+  assert.ok(ongoing(without).length > 0, 'the premise: an Ongoing row')
+  assert.deepEqual(ongoing(withEa), ongoing(without))
 })

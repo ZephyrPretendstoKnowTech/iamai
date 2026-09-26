@@ -174,7 +174,7 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
 }
 
 /** Tasks Remaining for the four Establish Emergency Access steps: one tile per subject, the satisfied ones under Satisfied · N (the Emergency Access steps are frozen: their words are what the owner approved). */
-export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null }) {
+export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, scanNote = true }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null; scanNote?: boolean }) {
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
   const tile = (subject: EmergencySubjectTile) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} />
@@ -190,7 +190,7 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy }
       <summary>Satisfied · {satisfied.length}</summary>
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
-    <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>
+    {scanNote && <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>}
     {bar}
   </section>
 }
