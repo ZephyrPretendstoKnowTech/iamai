@@ -102,7 +102,7 @@ export function tenantVocabulary(snapshot: TenantSnapshot, loaded: { groups?: It
   // A role the tenant made is named by the tenant; Microsoft's built-in ones are
   // not, and one of them is called "User" (review, 2026-09-26: masking it
   // rewrote every word "user").
-  for (const r of rows(snapshot, 'roleDefinitions')) if (r.isBuiltIn === false) add(v, counts, 'role', r.displayName)
+  for (const r of rows(snapshot, 'roleDefinitions')) if (r.isBuiltIn !== true) add(v, counts, 'role', r.displayName)
   for (const a of rows(snapshot, 'applications')) add(v, counts, 'app', a.displayName)
   for (const a of snapshot.appSignInSummary ?? []) add(v, counts, 'app', (a as Record<string, unknown>).appDisplayName)
 

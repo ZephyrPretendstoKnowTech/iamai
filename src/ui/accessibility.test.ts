@@ -470,7 +470,7 @@ test('a tablist keeps the keyboard behaviour its role promises, and its panels a
 })
 
 test("the Plan step's implementation channels are one tab set over one panel, and each is offered only where it exists", () => {
-  assert.match(contentStep, /import \{ Button, Callout, Icon, Picker, TabList, onePanelProps \}/)
+  assert.match(contentStep, /import \{ Button, Callout, Icon, Picker, Status, TabList, onePanelProps \}/)
   assert.doesNotMatch(contentStep, /role="tablist"/, 'the step reuses the shared strip rather than hand-rolling one')
   // The approved order is Entra, PowerShell, JSON, then AI Info. The IDS are
   // internal and deliberately unchanged — `portal` is the channel that renders
