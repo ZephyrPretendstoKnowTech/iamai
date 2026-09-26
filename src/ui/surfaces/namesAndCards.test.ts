@@ -64,3 +64,12 @@ test('a policy to correct is one card: the policy, "Correct {fields}", and the c
   const b = stepBodyOf(mfa, demo.ctx)
   assert.deepEqual(policySubjectsOf(b.contract, b.readiness, b.emergencyAccountTasks).filter((c) => c.key.startsWith('correct:')).map((c) => c.title), ['Correct users and target resources'])
 })
+
+test('7.1 to 7.3 set only how long a sign-in lasts, so Completion Criteria claim no report-only period that stopped nobody', () => {
+  const { r, ctx } = run('demo')
+  const says = (id: string): boolean => stepBodyOf(r.steps.find((s) => s.id === id)!, ctx).contract.doneWhen.some((l) => /report-only period showed no sign-in/.test(l))
+  for (const id of ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth']) assert.equal(says(id), false, id)
+  // Token Protection does stop sign-ins, and a block does: they keep the line.
+  assert.equal(says('s-goal-token-protection'), true)
+  assert.equal(says('s-goal-block-auth-transfer'), true)
+})

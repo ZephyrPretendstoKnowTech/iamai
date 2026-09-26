@@ -1369,15 +1369,37 @@ const MAIL_DONE = (): string => (shared.mailDevices as unknown as { done: string
  * confirms…", "Verify after the change…", "Representative users can satisfy
  * MFA…" and "The scan found the assessed configuration in place."
  */
+/** The session controls that only set how long a sign-in lasts: they stop no sign-in. */
+const LIFETIME_ONLY: ReadonlySet<string> = new Set(['signInFrequency', 'persistentBrowser'])
+
+/**
+ * Whether every policy the step writes only sets how long a sign-in lasts (a
+ * sign-in frequency, a persistent browser: 7.1 to 7.3): it grants nothing and
+ * blocks nothing, so its report-only period has no sign-in it "would have
+ * stopped" to show. Token Protection's session control does stop sign-ins.
+ */
+function sessionOnlyStep(step: Step): boolean {
+  const ops = step.action.resolution?.policies ?? []
+  const policies = (ops.length > 0 ? ops.map((o) => (o.mode === 'update' ? o.intent ?? o.target : o.body)) : [step.action.intended ?? null, ...(step.action.planned?.policies ?? []).map((p) => p.body)]).filter((p): p is Record<string, unknown> => !!p && typeof p === 'object')
+  if (policies.length === 0) return false
+  return policies.every((p) => {
+    const g = (p.grantControls ?? null) as { builtInControls?: unknown[]; authenticationStrength?: unknown; termsOfUse?: unknown[]; customAuthenticationFactors?: unknown[] } | null
+    const grants = (g?.builtInControls?.length ?? 0) + (g?.authenticationStrength ? 1 : 0) + (g?.termsOfUse?.length ?? 0) + (g?.customAuthenticationFactors?.length ?? 0)
+    const session = Object.entries((p.sessionControls ?? {}) as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined).map(([k]) => k)
+    return grants === 0 && session.length > 0 && session.every((k) => LIFETIME_ONLY.has(k))
+  })
+}
+
 function policyDoneWhen(step: Step, fact: PolicyFact | null, policy: string, mailAccounts: readonly string[]): string[] {
   const W = DONE_ON()
   const on = fact === null ? fillText(W.doneOnPlain, { policy }) : fillText(W.doneOn, { policy: fact.policy, fact: fact.doing })
   // Found already On: first seen enforced (observation.ts neverObserved), or, where
   // nothing is tracked, the tenant's own policy in place. A tenant policy IAMAI
-  // watched go from Report-only to On passed its period like any other.
+  // watched go from Report-only to On passed its period like any other. A
+  // session-only policy stops no sign-in, so it has no such line (owner, 2026-09-26).
   const members = step.state.members
   const foundOn = members.length > 0 ? members.every((m) => m.change.latest.neverObserved === true) : step.state.inPlace
-  const period = foundOn || enforcedUnwatched(step) || stepEvidenceStrategy(step) === 'configuration' ? [] : [W.donePeriod]
+  const period = foundOn || enforcedUnwatched(step) || stepEvidenceStrategy(step) === 'configuration' || sessionOnlyStep(step) ? [] : [W.donePeriod]
   if (mailAccounts.length === 0) return [on, ...period]
   // Two lines with the mail half too (walk list 4.x item 26): it joins the report-only line.
   const accounts = list([...mailAccounts])
