@@ -530,9 +530,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     const step = byId.get(id) ?? null
     reading.blockers = reading.blockers.filter((b) => !(b.kind === 'decision' && isDirectionStep(b.id) && directionWaitRelayed(step, via, b.id)))
   }
-  // Verify Emergency Access is a sign-in, not a review, and Alert on Emergency
-  // Account Sign-ins a rule to create: both read Ready.
-  for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = row.id === DRILL_ROW || row.id === ALERTING_ROW ? null : 'Review' }
+  // Verify Emergency Access is a sign-in, not a review: it reads Ready. Alert on
+  // Emergency Account Sign-ins is a rule to create: Ready · Create.
+  for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = row.id === DRILL_ROW ? null : row.id === ALERTING_ROW ? 'Create' : 'Review' }
   const rolloutPending = steps.some(step => POLICY.includes(step.kind) && step.status !== 'done' && step.status !== 'skipped' && !step.doesntApply)
   if (rolloutPending) for (const row of rows.filter(row => row.afterRollout && !row.complete)) {
     const reading = out.get(row.id)

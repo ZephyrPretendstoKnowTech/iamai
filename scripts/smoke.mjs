@@ -1369,7 +1369,7 @@ try {
   await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); const r = t && t.closest('.plan-row'); if (r && r.getAttribute('aria-expanded') === 'true') r.click(); return true })()`)
   // A finished section, drawn (roadmap flow V2 decision B): the Follow-up scan
   // has Emergency Access finished, so All work's first section is one collapsed
-  // line in its own place — its title and "All 4 completed" — with its rows
+  // line in its own place — its title and "All 5 completed" — with its rows
   // hidden. None of the Plan section's tenants has a finished section, so this
   // is where the collapsed line is checked on screen, at 1440px and at 390px.
   // The whole heading line is the fold's hit area: a real press on the title's
@@ -1386,7 +1386,7 @@ try {
     return { offButton: at.offButton, ...(await evaluate(sectionOne)) }
   }
   const EA_TITLE = CONTENT_PAGES.app.plan.groups.emergencyAccess.completedTitle
-  const EA_DONE = CONTENT_PAGES.app.plan.board.groupAllCompleted.replace('{total}', '4')
+  const EA_DONE = CONTENT_PAGES.app.plan.board.groupAllCompleted.replace('{total}', '5')
   const collapsedLine = (s) => !!s && s.closed && s.number === '1' && s.title === EA_TITLE && s.meta === EA_DONE && s.hidden && s.expanded === 'false' && s.lead > 0 && s.lead < 80 && s.fits
   const openedByTitle = (s) => !!s && s.offButton && !s.closed && !s.hidden && s.expanded === 'true'
   const foldedByTitle = (s) => !!s && s.offButton && s.closed && s.hidden
@@ -1401,7 +1401,7 @@ try {
   const deskOpened = await pressSectionOneTitle()
   const deskFolded = await pressSectionOneTitle()
   check(
-    'Demo: with Emergency Access finished, All work’s first section is one collapsed line, "All 4 completed", at 1440px and 390px',
+    'Demo: with Emergency Access finished, All work’s first section is one collapsed line, "All 5 completed", at 1440px and 390px',
     collapsedLine(deskSection) && deskSection.width >= 1200 && collapsedLine(phoneSection) && phoneSection.width === 390,
     JSON.stringify({ deskSection, phoneSection }),
   )
