@@ -1384,11 +1384,12 @@ function policyDoneWhen(step: Step, fact: PolicyFact | null, policy: string, mai
 }
 
 /**
- * A policy in Turn On MFA for Everyone, Extend MFA Coverage or Close the Doors
- * Nobody Should Use: the steps policyDoneWhen finishes (walk list 4.x item 26;
- * owner, 2026-09-25 for sections 5 and 6).
+ * A policy in Turn On MFA for Everyone, Extend MFA Coverage, Close the Doors
+ * Nobody Should Use or the devices and sessions section: the steps
+ * policyDoneWhen finishes (walk list 4.x item 26; owner, 2026-09-25 for
+ * sections 5, 6 and 7).
  */
-const isSectionPolicy = (step: Step, cs: Record<string, unknown> | undefined): boolean => (isGroupMember(step.id, 'core') || isGroupMember(step.id, 'extend-mfa') || isGroupMember(step.id, 'remaining-doors')) && cs?.kind === 'policy'
+const isSectionPolicy = (step: Step, cs: Record<string, unknown> | undefined): boolean => (isGroupMember(step.id, 'core') || isGroupMember(step.id, 'extend-mfa') || isGroupMember(step.id, 'remaining-doors') || isGroupMember(step.id, 'devices-sessions')) && cs?.kind === 'policy'
 
 function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string, mapping?: StepVarContext['mapping'], ctx?: StepVarContext, fact: PolicyFact | null = null): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]

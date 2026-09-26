@@ -312,8 +312,9 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
   const { step, c, lane } = opened('demo', 's-goal-require-managed-device')
   assert.equal(lane.lane, 'On Hold', 'the premise: the engine holds it')
   assert.equal(nextCaption(c), null, 'the head restates the hold')
-  assert.equal(c.doneWhen.length, 1)
-  assert.match(c.doneWhen[0], /^The policy is enforced in /, 'Done when restates what clears the hold')
+  // Section 7 finishes on the section completion form (owner, 2026-09-25): the policy On, and its report-only period.
+  assert.equal(c.doneWhen.length, 2)
+  assert.match(c.doneWhen[0], /^IAMAI sees .+ On\.$/, 'Done when is the end state, never what clears the hold')
   // One tile per prerequisite (A1 §16.1): each fix is its own tile, and a fix that names a step links to it.
   const r = readinessOf(step, c)
   assert.deepEqual(r.tiles.filter((t) => c.fix.some((f) => f.key === t.key)).map((t) => t.key), c.fix.map((f) => f.key), 'the Readiness tiles are not the fixes, one each')
