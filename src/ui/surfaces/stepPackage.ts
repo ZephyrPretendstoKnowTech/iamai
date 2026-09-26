@@ -467,17 +467,10 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   // is to create it in Report-only" — beside a step saying it is there, switched
   // off (Jordan D6). Following it makes a second policy.
   if (toReportOnly(step).length > 0) return null
-  // A create the readiness threshold holds with its turn-on is not planned work
-  // to preview: in report-only a policy that requires a compliant device can
-  // prompt for a certificate, so the create is itself what is withheld
-  // (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23: "Hold the
-  // create for that policy until ready."). Previewed, the step drew the New
-  // policy procedure, a Create-mode script and the POST under the line saying
-  // its creation waits, and the export, the print and AI Info carried them on.
-  // A policy created On while something holds it previews its create like any
-  // other held step (owner, 2026-09-25: never hide implementation instructions;
-  // its Entra procedure already stands whole). The card says what it waits on.
-  if (createWaitsOnReadiness(step)) return null
+  // A create the readiness threshold holds (roadmap/operations.ts
+  // createWaitsOnReadiness) previews its create like any other held step
+  // (owner, 2026-09-25: never hide implementation instructions). The hold is its
+  // Tasks Remaining card, and the create is not offered until it clears.
   if (step.kind === 'create' || step.kind === 'adjust') {
     if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
     // An enforced policy whose remaining work is a person's own setup, which the

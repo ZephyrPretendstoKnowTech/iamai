@@ -54,14 +54,16 @@ test('every create procedure is created in Report-only, refuses On, and excludes
   }
 })
 
-test('s-goal-require-managed-device: the held create draws the Intune preparation and is undated, and the create procedure appears once devices are ready', () => {
+test('s-goal-require-managed-device: the held create draws the Intune preparation and its whole create procedure, and the same procedure once devices are ready', () => {
   const DEVICE = 's-goal-require-managed-device'
   // On the demo the step is On Hold with nothing deployed, and its create waits
   // on device readiness (owner decision D, 2026-09-23; roadmap/compliantDeviceCreate.test.ts):
-  // Entra draws the Intune preparation that readiness depends on, and no create.
+  // Entra draws the Intune preparation that readiness depends on, and the create
+  // stands whole beside the hold (owner, 2026-09-25: never hide implementation
+  // instructions), offered only once readiness is met.
   const b = bodyOf('demo', DEVICE)
   assert.match(drawn(b, 'portal'), /Mark devices with no compliance policy assigned as: Not compliant/)
-  assert.doesNotMatch(drawn(b, 'portal'), /New policy/)
+  assert.match(drawn(b, 'portal'), /New policy/)
   // Require Healthy Devices D8: the gate counts people on a compliant device, not devices.
   assert.match(String(b.readiness.tiles.find((t) => t.key === 'gate')?.value), /% of people on a compliant device$/)
   const prerequisites = b.readiness.tiles.filter((t) => t.key.includes('step:'))

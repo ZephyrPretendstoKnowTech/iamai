@@ -114,12 +114,13 @@ function blockText(stepId: string, blockId: string): string {
 /** Every tab a body draws, joined: the whole of what it hands over. */
 const allDrawn = (b: StepBody): string => b.artifacts.map((a) => a.text()).join('\n')
 
-test('D4: the device answer that narrows the platforms puts them in the Entra procedure beside the JSON, a target with no platform condition drops only that line, and a held create draws no procedure', () => {
+test('D4: the device answer that narrows the platforms puts them in the Entra procedure beside the JSON, a target with no platform condition drops only that line, and a held create draws its procedure whole', () => {
   {
-    // Below device readiness the create waits with its turn-on, and nothing the
-    // step draws creates the policy: no procedure, no platform line, no body.
+    // Below device readiness the create waits with its turn-on, and its procedure
+    // stands whole beside the hold (owner, 2026-09-25: never hide implementation
+    // instructions): the platform line and the body with it.
     const held = allDrawn(bodyOf('demo', MANAGED, withPhonesBlocked))
-    assert.doesNotMatch(held, /New policy|Device platforms|excludePlatforms|enabledForReportingButNotEnforced/, 'the held create draws no procedure')
+    for (const line of [/New policy/, /Device platforms/, /excludePlatforms/]) assert.match(held, line, 'the held create draws its procedure whole')
     const b = bodyOf('demo', MANAGED, (f) => withDevicesReady(withPhonesBlocked(f)))
     const entra = drawn(b, 'portal')
     const json = drawn(b, 'json')
@@ -131,8 +132,10 @@ test('D4: the device answer that narrows the platforms puts them in the Entra pr
   {
     // The demo with the device decision unanswered is the pinned baseline's own
     // shape: no platform condition, so there is nothing to configure and no line.
-    // Held on device readiness, it draws no procedure at all.
-    assert.doesNotMatch(allDrawn(bodyOf('demo', MANAGED)), /New policy|Locations: set|enabledForReportingButNotEnforced/, 'the held create draws no procedure')
+    // Held on device readiness, it draws the same procedure.
+    const heldEntra = drawn(bodyOf('demo', MANAGED), 'portal')
+    assert.match(heldEntra, /New policy/, 'the held create draws its procedure')
+    assert.doesNotMatch(heldEntra, /Device platforms/)
     const entra = drawn(bodyOf('demo', MANAGED, withDevicesReady), 'portal')
     assert.doesNotMatch(entra, /Device platforms/)
     assert.doesNotMatch(entra, /\[omit |\{\{/)

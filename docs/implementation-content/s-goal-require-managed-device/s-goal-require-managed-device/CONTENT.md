@@ -136,7 +136,7 @@ $actual=IG GET $uri
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 
-State: **Require a Managed Device Outside the Office** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions resolved from the saved device plan, All resources, the location and device-platform scope listed in the facts below, and Grant: Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device. Either device state satisfies the grant. It does not block anything until it is enabled.
+State: **Require a Managed Device Outside the Office** does not exist in {{tenant.displayName}} yet. It is created in Report-only: All users with the exclusions resolved from the saved device plan, All resources, the location and device-platform scope listed in the facts below, and Grant: Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device. Either device state satisfies the grant. It does not block anything until it is enabled.
 
 Each condition is set through its own **Configure** toggle. A condition left at **No** applies to everything, so a policy whose locations or device platforms were never configured reaches the office and the platforms the device answer left out.
 

@@ -35,6 +35,7 @@ import { awaitsOwnObject, policyHold, unavailableReason } from './operations.ts'
 import { isHeld, markHoldChains } from './holds.ts'
 import { heldRequired } from '../derive/finish.ts'
 import { basisOf, createsWhileGated, settleSchedule } from './stepSchedule.ts'
+import { readinessFamilyOf } from '../copy/reasons.ts'
 
 /** What a step's enforcement date is worth. */
 export type EnforcementBasis =
@@ -402,9 +403,15 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
    * clears the wait on its own day, not at the end of the window the placement
    * gave it (net-new 22, owner 2026-09-24).
    */
-  const clears = (w: ForecastWait, waiting: string | null = null): { day: string; by: string | null } => {
-    // A readiness threshold clears with the MFA registration campaign.
+  const clears = (w: ForecastWait, waiting: string | null = null, step: Step | null = null): { day: string; by: string | null } => {
     if (w.kind === 'evidence') {
+      // Device readiness is the one number no step of this plan moves: devices
+      // are enrolled in Intune, which is preparation a person does. Read as the
+      // MFA campaign's, it cleared on the plan's first day once the campaign was
+      // done, and a held row read "Est." today.
+      const gate = step?.action.readinessGate
+      if (w.id.startsWith('evidence:readiness') && gate !== undefined && readinessFamilyOf(gate) === 'device') return { day: plan.prepEnd, by: null }
+      // A readiness threshold clears with the MFA registration campaign.
       const c = w.id.startsWith('evidence:readiness') && campaign !== null ? spanOf(campaign) : null
       return c ? { day: c.end, by: campaign } : { day: plan.start, by: null }
     }
@@ -420,10 +427,10 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
     // A hold a person clears (an answer, a conflict, a missing object, a mapping) is preparation work.
     return { day: plan.prepEnd, by: null }
   }
-  const latest = (from: string, waits: readonly ForecastWait[], waiting: string | null = null): { day: string; by: string | null } => {
+  const latest = (from: string, waits: readonly ForecastWait[], waiting: string | null = null, step: Step | null = null): { day: string; by: string | null } => {
     let out: { day: string; by: string | null } = { day: from, by: null }
     for (const w of waits) {
-      const c = clears(w, waiting)
+      const c = clears(w, waiting, step)
       if (ms(c.day) > ms(out.day)) out = c
     }
     return out
@@ -451,7 +458,7 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
     }
     const scheduled = s.scheduled ?? null
     const own = row.dated ? (scheduled?.at ?? null) : null
-    const start = own !== null ? { day: own, by: null } : latest(plan.start, row.waits)
+    const start = own !== null ? { day: own, by: null } : latest(plan.start, row.waits, null, s)
     const at = dayOf(start.day)
     // A policy whose next task is the object it makes itself was placed as that
     // task (schedule.ts): its placement is the preparation window, not a turn-on.
@@ -470,7 +477,7 @@ export function planForecast(rows: readonly ForecastRow[]): PlanForecast {
     // No earlier than the forecast placement put the turn-on: the cap on change
     // windows and the rule on prompting the same people are the placement's.
     if (placed) turnOn = later(turnOn, placed.start)
-    const held = latest(turnOn, row.turnOnWaits, row.id)
+    const held = latest(turnOn, row.turnOnWaits, row.id, s)
     turnOn = dayOf(held.day)
     const soak = placed ? daysBetween(placed.start, placed.end) : ringlessSoakDays(s, plan.activeUsers)
     let end = addDays(turnOn, soak)
