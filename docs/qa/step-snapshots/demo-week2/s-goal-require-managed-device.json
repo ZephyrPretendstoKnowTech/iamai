@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Require a Managed Device Outside the Office",
+  "rail": "Device readiness reaches 80%",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -28,6 +28,8 @@
   ],
   "channels": [
     "Entra",
+    "PowerShell",
+    "JSON",
     "AI Info"
   ],
   "when": "Est. Sep 7, 2026"
