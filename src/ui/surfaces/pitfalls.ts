@@ -25,7 +25,8 @@ import { readinessView } from '../../derive/mfaReadiness.ts'
 import { tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { readinessContextOf } from '../../derive/readinessContext.ts'
 import { SMS_RETIREMENT_DATES, smsRetirementOf } from '../../derive/smsRetirement.ts'
-import { absoluteDate } from '../../copy/dates.ts'
+import { absoluteDate, monthDay } from '../../copy/dates.ts'
+import { applies, effectOf } from '../../roadmap/operations.ts'
 import { unprovenIdsOf } from '../../derive/contentLists.ts'
 import { personLines } from './personNext.ts'
 import { personLabels } from '../../names.ts'
@@ -33,6 +34,7 @@ import type { ReadinessTile } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const MFA_EVERYONE_STEP_ID = 's-goal-mfa-all-users'
+const PLATFORMS_STEP_ID = 's-goal-block-unsupported-platforms'
 
 type Words = Record<string, string>
 const wordsOf = (step: Step): Words => ((contentStepFor(step) as unknown as { pitfalls?: Words }).pitfalls ?? {})
@@ -47,8 +49,58 @@ export function pitfallTilesOf(step: Step, ctx: StepVarContext, satisfied: boole
   if (satisfied || step.status === 'done' || step.status === 'skipped' || step.state.setAside) return []
   if (step.id === CAMPAIGN_STEP_ID) return campaignPitfalls(step, ctx)
   if (step.id === MFA_EVERYONE_STEP_ID) return mfaEveryonePitfalls(step, ctx, stepLink)
+  if (step.id === PLATFORMS_STEP_ID) return platformPitfalls(step, ctx)
   if ((step.methodShort ?? []).length > 0) return methodShortPitfalls(step, ctx)
   return []
+}
+
+/** The platforms Conditional Access names, by the family the sign-in records give. */
+const CA_PLATFORM: Readonly<Record<string, string>> = { Windows: 'windows', macOS: 'macos', iOS: 'ios', Android: 'android', Linux: 'linux' }
+const lowered = (v: unknown): string[] => (Array.isArray(v) ? v : []).filter((x): x is string => typeof x === 'string').map((x) => x.toLowerCase())
+const orList = (xs: readonly string[]): string => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`)
+
+/**
+ * Block Unsupported Device Platforms, while it is not On: each person it reaches
+ * whose successful sign-ins came from a platform it blocks, with the platform and
+ * the latest day. Which platforms it blocks is the policy's own conditions:
+ * Linux where it is not left out, and ChromeOS and a sign-in that reports no
+ * platform wherever it includes any device, since Conditional Access names
+ * neither (Microsoft Learn policy-all-users-device-unknown-unsupported).
+ */
+function platformPitfalls(step: Step, ctx: StepVarContext): ReadinessTile[] {
+  if (step.state.lifecycle === 'enforced') return []
+  const W = wordsOf(step)
+  const bodies = (step.action.resolution?.policies ?? []).map((op) => (op.mode === 'update' ? (op.target ?? op.body) : op.body) as Record<string, unknown> | undefined)
+  const body = bodies.find((b) => typeof (b?.conditions as { platforms?: unknown } | undefined)?.platforms === 'object')
+  if (!body) return []
+  const effect = effectOf(body)
+  if (!effect.blocks || effect.unknown.length > 0) return []
+  const platforms = (body.conditions as { platforms: { includePlatforms?: unknown; excludePlatforms?: unknown } }).platforms
+  const include = lowered(platforms.includePlatforms)
+  const exclude = lowered(platforms.excludePlatforms)
+  const anyDevice = include.includes('all')
+  const blocks = (family: string): boolean => {
+    const named = CA_PLATFORM[family]
+    return named === undefined ? anyDevice : (anyDevice || include.includes(named)) && !exclude.includes(named)
+  }
+  const supported = ['Windows', 'macOS', 'iOS', 'Android'].filter((p) => !blocks(p))
+  if (supported.length === 0) return []
+  const groupMembers = Object.fromEntries([...(ctx.groups ?? new Map())].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds]))
+  const labels = personLabels(ctx.snapshot.users, { address: true })
+  const lines: string[] = []
+  for (const u of ctx.snapshot.users) {
+    const e = ctx.snapshot.signInEvidence?.[u.id]
+    if (!e) continue
+    const seen = (e.platforms ?? []).filter((p) => blocks(p.os)).map((p) => ({ platform: p.os as string, at: p.at }))
+    if (e.noPlatformAt && anyDevice) seen.push({ platform: W.noPlatform, at: e.noPlatformAt })
+    if (seen.length === 0) continue
+    // Only a person the policy reaches; one whose reach the scan cannot settle is not named.
+    if (applies(effect, u.id, ctx.snapshot, { groupMembers }) !== 'in') continue
+    const on = seen.sort((a, b) => b.at.localeCompare(a.at)).map((s) => fillText(W.platformsSeen, { platform: s.platform, date: monthDay(s.at) })).join('; ')
+    lines.push(fillText(W.platformsPerson, { name: labels.get(u.id) ?? ctx.nameOf(u.id), seen: on }))
+  }
+  if (lines.length === 0) return []
+  return [{ key: 'pitfall:unsupported-platform', label: W.platformsLabel, tone: 'warn', value: fillText(W.platformsValue, { n: lines.length }), note: fillText(W.platformsNote, { supported: orList(supported) }), names: lines }]
 }
 
 /** The shared words of a card naming people short of a method (pages.app.plan.stepContract.methodGate). */

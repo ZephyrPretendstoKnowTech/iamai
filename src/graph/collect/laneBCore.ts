@@ -356,6 +356,7 @@ export function aggregateFold(tenantId: string | null = null): RowFold<Record<st
   // later Authenticator sign-in cannot hide an earlier passkey one.
   const proofs = new Map<string, Map<string, ProofRecord>>()
   const platforms = new Map<string, Map<string, string>>()
+  const noPlatform = new Map<string, string>()
   // Per person and platform family: the devices seen, for MFA Readiness (prompt 62).
   const devices = new Map<string, Map<string, DeviceSeen>>()
   const apps = new Map<string, Set<string>>()
@@ -446,6 +447,13 @@ export function aggregateFold(tenantId: string | null = null): RowFold<Record<st
         devices.set(row.userId, byOs)
         if (row.trustedLocation) trusted.add(row.userId)
       }
+      // A successful sign-in whose record named no platform, which an
+      // unsupported-platform block stops (ui/surfaces/pitfalls.ts). A row from
+      // before the device labels carries no `os` at all and says nothing.
+      if (row.status?.errorCode === 0 && row.os === '') {
+        const held = noPlatform.get(row.userId)
+        if (held === undefined || at > held) noPlatform.set(row.userId, at)
+      }
       if (row.status?.errorCode === 0 && row.appDisplayName) {
         const set = apps.get(row.userId) ?? new Set<string>()
         if (set.size < 8) set.add(row.appDisplayName)
@@ -465,6 +473,8 @@ export function aggregateFold(tenantId: string | null = null): RowFold<Record<st
         u.recoveryCandidates = kept
         const seen = platforms.get(id)
         u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))
+        const noPlatformAt = noPlatform.get(id)
+        if (noPlatformAt !== undefined) u.noPlatformAt = noPlatformAt
         const byOs = devices.get(id)
         u.devices = PLATFORMS.filter((os) => byOs?.has(os)).map((os) => byOs?.get(os) as DeviceSeen)
         u.apps = [...(apps.get(id) ?? [])].sort()
@@ -755,6 +765,10 @@ export function mergeTargeted(perUser: Record<string, UserEvidence>, userId: str
     lastMfaSuccess: held.lastMfaSuccess ?? found.lastMfaSuccess,
     proofs: latestProofs([...(held.proofs ?? []), ...(found.proofs ?? [])]),
     platforms: PLATFORMS.filter((os) => platforms.has(os)).map((os) => ({ os, at: platforms.get(os) as string })),
+    ...((): { noPlatformAt?: string } => {
+      const at = later(held.noPlatformAt ?? null, found.noPlatformAt ?? null)
+      return at === null ? {} : { noPlatformAt: at }
+    })(),
     devices: PLATFORMS.filter((os) => byOs.has(os)).map((os) => byOs.get(os) as DeviceSeen),
     apps: [...new Set([...(held.apps ?? []), ...(found.apps ?? [])])].slice(0, 8).sort(),
     trustedLocationSeen: (held.trustedLocationSeen ?? false) || (found.trustedLocationSeen ?? false),
