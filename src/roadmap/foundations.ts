@@ -51,8 +51,7 @@ import type { Step } from './types.ts'
 import { REPORT_ONLY_STEP_ID } from './stepIds.ts'
 
 /** The member ids of the foundation, Emergency Access and Direction, Emergency Access first, in the order each group draws them. */
-// Not Alert on Emergency Account Sign-ins: it sits with Emergency Access and holds nothing (owner, 2026-09-25).
-export const FOUNDATION_STEP_IDS: readonly string[] = [...membersOf(EMERGENCY_ACCESS_GROUP).filter((id) => id !== 'cleanup-alerting'), ...membersOf(DIRECTION_GROUP)]
+export const FOUNDATION_STEP_IDS: readonly string[] = [...membersOf(EMERGENCY_ACCESS_GROUP), ...membersOf(DIRECTION_GROUP)]
 
 /** Whether a step is one of the foundation's own members (which this rule never gates). */
 export const isFoundationStep = (id: string): boolean => FOUNDATION_STEP_IDS.includes(id)

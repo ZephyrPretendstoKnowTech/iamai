@@ -1,6 +1,6 @@
-// Section 8 after its audit (owner, 2026-09-25): Alert on Emergency Account
-// Sign-ins closes Establish Emergency Access on the step template, completed by
-// one Mark as done, and Align Policy Names is left out of the plan until it can
+// Section 8 after its audit (owner, 2026-09-25 and 2026-09-26): Alert on
+// Emergency Account Sign-ins stays 8.1, on the step template, completed by one
+// Mark as done, and Align Policy Names is left out of the plan until it can
 // propose the baseline's own names.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -26,13 +26,13 @@ const demo = () => {
   return { f, r, phase, row }
 }
 
-test('8.1 closes Establish Emergency Access after the drill, holds nothing, and is dated early', () => {
-  assert.equal(groupOf('cleanup-alerting')?.key, 'emergency-access')
-  assert.deepEqual(membersOf('emergency-access').slice(-2), ['cleanup-drill', 'cleanup-alerting'])
+test('8.1 stays Ongoing Checks and Cleanup’s first step, after the security rollout, and holds nothing', () => {
+  // Owner, 2026-09-26: never moved into Establish Emergency Access.
+  assert.equal(groupOf('cleanup-alerting')?.key, 'ongoing')
+  assert.equal(membersOf('ongoing')[0], 'cleanup-alerting')
   assert.equal(FOUNDATION_STEP_IDS.includes('cleanup-alerting'), false, 'it holds no policy step')
   const { r, phase, row } = demo()
-  const drill = phase.rows.find((x) => x.kind === 'drill')!
-  assert.ok(row.day > drill.day && row.day <= r.schedule.targetEnd, `${row.day}: after the drill, before the rollout ends`)
+  assert.ok(row.day > r.schedule.targetEnd, `${row.day}: after the security rollout`)
   assert.equal(cleanupRowWho(phase, row), '2 accounts')
 })
 
@@ -99,19 +99,19 @@ test('8.1: a saved Failed test does not complete it, and a marked-done 8.1 expor
   assert.deepEqual(cleanupExportView(marked, row)!.manualEvidence, [])
 })
 
-test('8.1 reads Ready, is estimated after the drill, and takes no Ongoing day slot', () => {
+test('8.1 reads Ready · Create once the rollout is done, and the drill takes no Ongoing day slot', () => {
   const { f, r } = demo()
   const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
   const alerting = board.readings.get('cleanup-alerting')!
-  assert.notEqual(alerting.substatus, 'Review', 'its work is a rule to create, not a review')
-  const drill = board.readings.get('cleanup-drill')!
-  if (drill.estimate && alerting.estimate) assert.ok(alerting.estimate >= drill.estimate, `${alerting.estimate} before the drill's ${drill.estimate}`)
-  // The Ongoing rows fall on the same days with or without the emergency accounts' two early rows.
+  if (alerting.lane === 'Ready') assert.equal(alerting.substatus, 'Create', 'its work is a rule to create, not a review')
+  else assert.equal(alerting.reason?.id, 'after-security-rollout', 'held, it waits for the security rollout as before')
+  // The Ongoing rows fall on the same days with or without the drill's early row.
   const at = f.snapshot.asOf
   const base = { after: at, rhythm: null, organisation: r.coverage.organisation, policies: [], now: at, records: [], early: at, hardeningTracked: true }
   const without = cleanupPhaseFor({ ...base, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [] })!
   const withEa = cleanupPhaseFor({ ...base, emergencyAccountIds: ['a'], emergencyAccounts: ['A'], emergencyAccountUpns: ['a@contoso.onmicrosoft.com'] })!
-  const ongoing = (c: typeof withEa) => c.rows.filter((x) => x.kind !== 'drill' && x.kind !== 'alerting').map((x) => [x.kind, x.day])
-  assert.ok(ongoing(without).length > 0, 'the premise: an Ongoing row')
-  assert.deepEqual(ongoing(withEa), ongoing(without))
+  // 8.1 is the first Ongoing row, on the day the first Ongoing row falls on without the accounts.
+  const first = (c: typeof withEa) => c.rows.filter((x) => x.kind !== 'drill').sort((x, y) => x.day.localeCompare(y.day))[0]
+  assert.ok(without.rows.length > 0, 'the premise: an Ongoing row')
+  assert.deepEqual([first(withEa).kind, first(withEa).day], ['alerting', first(without).day])
 })

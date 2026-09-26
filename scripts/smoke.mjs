@@ -1386,7 +1386,7 @@ try {
     return { offButton: at.offButton, ...(await evaluate(sectionOne)) }
   }
   const EA_TITLE = CONTENT_PAGES.app.plan.groups.emergencyAccess.completedTitle
-  const EA_DONE = CONTENT_PAGES.app.plan.board.groupAllCompleted.replace('{total}', '5')
+  const EA_DONE = CONTENT_PAGES.app.plan.board.groupAllCompleted.replace('{total}', '4')
   const collapsedLine = (s) => !!s && s.closed && s.number === '1' && s.title === EA_TITLE && s.meta === EA_DONE && s.hidden && s.expanded === 'false' && s.lead > 0 && s.lead < 80 && s.fits
   const openedByTitle = (s) => !!s && s.offButton && !s.closed && !s.hidden && s.expanded === 'true'
   const foldedByTitle = (s) => !!s && s.offButton && s.closed && s.hidden

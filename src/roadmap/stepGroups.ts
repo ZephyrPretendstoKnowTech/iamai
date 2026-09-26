@@ -70,9 +70,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: EMERGENCY_ACCESS_GROUP,
     titleKey: 'pages.app.plan.groups.emergencyAccess.title',
     completedTitleKey: 'pages.app.plan.groups.emergencyAccess.completedTitle',
-    // Alert on Emergency Account Sign-ins closes it, where Microsoft sets that
-    // monitoring up with the accounts (owner, 2026-09-25); it holds nothing.
-    members: ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill', 'cleanup-alerting'],
+    members: ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill'],
     anatomy: 'task',
   },
   {
@@ -172,7 +170,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'ongoing',
     titleKey: 'pages.app.plan.groups.ongoing.title',
     completedTitleKey: 'pages.app.plan.groups.ongoing.completedTitle',
-    members: ['cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'],
+    members: ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'],
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
     anatomy: 'task',

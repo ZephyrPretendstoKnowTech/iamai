@@ -38,12 +38,11 @@ const CLEANUP_KINDS = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], ov
 const pinnedPolicies = pinnedBaseline.policies as unknown as CaPolicy[]
 
 const EA_TITLE = 'pages.app.plan.groups.emergencyAccess.title'
-// Alert on Emergency Account Sign-ins closes the section (owner, 2026-09-25).
-const EA = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill', 'cleanup-alerting']
+const EA = ['s-prereq-break-glass', 's-prereq-exclusion-group', 's-prereq-passkey-settings', 'cleanup-drill']
 const DIRECTION = ['s-direction-use', 's-direction-accounts', 's-direction-devices']
 const item = (id: string, lane: BoardItem['lane'] = 'Ready'): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
 
-test('the registry leads with the Emergency Access steps (task anatomy) and the three Direction steps (decision anatomy), answers membership and anatomy by id, and is the only place the Plan names the Emergency Access ids', () => {
+test('the registry leads with the four Emergency Access steps (task anatomy) and the three Direction steps (decision anatomy), answers membership and anatomy by id, and is the only place the Plan names the Emergency Access ids', () => {
   assert.deepEqual(STEP_GROUPS.slice(0, 2).map((g) => g.key), [EMERGENCY_ACCESS_GROUP, DIRECTION_GROUP], 'Emergency Access and Direction do not lead the registry')
   assert.deepEqual([...membersOf(EMERGENCY_ACCESS_GROUP)], EA)
   assert.deepEqual([...EMERGENCY_STEP_IDS], EA, 'the board reads its emergency ids from the registry')
@@ -72,7 +71,7 @@ test('the registry leads with the Emergency Access steps (task anatomy) and the 
     // and every one of those groups draws the task anatomy too (owner, 2026-09-19:
     // every step that carries work reads the same way; step-redundancy-analysis.md
     // finding 15). The registry answers it once, for the board and the interior.
-    for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-naming', 's-goal-block-legacy-auth', 's-review-baseline-anything', 's-prereq-trusted-location', 's-verify-mfa', 's-check-dormant-accounts']) {
+    for (const id of ['s-ladder-security-defaults', 's-confirm-workloads', 'cleanup-alerting', 's-goal-block-legacy-auth', 's-review-baseline-anything', 's-prereq-trusted-location', 's-verify-mfa', 's-check-dormant-accounts']) {
       assert.notEqual(groupOf(id), null, `${id} is in no group`)
       assert.equal(isGroupMember(id, EMERGENCY_ACCESS_GROUP), false, id)
       assert.equal(isGroupMember(id, DIRECTION_GROUP), false, id)
@@ -85,7 +84,7 @@ test('the registry leads with the Emergency Access steps (task anatomy) and the 
     // A Cleanup row is a board row, not a step: the owner left the Cleanup rows out
     // of the uniformity rule, and CleanupStep.tsx keeps the recovery drill — the one
     // row that draws the task anatomy — on the task headings by its own kind, and
-    // Alert on Emergency Account Sign-ins beside it (owner, 2026-09-25).
+    // Alert on Emergency Account Sign-ins with it (owner, 2026-09-25).
     const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
     assert.match(cleanup, /const taskHead = drill \|\| alerting \? TASK_HEAD : null/)
   }
@@ -212,7 +211,7 @@ const OUTLINE: readonly [key: string, title: string, members: readonly string[]]
   ['extend-mfa', 'Extend MFA Coverage', ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-risky-users-register-block', 's-goal-user-risk-medium', 's-goal-azure-management-mfa']],
   ['remaining-doors', 'Close the Doors Nobody Should Use', ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-workload-identity-block', 's-goal-admin-portals-protected']],
   ['devices-sessions', 'Limit Sessions and Require Healthy Devices', ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls']],
-  ['ongoing', 'Ongoing Checks and Cleanup', ['cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming']],
+  ['ongoing', 'Ongoing Checks and Cleanup', ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming']],
 ]
 
 test('the Plan has eight sections, in the roadmap flow’s order, with its names and members', () => {
