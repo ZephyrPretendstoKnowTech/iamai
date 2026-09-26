@@ -11,7 +11,8 @@ import { isHeld } from './holds.ts'
 import { isWorkingDay } from './timing.ts'
 import { cleanup as cleanupContent } from '../content/content.ts'
 
-const ORDER = ['drill', 'alerting', 'hardening', 'namedExclusions', 'naming', 'consolidation', 'notAssessed']
+// Align Policy Names is dated last, where the board numbers it (cleanupPhase.ts settleRenames, 2026-09-26).
+const ORDER = ['drill', 'alerting', 'hardening', 'namedExclusions', 'consolidation', 'naming', 'notAssessed']
 
 test('recovery testing is scheduled early and on its own, and optional hygiene follows the last enforcement, in order, on working days', () => {
   // emergency tests are early while optional hygiene follows enforcement
