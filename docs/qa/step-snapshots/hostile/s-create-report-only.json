@@ -14,19 +14,19 @@
   ],
   "tiles": [
     {
-      "label": "Block Authentication Transfer",
-      "state": "Create in Report-only"
-    },
-    {
-      "label": "Shorten Admin Sessions",
-      "state": "Create in Report-only"
-    },
-    {
       "label": "Require Phishing-Resistant MFA for Admins",
       "state": "Create in Report-only"
     },
     {
+      "label": "Block Authentication Transfer",
+      "state": "Create in Report-only"
+    },
+    {
       "label": "Block Unsupported Device Platforms",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Shorten Admin Sessions",
       "state": "Create in Report-only"
     },
     {

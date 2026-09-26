@@ -178,6 +178,22 @@ export const STEP_GROUPS: readonly StepGroup[] = [
 ]
 
 /**
+ * Two steps in the order the Plan shows them: by section, then by place in it.
+ * Anything listing steps for a person to follow reads this order, never the
+ * engine's (review, 2026-09-26: Create the Policies in Report-only listed its
+ * tasks as the engine made them).
+ */
+export function byPlanPlace(a: { id: string }, b: { id: string }, groups: readonly StepGroup[] = STEP_GROUPS): number {
+  const place = (id: string): [number, number] => {
+    const group = groupOf(id, groups)
+    return [group ? groups.indexOf(group) : groups.length, positionInGroup(id, groups) ?? Number.MAX_SAFE_INTEGER]
+  }
+  const [ga, pa] = place(a.id)
+  const [gb, pb] = place(b.id)
+  return ga - gb || pa - pb
+}
+
+/**
  * The group a step belongs to, or null where no entry claims it and none is the
  * catch-all. A step belongs to at most one group, and the three ways of
  * claiming one are read in this order, so a listed id always beats a prefix and

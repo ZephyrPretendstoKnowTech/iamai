@@ -15,6 +15,7 @@ import { REPORT_ONLY_STEP_ID } from '../../roadmap/stepIds.ts'
 import { operationBodies } from '../../roadmap/operations.ts'
 import { stepById } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
+import { byPlanPlace } from '../../roadmap/stepGroups.ts'
 import { fillText } from '../../content/render.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import type { ReadinessTile } from './stepContract.ts'
@@ -25,14 +26,14 @@ const W = (): BatchWords => (stepById[REPORT_ONLY_STEP_ID] as unknown as { batch
 
 type Member = { id: string; step: Step; toCreate: boolean }
 
-/** The batch's policy steps, in plan order: still to create first-come, created alike. */
+/** The batch's policy steps, in the order the Plan shows them (review, 2026-09-26: they read in the engine's order). */
 function membersOf(step: Step, ctx: StepVarContext): Member[] {
   const batch = step.reportOnlyBatch
   const plan = ctx.planSteps ?? []
   if (!batch || plan.length === 0) return []
   const toCreate = new Set(batch.create)
   const listed = new Set([...batch.create, ...batch.created])
-  return plan.filter((s) => listed.has(s.id)).map((s) => ({ id: s.id, step: s, toCreate: toCreate.has(s.id) }))
+  return plan.filter((s) => listed.has(s.id)).sort((a, b) => byPlanPlace(a, b)).map((s) => ({ id: s.id, step: s, toCreate: toCreate.has(s.id) }))
 }
 
 /** The policy a member creates, by the name its create gives it; the tenant's own name once it exists. */

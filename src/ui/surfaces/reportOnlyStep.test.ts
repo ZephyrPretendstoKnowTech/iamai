@@ -6,6 +6,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { REPORT_ONLY_STEP_ID } from '../../roadmap/reportOnlyBatch.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
+import { byPlanPlace } from '../../roadmap/stepGroups.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { railOf, readinessLeadOf } from './stepContract.ts'
 import { planDates } from './stepVars.ts'
@@ -23,7 +24,8 @@ test('each task is its policy step’s own create procedure, word for word, in p
   const { r, ctx, step, body } = plan('getiamai')
   const tasks = body.emergencyAccountTasks!.tasks
   const { create, created } = step.reportOnlyBatch!
-  const listed = r.steps.filter((s) => create.includes(s.id) || created.includes(s.id)).map((s) => s.id)
+  // In the order the Plan shows them (review, 2026-09-26), never the engine's.
+  const listed = r.steps.filter((s) => create.includes(s.id) || created.includes(s.id)).sort((a, b) => byPlanPlace(a, b)).map((s) => s.id)
   assert.equal(tasks.length, listed.length)
   for (const [i, id] of listed.entries()) {
     const member = r.steps.find((s) => s.id === id)!
@@ -40,7 +42,7 @@ test('one card per policy still to create, headed by its step and naming the pol
   const { create, created } = step.reportOnlyBatch!
   const open = body.readiness.tiles.filter((t) => t.key.startsWith('batch:'))
   const done = body.readiness.satisfied.filter((t) => t.key.startsWith('batch:'))
-  assert.deepEqual(open.map((t) => t.key), r.steps.filter((s) => create.includes(s.id)).map((s) => `batch:${s.id}`))
+  assert.deepEqual(open.map((t) => t.key), r.steps.filter((s) => create.includes(s.id)).sort((a, b) => byPlanPlace(a, b)).map((s) => `batch:${s.id}`))
   assert.equal(done.length, 0, 'the policies already created are no roster here')
   for (const t of open) {
     const member = r.steps.find((s) => `batch:${s.id}` === t.key)!
@@ -50,9 +52,9 @@ test('one card per policy still to create, headed by its step and naming the pol
   }
   // A created policy is a Satisfied card and keeps its task: the procedure is never hidden (owner, 2026-09-25).
   assert.ok(created.length > 0, 'the premise: the demo has created some')
-  const listed = r.steps.filter((s) => create.includes(s.id) || created.includes(s.id)).map((s) => `create:${s.id}`)
+  const listed = r.steps.filter((s) => create.includes(s.id) || created.includes(s.id)).sort((a, b) => byPlanPlace(a, b)).map((s) => `create:${s.id}`)
   assert.deepEqual(body.emergencyAccountTasks!.tasks.map((t) => t.id), listed, 'one task per listed policy, created or not')
-  assert.equal(body.emergencyAccountTasks!.recommendedTaskId, `create:${r.steps.find((s) => create.includes(s.id))!.id}`, 'the first policy to create leads')
+  assert.equal(body.emergencyAccountTasks!.recommendedTaskId, `create:${r.steps.filter((s) => create.includes(s.id)).sort((a, b) => byPlanPlace(a, b))[0].id}`, 'the first policy to create leads')
 })
 
 test('with every policy created, Entra still lists each create procedure and no line says Nothing left to do', () => {

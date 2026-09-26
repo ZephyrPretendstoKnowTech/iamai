@@ -14,23 +14,7 @@
   ],
   "tiles": [
     {
-      "label": "Block Authentication Transfer",
-      "state": "Create in Report-only"
-    },
-    {
-      "label": "Shorten Admin Sessions",
-      "state": "Create in Report-only"
-    },
-    {
       "label": "Require MFA at Every Role Activation",
-      "state": "Create in Report-only"
-    },
-    {
-      "label": "Block Unsupported Device Platforms",
-      "state": "Create in Report-only"
-    },
-    {
-      "label": "Limit How Long Sessions Last",
       "state": "Create in Report-only"
     },
     {
@@ -47,6 +31,22 @@
     },
     {
       "label": "Reset Passwords for Medium-Risk Users",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Block Authentication Transfer",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Block Unsupported Device Platforms",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Shorten Admin Sessions",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Limit How Long Sessions Last",
       "state": "Create in Report-only"
     },
     {

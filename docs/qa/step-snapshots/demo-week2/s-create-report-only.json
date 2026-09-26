@@ -14,11 +14,11 @@
   ],
   "tiles": [
     {
-      "label": "Shorten Admin Sessions",
+      "label": "Block Unsupported Device Platforms",
       "state": "Create in Report-only"
     },
     {
-      "label": "Block Unsupported Device Platforms",
+      "label": "Shorten Admin Sessions",
       "state": "Create in Report-only"
     },
     {

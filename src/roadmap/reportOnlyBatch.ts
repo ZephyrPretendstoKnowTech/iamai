@@ -25,7 +25,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
-import { implementationOffered, operationBodies } from './operations.ts'
+import { finalTargets, implementationOffered } from './operations.ts'
 import { setState } from './lifecycle.ts'
 
 import { REPORT_ONLY_STEP_ID } from './stepIds.ts'
@@ -48,12 +48,14 @@ export function tenantPoliciesOf(rows: readonly unknown[] | null | undefined): T
 }
 
 /**
- * The policies a step writes (its operations: the authority on what a policy
- * means, operations.ts), else, once created, the tenant's own as the scan read
- * them through tracking.
+ * The whole policies a step leaves behind (its operations' final targets: the
+ * authority on what a policy means, operations.ts), else, once created, the
+ * tenant's own as the scan read them through tracking. Never an update's patch:
+ * a correction's patch left out the user action that makes a policy an outlier
+ * (review, 2026-09-26: 3.6 listed Protect Sign-in Method Registration).
  */
 function policiesOf(step: Step, tenant: TenantPolicies): Json[] {
-  const bodies = operationBodies(step as Parameters<typeof operationBodies>[0])
+  const bodies = finalTargets(step as Parameters<typeof finalTargets>[0])
   if (bodies.length > 0) return bodies
   return (step.tracking?.members ?? []).flatMap((m) => (m.policyId && tenant.has(m.policyId) ? [tenant.get(m.policyId)!] : []))
 }
