@@ -71,7 +71,8 @@ function platformPitfalls(step: Step, ctx: StepVarContext): ReadinessTile[] {
   if (step.state.lifecycle === 'enforced') return []
   const W = wordsOf(step)
   const bodies = (step.action.resolution?.policies ?? []).map((op) => (op.mode === 'update' ? (op.target ?? op.body) : op.body) as Record<string, unknown> | undefined)
-  const body = bodies.find((b) => typeof (b?.conditions as { platforms?: unknown } | undefined)?.platforms === 'object')
+  // Graph writes a policy with no platform condition as `platforms: null`.
+  const body = bodies.find((b) => { const p = (b?.conditions as { platforms?: unknown } | undefined)?.platforms; return p !== null && typeof p === 'object' && !Array.isArray(p) })
   if (!body) return []
   const effect = effectOf(body)
   if (!effect.blocks || effect.unknown.length > 0) return []
@@ -88,7 +89,10 @@ function platformPitfalls(step: Step, ctx: StepVarContext): ReadinessTile[] {
   const groupMembers = Object.fromEntries([...(ctx.groups ?? new Map())].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds]))
   const labels = personLabels(ctx.snapshot.users, { address: true })
   const lines: string[] = []
+  const emergency = new Set(ctx.mapping.breakGlassUserIds)
   for (const u of ctx.snapshot.users) {
+    // Not a disabled account, and not an emergency account: the exclusions card owns one inside the policy.
+    if (u.accountEnabled === false || emergency.has(u.id)) continue
     const e = ctx.snapshot.signInEvidence?.[u.id]
     if (!e) continue
     const seen = (e.platforms ?? []).filter((p) => blocks(p.os)).map((p) => ({ platform: p.os as string, at: p.at }))

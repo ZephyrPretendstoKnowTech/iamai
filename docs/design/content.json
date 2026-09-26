@@ -6204,7 +6204,6 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{noPlatformCount} sign-ins since {from} carried no platform ({apps}) by {list:noPlatformUsers}; compare those events with the policy’s included and excluded platforms.",
           "{existingCoverage}"
         ],
         "none": "Every sign-in in the records since {from} came from a supported platform."
