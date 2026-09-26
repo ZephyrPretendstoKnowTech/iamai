@@ -251,7 +251,10 @@ export function eventsFor(step: Step, ctx: TimingContext, placedStart: string | 
         usable ? EVENT.reason.announceOn(chosenDay, announceTime) : `${EVENT.reason.announceDefaultDay(chosenDay, announceTime)} ${EVENT.reason.announceNoRhythm}`,
         courtesy ? EVENT.reason.announceCourtesy : EVENT.reason.announceNotice(noticeDays),
       ].join(' ')
-  const announce = event(atLocalHour(announceDay, announceHour, ctx.timeZone), announceReason, ctx, 'announce')
+  const announcedAt = event(atLocalHour(announceDay, announceHour, ctx.timeZone), announceReason, ctx, 'announce')
+  // Made late, it can fall at or after the change itself (09:30 against a 09:00
+  // change the same day): then there is no time left to announce it at all.
+  const announce = late && Date.parse(announcedAt.at) >= Date.parse(enforce.at) ? null : announcedAt
   // The reminder is the working day before. With one working day of notice
   // that is the announcement itself, so there is no second message, nor where
   // it would come before an announcement made late.

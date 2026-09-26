@@ -192,6 +192,8 @@ type RequiredMember = {
   op: PolicyOperation | null
   /** The name the plan gives this member's policy — the only thing that tells a pre-member tag's halves apart. */
   displayName: string | null
+  /** The name IAMAI proposed for it before it used the baseline's (Step.earlierNames), which a policy built then carries. */
+  earlierName?: string
 }
 
 /** One required member, and the one tenant policy this scan resolved for it. */
@@ -225,9 +227,9 @@ export function requiredMembers(step: Step): RequiredMember[] {
   const ops = step.action.resolution?.policies ?? []
   if (ops.length <= 1) {
     const op = ops[0] ?? null
-    return [{ key: SOLE_MEMBER, sourceName: op?.sourceName ?? '', op, displayName: nameOfOp(op) }]
+    return [{ key: SOLE_MEMBER, sourceName: op?.sourceName ?? '', op, displayName: nameOfOp(op), ...(step.earlierNames?.[0] ? { earlierName: step.earlierNames[0] } : {}) }]
   }
-  return ops.map((op, i) => ({ key: op.memberKey || `m${i}`, sourceName: op.sourceName, op, displayName: nameOfOp(op) }))
+  return ops.map((op, i) => ({ key: op.memberKey || `m${i}`, sourceName: op.sourceName, op, displayName: nameOfOp(op), ...(step.earlierNames?.[i] ? { earlierName: step.earlierNames[i] } : {}) }))
 }
 
 /**
@@ -348,9 +350,10 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     } else {
       for (const m of out) {
         if (m.policy || m.ambiguous) continue
-        const want = nameKey(m.displayName)
+        // By the name the plan gives it, or the one IAMAI gave it before it used the baseline's.
+        const want = [nameKey(m.displayName), nameKey(m.earlierName)].filter((n) => n.length > 0)
         if (want.length === 0) continue
-        const hits = untagged.filter((t) => !claimed.has(t.policyId) && nameKey(byId.get(t.policyId)?.displayName) === want)
+        const hits = untagged.filter((t) => !claimed.has(t.policyId) && want.includes(nameKey(byId.get(t.policyId)?.displayName)))
         if (hits.length === 1) claim(m, byId.get(hits[0].policyId) as PolicyRow, 'member-name')
       }
       // A tagged policy nothing accounted for could have been any unresolved
@@ -402,9 +405,10 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   // uniqueName leaves that name to it).
   for (const m of out) {
     if (m.policy || m.ambiguous) continue
-    const want = nameKey(m.displayName)
+    // By the name the plan gives it, or the one IAMAI gave it before it used the baseline's (owner, 2026-09-26).
+    const want = [nameKey(m.displayName), nameKey(m.earlierName)].filter((n) => n.length > 0)
     if (want.length === 0) continue
-    const off = all.filter((p) => p.state === 'disabled' && !claimed.has(p.id as string) && nameKey(p.displayName) === want)
+    const off = all.filter((p) => p.state === 'disabled' && !claimed.has(p.id as string) && want.includes(nameKey(p.displayName)))
     if (off.length === 1) claim(m, off[0], 'member-name')
   }
   return out

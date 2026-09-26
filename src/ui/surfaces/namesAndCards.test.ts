@@ -2,8 +2,11 @@
 // each item's observable acceptance, one test each.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { pinnedPackage } from '../../baseline/pinned.ts'
+import { unavailableReason } from '../../roadmap/operations.ts'
+import { stepOperations } from './stepJson.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { acceptLeadOf } from './stepContract.ts'
 import { planDates } from './stepVars.ts'
@@ -97,4 +100,56 @@ test('Accept This Difference reads as a sentence however many settings differ', 
   assert.equal(acceptLeadOf(['conditions.users', 'sessionControls']), 'If who it applies to and session controls differ on purpose, accept them with the reason. The step completes, and reopens if the policy changes again.')
   // One setting may have a plural name ("session controls"), so the sentence needs no verb to agree with it.
   assert.match(acceptLeadOf(['sessionControls']), /^If the difference in session controls is on purpose, accept it with the reason\./)
+})
+
+test('an untagged policy switched off under the name IAMAI proposed before is still the step’s own: set it to Report-only, never a second policy', () => {
+  // Review, 2026-09-26: the create now carries the baseline's name, and the Off
+  // policy built from the old instructions read as nobody's.
+  const f = withFoundationSettled({ ...structuredClone(fixture('getiamai')), baseline: pinnedPackage() })
+  const step0 = runFixture(f).steps.find((s) => s.id === 's-goal-block-device-code')!
+  const create = stepOperations(step0).find((o) => o.mode === 'create')!
+  const earlier = step0.earlierNames?.[0] ?? ''
+  assert.notEqual(earlier, (create.body as { displayName: string }).displayName, 'the premise: the old name is not the baseline’s')
+  const body: Record<string, unknown> = { ...(structuredClone(create.body) as Record<string, unknown>), displayName: earlier, state: 'disabled', id: 'p-built-before' }
+  delete body.description
+  ;(f.snapshot.config.caPolicies.rows as unknown[]).push(body)
+  const step = runFixture(f).steps.find((s) => s.id === 's-goal-block-device-code')!
+  assert.deepEqual(step.tracking?.members?.map((m) => [m.policyId, m.matchedBy]), [['p-built-before', 'member-name']])
+  assert.equal(unavailableReason(step as never), 'switched-off')
+})
+
+test('a held create’s Threshold card says why the create waits; its finding, which exports read, does not repeat What to do', () => {
+  const f = curatedFixture('demo')
+  const r = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
+  const body = stepBodyOf(r.steps.find((s) => s.id === 's-goal-require-managed-device')!, ctx)
+  const found = body.contract.found.find((x) => x.key === 'gate')!
+  assert.doesNotMatch(found.text, /pick a certificate/)
+  assert.match(found.card ?? '', /pick a certificate/)
+  assert.match(body.readiness.tiles.find((t) => t.key === 'gate')?.note ?? '', /pick a certificate/)
+})
+
+test('a late announcement that would fall at or after the change is no announcement', () => {
+  const { r } = run('demo')
+  const on = (id: string) => {
+    const step = r.steps.find((s) => s.id === id)!
+    return eventsFor({ ...step, rings: [{ ...step.rings[0], plannedStart: '2026-09-28T12:00:00.000Z' }] } as typeof step, { rhythm: r.schedule.rhythm!, timeZone: 'UTC', today: '2026-09-28T12:00:00.000Z' })!
+  }
+  // Changed at 09:00 today: an announcement at 09:30 would come after it.
+  const early = on('s-goal-block-auth-transfer')
+  assert.equal(early.enforce.at, '2026-09-28T09:00:00.000Z', 'the premise')
+  assert.equal(early.announce, null)
+  // Changed at 15:00 today: announced that morning.
+  const later = on('s-goal-admin-session')
+  assert.equal(later.announce?.at, '2026-09-28T09:30:00.000Z')
+  assert.ok(Date.parse(later.announce!.at) < Date.parse(later.enforce.at))
+})
+
+test('a Ready decision read on a weekend is dated the Monday after, as every day the plan gives', () => {
+  const { f, r } = run('demo')
+  const step = r.steps.find((s) => s.id === 's-goal-geo-restriction')!
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const { alone: _alone, ...rest } = laneViewFor(step, board)
+  const saturday = { ...step, scheduled: { ...step.scheduled!, basis: { ...step.scheduled!.basis!, today: '2026-09-26T12:00:00.000Z' } } } as typeof step
+  assert.equal(boardWhenOf(saturday, null, { ...rest, lane: 'Ready', substatus: 'Decision' }), 'Sep 28, 2026')
 })
