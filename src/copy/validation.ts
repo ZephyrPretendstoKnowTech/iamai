@@ -393,6 +393,12 @@ export const CHECK_STATE = {
   notFullyRead: 'Not Fully Read',
 } as const
 
+/**
+ * How the shared-device finding reads a device name, after its fact. Prepare
+ * Emergency Access Accounts states the fact alone (owner, 2026-09-26).
+ */
+export const SHARED_DEVICE_READING = 'the same device name usually means the same phone'
+
 /** The findings themselves: the object, then the fact. */
 export const FINDING = {
   bgCount: (n: number): string =>
@@ -413,7 +419,7 @@ export const FINDING = {
   bgManagedExcluded: (n: number): string => `excluded from the ${count(n, 'policy', 'policies')} Microsoft manages in this tenant`,
   bgNoMfaMethod: 'no method that can satisfy MFA is registered',
   bgSharedDevice: (device: string, who: string[]): string =>
-    `the Authenticator device "${device}" is also registered by ${list(who)}: the same device name usually means the same phone`,
+    `the Authenticator device "${device}" is also registered by ${list(who)}: ${SHARED_DEVICE_READING}`,
   bgDynamic: (group: string, rule: string): string => `swept into the dynamic group ${group} by its rule (${rule})`,
   bgPersonal: (facts: string[]): string => `review whether this is a dedicated recovery account: ${list(facts)}. Profile fields alone do not establish daily use`,
   bgPersonalOperator: 'this account is signed in to IAMAI now. Confirm this is a controlled recovery test rather than daily administration',

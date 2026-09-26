@@ -7,7 +7,7 @@ import { approvedPasskeyModels, emergencyValidationIssueKey } from '../../roadma
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { emergencyAccountPreparationOf } from '../../roadmap/emergencyAccountPreparation.ts'
 import { GLOBAL_ADMIN_ROLE, initialDomain } from '../../validation/rules.ts'
-import { RULE_ACTION } from '../../copy/validation.ts'
+import { SHARED_DEVICE_READING } from '../../copy/validation.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -162,8 +162,9 @@ type Preparations = ReadonlyMap<string, ReturnType<typeof emergencyAccountPrepar
  * - The dedicated-account signal (bg.notPersonal: populated personal profile
  *   fields, or the account signed in to IAMAI).
  * - An Authenticator device the account shares with another account
- *   (bg.separateDevices, a hardening item), with the move that fixes it (owner
- *   audit, 2026-09-24: it was said only in AI Info).
+ *   (bg.separateDevices, a hardening item), as the fact alone: no instruction and
+ *   no reading of the device name (owner, 2026-09-26). It was said only in AI
+ *   Info before (owner audit, 2026-09-24).
  */
 const NOTE_RULES = ['bg.notPersonal', 'bg.separateDevices'] as const
 function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string; value: string }[]> {
@@ -174,7 +175,7 @@ function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string;
     if (!rule) continue
     const id = item.accountId.toLowerCase()
     const sentence = `${item.value.charAt(0).toUpperCase()}${item.value.slice(1)}`
-    const value = rule === 'bg.separateDevices' ? `${sentence} ${RULE_ACTION['bg.separateDevices'](item.value)}` : item.value
+    const value = rule === 'bg.separateDevices' ? sentence.replace(`: ${SHARED_DEVICE_READING}`, '').replace(/\.?$/, '.') : item.value
     if ((notes.get(id) ?? []).some((n) => n.value === value)) continue
     // The shared-device note names the finding, never the rule's requirement
     // ("No two emergency accounts share an Authenticator device", over the line
