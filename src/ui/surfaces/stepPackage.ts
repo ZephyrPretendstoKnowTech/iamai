@@ -23,7 +23,7 @@ import registry from '../../content/implementation/registry.generated.json' with
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { awaitsPimSettings, awaitsWorkflowRecord, createWaitsOnReadiness, operationsOf, policyHold, policyResult, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
+import { awaitsPimSettings, awaitsWorkflowRecord, createWaitsOnReadiness, operationsOf, policyHold, policyResult, switchedOffPolicies, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { PIM_STEP_ID, eligibleRoleIds, pimPolicyIdsOf } from '../../roadmap/pimSettings.ts'
 import { roleName } from '../../roles.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
@@ -470,7 +470,10 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   // A create the readiness threshold holds (roadmap/operations.ts
   // createWaitsOnReadiness) previews its create like any other held step
   // (owner, 2026-09-25: never hide implementation instructions). The hold is its
-  // Tasks Remaining card, and the create is not offered until it clears.
+  // Tasks Remaining card, and the create is not offered until it clears. Not
+  // where the policy is already there, switched off: its operation is still the
+  // create, and previewing it makes a second policy (Jordan D6).
+  if (createWaitsOnReadiness(step) && switchedOffPolicies(step).length > 0) return null
   if (step.kind === 'create' || step.kind === 'adjust') {
     if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
     // An enforced policy whose remaining work is a person's own setup, which the

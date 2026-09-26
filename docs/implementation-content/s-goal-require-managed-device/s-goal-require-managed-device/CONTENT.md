@@ -140,7 +140,7 @@ State: **Require a Managed Device Outside the Office** does not exist in {{tenan
 
 Each condition is set through its own **Configure** toggle. A condition left at **No** applies to everything, so a policy whose locations or device platforms were never configured reaches the office and the platforms the device answer left out.
 
-The Intune prerequisite comes first: devices with no compliance policy assigned are to be marked Not compliant. IAMAI has no permission to read Intune, so it cannot confirm that any compliance policy exists; say that it is unknown rather than treating the prerequisite as met.
+The Intune prerequisite comes first: devices with no compliance policy assigned are to be marked Not compliant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
