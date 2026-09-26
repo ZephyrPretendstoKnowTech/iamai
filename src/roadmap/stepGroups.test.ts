@@ -84,9 +84,10 @@ test('the registry leads with the four Emergency Access steps (task anatomy) and
     // A Cleanup row is a board row, not a step: the owner left the Cleanup rows out
     // of the uniformity rule, and CleanupStep.tsx keeps the recovery drill — the one
     // row that draws the task anatomy — on the task headings by its own kind, and
-    // Alert on Emergency Account Sign-ins with it (owner, 2026-09-25).
+    // Alert on Emergency Account Sign-ins (owner, 2026-09-25) and Align Policy
+    // Names (owner, 2026-09-26) with it.
     const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-    assert.match(cleanup, /const taskHead = drill \|\| alerting \? TASK_HEAD : null/)
+    assert.match(cleanup, /const taskHead = drill \|\| alerting \|\| naming \? TASK_HEAD : null/)
   }
 
   // (a) Define Your Rollout Scope (the Direction steps) is the second section: its three steps in order, with the decision anatomy.

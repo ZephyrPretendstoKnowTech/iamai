@@ -22,6 +22,7 @@ import { generateRoadmap } from '../generate.ts'
 import { annotateStateReasons } from '../stateReason.ts'
 import { applyProgress } from '../progress.ts'
 import { settleForecast } from '../forecast.ts'
+import { settleRenames } from '../cleanupPhase.ts'
 import { cleanupRecord } from '../cleanupDone.ts'
 import { applyStepDecisions } from '../decisions.ts'
 import { DIRECTION_STEP, directionDecisionOf } from '../directionAnswers.ts'
@@ -133,6 +134,8 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
   // taken off the steps it was never earned for: an enforcement wave and an
   // enforce event were placed on every step before the scan found which policies
   // already exist (roadmap/forecast.ts settleForecast).
+  // Align Policy Names reads the names tracking has just read (cleanupPhase.ts settleRenames).
+  settleRenames(result.schedule, result.steps)
   settleForecast(result.steps, result.schedule)
   // State reasons read the tracking (the real enforcement date), so they come last.
   annotateStateReasons(result.steps)

@@ -1066,7 +1066,11 @@ export function renderCleanup(c: Record<string, any>): string {
   parts.push(h(HEAD.why) + `<p>${fill(c.why, {})} <a class="learn" href="${esc(c.learn?.url || '')}">Learn →</a></p>`)
   parts.push(
     h(HEAD.whatToDo) +
-      ol(c.whatToDo, {
+      // Align Policy Names's procedure is its three lines, the middle one per policy (ui/surfaces/namingTasks.ts).
+      ol(c.whatToDo ?? [c.openStep, c.renameStep, c.afterStep], {
+        from: 'Core - Block - Legacy authentication',
+        to: 'IAC - GLOBAL – BLOCK - Legacy Authentication',
+        id: '00000000-0000-0000-0000-000000000000',
         emergencyAccountUpns: ['breakglass@contoso.onmicrosoft.com', 'emergency2@contoso.onmicrosoft.com'],
         renames: ['ACME - APP - BLOCK - Copilot → Core - Block - Copilot'],
         convention: 'Core - Verb - Subject',

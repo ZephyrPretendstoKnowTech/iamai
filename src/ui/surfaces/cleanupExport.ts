@@ -14,9 +14,10 @@ import { fillText, missingVars } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { alertingSteps } from './alertingTasks.ts'
+import { namingSteps } from './namingTasks.ts'
 
 export type { CleanupExport }
-export type CleanupEntry = { title: string; learn?: { url: string; checkedOn?: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
+export type CleanupEntry = { title: string; learn?: { url: string; checkedOn?: string } | null; why: string; whatToDo?: string[]; doneWhen: string[] }
 
 /**
  * The date beside a Cleanup row's Learn link, as every step shows one (the one
@@ -152,7 +153,9 @@ export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows']
     ? [...emergencyVerificationTasksOf(phase).tasks.flatMap(task => [`${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}`, ...task.steps]), 'Emergency recovery procedure', ...EMERGENCY_RECOVERY_PROCEDURE].map(line => line.replace(/\*\*/g, ''))
     : row.kind === 'alerting'
       ? alertingSteps(phase).map((line) => line.replace(/\*\*/g, ''))
-      : entry.whatToDo.filter(whole).map((l) => fillText(l, ex))
+      : row.kind === 'naming'
+        ? namingSteps(phase).map((line) => line.replace(/\*\*/g, ''))
+        : (entry.whatToDo ?? []).filter(whole).map((l) => fillText(l, ex))
   return { kind: row.kind, day: row.day, done: row.done, title: entry.title, when: cleanupWhenOnBoard(row, read), undated: read?.undated ?? false, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
 }
 

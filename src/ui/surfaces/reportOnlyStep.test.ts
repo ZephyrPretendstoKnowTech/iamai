@@ -35,22 +35,19 @@ test('each task is its policy step’s own create procedure, word for word, in p
   assert.ok(tasks.every((t) => t.steps.some((l) => /Report-only/.test(l))), 'every create lands in Report-only')
 })
 
-test('one card per policy: to create, headed by its step and naming the policy; created with a setting off the plan, to correct; created as planned, a Satisfied fact', () => {
+test('one card per policy still to create, headed by its step and naming the policy; none for a policy already created (owner, 2026-09-26)', () => {
   const { r, step, body } = plan('demo')
   const { create, created } = step.reportOnlyBatch!
-  const correct = step.reportOnlyBatch!.correct ?? []
   const open = body.readiness.tiles.filter((t) => t.key.startsWith('batch:'))
   const done = body.readiness.satisfied.filter((t) => t.key.startsWith('batch:'))
-  assert.equal(open.length, create.length + correct.length)
-  assert.equal(done.length, created.length - correct.length)
+  assert.deepEqual(open.map((t) => t.key), r.steps.filter((s) => create.includes(s.id)).map((s) => `batch:${s.id}`))
+  assert.equal(done.length, 0, 'the policies already created are no roster here')
   for (const t of open) {
     const member = r.steps.find((s) => `batch:${s.id}` === t.key)!
     assert.equal(t.label, contentTitle(member))
-    if (correct.includes(member.id)) assert.match(t.value, /^Correct /)
-    else assert.equal(t.value, 'Create in Report-only')
+    assert.equal(t.value, 'Create in Report-only')
     assert.equal(t.names?.length, 1, 'the policy it creates, by name')
   }
-  for (const t of done) assert.match(t.value, /^(On|In Report-only|Report-only until .+)$/)
   // A created policy is a Satisfied card and keeps its task: the procedure is never hidden (owner, 2026-09-25).
   assert.ok(created.length > 0, 'the premise: the demo has created some')
   const listed = r.steps.filter((s) => create.includes(s.id) || created.includes(s.id)).map((s) => `create:${s.id}`)
