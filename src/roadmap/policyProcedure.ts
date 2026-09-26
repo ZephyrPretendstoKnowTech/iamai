@@ -396,7 +396,8 @@ export function correctionSettings(current: Record<string, unknown>, target: Rec
   if (sections.has('session')) {
     const before = sessionLines(was)
     const after = sessionLines(now)
-    if (!sameSet(before, after)) out.push(...(after.length === 0 ? [PROCEDURE.sessionClear] : after))
+    // Clearing controls the plan does not set loosens the policy: said beside it (owner, 2026-09-26).
+    if (!sameSet(before, after)) out.push(...(after.length === 0 ? [`${PROCEDURE.sessionClear} ${PROCEDURE.stricterNote}`] : after))
   }
   return out
 }
@@ -421,7 +422,8 @@ function usersCorrection(was: PolicyFacts, now: PolicyFacts, ctx: ProcedureConte
       was.who.guests !== null && now.who.guests === null ? guestWords(was.who.guests) : null,
     ])
     const line = change(added, removed)
-    if (line) out.push(fill(PROCEDURE.usersInclude, { change: line }))
+    // Taking off people the tenant includes beyond the plan loosens the policy: said beside it (owner, 2026-09-26).
+    if (line) out.push(removed ? `${fill(PROCEDURE.usersInclude, { change: line })} ${PROCEDURE.stricterNote}` : fill(PROCEDURE.usersInclude, { change: line }))
   }
   // Who it excludes: each object added or taken off, by name.
   const guestsAdded = now.whoNot.guests && !was.whoNot.guests

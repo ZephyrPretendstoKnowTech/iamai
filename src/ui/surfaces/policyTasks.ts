@@ -24,6 +24,7 @@
 //
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
+import { withEmergencyExclusions } from '../../roadmap/differences.ts'
 import { createdOn, stepCreatedOn, stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
@@ -261,7 +262,7 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
         exists: true,
         on: found?.state === 'enabled',
         off: found?.state === 'disabled',
-        correction,
+        correction: stricterGrant(correction, t),
         exclusionsEdit: found !== null && current !== found,
       })
     }
@@ -282,7 +283,7 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
   for (const [i, { body, baseline }] of planned.entries()) {
     const t = tracked[i] ?? (planned.length === 1 ? tracked[0] : undefined)
     const row = own ? rowOf(t?.policyId) : null
-    const correction = row && unwritten.length > 0 ? correctionSettings(row, step.action.intended!, ctx, dims.sections, dims.conditions) : []
+    const correction = row && unwritten.length > 0 ? correctionSettings(row, withEmergencyExclusions(step.action.intended!, row, ctx.emergencyIds ?? []), ctx, dims.sections, dims.conditions) : []
     out.push({
       name: String(row?.displayName ?? delivering ?? body.displayName ?? ''),
       // The create names the plan's own policy, never the tenant's that delivers
@@ -293,7 +294,7 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
       exists: true,
       on: row !== null ? row.state === 'enabled' : true,
       off: row?.state === 'disabled',
-      correction,
+      correction: stricterGrant(correction, t),
     })
   }
   return out
@@ -366,6 +367,17 @@ function afterExclusionsEdit(step: Step, current: Record<string, unknown>, group
   const users = asRecord(asRecord(current.conditions)?.users)
   if (!users || !Array.isArray(users.excludeGroups) || excludesGroup(current, groupId)) return current
   return { ...current, conditions: { ...(asRecord(current.conditions) ?? {}), users: { ...users, excludeGroups: [...groupsExcluded(current), groupId] } } }
+}
+
+/**
+ * A grant the tenant holds stronger than the plan's, corrected to the plan's,
+ * loosens the policy: its line says so, and that an acceptance keeps it (owner,
+ * 2026-09-26). The users and session lines say it themselves (policyProcedure.ts).
+ */
+function stricterGrant(lines: string[], tracked: { differences?: { dimension: string; direction: string }[] } | undefined): string[] {
+  if (!tracked?.differences?.some((d) => d.dimension === 'grantControls' && d.direction === 'stricter')) return lines
+  const lead = PROCEDURE.grant.split('{')[0]
+  return lines.map((l) => (l.startsWith(lead) ? `${l} ${PROCEDURE.stricterNote}` : l))
 }
 
 /**

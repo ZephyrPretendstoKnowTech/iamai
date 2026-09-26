@@ -34,7 +34,9 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
-import { artifactIdOf, dimensionWords, historyReset, intentOf, materialFieldsOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
+import { artifactIdOf, dimensionWords, historyReset, intentOf, materialFieldsOf, observe, observedStateOf, priorFor, sameDimension, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
+import { acceptanceKeyOf, differencePieces, withEmergencyExclusions } from './differences.ts'
+import type { DifferencePiece } from './differences.ts'
 import type { ObservedState } from './observation.ts'
 import type { ObservationChange, StepObservation, StepObservationRecord } from './observation.ts'
 
@@ -971,26 +973,31 @@ export function trackExecution(
       // create's member is read against the whole body the create writes: the
       // policy built from it is exactly that, or it has a setting to correct.
       const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : m.op.body ?? null) : sole ? step.action.intended ?? null : null
+      // An emergency account the tenant excludes by name stays excluded: the one
+      // exclusion no correction asks to remove (owner, 2026-09-26).
+      const tenantObjects = step.action.resolution?.tenant ?? step.action.planned?.tenant ?? null
+      const compared = policyRow && intended ? withEmergencyExclusions(withTenantContext(intended, policyRow as Record<string, unknown>), policyRow as Record<string, unknown>, tenantObjects?.emergencyIds ?? []) : null
       const found =
-        policyRow && intended && (step.action.missing ?? []).length === 0 && (observedState === 'report-only' || observedState === 'enforced')
-          ? unwrittenDifferences(withTenantContext(intended, policyRow as Record<string, unknown>), m.op?.mode === 'update' ? m.op.body : null, policyRow as Record<string, unknown>, judged)
+        policyRow && compared && (step.action.missing ?? []).length === 0 && (observedState === 'report-only' || observedState === 'enforced')
+          ? unwrittenDifferences(compared, m.op?.mode === 'update' ? m.op.body : null, policyRow as Record<string, unknown>, judged)
           : []
-      // The plan never weakens a grant (CLAUDE.md): a grant or session at least as
-      // strict as the goal's floor, which the baseline's own strength raises
-      // (coverage.ts meetsFloor), is no setting to correct, however exact the rest.
+      // Every control is exact, and every difference, stricter or weaker, is either
+      // corrected or accepted with a reason (owner, 2026-09-26): none is accepted
+      // silently. Each differing dimension in pieces (differences.ts), marked
+      // stricter or weaker for the step to show; a grant that meets the goal's
+      // floor (coverage.ts meetsFloor) reads as stricter.
       const floor = result?.goal.implementations[0]?.floor
-      const strictEnough = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id && c.meetsFloor)
-      // And who it applies to where it covers everyone the plan's does and leaves out
-      // nobody more (owner, 2026-09-25: stricter than the baseline is accepted, and noted).
-      const stricter = found.filter((d) =>
-        (strictEnough && ((d === 'grantControls' && floor?.grant !== undefined) || (d === 'sessionControls' && floor?.session !== undefined))) ||
-        (d === 'conditions.users' && intended !== null && policyRow !== undefined && usersWider(intended, policyRow as Record<string, unknown>)))
-      // And where a person accepted the difference with a reason, while the setting is
-      // exactly as it was accepted (owner, 2026-09-25, deviations option B): a change
-      // to it reopens the step.
+      const strictEnough = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id && c.meetsFloor) && floor?.grant !== undefined
+      const pieces: Record<string, DifferencePiece[]> = compared && policyRow ? Object.fromEntries(found.map((d) => [d, differencePieces(d, compared, policyRow as Record<string, unknown>, { exclusionsGroupId: tenantObjects?.exclusionsGroupId ?? null, strictEnough, same: sameDimension, fingerprint: materialFieldsOf(policyRow as Record<string, unknown>)[d] })])) : {}
+      // Accepted with a reason while nothing new is missing (owner, 2026-09-26:
+      // only a new gap reopens it): an acceptance keeps the fingerprint of the
+      // dimension's gaps (differences.ts acceptanceKeyOf), and one saved before
+      // that, the whole setting's (materialFieldsOf). The exclusions group
+      // missing is never accepted.
       const now = policyRow ? materialFieldsOf(policyRow as Record<string, unknown>) : {}
-      const accepted = found.filter((d) => !stricter.includes(d) && step.acceptedDeviation?.fields[d] !== undefined && step.acceptedDeviation.fields[d] === now[d])
-      const unwritten = found.filter((d) => !stricter.includes(d) && !accepted.includes(d))
+      const saved = step.acceptedDeviation?.fields ?? {}
+      const accepted = found.filter((d) => saved[d] !== undefined && (saved[d] === acceptanceKeyOf(pieces[d] ?? []) || saved[d] === now[d]) && !(pieces[d] ?? []).some((p) => p.required))
+      const unwritten = found.filter((d) => !accepted.includes(d))
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this
         // is; it never says which policy is delivering it, and the two were being
@@ -1123,9 +1130,9 @@ export function trackExecution(
         sourceName: m.sourceName,
         policyId: policyRow?.id ?? null,
         policyName: policyRow?.displayName ?? null,
-        ...(stricter.length > 0 ? { stricter } : {}),
+        ...(found.length > 0 ? { differences: found.flatMap((d) => pieces[d] ?? []) } : {}),
         ...(accepted.length > 0 ? { accepted } : {}),
-        ...(unwritten.length > 0 ? { differsFields: Object.fromEntries(unwritten.filter((d) => now[d] !== undefined).map((d) => [d, now[d]])) } : {}),
+        ...(unwritten.length > 0 ? { differsFields: Object.fromEntries(unwritten.map((d) => [d, acceptanceKeyOf(pieces[d] ?? [])])) } : {}),
         // The name the step's create gives it, where that is not the tenant's: only the
         // name may differ from the plan (owner, 2026-09-25), and the step says so.
         ...(() => {
@@ -1473,26 +1480,3 @@ function anotherStepsJob(step: Step, m: MemberMatch, policy: PolicyRow): boolean
   return !grants(body.grantControls) && grants((policy as { grantControls?: unknown }).grantControls)
 }
 
-/**
- * Whether a policy applies to everyone the plan's policy does and leaves out
- * nobody it does not: all users where the plan names all users, every group,
- * role and guest kind it includes, and no exclusion beyond the plan's. Such a
- * policy is wider than the baseline's, which is stricter, never a correction
- * (owner, 2026-09-25: GetIAMAI's admins policy covers 133 roles, the baseline's 46).
- */
-export function usersWider(intended: Record<string, unknown>, deployed: Record<string, unknown>): boolean {
-  type Users = { includeUsers?: unknown[]; includeGroups?: unknown[]; includeRoles?: unknown[]; excludeUsers?: unknown[]; excludeGroups?: unknown[]; excludeRoles?: unknown[]; includeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string } | null; excludeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string } | null }
-  const usersOf = (p: Record<string, unknown>): Users => (((p.conditions ?? {}) as { users?: Users }).users ?? {})
-  const set = (a: unknown[] | undefined): Set<string> => new Set((a ?? []).map((x) => String(x).toLowerCase()))
-  const kinds = (g: { guestOrExternalUserTypes?: string } | null | undefined): Set<string> => new Set(String(g?.guestOrExternalUserTypes ?? '').split(',').map((k) => k.trim().toLowerCase()).filter(Boolean))
-  const within = (a: Set<string>, b: Set<string>): boolean => [...a].every((x) => b.has(x))
-  const I = usersOf(intended)
-  const D = usersOf(deployed)
-  const all = set(D.includeUsers).has('all')
-  if (!all) {
-    if (!within(set(I.includeUsers), set(D.includeUsers)) || !within(set(I.includeGroups), set(D.includeGroups)) || !within(set(I.includeRoles), set(D.includeRoles))) return false
-    if (I.includeGuestsOrExternalUsers && !within(kinds(I.includeGuestsOrExternalUsers), kinds(D.includeGuestsOrExternalUsers))) return false
-  }
-  if (!within(set(D.excludeUsers), set(I.excludeUsers)) || !within(set(D.excludeGroups), set(I.excludeGroups)) || !within(set(D.excludeRoles), set(I.excludeRoles))) return false
-  return within(kinds(D.excludeGuestsOrExternalUsers), kinds(I.excludeGuestsOrExternalUsers))
-}

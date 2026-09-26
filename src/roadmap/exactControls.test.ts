@@ -8,7 +8,7 @@ import { runFixture } from './fixtures/run.ts'
 import { REPORT_ONLY_STEP_ID } from './reportOnlyBatch.ts'
 import { sameDimension } from './observation.ts'
 import { DEVIATION_KEY, applyStepDecisions } from './decisions.ts'
-import { usersWider } from './tracking.ts'
+import { differencePieces } from './differences.ts'
 import { asPlanned } from './fixtures/asPlanned.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
@@ -124,29 +124,38 @@ test('a policy doing another step’s job is never corrected into this one: Shor
   assert.ok(!session.state.members.some((m) => m.change.unwritten.includes('grantControls')), 'no grant correction is asked of it')
 })
 
-test('stricter than the baseline is accepted and said: an admins policy covering more roles than the plan’s completes, noting it', () => {
-  // Owner, 2026-09-25 (deviations, option A): GetIAMAI's admins policy covers 133
-  // roles, the baseline's 46. Wider users with no extra exclusion is stricter.
+test('a difference is marked stricter or weaker, piece by piece', () => {
   const plan = { conditions: { users: { includeRoles: ['r1', 'r2'], excludeGroups: ['x'] } } }
-  assert.equal(usersWider(plan, { conditions: { users: { includeRoles: ['r1', 'r2', 'r3'], excludeGroups: ['x'] } } }), true, 'more roles')
-  assert.equal(usersWider(plan, { conditions: { users: { includeUsers: ['All'], excludeGroups: ['x'] } } }), true, 'everyone')
-  assert.equal(usersWider(plan, { conditions: { users: { includeRoles: ['r1'], excludeGroups: ['x'] } } }), false, 'a role missing')
-  assert.equal(usersWider(plan, { conditions: { users: { includeRoles: ['r1', 'r2', 'r3'], excludeGroups: ['x', 'y'] } } }), false, 'an extra exclusion')
+  const pieces = (tenant: Row) => differencePieces('conditions.users', plan, tenant, { exclusionsGroupId: 'x', strictEnough: false, same: sameDimension })
+  assert.deepEqual(pieces({ conditions: { users: { includeRoles: ['r1', 'r2', 'r3'], excludeGroups: ['x'] } } }).map((d) => [d.part, d.kind, d.change, d.ids, d.direction]), [['include', 'role', 'extra', ['r3'], 'stricter']], 'more roles')
+  assert.deepEqual(pieces({ conditions: { users: { includeRoles: ['r1'], excludeGroups: ['x', 'y'] } } }).map((d) => [d.part, d.change, d.ids, d.direction]), [['include', 'missing', ['r2'], 'weaker'], ['exclude', 'extra', ['y'], 'weaker']], 'a role missing and an extra exclusion')
+  assert.equal(pieces({ conditions: { users: { includeRoles: ['r1', 'r2'] } } })[0].required, true, 'the exclusions group is never optional')
+  assert.deepEqual(pieces({ conditions: { users: { includeUsers: ['All'], excludeGroups: ['x'] } } }).map((d) => [d.part, d.direction]), [['allUsers', 'stricter']], 'everyone')
+})
 
+test('every difference is corrected or accepted, a stricter one too: accepted, more roles later keep it accepted; a missing role reopens it', () => {
+  // Owner, 2026-09-26: the policy points at exactly what the plan's has; stricter
+  // or looser is what an acceptance is for, and only a new gap reopens it.
   const ADMINS = 's-goal-admins-phishing-resistant'
   const f = asPlanned(DEMO, ADMINS)
   const id = runFixture(f).steps.find((s) => s.id === ADMINS)!.tracking!.policyId
-  const snapshot = structuredClone(f.snapshot)
-  const row = rowsOf(snapshot).find((p) => p.id === id)!
-  const users = (row.conditions as Row).users as Row
-  users.includeRoles = [...((users.includeRoles as string[]) ?? []), '9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3']
-  const run = runFixture({ ...f, snapshot })
-  const step = run.steps.find((s) => s.id === ADMINS)!
-  assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [], 'no correction')
-  assert.deepEqual(step.tracking?.members?.[0]?.stricter, ['conditions.users'])
-  const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, naming: run.coverage.organisation.naming, ...planDates(run.steps, run.schedule.start, run.coverage.organisation.naming, snapshot) }
-  const tile = stepBodyOf(step, ctx).readiness.satisfied.find((t) => t.key.startsWith('stricter:'))
-  assert.match(String(tile?.note), /is stricter than the baseline's policy in who it applies to\. IAMAI accepts it as it is\./)
+  const withRoles = (edit: (roles: string[]) => string[], decisions: Record<string, unknown> = {}) => {
+    const snapshot = structuredClone(f.snapshot)
+    const users = (rowsOf(snapshot).find((p) => p.id === id)!.conditions as Row).users as Row
+    users.includeRoles = edit([...((users.includeRoles as string[]) ?? [])])
+    return runFixture({ ...f, snapshot, mapping: applyStepDecisions(f.mapping, decisions as never) }).steps.find((s) => s.id === ADMINS)!
+  }
+  // Agent ID Developer, outside the plan's 46.
+  const extra = withRoles((r) => [...r, 'adb2368d-a9be-41b5-8667-d96778e081b0'])
+  assert.deepEqual([...new Set(extra.state.members.flatMap((m) => [...m.change.unwritten]))], ['conditions.users'], 'a stricter policy is still a correction')
+  assert.ok(extra.tracking?.members?.[0]?.differences?.some((d) => d.part === 'include' && d.kind === 'role' && d.change === 'extra' && d.direction === 'stricter'))
+  const decisions = { [`${DEVIATION_KEY}${ADMINS}`]: { answers: { reason: 'Every admin role asks for phishing-resistant MFA', fields: JSON.stringify(extra.tracking!.members![0].differsFields) }, at: '2026-09-26T00:00:00Z' } }
+  const accepted = withRoles((r) => [...r, 'adb2368d-a9be-41b5-8667-d96778e081b0'], decisions)
+  assert.deepEqual(accepted.state.members.flatMap((m) => [...m.change.unwritten]), [], 'accepted')
+  const more = withRoles((r) => [...r, 'adb2368d-a9be-41b5-8667-d96778e081b0', '6b942400-691f-4bf0-9d12-d8a254a2baf5'], decisions)
+  assert.deepEqual(more.state.members.flatMap((m) => [...m.change.unwritten]), [], 'another role later keeps the acceptance')
+  const gap = withRoles((r) => [...r.slice(1), 'adb2368d-a9be-41b5-8667-d96778e081b0'], decisions)
+  assert.deepEqual([...new Set(gap.state.members.flatMap((m) => [...m.change.unwritten]))], ['conditions.users'], 'a role taken off reopens it')
 })
 
 test('a difference accepted with a reason completes the step and says so; changing the accepted setting reopens it', () => {

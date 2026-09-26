@@ -109,6 +109,7 @@ import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.t
 import { SCENARIO } from '../copy/scenarios.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
+import { withEmergencyExclusions } from './differences.ts'
 import { namedEmergencyExclusions } from './cleanup.ts'
 import { addsExclusionsOnly } from './changedFields.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
@@ -628,18 +629,11 @@ export function buildCreateAction(
     // in `missing`, and while any does there is no operation to run.
     const drawn = artifact(answered, p, tag)
     const whole = implementable(drawn, p.resolved)
-    // The approved absent-source assumption concerns the source export only.
-    // It must not remove any exclusion already configured in this tenant.
-    if (p.target?.policy && whole.omitted.length > 0) {
-      const currentUsers = ((p.target.policy.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
-      const nextUsers = ((whole.policy.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
-      if (currentUsers && nextUsers) {
-        for (const key of ['excludeGroups', 'excludeUsers', 'excludeRoles']) {
-          nextUsers[key] = [...new Set([...(Array.isArray(nextUsers[key]) ? nextUsers[key] as string[] : []), ...(Array.isArray(currentUsers[key]) ? currentUsers[key] as string[] : [])])]
-        }
-        if (currentUsers.excludeGuestsOrExternalUsers && !nextUsers.excludeGuestsOrExternalUsers) nextUsers.excludeGuestsOrExternalUsers = structuredClone(currentUsers.excludeGuestsOrExternalUsers)
-      }
-    }
+    // An exclusion the tenant's policy has beyond the plan is a difference to
+    // correct or accept with a reason, like any other (owner, 2026-09-26), except
+    // an emergency account excluded by name: that comes out in Ongoing Checks and
+    // Cleanup, once the exclusions group covers the account.
+    if (p.target?.policy) whole.policy = withEmergencyExclusions(whole.policy, p.target.policy, mapping.breakGlassUserIds)
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
     // A policy that asks a person for something leaves the service-accounts
     // group out once 2.2 calls for it (deviations.ts); with no group yet it

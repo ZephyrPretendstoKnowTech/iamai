@@ -128,6 +128,8 @@
       },
       "sessionTokenProtection": "Under **Session**, select **Require token protection for sign-in sessions**.",
       "sessionClear": "Under **Session**, clear every control.",
+      "$commentStricterNote": "After a correction line that takes off something the tenant's policy has beyond the plan (people it includes, a session control): following it makes the policy match the baseline and less strict than it is now, and an acceptance keeps it instead (owner, 2026-09-26: every difference is corrected or accepted).",
+      "stricterNote": "Yours is stricter than the baseline here: to keep it, accept the difference instead.",
       "hours": "{n} hours",
       "day": "1 day",
       "days": "{n} days",
@@ -2222,11 +2224,6 @@
             "remove": "Remove the acceptance",
             "acceptedLabel": "Accepted Difference",
             "acceptedNote": "{policy} differs from the baseline's policy in {dimensions}. Accepted {date}: {reason}"
-          },
-          "stricterThanBaseline": {
-            "$comment": "Owner, 2026-09-25 (deviations, option A): a tenant policy stricter than the baseline's (it covers more people, or asks a stronger grant or session) is accepted, never a correction, and the step always says where it differs (tracking.ts MemberTracking.stricter).",
-            "label": "Stricter Than the Baseline",
-            "note": "{policy} is stricter than the baseline's policy in {dimensions}. IAMAI accepts it as it is."
           },
           "alsoExcluded": {
             "$comment": "Owner audit, 2026-09-24: the tenant's policy delivering Require MFA for Admins also excluded a group the plan's policy does not. The step stays Completed and names the group and who is in it; anyone added there skips the policy.",

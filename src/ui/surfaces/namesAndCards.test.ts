@@ -28,10 +28,10 @@ test('Completion Criteria describe the plan’s target, never the setting the st
   // the baseline's admin roles, and its card asks for that correction.
   const { r, ctx } = run('demo-week2')
   const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
-  assert.deepEqual(step.state.observation?.unwritten, ['conditions.users'], 'the premise: who it applies to is to correct')
+  assert.ok(step.state.observation?.unwritten.includes('conditions.users'), 'the premise: who it applies to is to correct')
   assert.equal((step.action.resolution?.policies ?? []).length, 0, 'the premise: a person corrects it in Entra')
   const first = stepBodyOf(step, ctx).contract.doneWhen[0]
-  assert.match(first, /requiring Phishing-resistant MFA for admin roles except/)
+  assert.ok(first.includes('requiring Modern MFA + TAP for admin roles except'), first)
   assert.doesNotMatch(first, /Global Administrator/)
 })
 
@@ -61,7 +61,8 @@ test('a policy to correct is one card: the policy, "Correct {fields}", and the c
   assert.equal(open.length, 1, JSON.stringify(open.map((c) => c.key)))
   assert.equal(open[0].heading, 'Conditional Access policy')
   assert.equal(open[0].upn, 'Core - Grant - Admins phishing-resistant')
-  assert.equal(open[0].title, 'Correct users')
+  // Every difference is corrected or accepted (owner, 2026-09-26): the stronger grant too.
+  assert.equal(open[0].title, 'Correct users and grant')
   assert.match(open[0].detail ?? '', /^Under Users → Include, add the directory roles Global Reader, /)
   assert.doesNotMatch(open[0].detail ?? '', /\*\*/)
   // Two sections, named together.

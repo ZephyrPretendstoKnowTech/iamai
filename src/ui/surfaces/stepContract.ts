@@ -153,8 +153,6 @@ type ContractWords = {
   ownPolicyDiffers: { label: string; note: string }
   /** The tenant's policy carries another name than the step gives it (MemberTracking.plannedName). */
   policyName: { label: string; note: string }
-  /** The tenant's policy is stricter than the plan's in some dimensions, accepted (MemberTracking.stricter). */
-  stricterThanBaseline: { label: string; note: string }
   /** Accept this difference: the control and the card (Step.acceptedDeviation, MemberTracking.accepted). */
   acceptDeviation: { label: string; lead: string; leadMany: string; reason: string; accept: string; remove: string; acceptedLabel: string; acceptedNote: string }
   /** The groups a tenant's own delivering policy also leaves out, and who is in them (Action.alsoExcluded). */
@@ -2262,19 +2260,6 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
 }
 
 /**
- * Where the tenant's policy is stricter than the baseline's (wider users, a
- * stronger grant or session): accepted, and always said, never silently passed
- * (owner, 2026-09-25, deviations option A). A fact, never a task.
- */
-function stricterTiles(step: Step): ReadinessTile[] {
-  return (step.tracking?.members ?? []).flatMap((m) => {
-    if (!m.stricter?.length || !m.policyName) return []
-    const dimensions = dimensionWords(m.stricter)
-    return [{ key: `stricter:${m.key}`, label: CONTRACT.stricterThanBaseline.label, tone: 'good' as const, value: dimensions, note: fillText(CONTRACT.stricterThanBaseline.note, { policy: m.policyName, dimensions }) }]
-  })
-}
-
-/**
  * Accept This Difference's lead, in a sentence (owner, 2026-09-26): "If who it
  * applies to and session controls differ on purpose, …", where the list read
  * "who it applies to, session controls differs".
@@ -2991,7 +2976,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
   // step's own state tile, never in its place.
   const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), ...stricterTiles(step), ...acceptedTiles(step), guestsCoveredTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c)].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), ...acceptedTiles(step), guestsCoveredTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c)].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   // The drift card is the review's one card, and the exclusions card the exposure's

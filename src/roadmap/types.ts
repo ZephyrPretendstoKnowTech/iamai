@@ -1186,11 +1186,15 @@ export type MemberTracking = {
   policyName: string | null
   /** The name the step's create gives this policy, where the tenant's differs (only the name may: owner, 2026-09-25). */
   plannedName?: string
-  /** The dimensions where the tenant's policy is stricter than the plan's (wider users, a stronger grant or session): accepted, never a correction, and said on the step (owner, 2026-09-25). */
-  stricter?: string[]
+  /**
+   * How the tenant's policy differs from the plan's, piece by piece, each marked
+   * stricter or weaker (differences.ts): every one is corrected or accepted
+   * (owner, 2026-09-26), and the step shows them.
+   */
+  differences?: import('./differences.ts').DifferencePiece[]
   /** The dimensions where the tenant's policy differs and a person accepted it, with a reason (Step.acceptedDeviation), while the settings are as accepted. */
   accepted?: string[]
-  /** The fingerprint of each setting still differing (observation.ts materialFieldsOf): what Accept this difference saves. */
+  /** What Accept this difference saves for each setting still differing: the fingerprint of its gaps (differences.ts acceptanceKeyOf). */
   differsFields?: Record<string, string>
   /**
    * The dimensions the deployed policy differs from this step's own intended
