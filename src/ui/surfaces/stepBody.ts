@@ -721,7 +721,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const ownWaits = step.blockers.flatMap((b) => (b.kind === 'step' ? [contentTitleOfId(b.stepId)] : [])).filter((x): x is string => x !== null)
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...ownWaits, ...(o.enforceWaits ?? [])])]
   const procedure = machine && drawsTaskAnatomy(step.id)
-    ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)) })
+    ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)), announces: supported.has('email') })
     : null
   if (procedure !== null) {
     const text = emergencyAccountTasksText(procedure)

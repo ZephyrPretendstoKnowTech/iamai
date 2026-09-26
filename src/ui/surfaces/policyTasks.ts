@@ -42,6 +42,7 @@ import { PREREQ_STEP_ID, stepIdForGoal } from '../../roadmap/stepIds.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
 import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
+import { NAMES_INLINE } from './whoBlocks.ts'
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
 import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
@@ -115,6 +116,8 @@ export type PolicyProcedureInput = {
   mapping?: Pick<MappingState, 'questionAnswers'>
   /** What the step's package says beside the procedure (stepPackage.ts policyProcedureExtras). */
   extras?: PolicyProcedureExtras
+  /** Whether the step hands over an announcement to send (its Email tab): only then does its card say when to announce. */
+  announces?: boolean
 }
 
 /**
@@ -259,6 +262,10 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
       }
       out.push({
         name: String(found?.displayName ?? t?.policyName ?? whole?.displayName ?? ''),
+        // The create names the baseline's own policy (owner, 2026-09-26: every
+        // new policy takes the baseline's name), never the tenant's one it
+        // corrects: Align Policy Names renames that one.
+        createName: (ops.length === 1 ? step.createName : undefined) ?? (op.sourceName || undefined),
         create: whole ? { body: whole, baseline: null } : null,
         exists: true,
         on: found?.state === 'enabled',
@@ -331,7 +338,15 @@ function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string;
   }
   if ((readyWhen(step)?.failures ?? 0) > 0 && step.state.lifecycle === 'report-only') {
     const key = MOVES_OFF.has(step.id) ? 'blocked' : GETS_A_METHOD.has(step.id) ? 'blockedMethod' : 'blockedAny'
-    out.push({ wait: WAITS[key], after: WAITS[`${key}After`] })
+    // Who report-only would have stopped, by name (review, 2026-09-26: a pitfall
+    // names who): the first five, and how many more.
+    const ids = (step.tracking?.failuresByUser ?? []).map((f) => f.userId)
+    if (ids.length > 0) {
+      const shown = ids.slice(0, NAMES_INLINE).map(input.nameOf)
+      const names = list(ids.length > NAMES_INLINE ? [...shown, fillText(WAITS.more, { n: ids.length - NAMES_INLINE })] : shown)
+      const one = ids.length === 1
+      out.push({ wait: fillText(WAITS[`${key}Named`], { names }), after: fillText(WAITS[`${key}NamedAfter${one ? 'One' : 'Many'}`], { names }) })
+    } else out.push({ wait: WAITS[key], after: WAITS[`${key}After`] })
   }
   if (gateHolds) {
     const admins = readinessFamilyOf(gate) === 'admin'
@@ -465,7 +480,10 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // turns the policy on, so it is the step's one task, and whatever holds a
   // turn-on holds it (below).
   const createdOnStep = stepCreatedOn(step)
-  const onCreate = (body: Record<string, unknown>): Record<string, unknown> => (createdOn(body) ? { ...body, state: 'enabled' } : body)
+  // A create is Report-only unless it is created On: a tenant policy already On
+  // never carries its state into the create (review, 2026-09-26: "Create the
+  // policy in Report-only" ended "Set Enable policy to On").
+  const onCreate = (body: Record<string, unknown>): Record<string, unknown> => ({ ...body, state: createdOn(body) ? 'enabled' : 'enabledForReportingButNotEnforced' })
   const createdOnAll = creates.length > 0 && creates.every((m) => createdOn(m.create!.body))
   const createSteps = [...input.before, ...(toCreate ? input.extras?.createFirst ?? [] : []), ...creates.flatMap((m) => createLines(onCreate(m.create!.body), ctx, { name: (m.name && m.createName && m.name.toLowerCase() === m.createName.toLowerCase() ? m.name : m.createName) ?? (m.name || String(m.create!.body.displayName ?? '')), baseline: m.create!.baseline }))]
   tasks.push(task('create', createdOnStep || createdOnAll ? 'createOn' : 'create', createSteps, toCreate))
@@ -509,7 +527,8 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const heldCreate = heldCreateMilestoneOf(step)
   if (next !== null && heldCreate !== null) next.onThresholdCard = true
   else if (next?.id === 'create' && createdOnStep && !turnOnHeld && input.contract.milestone.at) {
-    const announce = step.events?.announce?.at ?? null
+    // Announce it only where the step hands over the announcement (its Email tab): an instruction with nothing to send is homework.
+    const announce = input.announces === true ? step.events?.announce?.at ?? null : null
     const date = shownDay(input.contract.milestone.at, input.estimate, 'sentence')
     next.readinessTitle = announce ? fillText(PW.card.createOnAnnounced, { announce: shownDay(announce, input.estimate, 'sentence'), date }) : fillText(PW.card.createOnDay, { date })
   }

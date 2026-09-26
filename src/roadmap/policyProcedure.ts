@@ -114,9 +114,13 @@ function rolesWords(ids: readonly string[], ctx: ProcedureContext): string | nul
  * "and" they ran into the "and exclude" after them.
  */
 function guestWords(types: readonly string[] | null): string {
-  if (types === null || types.length === 0 || types.length >= 6) return PROCEDURE.guests
-  return fill(PROCEDURE.guestTypes, { types: types.map((t) => bold(portalName('guestType', t) ?? t)).join(', ') })
+  // Every type is named, all six included: the portal asks which types to tick
+  // (deferred item, owner 2026-09-25). No types listed means every type.
+  const named = types === null || types.length === 0 ? ALL_GUEST_TYPES : types
+  return fill(PROCEDURE.guestTypes, { types: named.map((t) => bold(portalName('guestType', t) ?? t)).join(', ') })
 }
+/** The six guest or external user types, in the portal's order. */
+const ALL_GUEST_TYPES = ['internalGuest', 'b2bCollaborationGuest', 'b2bCollaborationMember', 'b2bDirectConnectUser', 'otherExternalUser', 'serviceProvider']
 
 /**
  * Who a policy includes. All users reaches every guest type, and Entra cannot

@@ -143,10 +143,14 @@ test('a created-On step is dated as it runs: its Dates line announces it and cre
   const dated = { ...step, events: { ...step.events, announce: { at: '2026-10-06T12:00:00.000Z' } } } as Step
   // The contract's two readings the card uses: the lifecycle, and the milestone's day.
   const contract = { state: { lifecycle: dated.state.lifecycle }, milestone: { kind: 'deploy', label: '', at: '2026-10-13T12:00:00.000Z', gatedBy: null, line: '' } } as unknown as PolicyProcedureInput['contract']
-  const tasks = policyProcedureOf(dated, { nameOf: (id) => id, strengthNameOf: () => 'Modern MFA + TAP', rows: [], before: [], contract, outstanding: [], estimate: false, proposed })?.tasks ?? []
+  const input = { nameOf: (id: string) => id, strengthNameOf: () => 'Modern MFA + TAP', rows: [], before: [], contract, outstanding: [], estimate: false, proposed }
+  const tasks = policyProcedureOf(dated, { ...input, announces: true })?.tasks ?? []
   const create = tasks.find((t) => t.id === 'create') ?? null
   assert.ok(create, 'the create task')
   assert.match(create.readinessTitle ?? '', /^Announce it .*Oct 6.*; create it On .*Oct 13/)
+  // Announce it only where the step hands over the announcement (review, 2026-09-26): with no email to send, the card says the create day alone.
+  const quiet = policyProcedureOf(dated, input)?.tasks.find((t) => t.id === 'create')
+  assert.match(quiet?.readinessTitle ?? '', /^Create it On .*Oct 13/)
   assert.equal(tasks.some((t) => t.id === 'turn-on'), false, 'its create is its turn-on')
 })
 
