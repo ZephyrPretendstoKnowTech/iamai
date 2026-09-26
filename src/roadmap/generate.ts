@@ -1106,8 +1106,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
    * Block - Device code flow". Two policies then carried the tag for one step,
    * which is a state the step can never finish from.
    */
-  const uniqueName = (goal: Goal, stepId: string): { name: string; note: string | null } => {
-    const base = proposedPolicyName(goal, naming)
+  const uniqueName = (base: string, stepId: string): { name: string; note: string | null } => {
     const mine = taggedNamesFor(stepId)
     // A switched-off policy carrying the name is the step's own too: the step
     // sets it to Report-only (tracking.ts matchMembers, rule 5), never builds a
@@ -1821,8 +1820,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const stepPolicies = (): StepPolicyInput[] =>
       stepSources.map((m) => ({ sourceName: m.facts.name, sourceKey: m.key, resolved: resolveOne(m.policy as RawPolicy, m.authors) }))
     const templatePolicy = (): StepPolicyInput[] => [{ sourceName: goal.id, sourceKey: `template:${goal.id}`, resolved: resolveOne(resolveTemplate(impl.template as TemplateBody, templateValues).body as RawPolicy, []) }]
+    // The plan's name for the goal's policy: the baseline author's own, verbatim
+    // (owner, 2026-09-26: Jon's names). Only a goal with no baseline policy, whose
+    // body is the goal's own template, is named in the tenant's convention.
+    const planName = stepSources.length > 0 ? stepSources[0].facts.name : proposedPolicyName(goal, naming)
+    // Each baseline policy of a step keeps its own name; a template's second
+    // policy is named after the first.
     const named = (policies: StepPolicyInput[], first: string): StepPolicyInput[] =>
-      policies.map((p, i) => ({ ...p, displayName: i === 0 ? first : policyPairNames(first, p.sourceName, naming ?? null).b }))
+      policies.map((p, i) => ({ ...p, displayName: i === 0 ? first : (p.sourceKey ?? '').startsWith('template:') ? policyPairNames(first, p.sourceName, naming ?? null).b : p.sourceName }))
     /**
      * The live tenant policy that is this goal's whatever its contents: one this
      * plan tagged for the step, else one carrying the exact name the plan gives
@@ -1833,8 +1838,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const all = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
       const tagged = findTaggedPolicies(snapshot, planId, stepId).map((t) => all.find((p) => p.id === t.policyId)).find(live)
       if (tagged) return tagged
-      const want = proposedPolicyName(goal, naming).trim().toLowerCase()
-      return all.find((p) => live(p) && String(p.displayName ?? '').trim().toLowerCase() === want) ?? null
+      // By the plan's name, or by the name IAMAI proposed before it used the baseline's (a policy built then).
+      const want = new Set([planName, proposedPolicyName(goal, naming)].map((n) => n.trim().toLowerCase()))
+      return all.find((p) => live(p) && want.has(String(p.displayName ?? '').trim().toLowerCase())) ?? null
     }
 
     const whoKey = impl.expectedWho.kind
@@ -1973,13 +1979,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const delivers = result.satisfaction?.policyIds ?? []
       const ownStep = delivers.length === 1 && result.candidates.some((c) => c.policyId === delivers[0] && c.ownScope)
       const policies = !own && !ownStep ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
-      const would = policies.length === 1 ? buildCreateAction(named(policies, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
+      const would = policies.length === 1 ? buildCreateAction(named(policies, planName), mapping, planId, stepId, goal.id) : null
       const intended = would && (would.missing ?? []).length === 0 ? would.resolution?.policies[0]?.body : undefined
       // The same create, whoever's policy delivers the goal, for the step's
       // procedure alone (Action.planned): a finished step still hands over how
       // its policy is created and turned on (walk list item 18). Every
       // reference resolved, or nothing.
-      const plannedCreate = policies.length === 1 ? would : buildCreateAction(named(stepSources.length > 0 ? stepPolicies() : templatePolicy(), proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id)
+      const plannedCreate = policies.length === 1 ? would : buildCreateAction(named(stepSources.length > 0 ? stepPolicies() : templatePolicy(), planName), mapping, planId, stepId, goal.id)
       const planned = plannedCreate && (plannedCreate.missing ?? []).length === 0 ? plannedCreate.resolution : undefined
       // A policy the tenant wrote delivers the goal: where it is not the policy
       // the plan would write, in the parts coverage does not judge, the step says
@@ -1991,7 +1997,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (!own && delivering.length === 1) {
         const theirs = (snapshot.config.caPolicies.rows as RawPolicy[]).find((p) => String(p.id) === delivering[0])
         const mine = stepSources.length > 0 ? stepPolicies() : templatePolicy()
-        const plan = theirs && mine.length === 1 ? buildCreateAction(named(mine, proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id) : null
+        const plan = theirs && mine.length === 1 ? buildCreateAction(named(mine, planName), mapping, planId, stepId, goal.id) : null
         const body = plan && (plan.missing ?? []).length === 0 ? plan.resolution?.policies[0]?.body : undefined
         const dimensions = body && theirs ? unwrittenDifferences(body as Record<string, unknown>, null, theirs as Record<string, unknown>, COVERAGE_JUDGED) : []
         if (theirs && dimensions.length > 0) ownPolicyDiffers = { policyName: String(theirs.displayName ?? theirs.id), dimensions }
@@ -2045,13 +2051,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'adjust'
       const claimed = claimedPolicy() as RawPolicy
       existingRaw = claimed
-      const one = named(stepPolicies(), String(claimed.displayName ?? proposedPolicyName(goal, naming)))
+      const one = named(stepPolicies(), String(claimed.displayName ?? planName))
       one[0] = { ...one[0], target: { policyId: String(claimed.id), state: String(claimed.state ?? 'enabled'), policy: claimed } }
       action = changesFor(buildCreateAction(one, mapping, planId, stepId, goal.id, { sections: new Set() }), new Set(), claimed)
     } else if (result.status === 'absent' || anotherJobOnly) {
       kind = 'create'
       if (source) {
-        const proposed = uniqueName(goal, stepId)
+        const proposed = uniqueName(planName, stepId)
         action = buildCreateAction(named(stepPolicies(), proposed.name), mapping, planId, stepId, goal.id)
         namingNote = proposed
       } else {
@@ -2060,7 +2066,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // Wave 0 step named where they do not (prompt 46 item 12). Every step
         // is executable; nothing says "create a policy that meets the floor".
         for (const p of resolveTemplate(impl.template as TemplateBody, templateValues).unresolved) blockPlaceholder(p)
-        const proposed = uniqueName(goal, stepId)
+        const proposed = uniqueName(planName, stepId)
         // The goal's own template is a body the engine wrote, so it carries no
         // author references; it goes through the same boundary all the same, for
         // the exclusions group and the de-duplication.
@@ -2154,7 +2160,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [], unmatchedPair: true, ambiguousTarget: true }
       } else if (changing.length < 2) {
         // One policy: the goal's coverage names the tenant policy it changes.
-        const one = named(changing, existing?.policyName ?? proposedPolicyName(goal, naming))
+        const one = named(changing, existing?.policyName ?? planName)
         one[0] = { ...one[0], target: existing ? { policyId: existing.policyId, state: existing.state, policy: existingRaw } : null }
         let built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
         if (settleSections(sections, built, new Map(existing && existingRaw ? [[existing.policyId, existingRaw]] : []), belowFloor)) built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
@@ -2168,7 +2174,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // The plan's canonical name for each member — not the suffixed proposal a
         // create would take, because the policy this matches is the one already
         // carrying that name.
-        const pair = named(changing, proposedPolicyName(goal, naming))
+        const pair = named(changing, planName)
+        // Or the name IAMAI gave that member before it used the baseline's (a
+        // policy built then), as claimedPolicy reads the goal's one policy.
+        const earlier = proposedPolicyName(goal, naming)
+        const earlierName = new Map(changing.map((p, i) => [p.sourceKey, (i === 0 ? earlier : policyPairNames(earlier, p.sourceName, naming ?? null).b).trim().toLowerCase()]))
+        const namesOf = (m: StepPolicyInput): string[] => [String(m.displayName ?? '').trim().toLowerCase(), earlierName.get(m.sourceKey) ?? ''].filter((n) => n !== '')
         // What the tenant's own policies already do is credited (owner decision 8,
         // 2026-09-25): a member every one of whose guest kinds an enabled policy
         // delivers at that member's floor (coverage `kindsDelivered`) is in place,
@@ -2180,7 +2191,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const creditOf = (m: StepPolicyInput): string[] | null => {
           // A member whose own copy the tenant already has, by the name the plan
           // gives it, is the step's to finish, never credited to another policy.
-          if (namedRows.has(String(m.displayName ?? '').trim().toLowerCase())) return null
+          if (namesOf(m).some((n) => namedRows.has(n))) return null
           const f = stepSources.find((s) => s.key === m.sourceKey)?.facts
           const k = f && delivered ? guestKindsReached(f) : 'unknown'
           if (k === 'unknown' || k.size === 0 || [...k].some((x) => (delivered?.[x] ?? []).length === 0)) return null
@@ -2191,7 +2202,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const creditedMembers: Action['creditedMembers'] = !partlyCredited ? undefined : pair.flatMap((m, i) => (credits[i] ? [{ name: String(m.displayName ?? m.sourceName), policyIds: credits[i]!, policyNames: credits[i]!.map((id) => String(((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]).find((p) => String(p.id) === id)?.displayName ?? id)), kinds: [...(guestKindsReached(stepSources.find((s) => s.key === m.sourceKey)!.facts) as Set<string>)] }] : []))
         const members = partlyCredited ? pair.filter((_, i) => credits[i] === null) : pair
         const byName = new Map((snapshot.config.caPolicies?.rows ?? []).map((p) => [String((p as RawPolicy).displayName ?? '').trim().toLowerCase(), p as RawPolicy]))
-        const matched = members.map((m) => byName.get(String(m.displayName ?? '').trim().toLowerCase()) ?? null)
+        const matched = members.map((m) => namesOf(m).map((n) => byName.get(n)).find((row) => row !== undefined) ?? null)
         const ids = matched.filter((p): p is RawPolicy => p !== null).map((p) => String(p.id))
         const ambiguous = !partlyCredited && (matched.every((p) => p === null) || new Set(ids).size !== ids.length)
         if (ambiguous) {
@@ -2221,7 +2232,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (ops.length > 0 && ops.every((o) => o.mode === 'update' && Object.keys(o.body).length === 0)) {
         action = { ...action, nothingOwed: { gaps: result.reasons.filter((r) => !r.expected && r.kind === 'conditions-narrower').map((r) => r.detail) } }
       }
-      if (action.kind === 'create') namingNote = uniqueName(goal, stepId)
+      if (action.kind === 'create') namingNote = uniqueName(planName, stepId)
     }
 
     // No usable, owner-confirmed exclusions group, and the goal's own policy needs
@@ -2864,11 +2875,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // step's title; a step that creates one names the proposed name.
       // The name the step's own create gives its policy, whatever the step does now:
       // only the name may differ from the plan (owner, 2026-09-25; tracking.ts plannedName).
-      createName: namingNote?.name ?? proposedPolicyName(goal, naming),
+      createName: namingNote?.name ?? planName,
       ...(mapping.acceptedDeviations?.[stepId] ? { acceptedDeviation: mapping.acceptedDeviations[stepId] } : {}),
       naming:
         kind === 'create' && !state.satisfied
-          ? { proposed: namingNote?.name ?? proposedPolicyName(goal, naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
+          ? { proposed: namingNote?.name ?? planName, fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
           : kind === 'adjust' && existing && !state.satisfied
             ? { proposed: existing.policyName, fromBaseline: source?.facts.name ?? null, note: null }
             : null,

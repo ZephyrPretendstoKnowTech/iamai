@@ -77,5 +77,5 @@ test('s-goal-require-managed-device: the held create draws the Intune preparatio
   const create = authoredParts(drawn(ready, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list', 'the create procedure is drawn')
   assert.match(create.items[0][0], /Mark devices with no compliance policy assigned/)
-  assert.equal(create.items[2][0], 'Name: **Core - Require - Compliant device for Office 365**.', 'the create procedure names the demo policy')
+  assert.equal(create.items[2][0], 'Name: **IAC - INTUNE - GRANT - RequireCompliantDevice**.', 'the create procedure names the baseline policy by its own name')
 })
