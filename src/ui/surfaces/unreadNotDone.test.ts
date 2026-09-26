@@ -39,7 +39,7 @@ test('hostile: registered methods unread, 1.1 says each account needs its approv
   assert.equal(body.emergencyAccountTasks?.recommendedTaskId, 'set-up-passkey')
 })
 
-test('an emergency account sharing its Authenticator device says so on its card, with the move, and the note holds nothing (owner audit)', () => {
+test('an emergency account sharing its Authenticator device says so on its card, as the fact alone, and the note holds nothing (owner audit)', () => {
   const f = curatedFixture('getiamai')
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === 's-prereq-break-glass')!
@@ -47,7 +47,8 @@ test('an emergency account sharing its Authenticator device says so on its card,
   const accounts = stepBodyOf(step, ctx).emergencyAccountTasks?.accounts ?? []
   const shared = accounts.filter((a) => (a.notes ?? []).some((n) => /SM-S918U/.test(n.value)))
   assert.equal(shared.length, 2, 'the premise: both getiamai emergency accounts share one phone')
-  for (const a of shared) assert.ok(a.notes!.some((n) => /^The Authenticator device "SM-S918U" is also registered by .+ Move an emergency account off the shared Authenticator device "SM-S918U"\./.test(n.value)))
+  // The fact alone (owner, 2026-09-26): no instruction, and no "usually means the same phone".
+  for (const a of shared) assert.ok(a.notes!.some((n) => /^The Authenticator device "SM-S918U" is also registered by [^:]+[^.]\.$/.test(n.value)), JSON.stringify(a.notes))
   // Its label names the finding, not the rule it fails ("No two emergency accounts share...").
   for (const a of shared) assert.ok(a.notes!.some((n) => n.label === 'Shared Authenticator device' && /SM-S918U/.test(n.value)), JSON.stringify(a.notes))
 })
