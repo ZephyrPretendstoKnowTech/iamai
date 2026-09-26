@@ -135,28 +135,21 @@ function opened(f: Fixture) {
   }
 }
 
-/** Words that hand over the policy's creation: the portal's New policy, a Create-mode script, a POST, a report-only body, or saying the next action creates it. */
-const CREATES: [string, RegExp][] = [
-  ['the portal create', /New policy/i],
-  ['a Create-mode script', /ValidateSet\('Create'\)|-Mode\s+'?Create|in Create mode/i],
-  ['a POST', /\bPOST\b/],
-  ['a report-only body', /enabledForReportingButNotEnforced/],
-  ['saying the next action creates it', /next action (?:creates|is to create)/i],
-]
+/** Saying the next action creates the policy, which it is not while the create waits. */
+const NEXT_CREATES = /next action (?:creates|is to create)/i
 
-test('demo: while its create waits, the opened, printed and exported step hands over nothing that creates the policy; once readiness is met it does', () => {
-  // demo: while its create waits, the opened, printed and exported step hands over nothing that creates the policy
+test('demo: while its create waits, the step shows its whole procedure and says why it waits, and nothing offers the create; once readiness is met it is offered', () => {
+  // demo: while its create waits, the procedure stands whole and is not offered
+  // (owner, 2026-09-25: never hide implementation instructions; the hold stays
+  // in Tasks Remaining, and the create hold of 2026-09-23 stands).
   {
     const { step, body, tasks, whatToDo } = opened(withFoundationSettled(fixture('demo')))
     assert.equal(createWaitsOnReadiness(step), true, 'the premise: the create waits on device readiness')
-    const texts: [string, string][] = [
-      ...body.artifacts.map((a): [string, string] => [`the ${a.id} tab`, a.text()]),
-      ...tasks.map((t, i): [string, string] => [`implementation task ${i + 1}`, t]),
-      ['the export', whatToDo.join('\n')],
-    ]
-    for (const [where, text] of texts) {
-      for (const [what, pattern] of CREATES) assert.doesNotMatch(text, pattern, `${where} carries ${what}`)
-    }
+    assert.equal(implementationOffered(step), false, 'nothing offers the create while it waits')
+    assert.match(body.artifacts.find((a) => a.id === 'portal')?.text() ?? '', /New policy/, 'the Entra procedure stands whole')
+    assert.ok(tasks.some((t) => /New policy/.test(t)), 'so does the Implementation Task')
+    assert.equal(body.rail.headline, 'Device readiness reaches 80%', 'the rail names the readiness it waits for, never the create')
+    assert.doesNotMatch(whatToDo.join('\n'), NEXT_CREATES, 'the export never says the next action creates it')
     // What it does say: why the create waits, in the export as on the step.
     assert.ok(whatToDo.some((l) => l.startsWith(CERTIFICATE)), whatToDo.join(' | '))
     const ai = body.artifacts.find((a) => a.id === 'ai')
@@ -192,7 +185,7 @@ test('demo, first visit and settled: while its create waits, the step, its Imple
     const texts: [string, string][] = [['the Entra tab', entra], ['the Implementation Task', tasks.join('\n')], ['the export', whatToDo.join('\n')], ['AI Info', ai]]
     for (const [where, text] of texts) {
       assert.match(text, INTUNE_PREPARATION, `${when}: ${where} keeps the Intune preparation`)
-      for (const [what, pattern] of CREATES) assert.doesNotMatch(text, pattern, `${when}: ${where} carries ${what}`)
+      assert.doesNotMatch(text, NEXT_CREATES, `${when}: ${where} says the next action creates it`)
     }
     assert.ok(body.before.some((l) => INTUNE_PREPARATION.test(l)), `${when}: the step's own before lines stand`)
     // The preparation stands where a switched-off policy draws an inspection, not beside one.
@@ -249,9 +242,9 @@ test('demo: Require a Managed Device found Off is told to go to Report-only only
     assert.match(because, /already in .+, switched off\. So setting it to Report-only waits/, because)
     assert.doesNotMatch(because, /creating this policy/i, because)
     const { body, whatToDo } = opened(f)
-    for (const a of body.artifacts) assert.doesNotMatch(a.text(), REPORT_ONLY, `the ${a.id} tab says to set it to Report-only`)
-    assert.doesNotMatch(whatToDo.join('\n'), REPORT_ONLY, 'the export says to set it to Report-only')
-    assert.ok(whatToDo.some((l) => l.startsWith(CERTIFICATE)), whatToDo.join(' | '))
+    // The procedure stands whole (owner, 2026-09-25): its Report-only task is shown, and nothing offers it.
+    assert.match(body.artifacts.find((a) => a.id === 'portal')?.text() ?? '', REPORT_ONLY, 'the Entra procedure keeps its Report-only task')
+    assert.ok(whatToDo[0]?.startsWith(CERTIFICATE), `the export says why it waits before its procedure: ${whatToDo.join(' | ')}`)
   }
 
   // demo: once device readiness is met, Require a Managed Device found Off is told to go to Report-only

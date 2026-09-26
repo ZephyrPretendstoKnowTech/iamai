@@ -340,6 +340,19 @@ function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string;
 const contentTitleOfCampaign = (): string | null => stepById[CAMPAIGN_STEP_ID]?.title ?? null
 
 /**
+ * The milestone of a create the readiness threshold holds (operations.ts
+ * createWaitsOnReadiness), in words: "Device readiness reaches 80%". Its
+ * procedure stands whole and is not offered, so the rail names this, never the
+ * create. Null for every other step.
+ */
+export function heldCreateMilestoneOf(step: Step): string | null {
+  const gate = step.action.readinessGate
+  if (gate === undefined || !createWaitsOnReadiness(step)) return null
+  const t = fillText(WAITS.readinessAfter, gate)
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+
+/**
  * The tenant's policy with the exclusions group already excluded, where
  * Configure Emergency Exclusions asks for that edit itself (walk list 4.x item
  * 7): its "Configure Conditional Access exclusions" opens every policy that is On
@@ -379,11 +392,10 @@ function afterExclusionsEdit(step: Step, current: Record<string, unknown>, group
  */
 export function policyProcedureOf(step: Step, input: PolicyProcedureInput): EmergencyTaskProjection | null {
   if (step.state.condition === 'baseline-conflict') return null
-  // A create the readiness threshold holds is held whole: in report-only a
-  // policy that requires a compliant device can prompt for a certificate, so the
-  // step hands over its preparation instead (owner, 2026-09-23: "Hold the create
-  // for that policy until ready"; operations.ts createWaitsOnReadiness).
-  if (createWaitsOnReadiness(step)) return null
+  // A create the readiness threshold holds (operations.ts createWaitsOnReadiness)
+  // keeps its procedure, whole: the hold is its Tasks Remaining card and the
+  // create is not offered until it clears (owner, 2026-09-25: never hide
+  // implementation instructions).
   // While the emergency access or the exclusions group is not proven safe, the
   // procedure still stands, whole, and its turn-on waits for the foundation
   // (walk list 4.x item 18): a create lands in Report-only and denies nobody.

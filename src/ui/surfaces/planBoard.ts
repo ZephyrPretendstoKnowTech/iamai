@@ -381,9 +381,13 @@ function forecastRowsOf(steps: readonly Step[], readings: ReadonlyMap<string, La
     const r = readings.get(step.id)
     if (!r || step.doesntApply != null) continue
     const gates = r.gates.filter((g) => !g.satisfied).flatMap((g): ForecastWait[] => g.id.startsWith(READINESS_GATE) ? [{ kind: 'evidence', id: g.id }] : g.id.startsWith('input:') ? [{ kind: 'input', id: g.id }] : readings.has(g.id) ? [{ kind: 'step', id: g.id }] : [])
+    // A readiness gate that holds the create too (`holdsCreate`: a compliant
+    // device, or a policy created On) holds the row's next action, not only its
+    // turn-on: without it the row's day read the plan's first day, "Est." today.
+    const createGates = r.gates.filter((g) => !g.satisfied && g.holdsCreate === true && g.id.startsWith(READINESS_GATE)).map((g): ForecastWait => ({ kind: 'evidence', id: g.id }))
     const enforce = (step.action.enforceWaitsOn ?? []).map((w): ForecastWait => ({ kind: 'step', id: w.id }))
     const complete = r.lane === 'Completed' || r.lane === 'Deferred'
-    rows.push({ id: step.id, step, dated: !complete && boardDatesOwnDay(step, laneViewOf(r, titleOf)), waits: waitsOf(r), turnOnWaits: [...gates, ...enforce], complete })
+    rows.push({ id: step.id, step, dated: !complete && boardDatesOwnDay(step, laneViewOf(r, titleOf)), waits: [...waitsOf(r), ...createGates], turnOnWaits: [...gates, ...enforce], complete })
   }
   for (const c of cleanupRows) {
     const r = readings.get(c.id)

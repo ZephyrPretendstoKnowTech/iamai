@@ -5,7 +5,7 @@ import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { BLOCKED_MILESTONES } from '../../roadmap/lifecycle.ts'
-import { drawsTaskAnatomy, ownCardWordsOf, policyProcedureOf, policyTasksOf } from './policyTasks.ts'
+import { drawsTaskAnatomy, heldCreateMilestoneOf, ownCardWordsOf, policyProcedureOf, policyTasksOf } from './policyTasks.ts'
 import { emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 import { estimatedDay } from '../../roadmap/stepSchedule.ts'
 import { proposedNamesFor } from './proposedNames.ts'
@@ -749,7 +749,10 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // instructions and no Direction questions in its place (ContentStep.tsx) — and
   // its next task by the title its task selector shows: the one it recommends,
   // or the first it needs.
-  const railTasks = taskProjection?.tasks ?? []
+  // A create the readiness threshold holds stands whole and is not offered: no
+  // task is next, and the rail names the readiness it waits for, never the create.
+  const heldCreate = procedure !== null ? heldCreateMilestoneOf(step) : null
+  const railTasks = heldCreate !== null ? [] : (taskProjection?.tasks ?? [])
   const firstTask = (railTasks.find((t) => t.id === taskProjection?.recommendedTaskId) ?? railTasks.find((t) => t.required))?.title ?? null
   // A report-only week that would have blocked someone is the work before the
   // turn-on, and its card says so (walk list 4.x item 35): the rail names it.
@@ -762,7 +765,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // So does Define the Trusted Network held on the office answer while Entra
   // already trusts a location: it draws no task (net-new 20).
   const waitWords = (procedure !== null || truthy(ex.officeUnansweredInEntra)) && firstTask === null && laneView.lane !== 'Completed' && laneView.lane !== 'Deferred' ? laneView.waitingFor ?? null : null
-  const nextTask = blockedWork ?? firstTask ?? waitWords
+  const nextTask = blockedWork ?? heldCreate ?? firstTask ?? waitWords
   // A policy step whose tasks are all done names none, so its headline reads
   // the step's own action (railOf), as a step with no task list does.
   const leadDrawn = !usesDecisionAnatomy(step.id) && (procedure !== null ? nextTask === null : !instructed && taskProjection === null)
