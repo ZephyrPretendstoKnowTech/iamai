@@ -3527,15 +3527,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Per-answer gating (roadmap/direction.ts gateOnDirection) runs once tracking
   // has settled each policy's lifecycle (roadmap/progress.ts applyProgress): an
   // enforced policy is never held by it, and the schedule never reads it.
+  // Today in the display zone, from the one review instant (the scan's own time
+  // where none is given, as every other "now" here): nothing unfinished is
+  // placed before it, however long ago the plan was started, and no
+  // announcement is dated before it.
+  const today = proposedStart(mapping.displayTimeZone ?? null, new Date(input.reviewNow ?? snapshot.asOf))
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
     rhythm,
     registrationDays: registration.workingDays,
     firstDeployment: input.firstDeployment ?? null,
-    // Today in the display zone, from the one review instant (the scan's own time
-    // where none is given, as every other "now" here): nothing unfinished is
-    // placed before it, however long ago the plan was started.
-    today: proposedStart(mapping.displayTimeZone ?? null, new Date(input.reviewNow ?? snapshot.asOf)),
+    today,
   })
   schedule.rhythm = rhythm
   // Cleanup (target-state §5, §9): dated after the last enforcement window, one
@@ -3594,7 +3596,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       s.comms = template.replaceAll('{DATE}', absoluteDate(firstDate))
     }
     // A change to an existing policy has no ring of its own: its dates come from where the schedule placed it.
-    s.events = eventsFor(s, { rhythm, timeZone: displayZone(mapping.displayTimeZone) }, s.kind === 'adjust' ? (schedule.startAt[s.id] ?? null) : null)
+    s.events = eventsFor(s, { rhythm, timeZone: displayZone(mapping.displayTimeZone), today }, s.kind === 'adjust' ? (schedule.startAt[s.id] ?? null) : null)
     // The report-only deployment day, off the schedule and onto the step: the
     // Dates line, the calendar entry and the step's values all read this one.
     s.reportOnlyAt = schedule.reportOnlyAt[s.id] ?? null

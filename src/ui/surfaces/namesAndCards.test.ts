@@ -6,6 +6,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
+import { eventsFor } from '../../roadmap/timing.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const run = (name: 'demo' | 'demo-week2') => {
@@ -25,4 +26,20 @@ test('Completion Criteria describe the plan’s target, never the setting the st
   const first = stepBodyOf(step, ctx).contract.doneWhen[0]
   assert.match(first, /requiring Phishing-resistant MFA for admin roles except/)
   assert.doesNotMatch(first, /Global Administrator/)
+})
+
+test('an announcement is never dated before today: a change nearer than its notice is announced on the first working day from today', () => {
+  // Owner, 2026-09-26: 5.2 read "Announce it Sep 24 (estimated); create it On Oct 1" on Sep 26.
+  const { r } = run('demo')
+  const step = r.steps.find((s) => s.id === 's-goal-admin-session')!
+  const near = { ...step, rings: [{ ...step.rings[0], plannedStart: '2026-09-29T12:00:00.000Z' }] } as typeof step
+  const ctx = { rhythm: r.schedule.rhythm!, timeZone: 'UTC' }
+  assert.ok(eventsFor(near, ctx)!.announce.at < '2026-09-26', 'the premise: five working days before Sep 29 is gone by Saturday Sep 26')
+  const e = eventsFor(near, { ...ctx, today: '2026-09-26T12:00:00.000Z' })!
+  assert.equal(e.announce.at.slice(0, 10), '2026-09-28', 'Monday, the first working day from Saturday')
+  assert.match(e.announce.reason, /less than 5 working days away/)
+  assert.equal(e.remind, null, 'no reminder before or on the day it is announced')
+  // A change far enough off keeps its full notice.
+  const far = { ...step, rings: [{ ...step.rings[0], plannedStart: '2026-10-12T12:00:00.000Z' }] } as typeof step
+  assert.equal(eventsFor(far, { ...ctx, today: '2026-09-26T12:00:00.000Z' })!.announce.at.slice(0, 10), '2026-10-05')
 })
