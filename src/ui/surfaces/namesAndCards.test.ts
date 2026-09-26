@@ -8,6 +8,7 @@ import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
 import { eventsFor } from '../../roadmap/timing.ts'
 import { policySubjectsOf } from './policyTasks.ts'
+import { boardReadingsOf, boardWhenOf, laneViewFor } from './planBoard.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const run = (name: 'demo' | 'demo-week2') => {
@@ -72,4 +73,21 @@ test('7.1 to 7.3 set only how long a sign-in lasts, so Completion Criteria claim
   // Token Protection does stop sign-ins, and a block does: they keep the line.
   assert.equal(says('s-goal-token-protection'), true)
   assert.equal(says('s-goal-block-auth-transfer'), true)
+})
+
+test('6.3: the countries decision comes first, About is two sentences, and a Ready decision reads a date, never "Decide now"', () => {
+  const { f, r, ctx } = run('demo')
+  const step = r.steps.find((s) => s.id === 's-goal-geo-restriction')!
+  const body = stepBodyOf(step, ctx)
+  assert.equal(policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)[0].key, 'decision')
+  assert.equal(body.contract.why.match(/[.!?](\s|$)/g)?.length, 2, body.contract.why)
+  assert.doesNotMatch(body.contract.why, /travel, VPN and partner/)
+  // Ready on a decision, in no phase: the day the plan was read.
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const view = laneViewFor(step, board)
+  const { alone: _alone, ...rest } = view
+  const ready = { ...rest, lane: 'Ready' as const, substatus: 'Decision' as const }
+  const when = boardWhenOf(step, null, ready)
+  assert.notEqual(when, 'Decide now')
+  assert.equal(when, 'Aug 28, 2026')
 })

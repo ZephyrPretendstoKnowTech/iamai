@@ -944,5 +944,8 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   // the same problem twice.
   const drifted = rest.some((c) => c.key === 'drift' && !c.satisfied)
   const cards = (drifted || corrected.length > 0) && correcting ? [] : policyCardsOf(contract, projected, subject, words?.check ?? check, words, own).map((c) => (said.has((c.detail ?? '').trim()) ? { ...c, detail: '' } : c))
-  return [...corrected, ...cards, ...rest]
+  // A decision still open comes first (owner, 2026-09-26: 6.3's countries): the
+  // policy's create waits on it.
+  const decision = rest.filter((c) => c.key === 'decision' && !c.satisfied)
+  return [...decision, ...corrected, ...cards, ...rest.filter((c) => !decision.includes(c))]
 }
