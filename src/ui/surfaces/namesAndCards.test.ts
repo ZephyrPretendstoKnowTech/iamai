@@ -10,6 +10,8 @@ import { stepOperations } from './stepJson.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepExportView } from './stepExport.ts'
 import { acceptLeadOf } from './stepContract.ts'
+import { foldLineOf } from './authoredText.ts'
+import { learnRoleNames, roleNamesOf } from '../../roles.ts'
 import { planDates } from './stepVars.ts'
 import { eventsFor } from '../../roadmap/timing.ts'
 import { policySubjectsOf } from './policyTasks.ts'
@@ -63,7 +65,8 @@ test('a policy to correct is one card: the policy, "Correct {fields}", and the c
   assert.equal(open[0].upn, 'Core - Grant - Admins phishing-resistant')
   // Every difference is corrected or accepted (owner, 2026-09-26): the stronger grant too.
   assert.equal(open[0].title, 'Correct users and grant')
-  assert.match(open[0].detail ?? '', /^Under Users → Include, add the directory roles Global Reader, /)
+  // The card counts a role list; the task holds the names (owner, 2026-09-26).
+  assert.ok((open[0].detail ?? '').startsWith('Under Users → Include, Directory roles: Select (45).'), open[0].detail ?? '')
   assert.doesNotMatch(open[0].detail ?? '', /\*\*/)
   // Two sections, named together.
   const demo = run('demo')
@@ -156,4 +159,20 @@ test('a Ready decision read on a weekend is dated the Monday after, as every day
   const { alone: _alone, ...rest } = laneViewFor(step, board)
   const saturday = { ...step, scheduled: { ...step.scheduled!, basis: { ...step.scheduled!.basis!, today: '2026-09-26T12:00:00.000Z' } } } as typeof step
   assert.equal(boardWhenOf(saturday, null, { ...rest, lane: 'Ready', substatus: 'Decision' }), 'Sep 28, 2026')
+})
+
+test('a role list is alphabetical, one role per line to tick through: Select for the create, Select and Clear for a correction', () => {
+  const { r, ctx } = run('demo')
+  const create = stepBodyOf(r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!, ctx).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')?.steps ?? []
+  const fold = create.flatMap((l) => l.split('\n')).map(foldLineOf).find((f) => f !== null && 'items' in f) as { title: string; items: string[] } | undefined
+  assert.equal(fold?.title, 'Select (46)')
+  assert.deepEqual(fold?.items, [...(fold?.items ?? [])].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' })), 'alphabetical, as Entra lists them')
+  assert.equal(fold?.items[0], 'Agent ID Administrator')
+})
+
+test('a role IAMAI has no name for reads as a role with its ID, and the tenant\u2019s role definitions name it', () => {
+  const unknown = '0f0f0f0f-1111-4111-8111-000000000001'
+  assert.deepEqual(roleNamesOf(['62e90394-69f5-4237-9190-012177145e10', unknown]), ['Global Administrator', `Unknown role (ID ${unknown})`])
+  learnRoleNames([], [{ id: unknown, templateId: unknown, displayName: 'Contoso Helpdesk Tier 3' }])
+  assert.deepEqual(roleNamesOf([unknown, '62e90394-69f5-4237-9190-012177145e10']), ['Contoso Helpdesk Tier 3', 'Global Administrator'])
 })

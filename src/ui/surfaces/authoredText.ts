@@ -4,6 +4,26 @@
 // line as its own line so an authored line break survives. Pure, so the reading
 // is tested without a DOM.
 
+import { shared } from '../../content/content.ts'
+
+/** The procedure's words for a role list's label (policyProcedure.ts roleList): "Select (46)", "Clear (80)". */
+const PROC = (shared as unknown as { procedure: { rolesSelect: string; rolesClear: string } }).procedure
+/** Whether a sub-line label is a role list's: the template with its count filled in. */
+const isListLabel = (title: string): boolean => [PROC.rolesSelect, PROC.rolesClear].some((l) => { const [pre, post] = l.split('{n}'); return title.startsWith(pre) && title.endsWith(post ?? '') && /^\d+$/.test(title.slice(pre.length, title.length - (post ?? '').length)) })
+
+/**
+ * A "+ Label: text" sub-line (policyProcedure.ts): a list to tick through when
+ * its label is a role list's ("Select (46): A; B"), else a fold with its text;
+ * null for any other line.
+ */
+export function foldLineOf(line: string): { title: string; items: string[] } | { title: string; text: string } | null {
+  const t = line.trim()
+  if (!t.startsWith('+ ') || !t.includes(': ')) return null
+  const title = t.slice(2, t.indexOf(': '))
+  const body = t.slice(t.indexOf(': ') + 2)
+  return isListLabel(title) ? { title, items: body.split('; ').filter((x) => x !== '') } : { title, text: body }
+}
+
 /** One part of an authored block, in order. */
 export type AuthoredPart =
   | { kind: 'list'; ordered: boolean; start: number; items: string[][] }

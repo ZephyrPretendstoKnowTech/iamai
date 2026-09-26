@@ -98,7 +98,7 @@ export function App() {
   const route = useHashRoute()
   // Role names the scan carries ($expand=roleDefinition) resolve ids the bundled catalogue lacks.
   useEffect(() => {
-    if (lastScan) learnRoleNames(lastScan.snapshot.config.roleAssignments?.rows ?? [])
+    if (lastScan) learnRoleNames(lastScan.snapshot.config.roleAssignments?.rows ?? [], lastScan.snapshot.config.roleDefinitions?.rows ?? [])
   }, [lastScan])
   useEffect(() => {
     if (DEMO) {

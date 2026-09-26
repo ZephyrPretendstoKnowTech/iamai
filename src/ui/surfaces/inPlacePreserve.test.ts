@@ -317,9 +317,11 @@ test('a satisfying policy under a custom name is preserved under that name, not 
   for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, CREATING, `a custom name caused a create instruction: ${line}`)
 })
 
-// ---- 11: a stronger tenant control is kept, not rewritten ----
+// ---- 11: a stronger tenant control is corrected or accepted, never kept silently ----
 
-test('a stronger policy that still covers the required scope is preserved, and nothing offers to weaken it', () => {
+test('a stronger policy that still covers the required scope is corrected or accepted: its correction says it is stricter, and nothing writes the weaker grant for you', () => {
+  // Owner, 2026-09-26: the policy points at exactly what the plan's has, and a
+  // stricter difference is what an acceptance is for. It was kept silently.
   const { step, ctx, run } = variant(
     'small',
     /MFA for all users/,
@@ -330,17 +332,15 @@ test('a stronger policy that still covers the required scope is preserved, and n
   )
   // Stronger than the floor still meets the floor: the goal is delivered.
   assert.equal(goalResult(run, MFA_GOAL).verdict, 'inPlace')
-  assert.equal(isPreserved(step), true)
-  // There is no operation, so there is no body that could replace the tenant's
-  // stronger grant with the baseline's weaker one.
+  assert.ok(step.state.observation?.unwritten.includes('grantControls'), 'the stronger grant is a difference, not kept silently')
+  assert.equal(isPreserved(step), false)
+  // No operation writes the baseline's weaker grant over the tenant's: a person
+  // corrects it in Entra, or accepts it with a reason.
   assert.equal(operationsOf(step).length, 0, 'an operation here would rewrite a stronger control')
-  assert.equal(implementationOffered(step), false)
   assert.equal(jsonOffered(step), false)
-  assert.equal(ifWrongLineFor(step, contentStepFor(step) as Record<string, unknown>, {}), null)
-  for (const line of stepLines(step, ctx)) {
-    assert.doesNotMatch(line, CREATING, `a stronger policy drew a create instruction: ${line}`)
-    assert.doesNotMatch(line, UNDOING, `a stronger policy drew a rollback instruction: ${line}`)
-  }
+  const lines = stepLines(step, ctx)
+  for (const line of lines) assert.doesNotMatch(line, CREATING, `a stronger policy drew a create instruction: ${line}`)
+  assert.ok(lines.some((l) => /Yours is stricter than the baseline here: to keep it, accept the difference instead\./.test(l)), lines.join(' | '))
 })
 
 // ---- 12: stronger but narrower is not satisfaction ----

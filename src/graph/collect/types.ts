@@ -35,6 +35,7 @@ export type ConfigSectionKey =
   | 'deviceRegistrationPolicy'
   | 'roleAssignments'
   | 'roleAssignmentSchedules'
+  | 'roleDefinitions'
   | 'pimEligibility'
   | 'subscribedSkus'
   | 'organization'

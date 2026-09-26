@@ -25,6 +25,7 @@
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
 import { withEmergencyExclusions } from '../../roadmap/differences.ts'
+import { foldLineOf } from './authoredText.ts'
 import { createdOn, stepCreatedOn, stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
@@ -367,6 +368,22 @@ function afterExclusionsEdit(step: Step, current: Record<string, unknown>, group
   const users = asRecord(asRecord(current.conditions)?.users)
   if (!users || !Array.isArray(users.excludeGroups) || excludesGroup(current, groupId)) return current
   return { ...current, conditions: { ...(asRecord(current.conditions) ?? {}), users: { ...users, excludeGroups: [...groupsExcluded(current), groupId] } } }
+}
+
+/**
+ * One correction setting as its card says it (owner, 2026-09-26): the lead, and
+ * each role list by its label and count ("Select (2) · Clear (80)"). The
+ * Implementation Task holds the names.
+ */
+function cardLineOf(line: string): string {
+  const [lead, ...subs] = line.split('\n')
+  const lists = subs.map((s) => foldLineOf(s)?.title ?? null).filter((t): t is string => t !== null)
+  if (lists.length === 0) return lead.replace(/\*\*/g, '')
+  const words = PROCEDURE as unknown as Record<string, string>
+  const side = lead.startsWith(words.rolesChangeExclude) ? 'Exclude' : lead.startsWith(words.rolesChangeInclude) ? 'Include' : null
+  if (side === null) return [lead.replace(/\*\*/g, ''), lists.join(' · ')].join('\n')
+  const rest = lead.slice(words[`rolesChange${side}`].length).trim()
+  return [fillText(words[`rolesCard${side}`], { lists: lists.join(' · ') }), rest].filter((x) => x !== '').join(' ').replace(/\*\*/g, '')
 }
 
 /**
@@ -941,7 +958,7 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   const corrections = correcting ? projected!.tasks.find((t) => t.id === 'correct')?.corrections ?? [] : []
   const corrected: EmergencySubjectTile[] = corrections.map((c, i) => {
     const fields = [...new Set(c.settings.map(correctionSectionOf).filter((f): f is string => f !== null).map((f) => f.toLowerCase()))]
-    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: c.settings.map((l) => l.replace(/\*\*/g, '')).join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
+    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: c.settings.map(cardLineOf).join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
   })
   const rest = [...readiness.tiles.filter((tile) => corrected.length === 0 || tile.key !== 'drift').map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
   // One sentence, said once. The policy card's sentence is the contract's one

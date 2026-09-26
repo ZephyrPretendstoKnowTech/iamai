@@ -15,15 +15,21 @@ export const ADMIN_ROLE_IDS: Set<string> = new Set([
   ...coreAdminRoles.roles.map((r) => r.templateId.toLowerCase()),
 ])
 
-// Role names learned from the scan's role assignments ($expand=roleDefinition),
-// which cover ids the bundled template catalogue lacks (ux-review-05 §6, §7).
+// Role names learned from the scan: its role assignments ($expand=roleDefinition)
+// and its role definitions, which cover ids the bundled template catalogue lacks
+// (ux-review-05 §6, §7; owner, 2026-09-26: roles nobody holds included).
 const LEARNED = new Map<string, string>()
-export function learnRoleNames(roleAssignmentRows: unknown[]): void {
+export function learnRoleNames(roleAssignmentRows: unknown[], roleDefinitionRows: unknown[] = []): void {
   for (const raw of roleAssignmentRows) {
     const r = raw as { roleDefinitionId?: unknown; roleDefinition?: { id?: unknown; displayName?: unknown } }
     const id = typeof r.roleDefinitionId === 'string' ? r.roleDefinitionId : typeof r.roleDefinition?.id === 'string' ? r.roleDefinition.id : null
     const name = typeof r.roleDefinition?.displayName === 'string' ? r.roleDefinition.displayName : null
     if (id && name) LEARNED.set(id.toLowerCase(), name)
+  }
+  for (const raw of roleDefinitionRows) {
+    const d = raw as { id?: unknown; templateId?: unknown; displayName?: unknown }
+    if (typeof d.displayName !== 'string' || d.displayName === '') continue
+    for (const id of [d.id, d.templateId]) if (typeof id === 'string' && id !== '') LEARNED.set(id.toLowerCase(), d.displayName)
   }
 }
 
@@ -40,6 +46,21 @@ export function roleLabel(id: string): string {
   return roleName(id) ?? UNKNOWN_ROLE
 }
 export const UNKNOWN_ROLE = 'Unknown role'
+
+/**
+ * Role names for a list a person ticks through in Entra (owner, 2026-09-26):
+ * each id by the catalogue's name, else the directory's, else "Unknown role (ID
+ * …)", never a word for an account; once each; alphabetical, as Entra's
+ * Directory roles picker lists them.
+ */
+export function roleNamesOf(ids: Iterable<string>, directoryName: (id: string) => string | null = () => null): string[] {
+  const out = new Map<string, string>()
+  for (const id of ids) {
+    const name = roleName(id) ?? directoryName(id) ?? `${UNKNOWN_ROLE} (ID ${id})`
+    if (!out.has(name.toLowerCase())) out.set(name.toLowerCase(), name)
+  }
+  return [...out.values()].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
+}
 
 /**
  * A role include list for a human (ux-review-05 §6): collapsed when it is the

@@ -23,6 +23,8 @@ import { policyFacts } from '../coverage/facts.ts'
 import type { PolicyFacts } from '../coverage/types.ts'
 import { shared } from '../content/content.ts'
 import { list } from '../copy/statements.ts'
+import { roleNamesOf } from '../roles.ts'
+import { UNNAMED } from '../names.ts'
 import { GRANT_LABEL, portalName } from './portalLines.ts'
 
 type Words = Record<string, string> & {
@@ -68,6 +70,19 @@ export function openLine(target: string | null): string {
 // ---- fragments ----
 
 const names = (ids: Iterable<string>, ctx: ProcedureContext): string[] => [...ids].map((id) => ctx.nameOf(id))
+/** A directory name only where the directory has one: never its word for an unknown account. */
+const directoryName = (ctx: ProcedureContext) => (id: string): string | null => {
+  const n = ctx.nameOf(id)
+  return n && lc(n) !== lc(id) && n !== UNNAMED && !/‹/.test(n) ? n : null
+}
+/** Role names, alphabetical as Entra lists them (roles.ts roleNamesOf). */
+const roleNames = (ids: Iterable<string>, ctx: ProcedureContext): string[] => roleNamesOf(ids, directoryName(ctx))
+/**
+ * A list a person ticks through, on the line under a step: "+ Select (46): A; B"
+ * (StepSections.tsx AuthoredText draws it as a list; an export reads it as it is).
+ */
+const roleList = (label: string, items: readonly string[]): string => (items.length === 0 ? '' : `
+  + ${fill(label, { n: String(items.length) })}: ${items.join('; ')}`)
 const boldList = (items: readonly string[]): string => list(items.map(bold))
 
 /** "the group **A**" / "the groups **A** and **B**". */
@@ -87,7 +102,7 @@ function accountsWords(ids: readonly string[], ctx: ProcedureContext): string | 
 /** "the directory role **A**" / "the directory roles **A** and **B**". */
 function rolesWords(ids: readonly string[], ctx: ProcedureContext): string | null {
   if (ids.length === 0) return null
-  const n = names(ids, ctx)
+  const n = roleNames(ids, ctx)
   return n.length === 1 ? fill(PROCEDURE.role, { name: bold(n[0]) }) : fill(PROCEDURE.roles, { names: boldList(n) })
 }
 
@@ -114,7 +129,7 @@ function includeWords(f: PolicyFacts, ctx: ProcedureContext, counted = false): s
   if (f.who.all) return [PROCEDURE.allUsers]
   const out: string[] = []
   if (f.who.guests !== null) out.push(guestWords(f.who.guests))
-  if (f.who.roles.size > 0) out.push(counted && f.who.roles.size > ROLES_INLINE ? fill(PROCEDURE.directoryRolesCounted, { n: String(f.who.roles.size) }) : fill(PROCEDURE.directoryRoles, { names: list(names(f.who.roles, ctx)) }))
+  if (f.who.roles.size > 0) out.push(counted && f.who.roles.size > ROLES_INLINE ? fill(PROCEDURE.directoryRolesCounted, { n: String(f.who.roles.size) }) : fill(PROCEDURE.directoryRoles, { names: list(roleNames(f.who.roles, ctx)) }))
   const groups = groupsWords([...f.who.groups], ctx)
   if (groups) out.push(groups)
   const users = accountsWords([...f.who.users], ctx)
@@ -149,9 +164,8 @@ function usersLine(f: PolicyFacts, ctx: ProcedureContext): string {
   }
   const include = list(includeWords(f, ctx, true))
   const exclude = excludeWords(f, ctx)
-  // A long role list folds under the step (AuthoredText reads a "+ " sub-line as a fold).
-  const fold = !f.who.all && f.who.roles.size > ROLES_INLINE ? `
-  + ${fill(PROCEDURE.rolesFold, { n: String(f.who.roles.size) })}: ${list(names(f.who.roles, ctx))}` : ''
+  // A long role list is listed under the step, alphabetical, to tick through in Entra (owner, 2026-09-26).
+  const fold = !f.who.all && f.who.roles.size > ROLES_INLINE ? roleList(PROCEDURE.rolesSelect, roleNames(f.who.roles, ctx)) : ''
   if (exclude.length === 0) return fill(PROCEDURE.usersIncludeOnly, { include }) + fold
   // A list of directory roles runs to dozens of names, and an exclusion said
   // after it is lost at the end of the line: the exclusion comes first there.
@@ -407,16 +421,20 @@ function usersCorrection(was: PolicyFacts, now: PolicyFacts, ctx: ProcedureConte
   // Who the policy includes. A change of kind — All users for a group, or the
   // other way — is said whole; otherwise what is added and what is taken off.
   const kindChanged = was.who.all !== now.who.all
-  if (kindChanged) out.push(fill(PROCEDURE.usersInclude, { change: fill(PROCEDURE.selectOnly, { items: list(includeWords(now, ctx)) }) }))
+  if (kindChanged) out.push(fill(PROCEDURE.usersInclude, { change: fill(PROCEDURE.selectOnly, { items: list(includeWords(now, ctx, true)) }) }) + (!now.who.all && now.who.roles.size > ROLES_INLINE ? roleList(PROCEDURE.rolesSelect, roleNames(now.who.roles, ctx)) : ''))
   else if (!now.who.all) {
+    // Directory roles on a line of their own, as two lists to tick through: the
+    // roles to select and the roles to clear (owner, 2026-09-26). Clearing a role
+    // the tenant includes beyond the plan loosens the policy, and the line says so.
+    const selectRoles = roleNames(minus(now.who.roles, was.who.roles), ctx)
+    const clearRoles = roleNames(minus(was.who.roles, now.who.roles), ctx)
+    if (selectRoles.length > 0 || clearRoles.length > 0) out.push((clearRoles.length > 0 ? `${PROCEDURE.rolesChangeInclude} ${PROCEDURE.stricterNote}` : PROCEDURE.rolesChangeInclude) + roleList(PROCEDURE.rolesSelect, selectRoles) + roleList(PROCEDURE.rolesClear, clearRoles))
     const added = joined([
-      rolesWords(minus(now.who.roles, was.who.roles), ctx),
       groupsWords(minus(now.who.groups, was.who.groups), ctx),
       accountsWords(minus(now.who.users, was.who.users), ctx),
       now.who.guests !== null && was.who.guests === null ? guestWords(now.who.guests) : null,
     ])
     const removed = joined([
-      rolesWords(minus(was.who.roles, now.who.roles), ctx),
       groupsWords(minus(was.who.groups, now.who.groups), ctx),
       accountsWords(minus(was.who.users, now.who.users), ctx),
       was.who.guests !== null && now.who.guests === null ? guestWords(was.who.guests) : null,
@@ -431,17 +449,18 @@ function usersCorrection(was: PolicyFacts, now: PolicyFacts, ctx: ProcedureConte
   const exAdded = joined([
     groupsWords(minus(now.whoNot.groups, was.whoNot.groups), ctx),
     accountsWords(minus(now.whoNot.users, was.whoNot.users), ctx),
-    rolesWords(minus(now.whoNot.roles, was.whoNot.roles), ctx),
     guestsAdded ? guestWords(now.whoNot.guestTypes) : null,
   ])
   const exRemoved = joined([
     groupsWords(minus(was.whoNot.groups, now.whoNot.groups), ctx),
     accountsWords(minus(was.whoNot.users, now.whoNot.users), ctx),
-    rolesWords(minus(was.whoNot.roles, now.whoNot.roles), ctx),
     guestsRemoved ? guestWords(was.whoNot.guestTypes) : null,
   ])
   const ex = change(exAdded, exRemoved)
   if (ex) out.push(fill(PROCEDURE.usersExclude, { change: ex }))
+  const selectExcluded = roleNames(minus(now.whoNot.roles, was.whoNot.roles), ctx)
+  const clearExcluded = roleNames(minus(was.whoNot.roles, now.whoNot.roles), ctx)
+  if (selectExcluded.length > 0 || clearExcluded.length > 0) out.push(PROCEDURE.rolesChangeExclude + roleList(PROCEDURE.rolesSelect, selectExcluded) + roleList(PROCEDURE.rolesClear, clearExcluded))
   return out
 }
 

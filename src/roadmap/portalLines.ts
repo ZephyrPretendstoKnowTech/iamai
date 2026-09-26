@@ -14,6 +14,8 @@
 //
 // Pure: no DOM, no network, no snapshot. Runs in Node tests and in the worker.
 import type { PolicyFacts } from '../coverage/types.ts'
+import { roleNamesOf } from '../roles.ts'
+import { UNNAMED } from '../names.ts'
 
 /** What the translator needs to turn a policy's ids into the tenant's names. */
 export type PortalContext = {
@@ -125,7 +127,8 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   }
   const include: string[] = []
   if (f.who.all) include.push('All users')
-  if (f.who.roles.size > 0) include.push(`Directory roles → ${names(f.who.roles, ctx)}`)
+  // Alphabetical, as Entra lists them (roles.ts roleNamesOf).
+  if (f.who.roles.size > 0) include.push(`Directory roles → ${roleNamesOf(f.who.roles, (id) => { const n = ctx.nameOf(id); return n && n.toLowerCase() !== id.toLowerCase() && !/‹/.test(n) && n !== UNNAMED ? n : null }).join(', ')}`)
   // All users reaches every guest type (facts.ts reads it as an all-types guest
   // include), and Entra cannot select All users and Guest or external users
   // together, so that reach is never a guest include to name (walk list section 4

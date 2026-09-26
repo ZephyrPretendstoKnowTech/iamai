@@ -734,6 +734,8 @@ export function buildFixture(spec: Spec): Fixture {
       roleAssignmentSchedules: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], directoryScopeId: '/', assignmentType: 'Assigned', startDateTime: daysAgo(365), endDateTime: null }))),
       // The collector's own sentence for a read the licence skips (graph/collect/registry.ts
       // licenceGateReason). This said "needs Entra ID P2", which no scan writes (R4-37).
+      // Every role's name is in the bundled catalogue for these tenants.
+      roleDefinitions: section([]),
       pimEligibility: section([], p2 ? 'ok' : 'disabled', p2 ? null : licenceGateReason('pim')),
       subscribedSkus: section([
         ...(p1 ? [{ skuId: 'sku-p1', skuPartNumber: 'AAD_PREMIUM', prepaidUnits: { enabled: spec.users + 20 }, consumedUnits: spec.users, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM', provisioningStatus: 'Success' }] }] : []),

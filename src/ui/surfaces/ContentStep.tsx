@@ -837,7 +837,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
       <h5 className={printing ? undefined : 'sr-only'}>{item.title}</h5>
       {(item.targetUpn || item.targetLabel) && <p className="emergency-task-target">{item.targetUpn ?? item.targetLabel}</p>}
       {printing && !!taskFacts.length && <dl className="emergency-task-facts">{taskFacts.map((row, index) => <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd><AuthoredText text={row.value} /></dd></div>)}</dl>}
-      <ol>{emergencyTaskSteps(item, variant).map((line, index) => <li key={index}><AuthoredText text={line} /></li>)}</ol>
+      <ol>{emergencyTaskSteps(item, variant).map((line, index) => <li key={index}><AuthoredText text={line} printing={printing} /></li>)}</ol>
     </section>
   }
   const printableTasks = tasks?.printAll ? taskList : taskList.filter(item => item.required)

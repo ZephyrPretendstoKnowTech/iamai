@@ -5338,3 +5338,9 @@ th .th-sort:focus-visible,
 .emergency-task-facts dt { font-weight: var(--weight-strong); }
 .emergency-task-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 650px) { .emergency-task-facts div { grid-template-columns: 1fr; gap: .1rem; } }
+
+/* A role list to tick through in Entra (owner, 2026-09-26): alphabetical, in columns. */
+.authored-list-label { margin: 10px 0 2px; }
+.authored-list-items { columns: 3 13rem; column-gap: 24px; list-style: none; padding-left: 0; margin: 2px 0 6px; }
+.authored-list-items li { break-inside: avoid; }
+.authored-list-more > summary { cursor: pointer; color: var(--accent-text, inherit); margin: 2px 0; }

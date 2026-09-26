@@ -103,6 +103,7 @@ export function fixtureSnapshot(): TenantSnapshot {
       deviceRegistrationPolicy: { status: 'ok', reason: null, rows: [{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }] },
       roleAssignments: { status: 'ok', reason: null, rows: [] },
       roleAssignmentSchedules: { status: 'ok', reason: null, rows: [] },
+      roleDefinitions: { status: 'ok', reason: null, rows: [] },
       pimEligibility: { status: 'disabled', reason: licenceGateReason('pim'), rows: [] },
       subscribedSkus: {
         status: 'ok',

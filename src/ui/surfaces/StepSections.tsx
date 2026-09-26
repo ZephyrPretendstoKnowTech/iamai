@@ -11,13 +11,14 @@
 // question got onto one screen.
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { authoredParts } from './authoredText.ts'
+import { authoredParts, foldLineOf } from './authoredText.ts'
 import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, readinessLeadOf, stageClass } from './stepContract.ts'
 import type { ContractEmergencySlot, ContractHardening, StepRail } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
+import { shared } from '../../content/content.ts'
 import { autoOpenTiles } from './tileExpansion.ts'
 import { useSession } from '../session.ts'
 import { scanLineText } from '../scan/ScanProgress.tsx'
@@ -508,7 +509,31 @@ function inlineText(line: string): ReactNode[] {
  * bulleted lists, bold and inline code, and every other line as its own line so
  * an authored line break survives. Copy copies the bound Markdown itself.
  */
-export function AuthoredText({ text }: { text: string }) {
+/** The first roles of a list shown; the rest are one click away, and all of them in print. */
+const LIST_SHOWN = 12
+const ROLES_SHOW_ALL = (): string => (shared as unknown as { procedure: { rolesShowAll: string } }).procedure.rolesShowAll
+
+/**
+ * A "+ Label: text" sub-line under a step: a role list to tick through (owner,
+ * 2026-09-26), alphabetical in columns, its first dozen shown and the rest under
+ * Show all; or a fold with its text.
+ */
+function FoldLine({ line, printing }: { line: string; printing: boolean }) {
+  const fold = foldLineOf(line)
+  if (fold === null) return <>{inlineText(line)}</>
+  if (!('items' in fold)) return <details className="authored-fold"><summary>{inlineText(fold.title)}</summary><p>{inlineText(fold.text)}</p></details>
+  const shown = fold.items.slice(0, LIST_SHOWN)
+  const rest = fold.items.slice(LIST_SHOWN)
+  return (
+    <div className="authored-list">
+      <p className="authored-list-label"><strong>{fold.title}</strong></p>
+      <ul className="authored-list-items">{shown.map((item) => <li key={item}>{inlineText(item)}</li>)}</ul>
+      {rest.length > 0 && <details className="authored-list-more" open={printing || undefined}><summary>{fillText(ROLES_SHOW_ALL(), { n: String(fold.items.length) })}</summary><ul className="authored-list-items">{rest.map((item) => <li key={item}>{inlineText(item)}</li>)}</ul></details>}
+    </div>
+  )
+}
+
+export function AuthoredText({ text, printing = false }: { text: string; printing?: boolean }) {
   return (
     <>
       {authoredParts(text).map((part, k) => {
@@ -521,9 +546,8 @@ export function AuthoredText({ text }: { text: string }) {
           )
         }
         if (part.kind === 'line') {
-          // "+ Title: text" folds under the step: a long list stays one click away (policyProcedure.ts ROLES_INLINE).
-          const t = part.text.trim()
-          if (t.startsWith('+ ') && t.includes(': ')) return <details key={k} className="authored-fold"><summary>{inlineText(t.slice(2, t.indexOf(': ')))}</summary><p>{inlineText(t.slice(t.indexOf(': ') + 2))}</p></details>
+          // "+ Label: text" under a step: a list to tick through, or a fold (policyProcedure.ts roleList).
+          if (foldLineOf(part.text) !== null) return <FoldLine key={k} line={part.text} printing={printing} />
           return <p key={k}>{inlineText(part.text)}</p>
         }
         const items = part.items.map((lines, i) => (
@@ -532,8 +556,8 @@ export function AuthoredText({ text }: { text: string }) {
               <Fragment key={j}>
                 {/* The space keeps the item's lines apart in its text, not only on screen: without it "…you save.<br>This change…" reads as one sentence. */}
                 {j > 0 && !l.startsWith('+ ') && <>{' '}<br /></>}
-                {/* "+ Title: text" folds under the step: a long list stays one click away (policyProcedure.ts ROLES_INLINE). */}
-                {l.startsWith('+ ') && l.includes(': ') ? <details className="authored-fold"><summary>{inlineText(l.slice(2, l.indexOf(': ')))}</summary><p>{inlineText(l.slice(l.indexOf(': ') + 2))}</p></details> : inlineText(l)}
+                {/* "+ Label: text" under a step: a list to tick through, or a fold (policyProcedure.ts roleList). */}
+                <FoldLine line={l} printing={printing} />
               </Fragment>
             ))}
           </li>

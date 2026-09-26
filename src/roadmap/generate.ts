@@ -841,7 +841,7 @@ const usesLocations = (action: Pick<Action, 'resolution'>): boolean => (action.r
 
 export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Role names travel with the scan ($expand=roleDefinition); learn them before any label is built.
-  learnRoleNames(input.snapshot.config.roleAssignments?.rows ?? [])
+  learnRoleNames(input.snapshot.config.roleAssignments?.rows ?? [], input.snapshot.config.roleDefinitions?.rows ?? [])
   const { snapshot, mapping, viability, planId } = input
   // The exclusions group as a safety-sensitive choice (Foundation C): what the
   // operator confirmed, whether this scan could read it, and therefore whether

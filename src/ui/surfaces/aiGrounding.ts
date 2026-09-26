@@ -264,7 +264,7 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
     target.push(
       text('policy.target.displayName') ? `${W.targetName}: ${text('policy.target.displayName')}` : null,
       ...labelled(W.includeUsers, asList(b['policy.target.includeUsers']).map(named)),
-      ...labelled(W.includeRoles, asList(b['policy.target.includeRoles']).map(named)),
+      ...labelled(W.includeRoles, asList(b['policy.target.includeRoles']).map(named).sort((x, y) => x.localeCompare(y, 'en', { sensitivity: 'base' }))),
       excludeGroups === null ? null : `${W.excludeGroups}: ${excludeGroups.length === 0 ? W.none : excludeGroups.map(named).join(', ')}`,
       excludeUsers === null ? null : `${W.excludeUsers}: ${excludeUsers}`,
       text('policy.target.locationWords') ? `${W.locations}: ${text('policy.target.locationWords')}` : null,
