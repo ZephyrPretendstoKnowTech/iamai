@@ -12,7 +12,7 @@
 //
 // The policy is the one IAMAI will read: once the step is done, the tenant
 // policy that delivers it; before that, the policy the plan writes (its
-// operation's body, or the tracked policy with the patch applied). A shape this
+// operation's body, or the tracked policy with the patch or the corrections applied). A shape this
 // does not read — a grant control it has no words for, a value not resolved
 // yet — says nothing rather than something partly true.
 //
@@ -96,7 +96,13 @@ function policyOf(step: Step, rows: readonly Row[]): Row | null {
     const intent = op.mode === 'update' && op.intent && typeof op.intent === 'object' ? (op.intent as Row) : null
     return intent === null ? body : withIntended(body, intent, step.state.observation?.unwritten ?? [])
   }
-  return ops.length === 0 && tracked.length === 1 ? tracked[0] : null
+  if (ops.length > 0 || tracked.length !== 1) return null
+  // A correction a person makes in Entra, with no operation: what IAMAI will see
+  // is the tenant's policy with each setting to correct as the plan's (owner,
+  // 2026-09-26). It read the policy as it stands, so Completion Criteria
+  // described the very setting the card asks to correct.
+  const intended = step.action.intended as Row | undefined
+  return intended ? withIntended(tracked[0], intended, step.state.observation?.unwritten ?? []) : tracked[0]
 }
 
 /** The policy with the exclusions group excluded, where its users section does not exclude it yet. */
