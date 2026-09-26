@@ -4061,7 +4061,8 @@
       "kind": "object",
       "title": "Create or Correct Allowed Countries Location",
       "changeLine": null,
-      "why": "The country rule lets sign-ins in only from the countries on this list. Entra decides the country by IP address, and a sign-in whose country it cannot work out is blocked.",
+      "$commentWhy": "Empty on purpose (owner, 2026-09-26): this location is Block Sign-ins From Countries Not Allowed's own task, and its About sentence is in that step's why, which keeps the About at two sentences.",
+      "why": "",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
@@ -5759,7 +5760,8 @@
       "kind": "policy",
       "title": "Block Sign-ins From Countries Not Allowed",
       "changeLine": null,
-      "why": "It keeps out sign-ins from countries the business does not work in. Check travel, VPN and partner routes before it is turned on, so it does not stop expected work.",
+      "$commentWhy": "Owner, 2026-09-26: two sentences. The generic travel, VPN and partner warning named nobody; the people signed in from outside the countries are the step's own evidence. The countries location's own sentence (s-prereq-allowed-countries) is folded in here.",
+      "why": "It keeps out sign-ins from countries the business does not work in. Entra decides a sign-in's country by its IP address, and blocks one whose country it cannot work out.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },

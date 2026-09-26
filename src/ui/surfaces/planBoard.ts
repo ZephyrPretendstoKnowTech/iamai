@@ -750,6 +750,10 @@ function boardTimingOf(step: Step, waveStart: string | null, read: LaneView | nu
     // 29, owner 2026-09-25): "Review now" and "Decide now" were the only rows
     // without a date.
     if (lane.lane === 'Ready' && (lane.substatus === 'Review' || lane.substatus === 'Decision') && waveStart) return { kind: 'day', text: dayLabel(waveStart) }
+    // One the plan places in no phase is due the day the plan was read (owner,
+    // 2026-09-26: 6.3 read "Decide now", which is no date).
+    const today = step.scheduled?.basis?.today ?? null
+    if (lane.lane === 'Ready' && (lane.substatus === 'Review' || lane.substatus === 'Decision') && today) return { kind: 'day', text: dayLabel(today) }
     if (lane.lane === 'Ready' && lane.substatus === 'Review') return { kind: 'word', text: schedulingWords.reviewNow }
     if (lane.lane === 'Ready' && lane.substatus === 'Decision') return { kind: 'word', text: schedulingWords.decideNow }
     return step.blockedBy.length > 0 ? { kind: 'held' } : { kind: 'undated', word: step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none }
