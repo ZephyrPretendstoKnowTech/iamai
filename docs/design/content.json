@@ -3628,12 +3628,12 @@
       "cardDone": "Marked done {date}",
       "markDone": "Mark as done",
       "whatToDo": [
-        "Send the sign-in logs to a Log Analytics workspace: [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Monitoring & health → Diagnostic settings → + Add diagnostic setting**, select **SignInLogs**, then **Send to Log Analytics workspace** and **Save**.",
+        "Send the sign-in logs to a Log Analytics workspace: [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Monitoring & health → Diagnostic settings → + Add diagnostic setting**, name it **Entra sign-in logs**, select **SignInLogs**, then **Send to Log Analytics workspace** and **Save**.",
         "In the [Azure portal](https://portal.azure.com/), open **Monitor → Alerts → + Create → Alert rule**.",
         "**Scope**: select that Log Analytics workspace, then **Apply**.",
         "**Condition**: **Signal name** Custom log search, **Query type** Aggregated logs, and this search query: `{alertQuery}`",
         "**Alert logic**: **Threshold type** Static, **Operator** Greater than, **Threshold value** 0, **Frequency of evaluation** 5 minutes.",
-        "**Actions**: select or create an action group whose **Email/SMS message/Push/Voice** notification reaches the admins who respond.",
+        "**Actions**: create an action group named **Emergency account alerts**, display name **EA alerts**, with an **Email/SMS message/Push/Voice** notification to the admins who respond.",
         "**Details**: **Severity** 0 - Critical, name it **Emergency account sign-in**, and under **Advanced options** select **Enable upon creation**. Then **Review + create → Create**.",
         "Sign in once as {firstAccountUpn}, confirm the alert arrives, then select **Mark as done**."
       ],

@@ -138,7 +138,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
         <div className="step-body has-rail">
           <div className="step-main step-main-lead">
             {why}
-            <EmergencySubjectReadiness subjects={alertingSubjects(row)} printing={!onDone} barMain="" onWhy={null} />
+            <EmergencySubjectReadiness subjects={alertingSubjects(row)} printing={!onDone} barMain="" onWhy={null} scanNote={false} />
           </div>
           <StepActionColumn rail={{ headline: row.done ? status.word : alertingMilestone(), instruction: null }}>
             {onDone && !row.done && <Button variant="primary" onClick={() => onDone(todayDate(), phase.accountIds, {})}>{alertingMarkDone()}</Button>}
