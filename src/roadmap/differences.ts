@@ -205,7 +205,26 @@ export function differencePieces(dimension: string, intended: Row, deployed: Row
     return pieces.length > 0 ? pieces : whole('differs')
   }
   if (dimension === 'grantControls') return whole(o.grant ?? 'differs')
+  // A condition the tenant adds narrows when the policy applies (weaker); one it
+  // drops widens it (stricter); set both ways, it differs.
+  if (dimension.startsWith('conditions.')) {
+    const key = dimension.slice('conditions.'.length)
+    const planHas = conditionSet(key, ((intended.conditions ?? {}) as Row)[key])
+    const tenantHas = conditionSet(key, ((deployed.conditions ?? {}) as Row)[key])
+    if (tenantHas && !planHas) return [{ dimension, part: 'whole', change: 'extra', ids: [], direction: 'weaker', ...(o.fingerprint ? { value: o.fingerprint } : {}) }]
+    if (planHas && !tenantHas) return [{ dimension, part: 'whole', change: 'missing', ids: [], direction: 'stricter', ...(o.fingerprint ? { value: o.fingerprint } : {}) }]
+  }
   return whole('differs')
+}
+
+/** Whether a policy sets a condition at all: a list with something in it, a filter with a rule; client apps "all" is none. */
+function conditionSet(key: string, value: unknown): boolean {
+  if (value === null || value === undefined) return false
+  if (Array.isArray(value)) return key === 'clientAppTypes' ? value.some((v) => String(v).toLowerCase() !== 'all') : value.length > 0
+  if (typeof value !== 'object') return false
+  const v = value as Row
+  if (typeof (v.deviceFilter as Row | undefined)?.rule === 'string' && ((v.deviceFilter as Row).rule as string).trim() !== '') return true
+  return Object.values(v).some((x) => Array.isArray(x) ? x.length > 0 : x !== null && typeof x === 'object' ? conditionSet(key, x) : false)
 }
 
 /** FNV-1a over a text: short, stable, and carries no tenant value into the plan record. */

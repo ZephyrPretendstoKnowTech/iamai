@@ -23,6 +23,7 @@ import { UNNAMED } from '../../names.ts'
 import { CONTRACT } from './stepContract.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
 import { actionWordsOf } from './policyFact.ts'
+import { correctionFieldsOf } from './stepPackage.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 type Row = Record<string, unknown>
@@ -53,6 +54,9 @@ type PanelWords = {
   grant: string
   grantShort: string
   whole: string
+  conditionExtra: string
+  conditionMissing: string
+  mustCorrect: string
   leavesRequires: string
   leavesBlocks: string
   leavesPlain: string
@@ -144,6 +148,8 @@ function shortOf(p: DifferencePiece): string {
   if (p.part === 'allUsers') return (p.change === 'missing' ? W.allUsersMissing : W.allUsersExtra).toLowerCase()
   if (p.part === 'control') return W.controls[p.control ?? ''] ?? p.control ?? ''
   if (p.dimension === 'grantControls') return W.grantShort
+  if (p.change === 'extra') return fillText(W.conditionExtra, { dimension: dimensionWords([p.dimension]) }).toLowerCase()
+  if (p.change === 'missing') return fillText(W.conditionMissing, { dimension: dimensionWords([p.dimension]) }).toLowerCase()
   return dimensionWords([p.dimension])
 }
 
@@ -160,7 +166,15 @@ function lineOf(p: DifferencePiece, grant: { theirs: string; ours: string } | nu
     return fillText(p.change === 'missing' ? W.sessionMissing : p.change === 'extra' ? W.sessionExtra : W.sessionChanged, { control: setting })
   }
   if (p.dimension === 'grantControls') return grant !== null ? fillText(W.grantBoth, grant) : W.grant
+  if (p.change === 'extra') return fillText(W.conditionExtra, { dimension: dimensionWords([p.dimension]) })
+  if (p.change === 'missing') return fillText(W.conditionMissing, { dimension: dimensionWords([p.dimension]) })
   return fillText(W.whole, { dimension: dimensionWords([p.dimension]) })
+}
+
+/** The dimensions the step's own update writes (stepPackage.ts correctionFieldsOf), in the dimension keys tracking uses. */
+function writtenDimensions(step: Step, ctx: Pick<StepVarContext, 'snapshot'>): string[] {
+  const dims = correctionFieldsOf(step, ctx.snapshot).map((f) => (f.startsWith('conditions.') ? f.split('.').slice(0, 2).join('.') : f.split('.')[0]))
+  return [...new Set(dims)]
 }
 
 /** The tenant's policy and the plan's, for one member: the grants' words and the plan's own. */
@@ -219,6 +233,8 @@ export function acceptPanelOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' |
     const tag: Tag = p.required ? 'required' : p.direction
     return { tag, mark: W.tags[tag], text: lineOf(p, grant, ctx) }
   })
+  // What the step's own correction writes can't be accepted: said beside what can.
+  if (open.length > 0) for (const d of writtenDimensions(step, ctx)) lines.push({ tag: 'required', mark: W.tags.required, text: fillText(W.mustCorrect, { dimension: cap(dimensionWords([d])) }) })
   const who = list(leftOut)
   const scope = leftOut.length === 0 ? null : leaves === null ? fillText(W.leavesPlain, { who }) : fillText(leaves.verb === 'requires' ? W.leavesRequires : W.leavesBlocks, { who, what: leaves.what })
   const sentence = [scope, weakerGrant !== null ? fillText(W.leavesGrant, { what: weakerGrant }) : null].filter((s): s is string => s !== null).join(' ')

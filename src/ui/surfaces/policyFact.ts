@@ -164,9 +164,23 @@ function actionOf(e: PolicyEffect, row: Row, strengthName: (id: string) => strin
  * Accept panel says what a weaker difference leaves people without with it.
  */
 export function actionWordsOf(row: Row, ctx: Pick<StepVarContext, 'snapshot' | 'mapping'>): { verb: 'blocks' | 'requires'; what: string } | null {
-  const e = effectOf(row)
+  const e = wordsEffectOf(row)
   if (e.unknown.length > 0) return null
   return actionOf(e, row, (id) => strengthNameIn(id, ctx.snapshot, ctx.mapping))
+}
+
+/**
+ * A policy's effect for its words: the engine holds Require risk remediation
+ * unread, so no lockout reading guesses at it (operations.ts READABLE_CONTROLS),
+ * but a fact can still say it (review, 2026-09-26: Remediate High-Risk Users
+ * read "The grant differs from the baseline's" and no fact at all).
+ */
+function wordsEffectOf(row: Row): PolicyEffect {
+  const e = effectOf(row)
+  const grant = (row.grantControls ?? null) as { builtInControls?: unknown } | null
+  const risk = Array.isArray(grant?.builtInControls) && grant.builtInControls.some((c) => String(c).toLowerCase() === 'riskremediation')
+  if (!risk) return e
+  return { ...e, controls: new Set([...e.controls, 'riskremediation']), unknown: e.unknown.filter((u) => !u.endsWith(': riskremediation')) } as PolicyEffect
 }
 
 const ACTIONS: Record<string, 'registerSecurityInfo' | 'registerDevice'> = { 'urn:user:registersecurityinfo': 'registerSecurityInfo', 'urn:user:registerdevice': 'registerDevice' }
@@ -227,7 +241,7 @@ export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 
   if (row === null) return null
   const policy = typeof row.displayName === 'string' ? row.displayName.trim() : ''
   if (policy === '') return null
-  const e = effectOf(row)
+  const e = wordsEffectOf(row)
   if (e.unknown.length > 0 || e.scope.unreadable || e.scope.workloadOnly) return null
   const acted = actionOf(e, row, (id) => strengthNameIn(id, ctx.snapshot, ctx.mapping))
   const when = whenOf(e, e.blocks, (id) => { const n = ctx.nameOf(id); return !n || n.toLowerCase() === id.toLowerCase() || /‹/.test(n) ? null : n })
