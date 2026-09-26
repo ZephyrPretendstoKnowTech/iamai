@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { groupOf, membersOf } from '../../roadmap/stepGroups.ts'
 import { FOUNDATION_STEP_IDS } from '../../roadmap/foundations.ts'
@@ -15,7 +15,7 @@ import { alertingAiInfo, alertingSteps, alertingSubjects } from './alertingTasks
 import { cleanupRowWho } from './rowWho.ts'
 import { cleanupExportView } from './cleanupExport.ts'
 import { boardReadingsOf } from './planBoard.ts'
-import { cleanupPhaseFor, renamesOf } from '../../roadmap/cleanupPhase.ts'
+import { cleanupPhaseFor, renamesOf, settleRenames } from '../../roadmap/cleanupPhase.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { namingSteps, namingSubjects } from './namingTasks.ts'
 
@@ -81,7 +81,7 @@ test('8.1 exports the same procedure the step draws, and one completion line', (
   assert.deepEqual(view.doneWhen, ['You mark this step done once a test sign-in by an emergency account raised the alert.'])
 })
 
-test('8.2 lists each policy the plan tracks under a name other than the baseline’s, with its ID, before Review Overlapping Policies', () => {
+test('8.2 lists each policy the plan tracks under a name other than the baseline’s, with its ID, last of Ongoing Checks and Cleanup', () => {
   // Owner, 2026-09-26 (Jon's names): the baseline author's own name, verbatim.
   const { phase } = demo()
   const naming = phase.rows.find((x) => x.kind === 'naming')!
@@ -94,20 +94,53 @@ test('8.2 lists each policy the plan tracks under a name other than the baseline
   ])
   assert.ok(naming.lists.renames.every((l) => / \(ID: [0-9a-f-]{36}\)$/.test(l)), 'each with its ID')
   assert.equal(naming.done, null)
-  const consolidation = phase.rows.find((x) => x.kind === 'consolidation')
-  if (consolidation) assert.ok(consolidation.day > naming.day, 'consolidation follows it, as cleanup.ts orders them')
+  // Dated after every other Ongoing row, as the board numbers it last (stepGroups.ts), and moving none of them.
+  for (const other of phase.rows.filter((x) => x.kind !== 'naming' && x.kind !== 'drill')) assert.ok(other.day < naming.day, other.kind)
 })
 
-test('8.2 skips a difference in capitals, and never gives two policies one name', () => {
+test('8.2 moves no other row when nothing is left to rename', () => {
+  // A hardening row cleanupPhaseFor appends after consolidation (review, 2026-09-26).
+  const { r } = demo()
+  const phase = structuredClone(r.schedule.cleanup!)
+  const before = phase.rows.filter((x) => x.kind !== 'naming').map((x) => `${x.kind}@${x.day}`)
+  const schedule = { ...r.schedule, cleanup: phase }
+  settleRenames(schedule, [])
+  assert.deepEqual(phase.rows.map((x) => `${x.kind}@${x.day}`), before)
+})
+
+test('8.2 skips a difference in capitals, never gives two policies one name, and renames only a policy its step holds to the plan', () => {
   const member = (policyId: string, policyName: string, plannedName: string) => ({ key: policyId, sourceName: '', policyId, policyName, plannedName })
-  const step = (id: string, members: ReturnType<typeof member>[]) => ({ id, status: 'active', doesntApply: false, state: { setAside: false }, tracking: { members } }) as unknown as Step
+  // A step that reads its policy against the plan's whole policy (Action.intended), or one that only adopts it.
+  const step = (id: string, members: ReturnType<typeof member>[], owns = true) => ({ id, status: 'active', doesntApply: false, state: { setAside: false }, action: owns ? { intended: {} } : {}, tracking: { members } }) as unknown as Step
   const renames = renamesOf([
     step('a', [member('p1', 'iac - global - block - x', 'IAC - GLOBAL - BLOCK - X')]),
     step('b', [member('p2', 'Staff MFA', 'IAC - GLOBAL - GRANT - MFA')]),
     step('c', [member('p3', 'Guest MFA', 'IAC - GLOBAL - GRANT - MFA'), member('p2', 'Staff MFA', 'IAC - OTHER')]),
     step('d', [member('p4', 'Old', 'Staff MFA')]),
-  ])
+    // Only adopted: the baseline's name would make it the plan's own and reopen its step.
+    step('e', [member('p5', 'Partner MFA', 'IAC - PARTNER')], false),
+    // A name an untracked tenant policy already has.
+    step('f', [member('p6', 'Legacy block', 'IAC - TAKEN')]),
+  ], ['IAC - Taken'])
   assert.deepEqual(renames, [{ id: 'p2', from: 'Staff MFA', to: 'IAC - GLOBAL - GRANT - MFA' }])
+})
+
+test('doing every rename 8.2 lists reopens no step', () => {
+  // Review, 2026-09-26: the baseline's name made an adopted policy the plan's own.
+  for (const f of [fixture('demo'), fixture('mid'), fixture('large'), fixture('midflight'), curatedFixture('demo-week2')]) {
+    const r1 = runFixture(f)
+    const renames = r1.schedule.cleanup?.namingProposals ?? []
+    const snapshot = structuredClone(f.snapshot)
+    for (const row of snapshot.config.caPolicies.rows as { id: string; displayName: string }[]) {
+      const rename = renames.find((x) => x.id === row.id)
+      if (rename) row.displayName = rename.to
+    }
+    const r2 = runFixture({ ...f, snapshot })
+    for (const s of r1.steps) {
+      const t = r2.steps.find((x) => x.id === s.id)!
+      assert.deepEqual([t.status, t.state.satisfied, JSON.stringify(t.state.observation?.unwritten ?? [])], [s.status, s.state.satisfied, JSON.stringify(s.state.observation?.unwritten ?? [])], `${f.name} ${s.id}`)
+    }
+  }
 })
 
 test('8.2 is drawn on the step template with no fields and no Save, and exports the procedure it draws', () => {
@@ -176,7 +209,8 @@ test('held 8.1: its rail names what it waits for, it offers no Mark as done unti
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(plan, /const held = lane\.lane === 'Ready' \|\| lane\.lane === 'Completed' \? null : lane\.waitingFor \?\? lane\.label/)
   const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-  assert.match(cleanup, /headline: row\.done \? status\.word : status\.held \?\? alertingMilestone\(\)/)
-  assert.match(cleanup, /onDone && !row\.done && !status\.held && <Button/)
+  assert.match(cleanup, /const held = status\.held \?\? status\.waitingFor \?\? null/)
+  assert.match(cleanup, /headline: row\.done \? status\.word : held \?\? alertingMilestone\(\)/)
+  assert.match(cleanup, /onDone && !row\.done && !held && <Button/)
   assert.doesNotMatch(cleanup, /alertingSubjects\(row\)\}[^>]*scanNote=\{false\}/)
 })
