@@ -34,12 +34,12 @@ test('an announcement is never dated before today: a change nearer than its noti
   const step = r.steps.find((s) => s.id === 's-goal-admin-session')!
   const near = { ...step, rings: [{ ...step.rings[0], plannedStart: '2026-09-29T12:00:00.000Z' }] } as typeof step
   const ctx = { rhythm: r.schedule.rhythm!, timeZone: 'UTC' }
-  assert.ok(eventsFor(near, ctx)!.announce.at < '2026-09-26', 'the premise: five working days before Sep 29 is gone by Saturday Sep 26')
+  assert.ok(eventsFor(near, ctx)!.announce!.at < '2026-09-26', 'the premise: five working days before Sep 29 is gone by Saturday Sep 26')
   const e = eventsFor(near, { ...ctx, today: '2026-09-26T12:00:00.000Z' })!
-  assert.equal(e.announce.at.slice(0, 10), '2026-09-28', 'Monday, the first working day from Saturday')
-  assert.match(e.announce.reason, /less than 5 working days away/)
+  assert.equal(e.announce!.at.slice(0, 10), '2026-09-28', 'Monday, the first working day from Saturday')
+  assert.match(e.announce!.reason, /less than 5 working days away/)
   assert.equal(e.remind, null, 'no reminder before or on the day it is announced')
   // A change far enough off keeps its full notice.
   const far = { ...step, rings: [{ ...step.rings[0], plannedStart: '2026-10-12T12:00:00.000Z' }] } as typeof step
-  assert.equal(eventsFor(far, { ...ctx, today: '2026-09-26T12:00:00.000Z' })!.announce.at.slice(0, 10), '2026-10-05')
+  assert.equal(eventsFor(far, { ...ctx, today: '2026-09-26T12:00:00.000Z' })!.announce!.at.slice(0, 10), '2026-10-05')
 })

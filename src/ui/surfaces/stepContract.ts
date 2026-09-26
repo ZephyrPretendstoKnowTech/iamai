@@ -779,7 +779,8 @@ function foundOf(step: Step, tenant: string, said: string | null, routeStart: St
   const unmeasuredOn = step.state.lifecycle === 'enforced' && gate !== undefined && !/[0-9]/.test(gate.value)
   if (gate && step.status !== 'done' && step.status !== 'skipped' && !unmeasuredOn) {
     // The signed-in admin alone short is said by its own card (walk list 4.x item 43).
-    if (operatorId === null || !operatorAloneShort(step, gate, operatorId)) out.push(found('gate', readinessSentence(step, gate, routeStart, labels, operatorId)))
+    // A create the threshold holds says why the create waits, not only the turn-on (owner, 2026-09-26).
+    if (operatorId === null || !operatorAloneShort(step, gate, operatorId)) out.push(found('gate', readinessSentence(step, gate, routeStart, labels, operatorId, createWaitsOnReadiness(step) ? readinessHeldLine(step, tenant) : null)))
   }
   // And on a step that has finished short of it, where the gate is already gone.
   else { const short = shortReadingOf(step); if (short !== null) out.push(found('readiness', short.note)) }
@@ -1976,7 +1977,7 @@ const R = (): ContractWords['readiness'] => CONTRACT.readiness
  * on, and the fact alone once it is enforced — enforcement is no longer waiting
  * for the number. A value never measured keeps the gate's own words.
  */
-export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, start: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null, operatorId: string | null = null): string {
+export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>, start: StepContract['routeStart'] = null, labels: ReadonlyMap<string, string> | null = null, operatorId: string | null = null, held: string | null = null): string {
   // A gate on people's methods says who is short and what moves them, and
   // nothing about the threshold the row and the value already state (walk list
   // 4.x items 42, 48): "23 of 27 people have a method it accepts. 2 registered
@@ -2044,7 +2045,7 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
     // with nothing on the plan that enrols a device, so the gate stated a
     // percentage and no way to change it — the Temporary Access Pass dead end
     // again, one family along.
-    const waits = fillText(CONTRACT.foundReadiness, { ...gate })
+    const waits = held ?? fillText(CONTRACT.foundReadiness, { ...gate })
     // The percentage's own numerator. "67% MFA-ready" says how far off the gate
     // is and nothing about who: the reading behind it — how many people have a
     // method the target policies accept, out of how many — is computed by
@@ -2877,9 +2878,9 @@ function implementationTile(step: Step, c: StepContract): ReadinessTile | null {
   // A policy in Report-only whose turn-on waits on readiness draws no card of its
   // own (walk list 4.x item 21, owner 2026-09-24): "Implementation · Unavailable ·
   // Running this would change what Fixture small's people have to do straight
-  // away…" said again what the Threshold card beside it says. A create the
-  // threshold holds keeps it: there the create itself is what waits.
-  if (c.implementation.reason === 'readiness-unmet' && !createWaitsOnReadiness(step)) return null
+  // away…" said again what the Threshold card beside it says. Nor a create the
+  // threshold holds (owner, 2026-09-26): the Threshold card says why it waits.
+  if (c.implementation.reason === 'readiness-unmet') return null
   // A policy the tenant switched off has one thing to do, and its policy card and
   // Implementation Tasks say it: a second card saying it again is gone (walk list
   // 4.x item 24).

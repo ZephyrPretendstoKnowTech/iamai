@@ -620,6 +620,13 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     }
     if (!produced.some(a => a.id === channel)) supported.delete(channel)
   }
+  // A create the readiness threshold holds hands over nothing runnable (owner,
+  // 2026-09-26): its Entra procedure stands whole as the reference, and the
+  // PowerShell and JSON that would make the change wait with it.
+  if (heldCreateMilestoneOf(step) !== null) for (const channel of ['ps', 'json'] as const) {
+    for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === channel) produced.splice(i, 1)
+    supported.delete(channel)
+  }
   // Require MFA for Guests writes to guests: a directory with none has nobody to
   // tell (owner, 2026-09-25).
   if (step.goalId === 'guests-mfa' && !ctx.snapshot.users.some((u) => u.userType === 'guest')) supported.delete('email')
