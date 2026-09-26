@@ -144,6 +144,8 @@ export type UserEvidence = {
   recoveryCandidates?: RecoverySignInCandidate[]
   /** The platform families this account signed in from successfully, latest per family. */
   platforms?: PlatformSeen[]
+  /** The latest successful sign-in whose record named no platform, which Block Unsupported Device Platforms stops. Absent where there was none, or on a snapshot taken before it was recorded. */
+  noPlatformAt?: string
   /**
    * The devices behind those platforms (MFA Readiness, prompt 62): per platform
    * family, the latest successful sign-in, the strongest join state seen, the

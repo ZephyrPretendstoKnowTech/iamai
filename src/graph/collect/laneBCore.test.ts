@@ -381,3 +381,17 @@ test('sign-ins that cannot be a recovery test, stale or to another tenant\'s res
     assert.deepEqual(await kept({}), [...newest, 'away', 'drill'], 'no tenant given: the newest that could be a test per resource tenant')
   }
 })
+
+test('each person keeps the latest successful sign-in that named no platform, and nothing where none did (6.2)', () => {
+  const u = aggregate([
+    row({ userId: 'a', hoursAgo: 30, os: '' }),
+    row({ userId: 'a', hoursAgo: 5, os: '' }),
+    row({ userId: 'a', hoursAgo: 1, os: '', status: { errorCode: 50126 } }),
+    row({ userId: 'b', hoursAgo: 2, os: 'Linux' }),
+    row({ userId: 'c', hoursAgo: 2 }),
+  ])
+  assert.equal(u.a.noPlatformAt, iso(5), 'the latest success, never a failed attempt')
+  assert.equal(u.b.noPlatformAt, undefined, 'a named platform is a platform')
+  assert.equal(u.c.noPlatformAt, undefined, 'a row from before the device labels says nothing')
+  assert.deepEqual(u.b.platforms, [{ os: 'Linux', at: iso(2) }])
+})

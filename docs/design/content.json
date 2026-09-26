@@ -5856,7 +5856,7 @@
       "kind": "policy",
       "title": "Shorten Admin Sessions",
       "changeLine": null,
-      "why": "Shorter admin browser sessions reduce how long a signed-in browser can remain useful without another authentication check. Test the experience so normal admin work remains practical.",
+      "why": "Shorter admin browser sessions reduce how long a signed-in browser can remain useful without another authentication check.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
@@ -6188,7 +6188,16 @@
       "kind": "policy",
       "title": "Block Unsupported Device Platforms",
       "changeLine": null,
-      "why": "Once this is on, only Android, iOS, Windows and macOS reach the tenant; Linux and anything that reports no platform are blocked. Review those sign-ins before the rule closes.",
+      "pitfalls": {
+        "$comment": "The card Block Unsupported Device Platforms draws while it is not On (ui/surfaces/pitfalls.ts; owner, 2026-09-25): each person the policy reaches whose successful sign-ins came from a platform it blocks, with the platform and the latest day (signInEvidence platforms and noPlatformAt). {supported} is the platforms the policy leaves out, from its own conditions.",
+        "platformsLabel": "Unsupported Platforms",
+        "platformsValue": "{n} people sign in from a platform this blocks",
+        "platformsNote": "Once this is On, their next sign-in from that device is blocked. Move each one to {supported} before you turn it on.",
+        "platformsPerson": "{name}: {seen}",
+        "platformsSeen": "{platform}, last {date}",
+        "noPlatform": "no platform reported"
+      },
+      "why": "Once this is on, only Android, iOS, Windows and macOS reach the tenant; Linux and anything that reports no platform are blocked.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions"
       },
