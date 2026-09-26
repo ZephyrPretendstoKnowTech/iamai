@@ -47,7 +47,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
    * The row's lane label and tone, and, where the caller draws no row above the
    * body (the printed plan), what the board says it waits for (LaneView.waitingFor).
    */
-  status: { word: string; tone: StatusTone; waitingFor?: string | null }
+  status: { word: string; tone: StatusTone; waitingFor?: string | null; held?: string | null }
   /** The live controls; absent when printing. */
   onScan?: () => void
   /** Done: record the date (YYYY-MM-DD) in the plan's checkpoints. */
@@ -140,10 +140,11 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
         <div className="step-body has-rail">
           <div className="step-main step-main-lead">
             {why}
-            <EmergencySubjectReadiness subjects={alertingSubjects(row)} printing={!onDone} barMain="" onWhy={null} scanNote={false} />
+            <EmergencySubjectReadiness subjects={alertingSubjects(row)} printing={!onDone} barMain="" onWhy={null} />
           </div>
-          <StepActionColumn rail={{ headline: row.done ? status.word : alertingMilestone(), instruction: null }}>
-            {onDone && !row.done && <Button variant="primary" onClick={() => onDone(todayDate(), phase.accountIds, {})}>{alertingMarkDone()}</Button>}
+          {/* Held, the rail names what it waits for and offers no Mark as done until it is Ready (owner, 2026-09-26). */}
+          <StepActionColumn rail={{ headline: row.done ? status.word : status.held ?? alertingMilestone(), instruction: null }}>
+            {onDone && !row.done && !status.held && <Button variant="primary" onClick={() => onDone(todayDate(), phase.accountIds, {})}>{alertingMarkDone()}</Button>}
           </StepActionColumn>
           <div className="step-main step-main-rest">
             <Implementation heading={TASK_HEAD.implementation} artifacts={alertArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={cleanupSourceLine(entry)} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={alertTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText="" />
@@ -163,7 +164,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
             {why}
             <EmergencySubjectReadiness subjects={namingSubjects(phase)} printing={!onDone} barMain="" onWhy={null} />
           </div>
-          <StepActionColumn rail={{ headline: row.done ? status.word : namingMilestone(), instruction: null }} />
+          <StepActionColumn rail={{ headline: row.done ? status.word : status.held ?? namingMilestone(), instruction: null }} />
           <div className="step-main step-main-rest">
             <Implementation heading={TASK_HEAD.implementation} artifacts={renameArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={cleanupSourceLine(entry)} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={renameTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText="" />
             {done}

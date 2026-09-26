@@ -686,7 +686,9 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
   // the recorded attestation (prompt 49 item 5). Both facts are read in one
   // place (roadmap/cleanupDone.ts `cleanupComplete`), which the lane adapter
   // reads for the row's lane; the row and its opened head say that lane (A1b).
-  const status = { word: lane.label, tone: lane.tone }
+  // What a row not yet Ready waits for, for its rail (owner, 2026-09-26: "After security rollout").
+  const held = lane.lane === 'Ready' || lane.lane === 'Completed' ? null : lane.waitingFor ?? lane.label
+  const status = { word: lane.label, tone: lane.tone, held }
   const who = cleanupRowWho(phase, row)
   return (
     <>
