@@ -14,6 +14,7 @@ import registry from '../../content/implementation/registry.generated.json' with
 import { stepContract } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
+import { policySubjectsOf } from './policyTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { mfaLeavesOutIntune } from '../../roadmap/fixtures/intuneMfa.ts'
 
@@ -157,14 +158,23 @@ test('7.3: an MFA policy the plan will correct to the baseline’s, which leaves
   assert.equal(loopHeld(f), true)
 })
 
-test('7.4: the held create’s Tasks Remaining card names the readiness it waits for, never the create', () => {
+test('7.4: the held create is one Threshold card, with the count and the certificate reason, and hands over nothing runnable', () => {
+  // Owner, 2026-09-26: no policy card and no Implementation card beside it, no
+  // PowerShell or JSON while the create waits, and no lecture lines.
   const f = curatedFixture('demo')
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === DEVICE_STEP)!
-  const body = stepBodyOf(step, contextOf(f, run), {} as never) as unknown as { emergencyAccountTasks: { tasks: { id: string; required: boolean; readinessTitle?: string }[] } | null }
+  const body = stepBodyOf(step, contextOf(f, run), {} as never)
   const next = body.emergencyAccountTasks?.tasks.find((t) => t.required)
   assert.equal(next?.id, 'create', 'the premise: the create is the first task still to do')
-  assert.equal(next?.readinessTitle, 'Device readiness reaches 80%')
+  const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
+  assert.equal(cards.some((c) => c.key.startsWith('policy')), false, 'no policy card saying the wait again')
+  assert.equal(cards.some((c) => c.key === 'implementation'), false, 'no Implementation card saying it a third time')
+  const gate = cards.find((c) => c.key === 'gate')!
+  assert.match(gate.instruction, /pick a certificate/)
+  assert.match(gate.instruction, /\d+ of \d+ people have a compliant computer\./)
+  assert.doesNotMatch(gate.instruction, /Phones are outside this answer|No step of this plan enrolls a device/)
+  assert.deepEqual(body.artifacts.map((a) => a.id), ['portal', 'ai'], 'the Entra procedure stays; PowerShell and JSON wait with the create')
 })
 
 test('7.3: MFA split across policies covers the sign-in when, between them, they reach everyone the step reaches', () => {

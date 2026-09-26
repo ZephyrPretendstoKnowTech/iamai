@@ -558,7 +558,7 @@
           "other": "a method"
         },
         "$commentDeviceLine": "The device gate printed a bare percentage and no line, where every MFA gate prints \"N of M people\". Three readers hand-counted it and all three got a different number, because the ratio counts people with a compliant device WITHIN THE DEVICE DECISION SCOPE - computers only, where that is the answer - and the sentence said \"of people on a compliant device\" with no mention of scope. Every instance read optimistic, and enrolling the phones would not have moved the number the reader was told to move.",
-        "deviceComputers": "{ready} of {total} people have a compliant computer. Phones are outside this answer, so they are not counted here.",
+        "deviceComputers": "{ready} of {total} people have a compliant computer.",
         "deviceBoth": "{ready} of {total} people have a compliant device on a platform this answer covers."
       },
       "evidence": {
@@ -2294,7 +2294,7 @@
           },
           "readinessRoute": {
             "$comment": "Where a readiness number is moved, by its family (copy/reasons.ts READINESS_MEASURE), for a measure the plan itself has no step for. A family with no entry states the number alone.",
-            "device": "Device readiness moves in Intune, not here: enroll the devices on the chosen platforms and assign a compliance policy, then scan again. No step of this plan enrolls a device for you."
+            "device": "Device readiness moves in Intune, not here: enroll the devices on the chosen platforms and assign a compliance policy, then scan again."
           },
           "$commentFoundReadinessRouteStep": "A gate that says what it waits for but not what opens it is half a sentence. The plan already knows: generate.ts draws the edge from a readiness-held step to the campaign that moves the number, and the step it drew to was named nowhere on the held step. Only where that edge exists.",
           "foundReadinessRouteStep": "The step that moves this number is “{step}”.",

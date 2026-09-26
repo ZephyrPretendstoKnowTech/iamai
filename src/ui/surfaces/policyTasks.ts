@@ -468,10 +468,10 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // turn-on, that report-only blocked no one, and what it still waits on.
   const next = tasks.find((t) => t.required) ?? null
   // A create, or a switched-off policy's Report-only patch, that the readiness
-  // threshold holds: the card names the readiness it waits for, as the rail
-  // does, never the task it is not offered.
+  // threshold holds: the Threshold card states the wait, its count and why, and
+  // the policy draws no second card saying it (owner, 2026-09-26).
   const heldCreate = heldCreateMilestoneOf(step)
-  if (next !== null && heldCreate !== null) next.readinessTitle = heldCreate
+  if (next !== null && heldCreate !== null) next.onThresholdCard = true
   else if (next?.id === 'create' && createdOnStep && !turnOnHeld && input.contract.milestone.at) {
     const announce = step.events?.announce?.at ?? null
     const date = shownDay(input.contract.milestone.at, input.estimate, 'sentence')
@@ -824,7 +824,8 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
   // (ownCardWordsOf: no `check`) draws no card of its own while it is open. A
   // step that reads its people (prepareSteps.ts OwnCard) always draws its own.
   if (own === null && words !== null && words.check === null && !contract.state.satisfied) return []
-  return subjects.map((subject) => {
+  return subjects.flatMap((subject): EmergencySubjectTile[] => [cardOf(subject)].filter((c): c is EmergencySubjectTile => c !== null))
+  function cardOf(subject: (typeof subjects)[number]): EmergencySubjectTile | null {
     // Nothing is left on the policy itself when the goal is already delivered
     // (Foundation B's own `satisfied`: "nothing to create; keep it as it is"),
     // or when it has reached its last stage with nothing left to submit.
@@ -871,6 +872,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
     // policy in Report-only", "Report-only until Sep 4, 2026", "Turn the policy
     // on · Report-only blocked no one. After Verify Emergency Access." — never
     // Blocked, the step's title or the contract's sentence about the hold.
+    if (procedure && task?.onThresholdCard) return null
     if (procedure && task !== null && !satisfied) return { key: subject.key, accountId: null, heading: subject.heading, upn: subject.name, title: task.readinessTitle ?? task.title, detail: task.readinessDirection ?? '', instruction: '', completed: [], remainingCount: null, satisfied }
     // A policy step with nothing of its own left and its policy On states that,
     // where it has no fact of its own to state (walk list 4.x items 20 and 22):
@@ -896,7 +898,7 @@ export function policyCardsOf(contract: StepContract, projected: EmergencyTaskPr
       remainingCount: null,
       satisfied,
     }
-  })
+  }
 }
 
 /**

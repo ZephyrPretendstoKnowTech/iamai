@@ -43,6 +43,8 @@ export type EmergencyAccountTask = {
   readinessTitle?: string
   /** Plain direction to the matching Implementation Task; never a second workflow. */
   readinessDirection?: string
+  /** The Threshold card states what this task waits for, so no card of its own is drawn (owner, 2026-09-26). */
+  onThresholdCard?: true
   /** Exact constituent findings this action/evidence replaces in interactive Readiness. */
   issueKeys?: string[]
   facts?: { label: string; value: string }[]
