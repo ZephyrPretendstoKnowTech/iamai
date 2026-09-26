@@ -7,6 +7,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
 import { eventsFor } from '../../roadmap/timing.ts'
+import { policySubjectsOf } from './policyTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const run = (name: 'demo' | 'demo-week2') => {
@@ -42,4 +43,24 @@ test('an announcement is never dated before today: a change nearer than its noti
   // A change far enough off keeps its full notice.
   const far = { ...step, rings: [{ ...step.rings[0], plannedStart: '2026-10-12T12:00:00.000Z' }] } as typeof step
   assert.equal(eventsFor(far, { ...ctx, today: '2026-09-26T12:00:00.000Z' })!.announce!.at.slice(0, 10), '2026-10-05')
+})
+
+test('a policy to correct is one card: the policy, "Correct {fields}", and the changes themselves', () => {
+  // Owner, 2026-09-26: "Users differ from the plan · Set Users as Implementation Tasks shows." named no change.
+  const { r, ctx } = run('demo-week2')
+  const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
+  const body = stepBodyOf(step, ctx)
+  const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
+  const open = cards.filter((c) => !c.satisfied)
+  assert.equal(open.length, 1, JSON.stringify(open.map((c) => c.key)))
+  assert.equal(open[0].heading, 'Conditional Access policy')
+  assert.equal(open[0].upn, 'Core - Grant - Admins phishing-resistant')
+  assert.equal(open[0].title, 'Correct users')
+  assert.match(open[0].detail ?? '', /^Under Users → Include, add the directory roles Global Reader, /)
+  assert.doesNotMatch(open[0].detail ?? '', /\*\*/)
+  // Two sections, named together.
+  const demo = run('demo')
+  const mfa = demo.r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  const b = stepBodyOf(mfa, demo.ctx)
+  assert.deepEqual(policySubjectsOf(b.contract, b.readiness, b.emergencyAccountTasks).filter((c) => c.key.startsWith('correct:')).map((c) => c.title), ['Correct users and target resources'])
 })

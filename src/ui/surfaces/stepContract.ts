@@ -177,7 +177,7 @@ type ContractWords = {
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
   readinessScope: Record<string, string>
   /** A deployed policy that moved from the plan, as one card with its fix (driftCardOf; walk list 4.x item 24). */
-  drift: { changed: string; differs: string; setBack: string; setBackTasks: string; set: string; setTasks: string; anyExcept: string; notConfigured: string; names: Record<string, string> }
+  drift: { changed: string; differs: string; setBack: string; setBackTasks: string; set: string; setTasks: string; correct: string; anyExcept: string; notConfigured: string; names: Record<string, string> }
   /** Who a finished policy's readiness fact counts, by its family: "19 of 28 people have a method it accepts". */
   acceptedWho: Record<string, string>
   /** Where a readiness number is moved, by family, for a measure this plan runs no step for. */
