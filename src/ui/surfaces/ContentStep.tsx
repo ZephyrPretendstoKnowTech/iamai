@@ -1549,7 +1549,8 @@ function AcceptDeviation({ step, ctx, onDecide }: { step: Step; ctx: StepVarCont
   const W = ACCEPT_WORDS()
   const panel = acceptPanelOf(step, ctx)
   const saved = step.acceptedDeviation
-  const [reason, setReason] = useState('')
+  // One reason covers the step's acceptance: a later one starts from it, so it is edited in sight, never replaced unseen (review, 2026-09-26).
+  const [reason, setReason] = useState(saved?.reason ?? '')
   const [asked, setAsked] = useState(false)
   if (panel === null) return null
   const labelId = `deviation-${step.id}`

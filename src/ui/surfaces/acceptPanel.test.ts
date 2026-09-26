@@ -12,6 +12,9 @@ import { acceptPanelOf } from './acceptPanel.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import type { Step } from '../../roadmap/types.ts'
+import { cardLineOf } from './policyTasks.ts'
+import { correctionSettings } from '../../roadmap/policyProcedure.ts'
 
 type Row = Record<string, any>
 const ADMINS = 's-goal-admins-phishing-resistant'
@@ -82,4 +85,29 @@ test('Accept is a bordered button that asks for a reason, and Defer sits apart b
   assert.match(panel, /W\.reasonFirst/)
   const css = readFileSync('src/ui/app.css', 'utf8')
   assert.match(css, /\.step-action-column \.accept-deviation ~ \.rail-exceptions \{[^}]*border-top: 1px solid var\(--line\);/)
+})
+
+test('an extra exclusion reads by what it names: anyone in a group, anyone holding a role, an account by its own name', () => {
+  const f = fixture('demo-week2')
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => ({ u1: 'Jane Doe', g1: 'Old VIP exclusions' } as Record<string, string>)[id] ?? id }
+  const stepWith = (kind: 'user' | 'group'): Step => ({ id: 'x', tracking: { members: [{ key: 'm', sourceName: 's', policyId: null, policyName: null, differsFields: { 'conditions.users': 'g2-a' }, differences: [{ dimension: 'conditions.users', part: 'exclude', kind, change: 'extra', ids: [kind === 'user' ? 'u1' : 'g1'], direction: 'weaker' }] }] }, action: {} } as unknown as Step)
+  assert.equal(acceptPanelOf(stepWith('user'), ctx)!.leaves, 'This leaves Jane Doe outside this policy.')
+  assert.equal(acceptPanelOf(stepWith('group'), ctx)!.leaves, 'This leaves anyone in Old VIP exclusions outside this policy.')
+})
+
+test('a later acceptance starts from the saved reason, and the printed Satisfied tile carries the Weaker mark too', () => {
+  const source = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  assert.match(source, /const \[reason, setReason\] = useState\(saved\?\.reason \?\? ''\)/)
+  const sections = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
+  assert.match(sections, /\{t\.caution && <Status tone="wait">\{ACCEPT_WORDS\(\)\.tags\.weaker\}<\/Status>\}/)
+})
+
+test('a change from All users to the plan’s roles names the count on its card, never a list "below" it', () => {
+  const roles = Array.from({ length: 20 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`)
+  const ctx = { nameOf: (id: string) => id, exclusionsGroupId: 'ex' }
+  const [line] = correctionSettings({ conditions: { users: { includeUsers: ['All'], excludeGroups: ['ex'] } } }, { conditions: { users: { includeRoles: roles, excludeGroups: ['ex'] } } }, ctx, new Set(['users']))
+  assert.match(line, /listed below/, 'the premise: the Implementation Task lists them')
+  const card = cardLineOf(line)
+  assert.match(card, /^Under Users → Include, select only Directory roles: Select \(20\)\. Yours is stricter/, card)
+  assert.doesNotMatch(card, /listed below/)
 })

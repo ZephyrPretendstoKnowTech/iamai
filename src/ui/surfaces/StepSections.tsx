@@ -20,6 +20,7 @@ import type { ContractEmergencySlot, ContractHardening, StepRail } from './stepC
 import { fillText } from '../../content/render.ts'
 import { shared } from '../../content/content.ts'
 import { autoOpenTiles } from './tileExpansion.ts'
+import { ACCEPT_WORDS } from './acceptPanel.ts'
 import { useSession } from '../session.ts'
 import { scanLineText } from '../scan/ScanProgress.tsx'
 
@@ -450,6 +451,8 @@ function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMapping
       )}
       <span className="key-label">{t.label !== t.value ? t.label : null}</span>
       <strong>{t.value}</strong>
+      {/* An accepted difference that leaves someone out (acceptPanel.ts), in print as on screen. */}
+      {t.caution && <Status tone="wait">{ACCEPT_WORDS().tags.weaker}</Status>}
       {more && <Icon name="chevron" size={14} className="tile-chevron" />}
     </>
   )

@@ -35,7 +35,8 @@ import { fillText } from '../content/render.ts'
 import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
 import { artifactIdOf, dimensionWords, historyReset, intentOf, materialFieldsOf, observe, observedStateOf, priorFor, sameDimension, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
-import { acceptanceKeyOf, differencePieces, withEmergencyExclusions } from './differences.ts'
+import { acceptanceCovers, acceptanceKeyOf, differencePieces, grantDirectionOf, withEmergencyExclusions } from './differences.ts'
+import { buildStrengthLookup } from '../coverage/strength.ts'
 import type { DifferencePiece } from './differences.ts'
 import type { ObservedState } from './observation.ts'
 import type { ObservationChange, StepObservation, StepObservationRecord } from './observation.ts'
@@ -923,6 +924,8 @@ export function trackExecution(
   scopeEvidence: TrackingEvidence = {},
 ): Step[] {
   const resultByGoal = new Map(coverage.results.map((r) => [r.goal.id, r]))
+  // The strengths a grant names, so a grant difference leans against the plan's own grant (differences.ts grantDirectionOf).
+  const strengths = buildStrengthLookup((snapshot.config.authStrengths?.rows ?? []) as unknown[])
   // The tenant's own active people: a directory fact the caller supplies, never a
   // goal's population and never invented here.
   const activeSet = scopeEvidence.activePeople ? new Set(scopeEvidence.activePeople) : null
@@ -986,9 +989,8 @@ export function trackExecution(
       // silently. Each differing dimension in pieces (differences.ts), marked
       // stricter or weaker for the step to show; a grant that meets the goal's
       // floor (coverage.ts meetsFloor) reads as stricter.
-      const floor = result?.goal.implementations[0]?.floor
-      const strictEnough = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id && c.meetsFloor) && floor?.grant !== undefined
-      const pieces: Record<string, DifferencePiece[]> = compared && policyRow ? Object.fromEntries(found.map((d) => [d, differencePieces(d, compared, policyRow as Record<string, unknown>, { exclusionsGroupId: tenantObjects?.exclusionsGroupId ?? null, strictEnough, same: sameDimension, fingerprint: materialFieldsOf(policyRow as Record<string, unknown>)[d] })])) : {}
+      const grant = compared && policyRow && found.includes('grantControls') ? grantDirectionOf(compared, policyRow as Record<string, unknown>, strengths) : undefined
+      const pieces: Record<string, DifferencePiece[]> = compared && policyRow ? Object.fromEntries(found.map((d) => [d, differencePieces(d, compared, policyRow as Record<string, unknown>, { exclusionsGroupId: tenantObjects?.exclusionsGroupId ?? null, grant, same: sameDimension, fingerprint: materialFieldsOf(policyRow as Record<string, unknown>)[d] })])) : {}
       // Accepted with a reason while nothing new is missing (owner, 2026-09-26:
       // only a new gap reopens it): an acceptance keeps the fingerprint of the
       // dimension's gaps (differences.ts acceptanceKeyOf), and one saved before
@@ -996,7 +998,7 @@ export function trackExecution(
       // missing is never accepted.
       const now = policyRow ? materialFieldsOf(policyRow as Record<string, unknown>) : {}
       const saved = step.acceptedDeviation?.fields ?? {}
-      const accepted = found.filter((d) => saved[d] !== undefined && (saved[d] === acceptanceKeyOf(pieces[d] ?? []) || saved[d] === now[d]) && !(pieces[d] ?? []).some((p) => p.required))
+      const accepted = found.filter((d) => saved[d] !== undefined && (acceptanceCovers(saved[d], pieces[d] ?? []) || saved[d] === now[d]) && !(pieces[d] ?? []).some((p) => p.required))
       const unwritten = found.filter((d) => !accepted.includes(d))
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this

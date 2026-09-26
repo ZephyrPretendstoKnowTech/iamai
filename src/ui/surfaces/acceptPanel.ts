@@ -57,6 +57,9 @@ type PanelWords = {
   leavesBlocks: string
   leavesPlain: string
   leavesAnyoneIn: string
+  leavesAnyoneHolding: string
+  externalTenants: string
+  externalTenantsShort: string
   leavesEveryone: string
   leavesGrant: string
   required: string
@@ -135,6 +138,7 @@ function valueOf(control: string, value: string | undefined): string | null {
 /** The short form ("2 admin roles not included", "sign-in frequency"): what the acceptance covers. */
 function shortOf(p: DifferencePiece): string {
   const W = ACCEPT_WORDS()
+  if (p.control === 'externalTenants') return W.externalTenantsShort
   if (p.part === 'include') return fillText(p.change === 'missing' ? W.includeMissing : W.includeExtra, { count: counted(p) })
   if (p.part === 'exclude') return fillText(p.change === 'extra' ? W.excludeExtra : W.excludeMissing, { count: counted(p) })
   if (p.part === 'allUsers') return (p.change === 'missing' ? W.allUsersMissing : W.allUsersExtra).toLowerCase()
@@ -146,6 +150,7 @@ function shortOf(p: DifferencePiece): string {
 /** The line: the short form with the names, or the setting with its value. */
 function lineOf(p: DifferencePiece, grant: { theirs: string; ours: string } | null, ctx: Pick<StepVarContext, 'nameOf'>): string {
   const W = ACCEPT_WORDS()
+  if (p.control === 'externalTenants') return W.externalTenants
   if (p.part === 'include' || p.part === 'exclude') return fillText(W.named, { short: cap(shortOf(p)), names: shownNames(namesOf(p, ctx)) })
   if (p.part === 'allUsers') return p.change === 'missing' ? W.allUsersMissing : W.allUsersExtra
   if (p.part === 'control') {
@@ -155,7 +160,7 @@ function lineOf(p: DifferencePiece, grant: { theirs: string; ours: string } | nu
     return fillText(p.change === 'missing' ? W.sessionMissing : p.change === 'extra' ? W.sessionExtra : W.sessionChanged, { control: setting })
   }
   if (p.dimension === 'grantControls') return grant !== null ? fillText(W.grantBoth, grant) : W.grant
-  return fillText(W.whole, { dimension: cap(dimensionWords([p.dimension])) })
+  return fillText(W.whole, { dimension: dimensionWords([p.dimension]) })
 }
 
 /** The tenant's policy and the plan's, for one member: the grants' words and the plan's own. */
@@ -199,7 +204,9 @@ export function acceptPanelOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' |
         open.push({ p, grant })
         if (p.direction !== 'weaker') continue
         if (p.part === 'include') leftOut.push(counted(p))
-        if (p.part === 'exclude') leftOut.push(fillText(W.leavesAnyoneIn, { names: shownNames(namesOf(p, ctx)) }))
+        // Who an extra exclusion leaves out, by what it names: anyone in a group,
+        // anyone holding a role, the accounts and guest types themselves.
+        if (p.part === 'exclude') leftOut.push(p.kind === 'group' ? fillText(W.leavesAnyoneIn, { names: shownNames(namesOf(p, ctx)) }) : p.kind === 'role' ? fillText(W.leavesAnyoneHolding, { names: shownNames(namesOf(p, ctx)) }) : shownNames(namesOf(p, ctx)))
         if (p.part === 'allUsers') leftOut.push(W.leavesEveryone)
         if (p.dimension === 'grantControls' && ours) weakerGrant = ours.what
         if (p.part === 'include' || p.part === 'exclude' || p.part === 'allUsers') leaves ??= ours

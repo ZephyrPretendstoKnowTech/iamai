@@ -375,13 +375,20 @@ function afterExclusionsEdit(step: Step, current: Record<string, unknown>, group
  * each role list by its label and count ("Select (2) · Clear (80)"). The
  * Implementation Task holds the names.
  */
-function cardLineOf(line: string): string {
+export function cardLineOf(line: string): string {
   const [lead, ...subs] = line.split('\n')
   const lists = subs.map((s) => foldLineOf(s)?.title ?? null).filter((t): t is string => t !== null)
   if (lists.length === 0) return lead.replace(/\*\*/g, '')
   const words = PROCEDURE as unknown as Record<string, string>
   const side = lead.startsWith(words.rolesChangeExclude) ? 'Exclude' : lead.startsWith(words.rolesChangeInclude) ? 'Include' : null
-  if (side === null) return [lead.replace(/\*\*/g, ''), lists.join(' · ')].join('\n')
+  if (side === null) {
+    // A change of kind ("select only Directory roles: the 46 roles listed below")
+    // lists nothing on the card: the count stands where the list was named.
+    const counted = subs.map((s) => foldLineOf(s)).find((f) => f && 'items' in f)
+    const phrase = counted && 'items' in counted ? fillText(words.directoryRolesCounted, { n: counted.items.length }) : null
+    if (phrase !== null && lead.includes(phrase)) return lead.replace(phrase, fillText(words.directoryRolesCard, { lists: lists.join(' · ') })).replace(/\*\*/g, '')
+    return [lead.replace(/\*\*/g, ''), lists.join(' · ')].join('\n')
+  }
   const rest = lead.slice(words[`rolesChange${side}`].length).trim()
   return [fillText(words[`rolesCard${side}`], { lists: lists.join(' · ') }), rest].filter((x) => x !== '').join(' ').replace(/\*\*/g, '')
 }

@@ -26,6 +26,8 @@ import { list } from '../copy/statements.ts'
 import { roleNamesOf } from '../roles.ts'
 import { UNNAMED } from '../names.ts'
 import { GRANT_LABEL, portalName } from './portalLines.ts'
+import { differencePieces } from './differences.ts'
+import { sameDimension } from './observation.ts'
 
 type Words = Record<string, string> & {
   conditions: Record<string, string>
@@ -410,8 +412,18 @@ export function correctionSettings(current: Record<string, unknown>, target: Rec
   if (sections.has('session')) {
     const before = sessionLines(was)
     const after = sessionLines(now)
-    // Clearing controls the plan does not set loosens the policy: said beside it (owner, 2026-09-26).
-    if (!sameSet(before, after)) out.push(...(after.length === 0 ? [`${PROCEDURE.sessionClear} ${PROCEDURE.stricterNote}`] : after))
+    // Each control that differs, and which way (differences.ts): a control the
+    // tenant sets that the plan does not is cleared by name, so following the
+    // correction closes the difference (review, 2026-09-26).
+    const pieces = differencePieces('sessionControls', target, current, { exclusionsGroupId: null, same: sameDimension }).filter((p) => p.part === 'control')
+    const extra = pieces.filter((p) => p.change === 'extra').map((p) => p.control as string)
+    const names = PROCEDURE.sessionControlNames as unknown as Record<string, string>
+    const lines = after.length === 0
+      ? (pieces.length > 0 || !sameSet(before, after) ? [PROCEDURE.sessionClear] : [])
+      : [...after.filter((l) => !before.includes(l)), ...extra.map((k) => fill(PROCEDURE.sessionClearControl, { control: names[k] ?? k }))]
+    // Where the tenant's session is stricter anywhere, the correction loosens it: said beside it (owner, 2026-09-26).
+    if (lines.length > 0 && pieces.some((p) => p.direction === 'stricter')) lines[lines.length - 1] = `${lines[lines.length - 1]} ${PROCEDURE.stricterNote}`
+    out.push(...lines)
   }
   return out
 }
@@ -421,7 +433,9 @@ function usersCorrection(was: PolicyFacts, now: PolicyFacts, ctx: ProcedureConte
   // Who the policy includes. A change of kind — All users for a group, or the
   // other way — is said whole; otherwise what is added and what is taken off.
   const kindChanged = was.who.all !== now.who.all
-  if (kindChanged) out.push(fill(PROCEDURE.usersInclude, { change: fill(PROCEDURE.selectOnly, { items: list(includeWords(now, ctx, true)) }) }) + (!now.who.all && now.who.roles.size > ROLES_INLINE ? roleList(PROCEDURE.rolesSelect, roleNames(now.who.roles, ctx)) : ''))
+  // All users narrowed to the plan's selection loosens the policy: said beside it (review, 2026-09-26).
+  const narrowed = was.who.all && !now.who.all
+  if (kindChanged) out.push(fill(PROCEDURE.usersInclude, { change: fill(PROCEDURE.selectOnly, { items: list(includeWords(now, ctx, true)) }) }) + (narrowed ? ` ${PROCEDURE.stricterNote}` : '') + (!now.who.all && now.who.roles.size > ROLES_INLINE ? roleList(PROCEDURE.rolesSelect, roleNames(now.who.roles, ctx)) : ''))
   else if (!now.who.all) {
     // Directory roles on a line of their own, as two lists to tick through: the
     // roles to select and the roles to clear (owner, 2026-09-26). Clearing a role
@@ -457,10 +471,13 @@ function usersCorrection(was: PolicyFacts, now: PolicyFacts, ctx: ProcedureConte
     guestsRemoved ? guestWords(was.whoNot.guestTypes) : null,
   ])
   const ex = change(exAdded, exRemoved)
-  if (ex) out.push(fill(PROCEDURE.usersExclude, { change: ex }))
+  // Excluding anyone but the exclusions group loosens the policy: said beside it (review, 2026-09-26).
+  const group = ctx.exclusionsGroupId ? lc(ctx.exclusionsGroupId) : null
+  const excludesMore = minus(now.whoNot.groups, was.whoNot.groups).some((g) => lc(g) !== group) || minus(now.whoNot.users, was.whoNot.users).length > 0 || guestsAdded
+  if (ex) out.push(excludesMore ? `${fill(PROCEDURE.usersExclude, { change: ex })} ${PROCEDURE.stricterNote}` : fill(PROCEDURE.usersExclude, { change: ex }))
   const selectExcluded = roleNames(minus(now.whoNot.roles, was.whoNot.roles), ctx)
   const clearExcluded = roleNames(minus(was.whoNot.roles, now.whoNot.roles), ctx)
-  if (selectExcluded.length > 0 || clearExcluded.length > 0) out.push(PROCEDURE.rolesChangeExclude + roleList(PROCEDURE.rolesSelect, selectExcluded) + roleList(PROCEDURE.rolesClear, clearExcluded))
+  if (selectExcluded.length > 0 || clearExcluded.length > 0) out.push((selectExcluded.length > 0 ? `${PROCEDURE.rolesChangeExclude} ${PROCEDURE.stricterNote}` : PROCEDURE.rolesChangeExclude) + roleList(PROCEDURE.rolesSelect, selectExcluded) + roleList(PROCEDURE.rolesClear, clearExcluded))
   return out
 }
 

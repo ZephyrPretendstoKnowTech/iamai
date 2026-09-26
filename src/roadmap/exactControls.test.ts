@@ -126,7 +126,7 @@ test('a policy doing another step’s job is never corrected into this one: Shor
 
 test('a difference is marked stricter or weaker, piece by piece', () => {
   const plan = { conditions: { users: { includeRoles: ['r1', 'r2'], excludeGroups: ['x'] } } }
-  const pieces = (tenant: Row) => differencePieces('conditions.users', plan, tenant, { exclusionsGroupId: 'x', strictEnough: false, same: sameDimension })
+  const pieces = (tenant: Row) => differencePieces('conditions.users', plan, tenant, { exclusionsGroupId: 'x', same: sameDimension })
   assert.deepEqual(pieces({ conditions: { users: { includeRoles: ['r1', 'r2', 'r3'], excludeGroups: ['x'] } } }).map((d) => [d.part, d.kind, d.change, d.ids, d.direction]), [['include', 'role', 'extra', ['r3'], 'stricter']], 'more roles')
   assert.deepEqual(pieces({ conditions: { users: { includeRoles: ['r1'], excludeGroups: ['x', 'y'] } } }).map((d) => [d.part, d.change, d.ids, d.direction]), [['include', 'missing', ['r2'], 'weaker'], ['exclude', 'extra', ['y'], 'weaker']], 'a role missing and an extra exclusion')
   assert.equal(pieces({ conditions: { users: { includeRoles: ['r1', 'r2'] } } })[0].required, true, 'the exclusions group is never optional')

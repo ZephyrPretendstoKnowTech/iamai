@@ -9,6 +9,11 @@
 //
 // Pure: no DOM, no network.
 
+import { policyFacts } from '../coverage/facts.ts'
+import { grantSatisfiesFloor } from '../coverage/strength.ts'
+import type { StrengthLookup } from '../coverage/strength.ts'
+import type { PolicyFacts, StrengthTier } from '../coverage/types.ts'
+
 /** Which way a difference leans: the tenant's policy asks more (stricter), less (weaker), or something else. */
 export type DifferenceDirection = 'stricter' | 'weaker' | 'differs'
 
@@ -19,7 +24,7 @@ export type DifferencePiece = {
   part: 'include' | 'exclude' | 'allUsers' | 'control' | 'whole'
   /** The kind of object an include or exclude piece lists. */
   kind?: 'role' | 'group' | 'user' | 'guestType'
-  /** A session control's name (sessionControls). */
+  /** A session control's name (sessionControls), or `externalTenants` for the guest tenants a users piece is about. */
   control?: string
   /** The plan has it and the tenant does not (missing), the tenant has it and the plan does not (extra), or both hold it differently (changed). */
   change: 'missing' | 'extra' | 'changed'
@@ -74,6 +79,12 @@ function usersPieces(intended: Row, deployed: Row, exclusionsGroupId: string | n
       if (extra.length > 0) out.push({ dimension, part: 'include', kind, change: 'extra', ids: extra, direction: 'stricter' })
     }
   }
+  // Which guest tenants a guest include or exclude reaches: not a list of ids
+  // this reads piece by piece, so a change is one piece holding the tenant's.
+  const external = (u: Users, side: 'include' | 'exclude'): string => JSON.stringify(((side === 'include' ? u.includeGuestsOrExternalUsers : u.excludeGuestsOrExternalUsers) as { externalTenants?: unknown } | null | undefined)?.externalTenants ?? null)
+  for (const side of ['include', 'exclude'] as const) {
+    if (external(I, side) !== external(D, side)) out.push({ dimension, part: side, control: 'externalTenants', change: 'changed', ids: [], direction: 'differs', value: external(D, side) })
+  }
   const group = exclusionsGroupId?.toLowerCase() ?? null
   const excludes: [NonNullable<DifferencePiece['kind']>, Set<string>, Set<string>][] = [
     ['role', ids(I.excludeRoles), ids(D.excludeRoles)],
@@ -94,9 +105,37 @@ function usersPieces(intended: Row, deployed: Row, exclusionsGroupId: string | n
 }
 
 /**
+ * Which way one session control leans when a policy sets it: a control asks
+ * more of a session (stricter), except the two settings that ask less than a
+ * policy without them, an always-persistent browser and continuous access
+ * evaluation switched off (weaker).
+ */
+export function sessionControlDirection(control: string, value: unknown): 'stricter' | 'weaker' {
+  const mode = String((value as { mode?: unknown } | null)?.mode ?? '').toLowerCase()
+  if (control === 'persistentBrowser' && mode === 'always') return 'weaker'
+  if (control === 'continuousAccessEvaluation' && mode === 'disabled') return 'weaker'
+  return 'stricter'
+}
+
+/** How strict one setting of a control is, where two can be ranked: a shorter sign-in frequency, a never-persistent browser. Null where they cannot. */
+function sessionRank(control: string, value: unknown): number | null {
+  const v = (value ?? {}) as { frequencyInterval?: unknown; type?: unknown; value?: unknown; mode?: unknown }
+  if (control === 'signInFrequency') {
+    if (String(v.frequencyInterval ?? '').toLowerCase() === 'everytime') return Number.MAX_SAFE_INTEGER
+    const n = Number(v.value)
+    if (!Number.isFinite(n) || n <= 0) return null
+    return -(String(v.type ?? '').toLowerCase() === 'days' ? n * 24 : n)
+  }
+  if (control === 'persistentBrowser') return { never: 1, always: -1 }[String(v.mode ?? '').toLowerCase()] ?? null
+  if (control === 'continuousAccessEvaluation') return { strictenforcement: 1, disabled: -1 }[String(v.mode ?? '').toLowerCase()] ?? null
+  return null
+}
+
+/**
  * The session a policy leaves behind, control by control: a control the
- * tenant adds is stricter, one the plan sets and the tenant does not is weaker,
- * and one both set differently differs.
+ * tenant adds leans the way the control does (sessionControlDirection), one the
+ * plan sets and the tenant does not the other way, and one both set
+ * differently is stricter or weaker where the two can be ranked, else differs.
  */
 function sessionPieces(intended: Row, deployed: Row, same: (a: unknown, b: unknown) => boolean): DifferencePiece[] {
   const set = (p: Row): Record<string, unknown> => Object.fromEntries(Object.entries((p.sessionControls ?? {}) as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined && !(typeof v === 'object' && (v as { isEnabled?: unknown }).isEnabled === false)))
@@ -105,20 +144,57 @@ function sessionPieces(intended: Row, deployed: Row, same: (a: unknown, b: unkno
   const out: DifferencePiece[] = []
   for (const control of [...new Set([...Object.keys(I), ...Object.keys(D)])].sort()) {
     const dimension = 'sessionControls'
-    if (!(control in D)) out.push({ dimension, part: 'control', control, change: 'missing', ids: [], direction: 'weaker' })
-    else if (!(control in I)) out.push({ dimension, part: 'control', control, change: 'extra', ids: [], direction: 'stricter', value: JSON.stringify(D[control]) })
-    else if (!same(I[control], D[control])) out.push({ dimension, part: 'control', control, change: 'changed', ids: [], direction: 'differs', value: JSON.stringify(D[control]) })
+    if (!(control in D)) out.push({ dimension, part: 'control', control, change: 'missing', ids: [], direction: sessionControlDirection(control, I[control]) === 'stricter' ? 'weaker' : 'stricter' })
+    else if (!(control in I)) out.push({ dimension, part: 'control', control, change: 'extra', ids: [], direction: sessionControlDirection(control, D[control]), value: JSON.stringify(D[control]) })
+    else if (!same(I[control], D[control])) {
+      const plan = sessionRank(control, I[control])
+      const tenant = sessionRank(control, D[control])
+      const direction = plan === null || tenant === null || plan === tenant ? 'differs' : tenant > plan ? 'stricter' : 'weaker'
+      out.push({ dimension, part: 'control', control, change: 'changed', ids: [], direction, value: JSON.stringify(D[control]) })
+    }
   }
   return out
 }
 
+/** A grant control as the floor it stands for (coverage/strength.ts), or null for one no floor ranks (terms of use, a custom control). */
+function floorOf(control: string, strength: StrengthTier | null): string | null {
+  const c = control.toLowerCase()
+  if (c === 'mfa') return strength ?? 'mfa'
+  return ({ block: 'block', passwordchange: 'passwordChange', compliantdevice: 'compliantDevice', domainjoineddevice: 'compliantDevice', compliantapplication: 'compliantApplication', approvedapplication: 'approvedApplication' } as Record<string, string>)[c] ?? null
+}
+
+/** Whether a grant asks at least what another does: every control of an AND (one of an OR) as the floor it stands for. */
+function meets(grant: PolicyFacts['grant'], other: PolicyFacts['grant']): boolean {
+  if (!other || other.controls.size === 0) return true
+  if (!grant || grant.controls.size === 0) return false
+  const floors = [...other.controls].map((c) => floorOf(c, other.strength))
+  if (floors.some((f) => f === null)) return false
+  const ok = (f: string | null): boolean => grantSatisfiesFloor(grant, f as string, grant.strength)
+  return other.operator === 'OR' && floors.length > 1 ? floors.some(ok) : floors.every(ok)
+}
+
 /**
- * The pieces of one differing dimension. `strictEnough` is coverage's reading
- * that the tenant's grant meets the goal's floor (tracking.ts); `same` is the
- * material comparison observation.ts uses, so a piece exists only where the
- * dimension differs materially.
+ * Which way the tenant's grant leans against the plan's own grant, not the
+ * goal's floor (review, 2026-09-26: a grant weaker than the baseline's but at
+ * its floor read Stricter): a grant where the plan has none is stricter, none
+ * where it has one weaker; otherwise whichever asks at least the other's
+ * controls, and differs where each asks something the other does not.
  */
-export function differencePieces(dimension: string, intended: Row, deployed: Row, o: { exclusionsGroupId: string | null; strictEnough: boolean; same: (a: unknown, b: unknown) => boolean; fingerprint?: string }): DifferencePiece[] {
+export function grantDirectionOf(intended: Row, deployed: Row, strengths: StrengthLookup): DifferenceDirection {
+  const plan = policyFacts(intended, strengths).grant
+  const tenant = policyFacts(deployed, strengths).grant
+  const up = meets(tenant, plan)
+  const down = meets(plan, tenant)
+  return up && !down ? 'stricter' : down && !up ? 'weaker' : 'differs'
+}
+
+/**
+ * The pieces of one differing dimension. `grant` is which way the tenant's
+ * grant leans against the plan's (grantDirectionOf); `same` is the material
+ * comparison observation.ts uses, so a piece exists only where the dimension
+ * differs materially.
+ */
+export function differencePieces(dimension: string, intended: Row, deployed: Row, o: { exclusionsGroupId: string | null; grant?: DifferenceDirection; same: (a: unknown, b: unknown) => boolean; fingerprint?: string }): DifferencePiece[] {
   const whole = (direction: DifferenceDirection): DifferencePiece[] => [{ dimension, part: 'whole', change: 'changed', ids: [], direction, ...(o.fingerprint ? { value: o.fingerprint } : {}) }]
   if (dimension === 'conditions.users') {
     const pieces = usersPieces(intended, deployed, o.exclusionsGroupId)
@@ -128,7 +204,7 @@ export function differencePieces(dimension: string, intended: Row, deployed: Row
     const pieces = sessionPieces(intended, deployed, o.same)
     return pieces.length > 0 ? pieces : whole('differs')
   }
-  if (dimension === 'grantControls') return whole(o.strictEnough ? 'stricter' : 'weaker')
+  if (dimension === 'grantControls') return whole(o.grant ?? 'differs')
   return whole('differs')
 }
 
@@ -143,16 +219,39 @@ function hash(text: string): string {
 }
 
 /**
+ * The gaps of one dimension, one fingerprint each: every object a list leaves
+ * out or adds, and every setting with its value, less the lists the tenant has
+ * made stricter (more people included, fewer excluded).
+ */
+function gapsOf(pieces: readonly DifferencePiece[]): string[] {
+  const widens = (p: DifferencePiece): boolean => p.direction === 'stricter' && (p.part === 'include' || p.part === 'exclude' || p.part === 'allUsers') && p.control === undefined && p.required !== true
+  const out = new Set<string>()
+  for (const p of pieces.filter((x) => !widens(x))) {
+    const head = [p.part, p.kind ?? '', p.control ?? '', p.change].join(':')
+    if (p.ids.length > 0) for (const id of p.ids) out.add(hash(`${head}:${id}`))
+    else out.add(hash(`${head}:${p.value ?? ''}`))
+  }
+  return [...out].sort()
+}
+
+/**
  * What an acceptance of one dimension is kept against (owner, 2026-09-26: only
- * a new gap reopens it): the fingerprint of its pieces, less the lists the
- * tenant has made stricter (more people included, fewer excluded). The tenant
- * including more still after a person accepted it keeps the acceptance; a new
- * gap, or a changed setting (a session control's value, a grant), reopens it.
+ * a new gap reopens it): the fingerprint of each of its gaps (gapsOf). No
+ * tenant value is carried into the plan record, only the hashes.
  */
 export function acceptanceKeyOf(pieces: readonly DifferencePiece[]): string {
-  const widens = (p: DifferencePiece): boolean => p.direction === 'stricter' && (p.part === 'include' || p.part === 'exclude' || p.part === 'allUsers') && p.required !== true
-  const gaps = pieces.filter((p) => !widens(p)).map((p) => [p.part, p.kind ?? '', p.control ?? '', p.change, p.ids.join(','), p.value ?? ''].join(':')).sort()
-  return `g-${hash(JSON.stringify(gaps))}`
+  return `g2-${gapsOf(pieces).join('.')}`
+}
+
+/**
+ * Whether a saved acceptance still covers a dimension: every gap it has now was
+ * one of the gaps accepted. A gap closed since keeps it (the tenant tightened
+ * the policy); a new gap, or a setting whose value moved, reopens it.
+ */
+export function acceptanceCovers(saved: string | undefined, pieces: readonly DifferencePiece[]): boolean {
+  if (saved === undefined || !saved.startsWith('g2-')) return false
+  const accepted = new Set(saved.slice(3).split('.').filter((g) => g !== ''))
+  return gapsOf(pieces).every((g) => accepted.has(g))
 }
 
 /**
