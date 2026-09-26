@@ -165,3 +165,18 @@ test('8.1 reads Ready · Create once the rollout is done, and the drill takes no
   assert.ok(without.rows.length > 0, 'the premise: an Ongoing row')
   assert.deepEqual([first(withEa).kind, first(withEa).day], ['alerting', first(without).day])
 })
+
+test('held 8.1: its rail names what it waits for, it offers no Mark as done until Ready, and it keeps the Scan note', () => {
+  // Owner, 2026-09-26. The body is JSX, which Node does not run here, so this
+  // reads the source for the three conditions and the board for the wait.
+  const { f, r } = demo()
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const reading = board.readings.get('cleanup-alerting')!
+  assert.notEqual(reading.lane, 'Ready', 'the premise: the demo rollout is not finished, so 8.1 is held')
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(plan, /const held = lane\.lane === 'Ready' \|\| lane\.lane === 'Completed' \? null : lane\.waitingFor \?\? lane\.label/)
+  const cleanup = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
+  assert.match(cleanup, /headline: row\.done \? status\.word : status\.held \?\? alertingMilestone\(\)/)
+  assert.match(cleanup, /onDone && !row\.done && !status\.held && <Button/)
+  assert.doesNotMatch(cleanup, /alertingSubjects\(row\)\}[^>]*scanNote=\{false\}/)
+})
