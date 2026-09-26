@@ -127,7 +127,6 @@ export function rowWho(step: Step): string {
  * accounts", never "2 people" (owner, 2026-09-23).
  */
 export function cleanupRowWho(phase: CleanupPhase, row: CleanupPhase['rows'][number]): string {
-  if (row.kind === 'drill') return emergencyAccounts(phase.accountIds.length)
-  const accounts = row.kind === 'alerting' ? phase.accountIds : []
-  return whoLine({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, null, (structuralWords.cleanupImpacts as Record<string, string>)[row.kind] ?? structuralWords.impactDefault)
+  if (row.kind === 'drill' || row.kind === 'alerting') return emergencyAccounts(phase.accountIds.length)
+  return whoLine({ total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 }, null, (structuralWords.cleanupImpacts as Record<string, string>)[row.kind] ?? structuralWords.impactDefault)
 }

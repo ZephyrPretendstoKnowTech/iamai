@@ -3616,23 +3616,31 @@
   },
   "cleanup": {
     "alerting": {
+      "$comment": "Alert on Emergency Account Sign-ins, Establish Emergency Access's last step (owner, 2026-09-25): drawn on the step template, completed by one Mark as done in the rail, since IAMAI cannot read Azure Monitor alert rules. The procedure is Microsoft Learn's (security-emergency-access#monitor-sign-in-and-audit-logs) with the tenant's values: {alertQuery} is the SigninLogs query over the saved emergency accounts' object IDs, {firstAccountUpn} the first of them (ui/surfaces/alertingTasks.ts).",
       "title": "Alert on Emergency Account Sign-ins",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs",
+        "checkedOn": "2026-09-25"
       },
-      "why": "An alert is how anyone finds out an emergency account was used. It also tells a planned drill apart from access nobody expected.",
+      "why": "Nobody watches an emergency account day to day, so an alert on its sign-ins is how you find out it was used.",
+      "taskTitle": "Create the alert rule",
+      "cardLabel": "Azure Monitor alert rule",
+      "cardDone": "Marked done {date}",
+      "markDone": "Mark as done",
       "whatToDo": [
-        "Send the sign-in logs somewhere they can be queried first: Entra admin center → Entra ID → Monitoring & health → Diagnostic settings → + Add diagnostic setting, pick the sign-in categories, then Send to Log Analytics workspace. That takes at least the Security Administrator role, an Azure subscription and a workspace — or the SIEM you already use.",
-        "The accounts are {list:emergencyAccountUpns}. Take each one's object ID from Entra ID → Users; the rule matches on the object ID, not the sign-in name, because a name can be changed under it.",
-        "In the Azure portal, as at least a Monitoring Contributor: Monitor → Alerts → + Create → Alert rule. Scope: the workspace. Condition: Signal name Custom log search, Query type Aggregated logs, a SigninLogs query filtered to those object IDs. Alert logic: Static, Greater than, threshold 0.",
-        "Give it an action group that reaches a person by email, SMS, push or voice, set Severity 0 - Critical, enable it on creation, and name who answers it.",
-        "Test it with one controlled sign-in and confirm the alert arrives. Agree what the responder then does: keep the logs, and decide whether the use was a drill, a real emergency, or neither.",
-        "Review ingestion, retention and cost for the monitoring service you use."
+        "Send the sign-in logs to a Log Analytics workspace: [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Monitoring & health → Diagnostic settings → + Add diagnostic setting**, select **SignInLogs**, then **Send to Log Analytics workspace** and **Save**.",
+        "In the [Azure portal](https://portal.azure.com/), open **Monitor → Alerts → + Create → Alert rule**.",
+        "**Scope**: select that Log Analytics workspace, then **Apply**.",
+        "**Condition**: **Signal name** Custom log search, **Query type** Aggregated logs, and this search query: `{alertQuery}`",
+        "**Alert logic**: **Threshold type** Static, **Operator** Greater than, **Threshold value** 0, **Frequency of evaluation** 5 minutes.",
+        "**Actions**: select or create an action group whose **Email/SMS message/Push/Voice** notification reaches the admins who respond.",
+        "**Details**: **Severity** 0 - Critical, name it **Emergency account sign-in**, and under **Advanced options** select **Enable upon creation**. Then **Review + create → Create**.",
+        "Sign in once as {firstAccountUpn}, confirm the alert arrives, then select **Mark as done**."
       ],
       "doneWhen": [
-        "A controlled sign-in by an emergency account produced an alert at the monitored destination, and the response owner confirmed receipt.",
-        "The response owner knows what happens next: keep the logs, then decide whether the use was a drill, a real emergency, or neither."
-      ]
+        "You mark this step done once a test sign-in by an emergency account raised the alert."
+      ],
+      "aiInfo": "Help me set up an Azure Monitor alert on sign-ins by these emergency access accounts. Their object IDs are below, then the steps with the search query. Explain each step, and do not change the query, the threshold or the severity."
     },
     "hardening": {
       "title": "Harden Emergency Access",

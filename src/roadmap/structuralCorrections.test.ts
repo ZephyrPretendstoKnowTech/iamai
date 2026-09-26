@@ -154,30 +154,12 @@ test('recovery records match only the explicitly linked account and event; tests
   }
 })
 
-test('cleanup completion reopens when the work changes; scan checkpoint trimming retains all decisions', () => {
-  // Two live policies named off the tenant's own shape, so the naming row has
-  // work to complete. `messy` used to supply this by accident, through its
-  // twenty-four switched-off policies outvoting its twelve live ones
-  // (coverage/organisation.ts).
-  const f = fixture('large')
-  const live = (f.snapshot.config.caPolicies.rows as { displayName?: string; state?: string }[]).filter((x) => x.state !== 'disabled')
-  live[0].displayName = 'Ad hoc legacy block'
-  live[1].displayName = 'Ad hoc guest rule'
-  const r = runFixture(f)
-  const phase = r.schedule.cleanup!
-  const row = phase.rows.find((r) => r.kind === 'naming')!
-  const namingChanges = phase.namingProposals!.map((p, i) => ({ id: p.id, from: p.from, to: `CA - Reviewed ${i + 1}` }))
-  assert.ok(namingChanges.length)
-  const policies = structuredClone(f.snapshot.config.caPolicies.rows) as Record<string, unknown>[]
-  for (const change of namingChanges) policies.find(p => p.id === change.id)!.displayName = change.to
-  const records = cleanupRecord(withCleanupDone([], 'naming', '2026-09-13', at, { namingChanges, toolingVerified: true, basis: cleanupBasis('naming', row.lists) })).records!
-  const organisation = structuredClone(r.coverage.organisation)
-  organisation.naming.outliers = []
-  const input = { after: at, rhythm: null, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [], organisation, policies, now: at, records }
-  assert.ok(cleanupPhaseFor(input)!.rows.find((r) => r.kind === 'naming')!.done)
-  input.organisation.naming.outliers.push('Another policy')
-  input.policies.push({ id: 'new-policy', displayName: 'Another policy', state: 'enabled' })
-  assert.equal(cleanupPhaseFor(input)!.rows.find((r) => r.kind === 'naming')!.done, null)
+test('scan checkpoint trimming retains all cleanup decisions', () => {
+  // The naming row's reopening is parked with the row: Align Policy Names is
+  // left out of the plan until it proposes the baseline's own names (owner,
+  // 2026-09-25). A saved decision still survives trimming.
+  const namingChanges = [{ id: 'a', from: 'Ad hoc legacy block', to: 'CA - Reviewed 1' }]
+  const records = cleanupRecord(withCleanupDone([], 'naming', '2026-09-13', at, { namingChanges, toolingVerified: true, basis: cleanupBasis('naming', { renames: [] }) })).records!
   const saved = trimCheckpoints([...records, ...Array.from({length: 45}, (_, n) => ({at: String(n), coverage: []}))])
   assert.ok(saved.includes(records[0]))
   assert.equal(saved.length, 22)

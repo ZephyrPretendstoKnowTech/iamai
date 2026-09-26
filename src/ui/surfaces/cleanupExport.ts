@@ -13,6 +13,7 @@ import { app, cleanup as cleanupContent, pages, schedulingWords } from '../../co
 import { fillText, missingVars } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
+import { alertingSteps } from './alertingTasks.ts'
 
 export type { CleanupExport }
 export type CleanupEntry = { title: string; learn?: { url: string; checkedOn?: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
@@ -147,7 +148,9 @@ export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows']
   // them from the emergency preparation steps.
   const whatToDo = row.kind === 'drill'
     ? [...emergencyVerificationTasksOf(phase).tasks.flatMap(task => [`${task.title}${task.targetUpn ? ` — ${task.targetUpn}` : ''}`, ...task.steps]), 'Emergency recovery procedure', ...EMERGENCY_RECOVERY_PROCEDURE].map(line => line.replace(/\*\*/g, ''))
-    : entry.whatToDo.filter(whole).map((l) => fillText(l, ex))
+    : row.kind === 'alerting'
+      ? alertingSteps(phase).map((line) => line.replace(/\*\*/g, ''))
+      : entry.whatToDo.filter(whole).map((l) => fillText(l, ex))
   return { kind: row.kind, day: row.day, done: row.done, title: entry.title, when: cleanupWhenOnBoard(row, read), undated: read?.undated ?? false, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
 }
 

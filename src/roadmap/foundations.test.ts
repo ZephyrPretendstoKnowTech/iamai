@@ -21,7 +21,9 @@ const policySteps = (steps: readonly Step[]): Step[] => steps.filter((s) => POLI
 test('the foundation is Emergency Access and Direction, Emergency Access first, and the gate leaves it and everything that is not a policy step alone', () => {
   // the foundation is Emergency Access and Direction, Emergency Access first
   {
-    assert.deepEqual(FOUNDATION_STEP_IDS, [...membersOf(EMERGENCY_ACCESS_GROUP), ...membersOf(DIRECTION_GROUP)])
+    // Alert on Emergency Account Sign-ins sits with Emergency Access and holds nothing (owner, 2026-09-25).
+    assert.deepEqual(FOUNDATION_STEP_IDS, [...membersOf(EMERGENCY_ACCESS_GROUP).filter((id) => id !== 'cleanup-alerting'), ...membersOf(DIRECTION_GROUP)])
+    assert.equal(isFoundationStep('cleanup-alerting'), false)
     for (const id of FOUNDATION_STEP_IDS) assert.equal(isFoundationStep(id), true, id)
     assert.equal(isFoundationStep('s-goal-admin-session'), false)
   }

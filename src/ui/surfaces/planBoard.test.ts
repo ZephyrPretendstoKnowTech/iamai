@@ -113,7 +113,7 @@ const ALL = { ...NO_FOCUS, showCompleted: true, showDeferred: true }
 
 const row = (id: string, lane: BoardItem['lane']): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
 
-test('with Emergency Access finished, section 1 stays first and collapses to one line: its title and "All 4 completed"', () => {
+test('with Emergency Access finished, section 1 stays first and collapses to one line: its title and "All 5 completed"', () => {
   // Owner, roadmap flow V2 decision B: sections never move. A finished section
   // is not lifted above the tabs while open and sunk below them once done; it
   // keeps its place and folds to its title and one line.
@@ -123,7 +123,7 @@ test('with Emergency Access finished, section 1 stays first and collapses to one
   const [emergency, direction] = drawn
   assert.equal(emergency.closed, true, 'the finished section is drawn open')
   assert.equal(emergency.label, groupTitleOf(STEP_GROUPS[0], true))
-  assert.equal(groupSummary(emergency), 'All 4 completed')
+  assert.equal(groupSummary(emergency), 'All 5 completed')
   assert.deepEqual(ids(emergency.items), [...EMERGENCY_STEP_IDS], 'the collapsed section lost its rows: selecting it opens them')
   // An open section says what is left of it.
   assert.equal(direction.closed, false)

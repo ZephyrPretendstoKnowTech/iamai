@@ -317,7 +317,7 @@ export function doesntApplyView(): LaneView {
 export type BoardCleanupRow = { row: CleanupPhase['rows'][number]; id: string; complete: boolean }
 
 /** The Cleanup rows that wait for the security rollout to finish: after it, never beside it (planLanes.ts `afterRollout`). */
-const AFTER_ROLLOUT: ReadonlySet<string> = new Set(['alerting', 'consolidation', 'naming'])
+const AFTER_ROLLOUT: ReadonlySet<string> = new Set(['consolidation', 'naming'])
 
 /**
  * The board's reading of the whole plan, built one way for every surface that

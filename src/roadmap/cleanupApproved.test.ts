@@ -54,9 +54,10 @@ test('naming completes only on approved names on the same ids with tooling confi
     assert.equal(namingVerified(record, changed), true)
     assert.equal(namingVerified({ ...record, toolingVerified: false }, changed), false)
     assert.equal(namingVerified(record, [...changed, { id: 'collision', displayName: 'ca - staff mfa' }]), false)
-    const phase = cleanupPhaseFor({ ...input, policies: changed, records: [record] })!
-    assert.equal(phase.rows.find(r => r.kind === 'naming')!.done, now)
-    assert.ok(cleanupExportView(phase, phase.rows.find(r => r.kind === 'naming')!)!.manualEvidence?.some(line => line.includes('Staff MFA → CA - Staff MFA (ID: a)')))
+    // Align Policy Names is left out of the plan until it proposes the baseline's
+    // own names (owner, 2026-09-25): a saved review draws no row.
+    const phase = cleanupPhaseFor({ ...input, policies: changed, records: [record] })
+    assert.equal(phase?.rows.some(r => r.kind === 'naming') ?? false, false)
   }
 
   // naming proposals identify collisions before saving and retain descriptive source words

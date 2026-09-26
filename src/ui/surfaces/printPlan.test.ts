@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
+import { cleanupBasis } from '../../roadmap/cleanupDone.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
@@ -407,8 +408,8 @@ test('a plan whose open work has no dates states the finish of the work still op
 
 test('a printed Cleanup row says what the board says it waits for', () => {
   // Demo: the board reads "On Hold · After Configure Passkey Authentication"
-  // for Verify Emergency Access and "On Hold · After security rollout" for the
-  // alerting row; the print said "On Hold" and then printed the full procedure.
+  // for Verify Emergency Access; the print said "On Hold" and then printed the
+  // full procedure. The alerting row states the board's wait too, whatever it is.
   const p = plan('demo')
   const heads = cleanupHeadsOf(p.schedule.cleanup?.rows ?? [], p.board.laneOf)
   const drill = heads.find((h) => h.kind === 'drill')
@@ -416,7 +417,7 @@ test('a printed Cleanup row says what the board says it waits for', () => {
   assert.ok(drill && alerting, 'the premise: the demo carries the drill and the alerting rows')
   assert.equal(drill.waitingFor, p.board.laneOf('cleanup-drill').waitingFor, 'the print states another wait from the board')
   assert.match(drill.waitingFor ?? '', /Configure Passkey Authentication/, `the drill's wait: ${drill.waitingFor}`)
-  assert.match(alerting.waitingFor ?? '', /security rollout/, `the alerting row's wait: ${alerting.waitingFor}`)
+  assert.equal(alerting.waitingFor, p.board.laneOf('cleanup-alerting').waitingFor, 'the print states another wait for the alerting row')
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   assert.match(print, /cleanupHeadsOf\(schedule\.cleanup\?\.rows \?\? \[\], laneOf\)/, 'the print words the Cleanup heads itself')
   assert.match(print, /status=\{\{ word: h\.word, tone: h\.tone, waitingFor: h\.waitingFor \}\}/, 'the Cleanup body is not handed the wait')
@@ -668,8 +669,9 @@ test('a Completed Cleanup row still prints its body: the drill\'s recovery proce
   // Completed, and not at all inside a finished section, the paper lost them
   // exactly when it exists to be kept for an incident: after the drill.
   // demo-week2: Establish Emergency Access is finished and the drill is
-  // Completed; a legacy manual test is on record, which the body prints.
-  const tested = (f: Fixture): Fixture => ({ ...f, checkpoints: [...(f.checkpoints ?? []), { at: f.snapshot.asOf, date: f.snapshot.asOf.slice(0, 10), cleanup: 'drill', outcome: 'passed', accountIds: f.mapping.breakGlassUserIds }] })
+  // Completed; a legacy manual test is on record, which the body prints. Alert
+  // on Emergency Account Sign-ins, the section's last step, is marked done.
+  const tested = (f: Fixture): Fixture => ({ ...f, checkpoints: [...(f.checkpoints ?? []), { at: f.snapshot.asOf, date: f.snapshot.asOf.slice(0, 10), cleanup: 'drill', outcome: 'passed', accountIds: f.mapping.breakGlassUserIds }, { at: f.snapshot.asOf, date: f.snapshot.asOf.slice(0, 10), cleanup: 'alerting', accountIds: f.mapping.breakGlassUserIds, basis: cleanupBasis('alerting', {}, f.mapping.breakGlassUserIds) }] })
   const p = plan('demo-week2', { over: tested })
   const section = printSectionsOf(p.board).find((s) => s.rows.some((r) => r.id === 'cleanup-drill'))
   assert.ok(section?.finished, 'the premise: the drill\'s section is finished')
