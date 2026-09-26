@@ -550,7 +550,5 @@ test('Step 4: on the demo a policy waiting only on a Direction answer is undated
   // settleForecast): approved, week two's held steps are all unplaced now that
   // Intune enrollment's sign-in loop, which had a place, is cleared by Require
   // MFA for everyone on All resources (7.3).
-  const before = first.r.schedule.estimate
-  const after = approved.r.schedule.estimate
-  if (before && after) assert.equal(before.targetEnd, after.targetEnd, 'the wait moved the estimate')
+  assert.equal(approved.r.schedule.estimate, null, 'approved, every held step waits unplaced, so the plan states no drawn estimate')
 })
