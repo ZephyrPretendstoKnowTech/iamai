@@ -41,7 +41,8 @@ import { groupOf, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
-import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
+import { Button, Callout, Icon, Picker, Status, TabList, onePanelProps } from '../components/index.ts'
+import type { StatusTone } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerSaves, pickerSavesAlone, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
@@ -150,8 +151,10 @@ function EmergencyFacts({ facts }: { facts: EmergencyFact[] }) {
 
 /** The Tasks Remaining tile standard, from Step 1's account tile: subject label, the subject(s) of the next check, the remaining count, the next check and what is wrong, one action, then Completed checks. */
 function EmergencyAccountStatusTile({ account, printing = false }: { account: EmergencySubjectTile; printing?: boolean }) {
-  return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}${account.caution ? ' is-caution' : ''}`} data-subject-key={account.key}>
+  return <article className={`emergency-account-status${account.satisfied ? ' is-satisfied' : ''}`} data-subject-key={account.key}>
     <p className="emergency-account-label">{account.heading}</p>
+    {/* An accepted difference that leaves someone out (acceptPanel.ts): the word, in the waiting tone. */}
+    {account.caution && <Status tone="wait">{ACCEPT_WORDS().tags.weaker}</Status>}
     {account.upn && <p className="emergency-account-upn">{account.upn.split('\n').map((line, index) => <span key={index}><Breakable text={line} /></span>)}</p>}
     {account.remainingCount !== null && account.remainingCount > 0 && <p className="emergency-account-count">{account.remainingCount} check{account.remainingCount === 1 ? '' : 's'} remaining</p>}
     <h5>{account.title}</h5>
@@ -1539,6 +1542,9 @@ function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: 
  * completes with the difference named, and reopens on a new gap. The
  * exclusions group missing is never accepted.
  */
+/** Each difference's mark in the status word's own tone: Weaker waits on a reason, Required stops acceptance. */
+const MARK_TONE: Record<'stricter' | 'weaker' | 'differs' | 'required', StatusTone> = { stricter: 'ok', weaker: 'wait', differs: 'idle', required: 'stop' }
+
 function AcceptDeviation({ step, ctx, onDecide }: { step: Step; ctx: StepVarContext; onDecide: (d: StepDecisionInput) => void }) {
   const W = ACCEPT_WORDS()
   const panel = acceptPanelOf(step, ctx)
@@ -1558,7 +1564,7 @@ function AcceptDeviation({ step, ctx, onDecide }: { step: Step; ctx: StepVarCont
     {panel.lines.length > 0 && <>
       <h5 className="dlabel" id={labelId}>{W.label}</h5>
       <ul className="difference-lines">
-        {panel.lines.map((line, i) => <li key={i}><span className={`difference-mark difference-${line.tag}`}>{line.mark}</span><span className="difference-text"><Breakable text={line.text} /></span></li>)}
+        {panel.lines.map((line, i) => <li key={i}><Status tone={MARK_TONE[line.tag]}>{line.mark}</Status><span className="difference-text"><Breakable text={line.text} /></span></li>)}
       </ul>
       {panel.leaves && <Callout kind="warning">{panel.leaves}</Callout>}
       {panel.required && <p className="reason">{panel.required}</p>}

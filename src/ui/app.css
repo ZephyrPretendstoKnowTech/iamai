@@ -2496,26 +2496,6 @@ footer.app a {
   justify-items: start;
   overflow-wrap: anywhere;
 }
-.difference-mark {
-  font-size: var(--t-1);
-  font-weight: var(--weight-strong);
-  padding: 1px 6px;
-  border-radius: var(--radius-control);
-  color: var(--secondary-text);
-  background: var(--secondary-surface);
-}
-.difference-mark.difference-weaker {
-  color: var(--attention-text);
-  background: var(--attention-tint);
-}
-.difference-mark.difference-stricter {
-  color: var(--success-text);
-  background: var(--success-tint);
-}
-.difference-mark.difference-required {
-  color: var(--danger-text);
-  background: var(--danger-tint);
-}
 .step-action-column .accept-deviation .callout,
 .step-action-column .decision.accept-deviation > .reason {
   margin: 0 0 12px;
@@ -2536,8 +2516,8 @@ footer.app a {
 }
 .step-action-column .accept-deviation .accept-reason-first {
   margin: 6px 0 0;
-  color: var(--attention-text);
   font-size: var(--t-2);
+  font-weight: var(--weight-strong);
 }
 .step-action-column .accept-deviation .accept-caption {
   margin: 6px 0 0;
@@ -2554,10 +2534,7 @@ footer.app a {
 .step-action-column .accept-deviation > .accepted-deviation:not(:first-child) {
   margin-top: 20px;
 }
-/* An accepted difference that leaves someone out: a fact under Satisfied, marked amber. */
-.emergency-account-status.is-caution {
-  border-left: 3px solid var(--attention);
-}
+
 .step-action-column .rail-settings > details > summary {
   cursor: pointer;
   font-size: var(--t-2);
@@ -5428,6 +5405,6 @@ th .th-sort:focus-visible,
 .authored-list-label { margin: 10px 0 2px; }
 .authored-list-items { columns: 3 13rem; column-gap: 24px; list-style: none; padding-left: 0; margin: 2px 0 6px; }
 .authored-list-items li { break-inside: avoid; }
-.authored-list-more > summary { cursor: pointer; color: var(--accent-text, inherit); margin: 2px 0; }
+.authored-list-more > summary { cursor: pointer; margin: 2px 0; }
 /* A line under a step's cards that is no task: what Create the Policies in Report-only leaves out (reportOnlyStep.ts). */
 .readiness-note { margin: 12px 0 0; color: var(--secondary-text); }
