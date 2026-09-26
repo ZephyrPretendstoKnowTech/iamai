@@ -116,11 +116,14 @@ const allDrawn = (b: StepBody): string => b.artifacts.map((a) => a.text()).join(
 
 test('D4: the device answer that narrows the platforms puts them in the Entra procedure beside the JSON, a target with no platform condition drops only that line, and a held create draws its procedure whole', () => {
   {
-    // Below device readiness the create waits with its turn-on, and its procedure
-    // stands whole beside the hold (owner, 2026-09-25: never hide implementation
-    // instructions): the platform line and the body with it.
-    const held = allDrawn(bodyOf('demo', MANAGED, withPhonesBlocked))
-    for (const line of [/New policy/, /Device platforms/, /excludePlatforms/]) assert.match(held, line, 'the held create draws its procedure whole')
+    // Below device readiness the create waits with its turn-on, and its Entra
+    // procedure stands whole beside the hold (owner, 2026-09-25: never hide
+    // implementation instructions), the platform line with it. Nothing runnable
+    // is handed over while it waits (owner, 2026-09-26): no PowerShell or JSON.
+    const heldBody = bodyOf('demo', MANAGED, withPhonesBlocked)
+    const held = allDrawn(heldBody)
+    for (const line of [/New policy/, /Device platforms/]) assert.match(held, line, 'the held create draws its procedure whole')
+    assert.deepEqual(heldBody.artifacts.map((a) => a.id).filter((id) => id === 'ps' || id === 'json'), [], 'no PowerShell or JSON while the create waits')
     const b = bodyOf('demo', MANAGED, (f) => withDevicesReady(withPhonesBlocked(f)))
     const entra = drawn(b, 'portal')
     const json = drawn(b, 'json')
