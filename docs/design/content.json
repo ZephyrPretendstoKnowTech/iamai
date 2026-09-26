@@ -2216,6 +2216,16 @@
             "label": "Policy Name",
             "note": "This step names it {planned}. Only the name differs: rename it in Entra to match."
           },
+          "acceptDeviation": {
+            "$comment": "Owner, 2026-09-25 (deviations, option B): a difference from the baseline a person accepts with a reason, kept in the plan record. The step completes with it named, and reopens the moment an accepted setting changes (tracking.ts MemberTracking.accepted).",
+            "label": "Accept This Difference",
+            "lead": "If {dimensions} differs on purpose, accept it with the reason. The step completes, and reopens if the policy changes again.",
+            "reason": "Why it differs",
+            "accept": "Accept this difference",
+            "remove": "Remove the acceptance",
+            "acceptedLabel": "Accepted Difference",
+            "acceptedNote": "{policy} differs from the baseline's policy in {dimensions}. Accepted {date}: {reason}"
+          },
           "stricterThanBaseline": {
             "$comment": "Owner, 2026-09-25 (deviations, option A): a tenant policy stricter than the baseline's (it covers more people, or asks a stronger grant or session) is accepted, never a correction, and the step always says where it differs (tracking.ts MemberTracking.stricter).",
             "label": "Stricter Than the Baseline",
