@@ -186,3 +186,30 @@ test('7.3: MFA split across policies covers the sign-in when, between them, they
   assert.equal(loopHeld(split(true)), false, 'internal users on one policy and guests on the other: covered')
   assert.equal(loopHeld(split(false)), true, 'with the guest policy off, the guest has no MFA on the sign-in')
 })
+
+test('7.3: a policy leaving guests out through the legacy GuestsOrExternalUsers value never clears the hold', () => {
+  const f = structuredClone(curatedFixture('demo-week2'))
+  const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]
+  rows.find((p) => p.displayName === 'Core - Grant - MFA for all users')!.conditions.users.excludeUsers = ['GuestsOrExternalUsers']
+  rows.find((p) => p.displayName === 'Core - Grant - Guests MFA')!.state = 'disabled'
+  assert.equal(loopHeld(f), true)
+})
+
+test('7.3: an account PIM-eligible for a role the MFA policy leaves out keeps the hold; nobody holding it clears it', () => {
+  // A role no MFA policy of week two names: activated, nothing else reaches the account.
+  const ROLE = 'aaaaaaaa-0000-4000-8000-000000000001'
+  const withRole = (eligible: boolean): Fixture => {
+    const f = structuredClone(curatedFixture('demo-week2'))
+    const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]
+    rows.find((p) => p.displayName === 'Core - Grant - MFA for all users')!.conditions.users.excludeRoles = [ROLE]
+    if (eligible) {
+      const member = f.snapshot.users.find((u) => u.userType !== 'guest' && !f.mapping.breakGlassUserIds.includes(u.id) && !(f.snapshot.roles.active[u.id]?.length))!
+      f.snapshot.roles.eligible = { ...(f.snapshot.roles.eligible ?? {}), [member.id]: [ROLE] }
+    }
+    return f
+  }
+  assert.equal(f73RolesRead(withRole(false)), true, 'the premise: the roles were read')
+  assert.equal(loopHeld(withRole(false)), false, 'nobody holds the role: everyone the step reaches has MFA')
+  assert.equal(loopHeld(withRole(true)), true, 'once the eligible role is activated, that account leaves the MFA policy')
+})
+const f73RolesRead = (f: Fixture): boolean => f.snapshot.config.roleAssignments?.status === 'ok'
