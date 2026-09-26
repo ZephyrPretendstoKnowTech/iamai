@@ -24,6 +24,7 @@ import { BLOCKED_SUBJECT } from '../../copy/reasons.ts'
 import { returnToStep } from '../shell/routes.ts'
 import { CHECK_STATE, RULE_TEXT } from '../../copy/validation.ts'
 import { rulesFor } from '../../validation/rules.ts'
+import { mfaLeavesOutIntune } from '../../roadmap/fixtures/intuneMfa.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8')
 const SECTIONS = read('src/ui/surfaces/StepSections.tsx')
@@ -166,7 +167,8 @@ test("no card is drawn twice: not a tenant fact the step's blocker states, not t
     // beneath — here beside the session-loop wait on Intune enrollment, and on the
     // PIM create held on an authentication context another policy targets
     // (R4-18 review; content/implementation/pimPackage.test.ts).
-    const { step, c, blockers, reading } = opened('demo-week2', 's-goal-intune-enrollment-reauth')
+    // With Intune Enrollment left out of week two's MFA policies, nothing asks for MFA on that sign-in (7.3).
+    const { step, c, blockers, reading } = opened(mfaLeavesOutIntune(fixture('demo-week2')).fixture, 's-goal-intune-enrollment-reauth')
     assert.ok(reading.blockers.some((b) => b.kind === 'fact' && b.id === 'fact:session-loop'), 'the premise: the step holds on a tenant fact')
     const r = readinessOf(step, c, blockers)
     const tiles = [...r.tiles, ...r.satisfied]

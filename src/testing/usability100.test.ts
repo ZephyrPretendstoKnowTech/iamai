@@ -7,9 +7,11 @@ import { boardReadingsOf, laneViewFor } from '../ui/surfaces/planBoard.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import { applySkips } from '../roadmap/progress.ts'
+import { mfaLeavesOutIntune } from '../roadmap/fixtures/intuneMfa.ts'
+import type { Fixture } from '../roadmap/fixtures/index.ts'
 
-function setup(stage: Usability100Stage) {
-  const f=usability100(stage),r=runFixture(f,{},null,f.snapshot.asOf)
+function setup(stage: Usability100Stage | Fixture) {
+  const f=typeof stage==='string'?usability100(stage):stage,r=runFixture(f,{},null,f.snapshot.asOf)
   const ctx={snapshot:f.snapshot,mapping:f.mapping,nameOf:(id:string)=>r.input.names!.label(id),signature:'IT',operatorId:f.operatorId,now:f.snapshot.asOf,groups:f.groups,directory:r.input.directory,naming:r.coverage.organisation.naming}
   const board=boardReadingsOf(r.steps,r.schedule.cleanup,f.mapping.breakGlassAnswers??null)
   const body=(id:string)=>{const s=r.steps.find(s=>s.id===id)!;assert.ok(s,id);return stepBodyOf(s,ctx,{lane:laneViewFor(s,board)})}
@@ -35,7 +37,11 @@ test('100 identities remain stable across deployment stages; drift reopens the a
   assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.substatus,'Correct', 'a safe correction that does not enforce can proceed before final recovery verification')
 })
 test('an Every time configuration hazard cannot be mistaken for a timed observation',()=>{
-  const {r,body}=setup('configured');const s=r.steps.find(s=>s.id==='s-goal-intune-enrollment-reauth')!
+  // The hazard stands where nothing asks for MFA on the enrollment sign-in: the
+  // tenant's MFA policies leave Intune Enrollment out, as the baseline's does (7.3).
+  const {fixture:out,changed}=mfaLeavesOutIntune(usability100('configured'))
+  assert.ok(changed>0,'the premise: an On MFA policy on All resources')
+  const {r,body}=setup(out);const s=r.steps.find(s=>s.id==='s-goal-intune-enrollment-reauth')!
   assert.ok(observe(s,new Map(r.steps.map(s=>[s.id,s]))).blockers?.some(b=>b.id==='fact:session-loop'))
   assert.notEqual(laneReadings(r.steps).get(s.id)?.substatus,'Observing')
   assert.match(body(s.id).readiness.tiles.map(t=>t.value+' '+t.note).join(' '),/More observation time will not resolve/)

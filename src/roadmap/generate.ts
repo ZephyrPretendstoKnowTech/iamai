@@ -3220,8 +3220,35 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
 
   // 4. No session control that can put the person applying it in a loop:
-  // sign-in every time without MFA in the same policy is Microsoft's own
+  // sign-in every time without MFA on that sign-in is Microsoft's own
   // documented hazard (steps/session-controls.md).
+  // The MFA may come from another policy: an On policy that asks for a method,
+  // reaches everyone this one reaches and covers its resources (Require MFA for
+  // everyone on All resources) prompts for MFA on the same sign-in. One that
+  // leaves the resource out, as the baseline's own MFA policy leaves out Intune
+  // Enrollment, does not.
+  const onMfa = ((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[])
+    .filter((p) => p.state === 'enabled')
+    .map((p) => effectOf(p))
+    .filter((m) => m.asksForMethod && !m.blocks && m.unknown.length === 0 && m.scope.allUsers && !m.scope.unreadable && m.narrowings.every((n) => n.kind === 'applications'))
+  const lower = (xs: readonly string[]): string[] => xs.map((x) => x.toLowerCase())
+  const within = (xs: readonly string[], of: readonly string[]): boolean => lower(xs).every((x) => lower(of).includes(x))
+  // `e` is the step's own policy; with none, its resources and exclusions are
+  // unknown, and only a policy on every resource leaving out only the
+  // exclusions group answers for it.
+  const mfaCovers = (e: PolicyEffect | null): boolean =>
+    onMfa.some((m) => {
+      const apps = lower(e?.scope.applications.include ?? ['All'])
+      const mInclude = lower(m.scope.applications.include)
+      const mExclude = lower(m.scope.applications.exclude)
+      const reachesApps = apps.includes('all')
+        ? mInclude.includes('all') && mExclude.length === 0
+        : (mInclude.includes('all') || apps.every((a) => mInclude.includes(a))) && apps.every((a) => !mExclude.includes(a))
+      if (!reachesApps || m.scope.applications.userActions.length > 0 || m.scope.applications.authContexts.length > 0) return false
+      const excluded = e ? { users: e.scope.users.exclude, groups: e.scope.groups.exclude, roles: e.scope.roles.exclude } : { users: [], groups: [tenantObjects.exclusionsGroupId].filter((x): x is string => typeof x === 'string'), roles: [] }
+      const guestsLeftOut = m.scope.guests.exclude === null || (e?.scope.guests.exclude !== null && e?.scope.guests.exclude !== undefined && JSON.stringify(m.scope.guests.exclude) === JSON.stringify(e.scope.guests.exclude))
+      return within(m.scope.users.exclude, excluded.users) && within(m.scope.groups.exclude, excluded.groups) && within(m.scope.roles.exclude, excluded.roles) && guestsLeftOut
+    })
   for (const s of steps) {
     // The policy the step will actually leave behind decides: a sign-in
     // frequency of "every time" with nothing granting a way through is the loop,
@@ -3230,10 +3257,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const effects = effectsOf(s)
     const loops =
       effects !== null
-        ? effects.some((e) => e.sessionControls?.signInFrequencyEveryTime === true && !e.asksForMethod)
+        ? effects.some((e) => e.sessionControls?.signInFrequencyEveryTime === true && !e.asksForMethod && !mfaCovers(e))
         : (() => {
             const floor = input.coverage.results.find((r) => r.goal.id === s.goalId)?.goal.implementations[0]?.floor
-            return floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined
+            return floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined && !mfaCovers(null)
           })()
     if (loops) blockLate(s, 'session-loop', BLOCKED_REASON.after(shared.sessionLoopHold as string))
   }
