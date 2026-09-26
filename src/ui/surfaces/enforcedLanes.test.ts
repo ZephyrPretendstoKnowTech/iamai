@@ -131,10 +131,12 @@ test('U20/U21 on the demo: a drifted enforced policy waits on the foundation and
     }
     const intune = readings.get('s-goal-intune-enrollment-reauth')
     // Week two leaves the device answers open (roadmap/fixtures/index.ts), so the
-    // Direction wait is the primary blocker (§15: a decision before a fact); the
-    // session-loop guard is still there beside it.
+    // Direction wait is the primary blocker (§15: a decision before a fact). Its
+    // Require MFA for everyone on All resources asks for MFA on the enrollment
+    // sign-in, so no session-loop guard stands beside it (7.3; the guard itself
+    // is usability100.test.ts's and sectionSevenFixes.test.ts's).
     assert.deepEqual([intune?.lane, intune?.reason?.kind], ['On Hold', 'decision'])
-    assert.ok(intune?.blockers.some((b) => b.kind === 'fact'), 'the session-loop configuration guard is not cleared by waiting for more evidence')
+    assert.ok(!intune?.blockers.some((b) => b.kind === 'fact'), 'no session-loop guard where MFA covers the enrollment sign-in')
     const view = laneViewFor(stepOf(run, 's-goal-intune-enrollment-reauth'), boardReadingsOf(run.steps, run.schedule.cleanup, run.input.mapping.breakGlassAnswers ?? null))
     assert.equal(view.label, BOARD.lanes.onHold)
     assert.equal(view.tail, directionWords.waiting)
