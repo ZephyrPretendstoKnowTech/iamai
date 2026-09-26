@@ -3616,7 +3616,7 @@
   },
   "cleanup": {
     "alerting": {
-      "$comment": "Alert on Emergency Account Sign-ins, Establish Emergency Access's last step (owner, 2026-09-25): drawn on the step template, completed by one Mark as done in the rail, since IAMAI cannot read Azure Monitor alert rules. The procedure is Microsoft Learn's (security-emergency-access#monitor-sign-in-and-audit-logs) with the tenant's values: {alertQuery} is the SigninLogs query over the saved emergency accounts' object IDs, {firstAccountUpn} the first of them (ui/surfaces/alertingTasks.ts).",
+      "$comment": "Alert on Emergency Account Sign-ins, Ongoing Checks and Cleanup's first step (owner, 2026-09-25 and 2026-09-26): drawn on the step template, completed by one Mark as done in the rail, since IAMAI cannot read Azure Monitor alert rules. The procedure is Microsoft Learn's (security-emergency-access#monitor-sign-in-and-audit-logs) with the tenant's values: {alertQuery} is the SigninLogs query over the saved emergency accounts' object IDs, {firstAccountUpn} the first of them (ui/surfaces/alertingTasks.ts).",
       "title": "Alert on Emergency Account Sign-ins",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs",

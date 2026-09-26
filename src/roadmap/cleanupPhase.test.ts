@@ -25,10 +25,8 @@ test('recovery testing is scheduled early and on its own, and optional hygiene f
     assert.deepEqual(kinds, ORDER.filter((k) => kinds.includes(k)), 'rows keep the §5 order')
     assert.ok(kinds.includes('alerting') && kinds.includes('drill'), 'the emergency accounts give alerting and the drill')
     assert.equal(kinds.includes('notAssessed'), false, 'individual workflow reviews replace the catch-all')
+    assert.ok(c.rows.find(row => row.kind === 'alerting')!.day > r.schedule.targetEnd, 'alerting follows security rollout')
     assert.ok(c.rows.find(row => row.kind === 'drill')!.day <= r.schedule.targetEnd, 'recovery testing is early')
-    // Alerting closes Establish Emergency Access, the day after the drill (owner, 2026-09-25).
-    assert.ok(c.rows.find(row => row.kind === 'alerting')!.day <= r.schedule.targetEnd, 'alerting is early')
-    assert.ok(c.rows.find(row => row.kind === 'alerting')!.day > c.rows.find(row => row.kind === 'drill')!.day, 'alerting follows the drill')
     const ctx = r.schedule.rhythm ? { rhythm: r.schedule.rhythm } : undefined
     for (const [i, row] of c.rows.entries()) {
       assert.ok(ctx ? isWorkingDay(row.day, ctx) : true, `${row.kind} lands on a working day`)
@@ -56,8 +54,7 @@ test('recovery testing is scheduled early and on its own, and optional hygiene f
       if (r.steps.length === 0) continue
       assert.ok(c, `${f.name}: emergency accounts give Cleanup at least the alerting and drill rows`)
       assert.equal(c.start, c.rows.find(row => row.kind === 'drill')!.day, `${f.name}: recovery testing starts independently of last enforcement`)
-      // The drill and alerting are Establish Emergency Access's; the rest follows the last enforcement.
-      for (const row of c.rows.filter(row => row.kind !== 'drill' && row.kind !== 'alerting')) assert.ok(row.day > r.schedule.targetEnd, `${f.name}: ${row.kind}`)
+      for (const row of c.rows.filter(row => row.kind !== 'drill')) assert.ok(row.day > r.schedule.targetEnd)
       assert.ok(c.end >= c.start)
     }
   }

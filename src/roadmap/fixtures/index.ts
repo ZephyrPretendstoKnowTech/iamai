@@ -22,7 +22,7 @@ import { sharedDeviceUsers } from '../../derive/sharedDevices.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
-import { cleanupBasis, recoveryAccountBasis, recoveryCredentialBasis } from '../cleanupDone.ts'
+import { recoveryAccountBasis, recoveryCredentialBasis } from '../cleanupDone.ts'
 import { APPROVED_KEY, observedRecoveryRecords, withPreparedPasskeys } from './recoveryRecords.ts'
 import { recoveryPasskeyCandidateSet } from '../passkeyCompatibility.ts'
 import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
@@ -882,8 +882,6 @@ export function buildFixture(spec: Spec): Fixture {
       // Step 4's proof as the scan records it: the prepared baseline, then each account's observed passkey sign-in.
       const candidateSetBasis = Object.fromEntries(bgIds.map(id => { const set = recoveryPasskeyCandidateSet(snapshot, id, mapping, groups); return [id, set.state === 'complete' ? JSON.stringify([...set.ids].sort()) : ''] }))
       checkpoints = observedRecoveryRecords({ tenantId, events: Object.fromEntries(bgIds.map(id => [id, snapshot.signInEvidence[id]!.recoveryCandidates![0]])), configurationObservedAt, at: NOW, accountBasis, candidateSetBasis })
-      // And the alert rule on their sign-ins, marked done the same week (Alert on Emergency Account Sign-ins, 1.5).
-      checkpoints.push({ at: NOW, date: NOW.slice(0, 10), cleanup: 'alerting', accountIds: bgIds, basis: cleanupBasis('alerting', {}, bgIds), timeZone: 'UTC' })
     }
   }
   if (mapping.breakGlassAnswers?.credentialStorage === true) mapping.breakGlassCustodyBasis = recoveryCredentialBasis(snapshot, bgIds)

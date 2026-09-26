@@ -105,9 +105,9 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   // the Cleanup rows out of the 2026-09-19 uniformity rule, and a Cleanup row is
   // a board row rather than a step — and close on the same footer.
   const drill = row.kind === 'drill'
-  // Alert on Emergency Account Sign-ins closes Establish Emergency Access and is
-  // drawn as the drill is (owner, 2026-09-25), completed by one Mark as done in
-  // the rail: IAMAI cannot read the alert rule it asks for.
+  // Alert on Emergency Account Sign-ins is drawn as the drill is (owner,
+  // 2026-09-25), completed by one Mark as done in the rail: IAMAI cannot read
+  // the alert rule it asks for.
   const alerting = row.kind === 'alerting'
   const taskHead = drill || alerting ? TASK_HEAD : null
   const doneWhen = entry.doneWhen.filter(whole)

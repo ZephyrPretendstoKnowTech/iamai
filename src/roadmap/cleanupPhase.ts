@@ -154,11 +154,11 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
   const ctx = input.rhythm ? { rhythm: input.rhythm } : undefined
   let day = addWorkingDays(input.after, 1, ctx)
   const dated: CleanupPhase['rows'] = []
-  // The drill and the alert rule are Establish Emergency Access's, dated early
-  // on their own; the rest follow the last enforcement, one working day each.
+  // The drill is Establish Emergency Access's, dated early on its own; the rest
+  // follow the last enforcement, one working day each.
   let placed = 0
   for (const r of rows) {
-    const early = (r.kind === 'drill' || r.kind === 'alerting') && input.early ? input.early : null
+    const early = r.kind === 'drill' && input.early ? input.early : null
     if (early === null && placed++ > 0) day = addWorkingDays(day, 1, ctx)
     const accounts = r.kind === 'drill' || r.kind === 'alerting' ? input.emergencyAccountIds : []
     const basis = cleanupBasis(r.kind, r.lists, accounts)
@@ -175,7 +175,7 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     // B1): the automatic per-account records are Step 4's Sign-in evidence tile.
     const latest = records.filter(c => c.cleanup === r.kind && (r.kind !== 'drill' || isLegacyManualDrillRecord(c))).sort((a,b) => a.at.localeCompare(b.at)).at(-1)
     const verification = done ? 'current' : latest && (r.kind === 'consolidation' || r.kind === 'naming') ? input.policies == null ? 'unread' : (r.kind === 'naming' ? !latest.namingChanges?.length : !latest.replacementPolicyId && latest.consolidationDecision !== 'retain-both') ? 'historical' : 'changed' : latest && r.kind === 'drill' && !latest.outcome ? 'historical' : latest && input.accountBasis && accounts.some(id => !input.accountBasis?.[id]) ? 'unread' : latest && latest.basis !== basis ? 'changed' : 'incomplete'
-    dated.push({ ...r, day: early !== null ? addWorkingDays(early, r.kind === 'drill' ? 2 : 3, ctx) : day, done, ...(latest ? { record: latest, verification, ...(verification === 'changed' ? { verificationReason: 'The recorded check does not cover the current accounts or configuration.' } : verification === 'unread' ? { verificationReason: 'The latest scan could not verify the configuration used for this check.' } : verification === 'historical' ? { verificationReason: 'The earlier date is retained; it does not record a successful scoped test.' } : verification === 'incomplete' ? { verificationReason: r.kind === 'naming' ? 'Save the approved names, rescan after renaming, and confirm the tooling check.' : r.kind === 'consolidation' ? 'Review the current candidate policies and save the outcome.' : 'Record a successful test for the current scope.' } : {}) } : {}) })
+    dated.push({ ...r, day: early !== null ? addWorkingDays(early, 2, ctx) : day, done, ...(latest ? { record: latest, verification, ...(verification === 'changed' ? { verificationReason: 'The recorded check does not cover the current accounts or configuration.' } : verification === 'unread' ? { verificationReason: 'The latest scan could not verify the configuration used for this check.' } : verification === 'historical' ? { verificationReason: 'The earlier date is retained; it does not record a successful scoped test.' } : verification === 'incomplete' ? { verificationReason: r.kind === 'naming' ? 'Save the approved names, rescan after renaming, and confirm the tooling check.' : r.kind === 'consolidation' ? 'Review the current candidate policies and save the outcome.' : 'Record a successful test for the current scope.' } : {}) } : {}) })
   }
   const policyOptions = new Map<string, { id: string; name: string; basis: string | null; state: string }>()
   for (const raw of input.policies ?? []) {

@@ -317,7 +317,7 @@ export function doesntApplyView(): LaneView {
 export type BoardCleanupRow = { row: CleanupPhase['rows'][number]; id: string; complete: boolean }
 
 /** The Cleanup rows that wait for the security rollout to finish: after it, never beside it (planLanes.ts `afterRollout`). */
-const AFTER_ROLLOUT: ReadonlySet<string> = new Set(['consolidation', 'naming'])
+const AFTER_ROLLOUT: ReadonlySet<string> = new Set(['alerting', 'consolidation', 'naming'])
 
 /**
  * The board's reading of the whole plan, built one way for every surface that
@@ -392,10 +392,7 @@ function forecastRowsOf(steps: readonly Step[], readings: ReadonlyMap<string, La
   for (const c of cleanupRows) {
     const r = readings.get(c.id)
     if (!r) continue
-    // Alert on Emergency Account Sign-ins follows Verify Emergency Access (1.4 → 1.5).
-    const drill = cleanupRows.find((x) => x.row.kind === 'drill')
-    const afterDrill: ForecastWait[] = c.row.kind === 'alerting' && drill !== undefined && readings.has(drill.id) ? [{ kind: 'step', id: drill.id }] : []
-    rows.push({ id: c.id, step: null, dated: true, day: c.row.day, waits: [...waitsOf(r), ...afterDrill], turnOnWaits: [], afterRollout: AFTER_ROLLOUT.has(c.row.kind), complete: c.complete || r.lane === 'Completed' || r.lane === 'Deferred' })
+    rows.push({ id: c.id, step: null, dated: true, day: c.row.day, waits: waitsOf(r), turnOnWaits: [], afterRollout: AFTER_ROLLOUT.has(c.row.kind), complete: c.complete || r.lane === 'Completed' || r.lane === 'Deferred' })
   }
   return rows
 }

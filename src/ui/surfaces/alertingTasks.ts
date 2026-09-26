@@ -1,5 +1,5 @@
-// Alert on Emergency Account Sign-ins, Establish Emergency Access's last step
-// (owner, 2026-09-25): drawn on the step template, with Microsoft Learn's
+// Alert on Emergency Account Sign-ins, Ongoing Checks and Cleanup's first step
+// (owner, 2026-09-25 and 2026-09-26): drawn on the step template, with Microsoft Learn's
 // procedure filled with the tenant's own values, and completed by one Mark as
 // done in the rail. IAMAI cannot read Azure Monitor alert rules, so nothing a
 // scan reads could complete it, and it holds nothing.
@@ -63,10 +63,7 @@ export function alertingAiInfo(phase: CleanupPhase): string {
   ].filter((x) => x !== '').join('\n\n')
 }
 
-/**
- * Tasks Remaining, as the other Establish Emergency Access steps draw it: the
- * alert rule to create, or, once marked done, the day it was.
- */
+/** Tasks Remaining, as the Establish Emergency Access steps draw it: the alert rule to create, or, once marked done, the day it was. */
 export function alertingSubjects(row: CleanupPhase['rows'][number]): EmergencySubjectTile[] {
   const w = W()
   const done = row.done ? fillText(w.cardDone, { date: absoluteDate(row.done.slice(0, 10)) }) : null
