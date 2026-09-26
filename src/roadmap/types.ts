@@ -968,6 +968,8 @@ export type Step = {
   reportOnlyBatch?: { create: string[]; created: string[]; correct?: string[] }
   /** A goal step's own name for its policy, the one its create gives it, whatever the step does now (generate.ts). */
   createName?: string
+  /** The differences from the baseline a person accepted on this step, with a reason (MappingState.acceptedDeviations). */
+  acceptedDeviation?: import('../mapping/types.ts').AcceptedDeviation
   /**
    * Where the finished plan schedules this step (roadmap/stepSchedule.ts): its
    * class, the transition and day of its next milestone, its span and its phase.
@@ -1179,6 +1181,10 @@ export type MemberTracking = {
   plannedName?: string
   /** The dimensions where the tenant's policy is stricter than the plan's (wider users, a stronger grant or session): accepted, never a correction, and said on the step (owner, 2026-09-25). */
   stricter?: string[]
+  /** The dimensions where the tenant's policy differs and a person accepted it, with a reason (Step.acceptedDeviation), while the settings are as accepted. */
+  accepted?: string[]
+  /** The fingerprint of each setting still differing (observation.ts materialFieldsOf): what Accept this difference saves. */
+  differsFields?: Record<string, string>
   /**
    * The dimensions the deployed policy differs from this step's own intended
    * operation in — what IAMAI asked for and did not get. Empty where it matches,

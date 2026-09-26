@@ -1,4 +1,5 @@
 import { NETWORK_NAME, NETWORK_RANGES, validNetworkRanges } from '../../mapping/networkDraft.ts'
+import { dimensionWords } from '../../roadmap/observation.ts'
 import { passkeyReadiness } from './passkeyPresentation.ts'
 import { PasskeyModelDecision } from './PasskeyModelDecision.tsx'
 import { ManualReviewForm } from './ManualReviewForm.tsx'
@@ -47,7 +48,7 @@ import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteO
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
-import { answerKey, decisionKeyOf } from '../../roadmap/decisions.ts'
+import { answerKey, decisionKeyOf, deviationDecision } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/stepIds.ts'
 import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
@@ -226,9 +227,12 @@ export function ContentStep({
   onOpenMappings,
   followUp,
   objectTask,
+  deviation,
   officeNetwork,
 }: {
   step: Step
+  /** The step's accepted differences from the baseline, and their Save (decisions.ts DEVIATION_KEY; owner, 2026-09-25). */
+  deviation?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
   ctx: StepVarContext
   /**
    * The saved decision of the object this step makes itself, and its Save
@@ -528,6 +532,7 @@ export function ContentStep({
           {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). A step whose own picker saves under a key of its own still draws it: Create or Correct Service Accounts Group's group picker (decisions.ts decisionKeyOf). */}
           {/* The picker is the step's own, or — on a step that makes an object itself and asks nothing of its own — the object's, saved under the object's id (stepBody.ts taskDecision; Stage 3: the countries location's Work Countries, on the countries step). */}
           {ANSWERED_IN[step.id] && decisionKeyOf(step.id) === step.id ? null : step.dormantChoices ? <DormantDecision step={step} onDecide={onDecide} printing={printing} /> : decides && <Decision key={step.id} d={taskDecision?.d ?? d} ex={taskDecision?.ex ?? ex} saved={taskDecision ? objectTask?.saved ?? null : decision} onDecide={taskDecision ? objectTask?.onDecide : onDecide} stepId={taskDecision?.stepId ?? decisionKeyOf(step.id)} ctx={ctx} printing={printing} railInstruction={!taskDecision && (rail.instruction !== null || finishedChoice(step.id, contract.state.satisfied))} />}
+          {deviation && !printing && <AcceptDeviation key={`${step.id}:deviation`} step={step} onDecide={deviation.onDecide} />}
           {step.id === CAMPAIGN_STEP_ID && (followUp || printing) && <FollowUpDecision key={`${step.id}:follow-up`} step={step} ctx={ctx} saved={followUp?.saved ?? null} onDecide={followUp?.onDecide} printing={printing} />}
           {/* The one thing a scan cannot see, recorded where every other control
               on a step is (owner, 2026-09-20). It used to stand in the main
@@ -1516,5 +1521,31 @@ function DormantDecision({ step, onDecide, printing }: { step: Step; onDecide?: 
     <h5 className="dlabel" id={labelId}>{K.label}</h5>
     {/* Nothing is suggested, and the list holds every account still listed, each with its last sign-in (walk list item 22). */}
     <Picker labelledBy={labelId} selected={picked} options={results} listAll onSearch={setQuery} onChange={setPicked} onCommit={save} />
+  </div>
+}
+
+/**
+ * Accept this difference (owner, 2026-09-25, deviations option B): where the
+ * tenant's policy differs from the baseline's in a setting IAMAI does not write,
+ * a person may accept it with a reason. The fingerprint of each setting as it
+ * stands is kept with the reason in the plan record; the step completes with the
+ * difference named, and reopens the moment an accepted setting changes.
+ */
+function AcceptDeviation({ step, onDecide }: { step: Step; onDecide: (d: StepDecisionInput) => void }) {
+  const W = CONTRACT.acceptDeviation
+  const differs = (step.tracking?.members ?? []).reduce<Record<string, string>>((all, m) => ({ ...all, ...(m.differsFields ?? {}) }), {})
+  const accepted = step.acceptedDeviation
+  const [reason, setReason] = useState(accepted?.reason ?? '')
+  if (Object.keys(differs).length === 0 && !accepted) return null
+  const labelId = `deviation-${step.id}`
+  const save = (): void => onDecide(deviationDecision(reason, { ...(accepted?.fields ?? {}), ...differs }))
+  return <div className="decision">
+    <h5 className="dlabel" id={labelId}>{W.label}</h5>
+    {Object.keys(differs).length > 0 && <>
+      <p className="reason">{fillText(W.lead, { dimensions: dimensionWords(Object.keys(differs)) })}</p>
+      <input type="text" aria-labelledby={labelId} placeholder={W.reason} value={reason} onChange={(e) => setReason(e.target.value)} />
+      <button type="button" className="btn" disabled={reason.trim() === ''} onClick={save}>{W.accept}</button>
+    </>}
+    {accepted && <button type="button" className="btn secondary" onClick={() => onDecide(deviationDecision('', {}))}>{W.remove}</button>}
   </div>
 }

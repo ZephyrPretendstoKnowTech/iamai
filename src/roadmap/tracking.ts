@@ -981,7 +981,12 @@ export function trackExecution(
       const stricter = found.filter((d) =>
         (strictEnough && ((d === 'grantControls' && floor?.grant !== undefined) || (d === 'sessionControls' && floor?.session !== undefined))) ||
         (d === 'conditions.users' && intended !== null && policyRow !== undefined && usersWider(intended, policyRow as Record<string, unknown>)))
-      const unwritten = found.filter((d) => !stricter.includes(d))
+      // And where a person accepted the difference with a reason, while the setting is
+      // exactly as it was accepted (owner, 2026-09-25, deviations option B): a change
+      // to it reopens the step.
+      const now = policyRow ? materialFieldsOf(policyRow as Record<string, unknown>) : {}
+      const accepted = found.filter((d) => !stricter.includes(d) && step.acceptedDeviation?.fields[d] !== undefined && step.acceptedDeviation.fields[d] === now[d])
+      const unwritten = found.filter((d) => !stricter.includes(d) && !accepted.includes(d))
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this
         // is; it never says which policy is delivering it, and the two were being
@@ -1115,6 +1120,8 @@ export function trackExecution(
         policyId: policyRow?.id ?? null,
         policyName: policyRow?.displayName ?? null,
         ...(stricter.length > 0 ? { stricter } : {}),
+        ...(accepted.length > 0 ? { accepted } : {}),
+        ...(unwritten.length > 0 ? { differsFields: Object.fromEntries(unwritten.filter((d) => now[d] !== undefined).map((d) => [d, now[d]])) } : {}),
         // The name the step's create gives it, where that is not the tenant's: only the
         // name may differ from the plan (owner, 2026-09-25), and the step says so.
         ...(() => {

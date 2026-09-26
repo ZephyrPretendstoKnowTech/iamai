@@ -7,6 +7,7 @@ import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { REPORT_ONLY_STEP_ID } from './reportOnlyBatch.ts'
 import { sameDimension } from './observation.ts'
+import { DEVIATION_KEY, applyStepDecisions } from './decisions.ts'
 import { usersWider } from './tracking.ts'
 import { asPlanned } from './fixtures/asPlanned.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
@@ -136,4 +137,33 @@ test('stricter than the baseline is accepted and said: an admins policy covering
   const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, naming: run.coverage.organisation.naming, ...planDates(run.steps, run.schedule.start, run.coverage.organisation.naming, snapshot) }
   const tile = stepBodyOf(step, ctx).readiness.satisfied.find((t) => t.key.startsWith('stricter:'))
   assert.match(String(tile?.note), /is stricter than the baseline's policy in who it applies to\. IAMAI accepts it as it is\./)
+})
+
+test('a difference accepted with a reason completes the step and says so; changing the accepted setting reopens it', () => {
+  // Owner, 2026-09-25 (deviations, option B).
+  const session = (hours: number) => (row: Row): void => {
+    row.sessionControls = { signInFrequency: { isEnabled: true, type: 'hours', value: hours, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication' } }
+  }
+  const first = rescan(session(4))
+  const member = first.step.tracking!.members![0]
+  assert.deepEqual(Object.keys(member.differsFields ?? {}), ['sessionControls'], 'the premise: one setting to correct, with its fingerprint')
+  const decisions = { [`${DEVIATION_KEY}${first.step.id}`]: { answers: { reason: 'Reception kiosks sign in again every four hours', fields: JSON.stringify(member.differsFields) }, at: '2026-09-25T00:00:00Z' } }
+  const accepting = (hours: number) => {
+    const snapshot = structuredClone(DEMO.snapshot)
+    const { body } = toCreate()
+    const row: Row = { ...structuredClone(body), id: 'p-built-from-step', state: 'enabledForReportingButNotEnforced', createdDateTime: snapshot.asOf }
+    session(hours)(row)
+    rowsOf(snapshot).push(row)
+    const f = { ...DEMO, snapshot, mapping: applyStepDecisions(DEMO.mapping, decisions) }
+    const run = runFixture(f)
+    const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, naming: run.coverage.organisation.naming, ...planDates(run.steps, run.schedule.start, run.coverage.organisation.naming, snapshot) }
+    return { step: run.steps.find((s) => s.id === first.step.id)!, ctx }
+  }
+  const kept = accepting(4)
+  assert.deepEqual(kept.step.state.members.flatMap((m) => [...m.change.unwritten]), [], 'nothing left to correct')
+  assert.deepEqual(kept.step.tracking?.members?.[0]?.accepted, ['sessionControls'])
+  const tile = stepBodyOf(kept.step, kept.ctx).readiness.satisfied.find((t) => t.key.startsWith('accepted:'))
+  assert.match(String(tile?.note), /differs from the baseline's policy in session controls\. Accepted .+: Reception kiosks sign in again every four hours/)
+  const moved = accepting(8)
+  assert.deepEqual([...new Set(moved.step.state.members.flatMap((m) => [...m.change.unwritten]))], ['sessionControls'], 'the accepted setting moved: the step reopens')
 })

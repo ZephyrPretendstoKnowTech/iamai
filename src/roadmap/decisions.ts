@@ -26,6 +26,13 @@ export type SkipDecision = { reason: string; at: string }
 export type StepDecision = { picked?: string[]; option?: string; answers?: Record<string, string>; at: string }
 /** What a Save hands over: the decision without its time. */
 export type StepDecisionInput = Omit<StepDecision, 'at'>
+/** The decision key a step's accepted differences from the baseline save under: this, then the step id. */
+export const DEVIATION_KEY = 'deviation:'
+
+/** What Accept this difference saves: the reason, and each accepted setting's fingerprint. An empty reason removes the acceptance (applyStepDecisions). */
+export function deviationDecision(reason: string, fields: Record<string, string>): StepDecisionInput {
+  return { answers: { reason: reason.trim(), fields: JSON.stringify(fields) } }
+}
 
 /**
  * A person's confirmation of one prerequisite IAMAI cannot read from Microsoft
@@ -231,6 +238,18 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
   // been saved as (directionAnswers.ts), in its place in the saved order.
   for (const [stepId, d] of expandDirectionDecisions(stepDecisions)) {
     if (!d) continue
+    // A difference from the baseline accepted with a reason (MappingState.acceptedDeviations).
+    if (stepId.startsWith(DEVIATION_KEY)) {
+      const reason = d.answers?.reason?.trim() ?? ''
+      let fields: Record<string, string> | null = null
+      try { fields = JSON.parse(d.answers?.fields ?? 'null') as Record<string, string> | null } catch { fields = null }
+      const target = stepId.slice(DEVIATION_KEY.length)
+      const kept = { ...(next.acceptedDeviations ?? {}) }
+      if (reason !== '' && fields && Object.keys(fields).length > 0) kept[target] = { fields, reason, at: d.at }
+      else delete kept[target]
+      next.acceptedDeviations = kept
+      continue
+    }
     if (stepId === PASSKEY_MODELS_STEP) {
       if (provenance === 'confirmed' && d.option === PASSKEY_MODELS_ACCEPT) {
         const models = parsePasskeyApprovedModels(d.answers?.[PASSKEY_MODELS_ANSWER])

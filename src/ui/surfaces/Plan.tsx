@@ -16,7 +16,7 @@ import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
-import { decisionKeyOf } from '../../roadmap/decisions.ts'
+import { DEVIATION_KEY, decisionKeyOf } from '../../roadmap/decisions.ts'
 import { MFA_FOLLOW_UP_KEY } from '../../roadmap/answers.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/stepIds.ts'
 import { app, pages, schedulingWords } from '../../content/content.ts'
@@ -272,7 +272,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[decisionKeyOf(step.id)] ?? null} followUp={step.id === CAMPAIGN_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} officeNetwork={step.id === PREREQ_STEP_ID.trustedLocation ? (a) => { const devices = c.steps.find((s) => s.id === DIRECTION_STEP.devices); if (devices) data.onDecide(DIRECTION_STEP.devices, directionDecisionWith(devices, 'officeNetwork', a)) } : undefined} onDecide={(d) => { data.onDecide(decisionKeyOf(step.id), d); if (isDirectionStep(step.id)) approved.current = step.id }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[decisionKeyOf(step.id)] ?? null} followUp={step.id === CAMPAIGN_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} deviation={{ saved: data.stepDecisions[DEVIATION_KEY + step.id] ?? null, onDecide: (d) => data.onDecide(DEVIATION_KEY + step.id, d) }} officeNetwork={step.id === PREREQ_STEP_ID.trustedLocation ? (a) => { const devices = c.steps.find((s) => s.id === DIRECTION_STEP.devices); if (devices) data.onDecide(DIRECTION_STEP.devices, directionDecisionWith(devices, 'officeNetwork', a)) } : undefined} onDecide={(d) => { data.onDecide(decisionKeyOf(step.id), d); if (isDirectionStep(step.id)) approved.current = step.id }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -702,8 +702,10 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, followUp, objectTask, officeNetwork, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, followUp, objectTask, deviation, officeNetwork, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
+  /** The step's accepted differences from the baseline, and their Save (decisions.ts DEVIATION_KEY). */
+  deviation?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
   /** The campaign's follow-up list, passed through to its step (ContentStep). */
   followUp?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
   /** The saved decision of the object the step makes itself, and its Save, under the object's own id (ContentStep; Stage 3). */
@@ -803,6 +805,7 @@ function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, on
           onDecide={onDecide}
           followUp={followUp}
           objectTask={objectTask}
+          deviation={deviation}
           officeNetwork={officeNetwork}
           saveStatus={saveStatus}
           confirmations={confirmations}

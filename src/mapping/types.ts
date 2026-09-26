@@ -83,6 +83,13 @@ export type MappingState = {
    *  (validation-rules.md §3): asked once alongside the accounts themselves,
    *  recorded in the plan file, and a Phase 0 step when either is no. */
   breakGlassAnswers?: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
+  /**
+   * Differences from the baseline a person accepted on a step, with a reason
+   * (owner, 2026-09-25, deviations option B): the fingerprint of each accepted
+   * setting as it stood (roadmap/observation.ts materialFieldsOf). It holds while
+   * the policy keeps those settings, and the step reopens the moment one moves.
+   */
+  acceptedDeviations?: Record<string, AcceptedDeviation>
   /** Credential identity covered by the custody confirmation, per selected
    * account. A method replacement invalidates only the affected confirmation. */
   breakGlassCustodyBasis?: Record<string, string>
@@ -146,3 +153,6 @@ export function emptyMappingState(tenantId: string): MappingState {
     updatedAt: new Date().toISOString(),
   }
 }
+
+/** One step's accepted differences from the baseline (MappingState.acceptedDeviations). */
+export type AcceptedDeviation = { fields: Record<string, string>; reason: string; at: string }
