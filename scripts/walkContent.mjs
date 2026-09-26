@@ -285,8 +285,9 @@ export const ACCEPTANCE = [
   // security → Device compliance, and the field that carries the grace period
   // is Schedule (days after noncompliance).
   { item: '25', step: 'require-managed-device', path: 'whatToDo.before', must: 'Before this policy: Intune → Endpoint security → Device compliance → Compliance policy settings', mustNot: 'Intune → Devices → Compliance →' },
-  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: "Review ingestion, retention and cost for the monitoring service you use." },
-  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: 'the SIEM you already use' },
+  // Alert on Emergency Account Sign-ins gives the query over the saved accounts'
+  // object IDs, and no lecture beside the procedure (owner, 2026-09-25).
+  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: '{alertQuery}', mustNot: 'Review ingestion, retention and cost' },
 ]
 
 /** Every Learn URL the content carries (steps and cleanup rows), for the link check. */
