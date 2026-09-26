@@ -213,3 +213,21 @@ test('7.3: an account PIM-eligible for a role the MFA policy leaves out keeps th
   assert.equal(loopHeld(withRole(true)), true, 'once the eligible role is activated, that account leaves the MFA policy')
 })
 const f73RolesRead = (f: Fixture): boolean => f.snapshot.config.roleAssignments?.status === 'ok'
+
+test('7.3: a role held through a group, left out of one MFA policy, counts as covered only where another MFA policy names it', () => {
+  const ROLE = 'aaaaaaaa-0000-4000-8000-000000000002'
+  const held = (named: boolean): Fixture => {
+    const f = structuredClone(curatedFixture('demo-week2'))
+    const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]
+    const everyone = rows.find((p) => p.displayName === 'Core - Grant - MFA for all users')!
+    everyone.conditions.users.excludeRoles = [ROLE]
+    // A principal the directory read has no row for: a role-assignable group, or an app.
+    f.snapshot.roles.active = { ...f.snapshot.roles.active, 'not-a-user-principal': [ROLE] }
+    // It may also leave out a group read whole with no one in it (the owner's Passkey Bootstrap group).
+    f.groups.set('empty-read-group', { memberIds: [], memberCount: 0, sampled: false })
+    if (named) rows.push({ id: 'admins-mfa', displayName: 'Admins MFA', state: 'enabled', conditions: { users: { includeUsers: [], excludeUsers: [], includeGroups: [], excludeGroups: [...(everyone.conditions.users.excludeGroups ?? []), 'empty-read-group'], includeRoles: [ROLE], excludeRoles: [] }, applications: { includeApplications: ['All'], excludeApplications: [], includeUserActions: [], includeAuthenticationContextClassReferences: [] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+    return f
+  }
+  assert.equal(loopHeld(held(false)), true, 'its members may be left out of the only MFA policy: held')
+  assert.equal(loopHeld(held(true)), false, 'another MFA policy names the role: its members are covered either way')
+})
