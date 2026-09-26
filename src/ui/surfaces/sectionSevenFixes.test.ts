@@ -128,3 +128,41 @@ test('7.4 held on device readiness is estimated at the end of the preparation wi
   const lane = laneViewFor(step, board)
   assert.equal(lane.estimate?.slice(0, 10), window.prepEnd.slice(0, 10), `device readiness is preparation a person does: ${boardWhenOf(step, waveStartOf(step), lane)}`)
 })
+
+/** Week two with each On MFA policy on All resources changed by `edit`. */
+function editMfa(edit: (p: Record<string, any>) => void): Fixture {
+  const f = structuredClone(curatedFixture('demo-week2'))
+  let changed = 0
+  for (const p of (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]) {
+    if (p.state !== 'enabled' || !(p.grantControls?.builtInControls ?? []).includes('mfa') || !(p.conditions?.applications?.includeApplications ?? []).includes('All')) continue
+    edit(p)
+    changed++
+  }
+  assert.ok(changed > 0, 'the premise: an On MFA policy on All resources')
+  return f
+}
+const loopHeld = (f: Fixture): boolean => runFixture(f).steps.find((s) => s.id === INTUNE_STEP)!.blockers.some((b) => b.kind === 'readiness' && b.label === 'session-loop')
+
+test('7.3: an OR grant a compliant device satisfies asks no MFA of that device, so it does not clear the loop hold', () => {
+  const f = editMfa((p) => { p.grantControls = { ...p.grantControls, operator: 'OR', builtInControls: ['mfa', 'compliantDevice'] } })
+  assert.equal(loopHeld(f), true)
+})
+
+test('7.3: an MFA policy the plan will correct to the baseline’s, which leaves Intune Enrollment out, does not clear the loop hold', () => {
+  // Leaving another app out makes the plan write the baseline's resources whole: All, except Intune Enrollment.
+  const f = editMfa((p) => { p.conditions.applications.excludeApplications = [...(p.conditions.applications.excludeApplications ?? []), '00000002-0000-0ff1-ce00-000000000000'] })
+  const mfa = runFixture(f).steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  const leaves = (mfa.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && JSON.stringify((o.target as { conditions?: { applications?: unknown } } | undefined)?.conditions?.applications ?? '').includes('d4ebce55'))
+  assert.ok(leaves, 'the premise: the plan corrects the MFA policy to leave Intune Enrollment out')
+  assert.equal(loopHeld(f), true)
+})
+
+test('7.4: the held create’s Tasks Remaining card names the readiness it waits for, never the create', () => {
+  const f = curatedFixture('demo')
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === DEVICE_STEP)!
+  const body = stepBodyOf(step, contextOf(f, run), {} as never) as unknown as { emergencyAccountTasks: { tasks: { id: string; required: boolean; readinessTitle?: string }[] } | null }
+  const next = body.emergencyAccountTasks?.tasks.find((t) => t.required)
+  assert.equal(next?.id, 'create', 'the premise: the create is the first task still to do')
+  assert.equal(next?.readinessTitle, 'Device readiness reaches 80%')
+})
