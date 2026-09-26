@@ -8,6 +8,7 @@ import { pinnedPackage } from '../../baseline/pinned.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { stepOperations } from './stepJson.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { stepExportView } from './stepExport.ts'
 import { acceptLeadOf } from './stepContract.ts'
 import { planDates } from './stepVars.ts'
 import { eventsFor } from '../../roadmap/timing.ts'
@@ -118,15 +119,17 @@ test('an untagged policy switched off under the name IAMAI proposed before is st
   assert.equal(unavailableReason(step as never), 'switched-off')
 })
 
-test('a held create’s Threshold card says why the create waits; its finding, which exports read, does not repeat What to do', () => {
+test('a held create’s Threshold card says why the create waits, and an export says it once, before its procedure', () => {
+  // Review, 2026-09-26: the export read the card's sentence under What to do and again under Before turn-on.
   const f = curatedFixture('demo')
   const r = runFixture(f)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
-  const body = stepBodyOf(r.steps.find((s) => s.id === 's-goal-require-managed-device')!, ctx)
-  const found = body.contract.found.find((x) => x.key === 'gate')!
-  assert.doesNotMatch(found.text, /pick a certificate/)
-  assert.match(found.card ?? '', /pick a certificate/)
-  assert.match(body.readiness.tiles.find((t) => t.key === 'gate')?.note ?? '', /pick a certificate/)
+  const step = r.steps.find((s) => s.id === 's-goal-require-managed-device')!
+  const card = stepBodyOf(step, ctx).readiness.tiles.find((t) => t.key === 'gate')?.note ?? ''
+  assert.match(card, /pick a certificate/)
+  const view = stepExportView(step, ctx)
+  assert.equal(view.whatToDo.filter((l) => /pick a certificate/.test(l)).length, 1, 'What to do says it once')
+  assert.equal(view.beforeTurnOn.some((l) => /pick a certificate/.test(l)), false, 'Before turn-on does not say it again')
 })
 
 test('a late announcement that would fall at or after the change is no announcement', () => {

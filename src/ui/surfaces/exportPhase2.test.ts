@@ -272,6 +272,17 @@ test('every export carries the Threshold card that holds a step\'s turn-on, word
         continue
       }
       gated++
+      // A create the threshold holds leads its card with why the create waits
+      // (owner, 2026-09-26), which the export's What to do says before the
+      // procedure; the rest of the card is its finding, under Before turn-on.
+      const found = body.contract.found.find((f) => f.key === 'gate')
+      if (found?.card) {
+        const lead = v.whatToDo.find((l) => card.note!.startsWith(l))
+        assert.ok(lead, `${name}/${step.id}: What to do leaves out why the create waits`)
+        assert.ok(v.beforeTurnOn.includes(found.text), `${name}/${step.id}: the export leaves out the finding "${found.text}"`)
+        assert.ok(found.text.endsWith(card.note.slice(lead!.length).trim()), `${name}/${step.id}: the card says more than the export: "${card.note}"`)
+        continue
+      }
       assert.ok(v.beforeTurnOn.includes(card.note), `${name}/${step.id}: the export leaves out the Threshold card "${card.note}"`)
       assert.ok(stepArtifactLines(v).some((l) => l.startsWith(`${BEFORE_TURN_ON}:`) && l.includes(card.note!)), `${name}/${step.id}: the artifact lines do not carry it under ${BEFORE_TURN_ON}`)
     }
