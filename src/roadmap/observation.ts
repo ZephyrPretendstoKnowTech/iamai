@@ -431,7 +431,12 @@ function material(value: unknown): unknown {
       if (key.includes('@odata.')) continue
       // A property Graph answers at its unset default where no body names it.
       if (UNSET_DEFAULTS[key] !== undefined && src[key] === UNSET_DEFAULTS[key]) continue
-      const v = material(src[key])
+      // A referenced authentication strength is its id alone: the plan's body
+      // names `{ id }` and Graph answers the whole object, which read as a grant
+      // stricter than the baseline's on a policy requiring the very same strength
+      // (owner, 2026-09-26).
+      const strength = key === 'authenticationStrength' ? (src[key] as { id?: unknown } | null) : null
+      const v = strength && typeof strength.id === 'string' ? strength.id : material(src[key])
       if (v !== undefined) out[key] = v
     }
     return Object.keys(out).length === 0 ? undefined : out
