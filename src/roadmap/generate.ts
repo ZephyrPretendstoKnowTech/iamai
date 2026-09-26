@@ -3239,14 +3239,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     .filter((m) => m.asksForMethod && !m.blocks && m.unknown.length === 0 && (m.operator === 'AND' || m.requirements.every((r) => r.kind === 'mfa' || r.kind === 'strength')) && !m.scope.unreadable && m.narrowings.every((n) => n.kind === 'applications') && m.scope.applications.userActions.length === 0 && m.scope.applications.authContexts.length === 0)
     // The legacy GuestsOrExternalUsers user value is a guest clause the scope reader keeps as an account id: nothing here settles whom it reaches.
     .filter((m) => ![...m.scope.users.include, ...m.scope.users.exclude].some((u) => u.toLowerCase() === 'guestsorexternalusers'))
-  // A policy that leaves a role out is trusted only where the roles were read,
-  // and every holder of that role holds it on their own row: a role assigned to
-  // a role-assignable group sits on the group, and its members read as not
-  // holding it.
+  // A policy that leaves a role out is trusted only where the roles were read.
+  // A role held by a principal the directory read has no row for (a
+  // role-assignable group, or an app) sits on that principal, and a member of
+  // such a group reads as not holding it: the policy is trusted for that role
+  // only where another of the MFA policies names the role and leaves out no one
+  // the step reaches, which is where that member is covered either way.
   const accountIds = new Set(snapshot.users.map((u) => u.id.toLowerCase()))
   const rolesByGroup = new Set([...Object.entries(snapshot.roles?.active ?? {}), ...Object.entries(snapshot.roles?.eligible ?? {})].filter(([id]) => !accountIds.has(id.toLowerCase())).flatMap(([, roles]) => roles))
   const rolesRead = snapshot.config.roleAssignments?.status === 'ok' && ['ok', 'disabled', undefined].includes(snapshot.config.pimEligibility?.status)
-  const rolesTrusted = (m: PolicyEffect): boolean => m.scope.roles.exclude.length === 0 || (rolesRead && m.scope.roles.exclude.every((role) => !rolesByGroup.has(role)))
+  // A group whose membership was read whole and holds no one leaves no one out.
+  const emptyGroup = (id: string): boolean => (knownGroupMembers[id.toLowerCase()] ?? knownGroupMembers[id])?.length === 0
+  const rolesTrusted = (m: PolicyEffect, others: readonly PolicyEffect[], e: PolicyEffect): boolean =>
+    m.scope.roles.exclude.length === 0 ||
+    (rolesRead && m.scope.roles.exclude.every((role) => !rolesByGroup.has(role) || others.some((o) => o !== m && lower(o.scope.roles.include).includes(role.toLowerCase()) && within(o.scope.users.exclude, e.scope.users.exclude) && o.scope.groups.exclude.every((g) => lower(e.scope.groups.exclude).includes(g.toLowerCase()) || emptyGroup(g)) && o.scope.roles.exclude.length === 0)))
   const lower = (xs: readonly string[]): string[] => xs.map((x) => x.toLowerCase())
   const within = (xs: readonly string[], of: readonly string[]): boolean => lower(xs).every((x) => lower(of).includes(x))
   /** Whether an MFA policy reaches the step's resources: all of them, or each one it names, none left out. */
@@ -3274,7 +3280,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     // A step policy on a user action or an authentication context, or naming no resource, is not a sign-in to an app this reads.
     if (e.scope.applications.include.length === 0 || e.scope.applications.userActions.length > 0 || e.scope.applications.authContexts.length > 0) return false
-    const covering = onMfa.filter((m) => onApps(m, lower(e.scope.applications.include)) && rolesTrusted(m))
+    const onResources = onMfa.filter((m) => onApps(m, lower(e.scope.applications.include)))
+    const covering = onResources.filter((m) => rolesTrusted(m, onResources, e))
     if (covering.length === 0 || snapshot.users.length === 0 || snapshot.sources.users?.status === 'error') return false
     for (const u of snapshot.users) {
       if (u.accountEnabled === false) continue
