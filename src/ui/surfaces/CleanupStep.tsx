@@ -26,6 +26,7 @@ import { EmergencySubjectReadiness, Implementation, copyImplementationArtifact }
 import type { Artifact, Channel } from './stepBody.ts'
 import { emergencyVerificationArtifacts, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { consolidateEmergencyReadiness, recoverySubjectsOf } from './emergencyReadiness.ts'
+import { alertingArtifacts, alertingMarkDone, alertingMilestone, alertingSubjects, alertingTasksOf } from './alertingTasks.ts'
 
 export { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
 export type { CleanupEntry } from './cleanupExport.ts'
@@ -52,8 +53,6 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   onDone?: (date: string, accountIds?: string[], evidence?: Pick<CleanupCheckpoint, 'outcome' | 'recipient' | 'workflow' | 'purpose' | 'tenantId' | 'configurationObservedAt' | 'signInAtByAccount' | 'recoveryEvidence' | 'replacementPolicyId' | 'retiredPolicyIds' | 'coverageVerified' | 'replacementBasis' | 'reference' | 'policyNames' | 'consolidationDecision' | 'retainedPolicyIds' | 'retainedPolicyBases' | 'rationale' | 'namingChanges' | 'toolingVerified'>) => void
 }) {
   const entry = cleanupEntry(row.kind)
-  const [outcome, setOutcome] = useState<'passed' | 'failed' | ''>('')
-  const [recipient, setRecipient] = useState('')
   const [consolidationDecision, setConsolidationDecision] = useState<'retire' | 'retain-both'>('retire')
   const [rationale, setRationale] = useState('')
   const [toolingVerified, setToolingVerified] = useState(false)
@@ -93,6 +92,8 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   // Interactive Tasks Remaining (the Step 1 tile standard); print keeps the source findings split as above.
   const recoverySubjects = useMemo(() => recoverySubjectsOf(phase.recoveryFindings ?? [], verificationTasks, new Map(Object.entries(phase.accountUpnsById ?? {}))), [phase, verificationTasks])
   const verificationArtifacts = useMemo<Artifact[]>(() => emergencyVerificationArtifacts(phase), [phase])
+  const alertTasks = useMemo(() => alertingTasksOf(phase, !!row.done), [phase, row.done])
+  const alertArtifacts = useMemo<Artifact[]>(() => alertingArtifacts(phase), [phase])
   // Every hook above runs on every render (Rules of Hooks); a row with no content entry renders nothing.
   if (!entry) return null
   // The recovery drill is Establish Emergency Access's fourth step (1.4), and it
@@ -104,10 +105,14 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   // the Cleanup rows out of the 2026-09-19 uniformity rule, and a Cleanup row is
   // a board row rather than a step — and close on the same footer.
   const drill = row.kind === 'drill'
-  const taskHead = row.kind === 'drill' ? TASK_HEAD : null
+  // Alert on Emergency Account Sign-ins closes Establish Emergency Access and is
+  // drawn as the drill is (owner, 2026-09-25), completed by one Mark as done in
+  // the rail: IAMAI cannot read the alert rule it asks for.
+  const alerting = row.kind === 'alerting'
+  const taskHead = drill || alerting ? TASK_HEAD : null
   const doneWhen = entry.doneWhen.filter(whole)
   const copyArtifact = (id: string, value: string): void => { void copyImplementationArtifact(value).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
-  const head = <StepHead eyebrow={drill ? CONTRACT.kind.check : null} title={entry.title} badge={status.word} tone={status.tone} sub={status.waitingFor ? <p className="reason">{status.waitingFor}</p> : null} />
+  const head = <StepHead eyebrow={drill ? CONTRACT.kind.check : alerting ? CONTRACT.kind.object : null} title={entry.title} badge={status.word} tone={status.tone} sub={status.waitingFor ? <p className="reason">{status.waitingFor}</p> : null} />
   const why = (
     <StepSection heading={taskHead?.why ?? HEAD.why}>
       <p>
@@ -126,6 +131,27 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   // StepFooter): the scan's status over it while one runs, and it waits. The
   // row above the body is what closes it; no step draws a Close.
   const footer = <StepFooter onScan={onScan ?? null} />
+  if (alerting) {
+    return (
+      <article className="step panel panel-key" data-step-id="cleanup-alerting" data-task-anatomy={groupOf('cleanup-alerting')?.key}>
+        {head}
+        <div className="step-body has-rail">
+          <div className="step-main step-main-lead">
+            {why}
+            <EmergencySubjectReadiness subjects={alertingSubjects(row)} printing={!onDone} barMain="" onWhy={null} />
+          </div>
+          <StepActionColumn rail={{ headline: row.done ? status.word : alertingMilestone(), instruction: null }}>
+            {onDone && !row.done && <Button variant="primary" onClick={() => onDone(todayDate(), phase.accountIds, {})}>{alertingMarkDone()}</Button>}
+          </StepActionColumn>
+          <div className="step-main step-main-rest">
+            <Implementation heading={TASK_HEAD.implementation} artifacts={alertArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={cleanupSourceLine(entry)} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={alertTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText="" />
+            {done}
+          </div>
+        </div>
+        {footer}
+      </article>
+    )
+  }
   if (drill) {
     return (
       // The frame ContentStep draws for a step: the head, the main column in two
@@ -173,8 +199,6 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
           {recorded}
           {onDone && row.kind !== 'hardening' && row.kind !== 'namedExclusions' && (
             <div className="decision">
-              {row.kind === 'alerting' && <div className="decision-field"><label><strong>Test Result</strong><select value={outcome} onChange={event => setOutcome(event.currentTarget.value as typeof outcome)}><option value="">Choose…</option><option value="passed">Passed</option><option value="failed">Failed</option></select></label></div>}
-              {row.kind === 'alerting' && <div className="decision-field"><label><strong>Alert Recipient</strong><input value={recipient} onChange={event => setRecipient(event.currentTarget.value)} /></label></div>}
               {row.kind === 'naming' && <div className="decision-fields"><ul>{namingProposals.map(p => <li key={p.id}><strong>{p.from}</strong><label><span className="sr-only">Approved name for {p.from}</span><input value={p.to} onChange={e => { const value = e.currentTarget.value; setNameDrafts(prev => ({ ...prev, [p.id]: value })) }} /></label><span className="reason">ID: {p.id}</span>{p.collision && <p>Name collision: resolve the duplicate name before saving this proposal.</p>}</li>)}</ul><label className="choice"><input type="checkbox" checked={toolingVerified} onChange={e => setToolingVerified(e.currentTarget.checked)} />Name-based scripts and reports have been checked.</label><p>Save the proposed names before renaming in Entra, then rescan. Confirm the tooling check after the names are updated.</p></div>}
               {row.kind === 'consolidation' && <div className="decision-fields">
                 <div className="decision-field"><label><strong>Review Outcome</strong><select value={consolidationDecision} onChange={e => { setConsolidationDecision(e.currentTarget.value as typeof consolidationDecision); setRetiredIds([]) }}><option value="retire">Retire Replaced Policies</option><option value="retain-both">Retain Both</option></select></label></div>
@@ -186,7 +210,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
               </div>}
               <><div className="dlabel">{A.cleanupDoneOn}</div>
               <input type="date" max={todayDate()} aria-label={A.cleanupDoneOn} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
-              <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady) || (row.kind === 'naming' && (!namingProposals.length || namingProposals.some(p => p.collision))) || (row.kind === 'alerting' && !outcome) || (row.kind === 'alerting' && !recipient.trim())} onClick={() => onDone(date, row.kind === 'alerting' ? phase.accountIds : [], { ...(row.kind === 'naming' ? { namingChanges: namingProposals.map(({id, from, to}) => ({id, from, to})), toolingVerified } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}), ...(outcome ? { outcome } : {}), ...(recipient.trim() ? { recipient: recipient.trim() } : {}) })}>{row.kind === 'alerting' ? 'Save Test Result' : row.kind === 'naming' ? 'Save Naming Review' : row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button></>
+              <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady) || (row.kind === 'naming' && (!namingProposals.length || namingProposals.some(p => p.collision)))} onClick={() => onDone(date, [], { ...(row.kind === 'naming' ? { namingChanges: namingProposals.map(({id, from, to}) => ({id, from, to})), toolingVerified } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}) })}>{row.kind === 'naming' ? 'Save Naming Review' : row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button></>
               {row.done && <p className="reason">{cleanupWhen(row)}</p>}
             </div>
           )}

@@ -81,8 +81,9 @@ function bodiesOf(name: FixtureName, mapping?: MappingState, shape: (f: Fixture)
 // ---------------------------------------------------------------------------
 
 test('the spec’s eight steps sit where the roadmap flow places them, and Ongoing takes every unclaimed step', () => {
-  assert.deepEqual(ONGOING.map((id) => groupOf(id)?.key), ['remaining-doors', 'extend-mfa', 'prepare', 'prepare', 'ongoing', 'ongoing', 'ongoing', 'ongoing'])
-  assert.deepEqual([...membersOf('ongoing')], ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'])
+  // Alert on Emergency Account Sign-ins closes Establish Emergency Access (owner, 2026-09-25).
+  assert.deepEqual(ONGOING.map((id) => groupOf(id)?.key), ['remaining-doors', 'extend-mfa', 'prepare', 'prepare', 'emergency-access', 'ongoing', 'ongoing', 'ongoing'])
+  assert.deepEqual([...membersOf('ongoing')], ['cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'])
   assert.equal(groupOf('s-something-nobody-placed')?.key, 'ongoing')
 })
 
@@ -199,13 +200,15 @@ const cleanupOf = (kind: string): { why: string; whatToDo: string[]; doneWhen: s
 }
 
 test('F1: the alert rule matches the accounts’ object IDs, not their sign-in names', () => {
+  // The query IAMAI fills from the saved accounts (ui/surfaces/alertingTasks.ts): object IDs, as Microsoft's own.
   const steps = cleanupOf('alerting').whatToDo.join('\n')
-  assert.match(steps, /object ID, not the sign-in name, because a name can be changed under it/)
-  assert.doesNotMatch(steps, /where UserPrincipalName is one of/)
+  assert.match(steps, /\{alertQuery\}/)
+  assert.doesNotMatch(steps, /UserPrincipalName ==|where UserPrincipalName is one of/)
 })
 
-test('F5: the four Cleanup rows keep their shape — Why, the instructions, Done when', () => {
-  for (const kind of ['alerting', 'hardening', 'naming', 'consolidation']) {
+test('F5: the Cleanup rows keep their shape — Why, the instructions, Done when', () => {
+  // Alert on Emergency Account Sign-ins is drawn on the step template (alertingTasks.ts) and carries its own words for it.
+  for (const kind of ['hardening', 'naming', 'consolidation']) {
     const entry = cleanupOf(kind)
     assert.ok(typeof entry.why === 'string' && entry.why.length > 0, `${kind}: no Why`)
     assert.ok(entry.whatToDo.length > 0, `${kind}: no instructions`)
