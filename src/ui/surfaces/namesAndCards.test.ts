@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { acceptLeadOf } from './stepContract.ts'
 import { planDates } from './stepVars.ts'
 import { eventsFor } from '../../roadmap/timing.ts'
 import { policySubjectsOf } from './policyTasks.ts'
@@ -90,4 +91,10 @@ test('6.3: the countries decision comes first, About is two sentences, and a Rea
   const when = boardWhenOf(step, null, ready)
   assert.notEqual(when, 'Decide now')
   assert.equal(when, 'Aug 28, 2026')
+})
+
+test('Accept This Difference reads as a sentence however many settings differ', () => {
+  assert.equal(acceptLeadOf(['conditions.users', 'sessionControls']), 'If who it applies to and session controls differ on purpose, accept them with the reason. The step completes, and reopens if the policy changes again.')
+  // One setting may have a plural name ("session controls"), so the sentence needs no verb to agree with it.
+  assert.match(acceptLeadOf(['sessionControls']), /^If the difference in session controls is on purpose, accept it with the reason\./)
 })

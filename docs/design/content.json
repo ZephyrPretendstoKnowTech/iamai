@@ -2214,7 +2214,9 @@
           "acceptDeviation": {
             "$comment": "Owner, 2026-09-25 (deviations, option B): a difference from the baseline a person accepts with a reason, kept in the plan record. The step completes with it named, and reopens the moment an accepted setting changes (tracking.ts MemberTracking.accepted).",
             "label": "Accept This Difference",
-            "lead": "If {dimensions} differs on purpose, accept it with the reason. The step completes, and reopens if the policy changes again.",
+            "lead": "If the difference in {dimensions} is on purpose, accept it with the reason. The step completes, and reopens if the policy changes again.",
+            "$commentLeadMany": "The lead where two or more settings differ, and lead where one does, whose name may be plural (\"session controls\"): owner, 2026-09-26. The list read \"If who it applies to, session controls differs on purpose\".",
+            "leadMany": "If {dimensions} differ on purpose, accept them with the reason. The step completes, and reopens if the policy changes again.",
             "reason": "Why it differs",
             "accept": "Accept this difference",
             "remove": "Remove the acceptance",
