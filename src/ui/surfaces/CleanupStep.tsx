@@ -27,6 +27,7 @@ import type { Artifact, Channel } from './stepBody.ts'
 import { emergencyVerificationArtifacts, emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { consolidateEmergencyReadiness, recoverySubjectsOf } from './emergencyReadiness.ts'
 import { alertingArtifacts, alertingMarkDone, alertingMilestone, alertingSubjects, alertingTasksOf } from './alertingTasks.ts'
+import { namingArtifacts, namingMilestone, namingSubjects, namingTasksOf } from './namingTasks.ts'
 
 export { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
 export type { CleanupEntry } from './cleanupExport.ts'
@@ -55,10 +56,6 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   const entry = cleanupEntry(row.kind)
   const [consolidationDecision, setConsolidationDecision] = useState<'retire' | 'retain-both'>('retire')
   const [rationale, setRationale] = useState('')
-  const [toolingVerified, setToolingVerified] = useState(false)
-  const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({})
-  const namingProposals = (phase.namingProposals ?? []).map(p => ({ ...p, to: nameDrafts[p.id] ?? p.to }))
-  for (const p of namingProposals) p.collision = !p.to.trim() || (phase.policyOptions ?? []).some(other => other.id !== p.id && other.name.trim().toLowerCase() === p.to.trim().toLowerCase()) || namingProposals.some(other => other.id !== p.id && other.to.trim().toLowerCase() === p.to.trim().toLowerCase())
   const [replacementId, setReplacementId] = useState('')
   const [retiredIds, setRetiredIds] = useState<string[]>([])
   const [coverageVerified, setCoverageVerified] = useState(false)
@@ -94,6 +91,8 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   const verificationArtifacts = useMemo<Artifact[]>(() => emergencyVerificationArtifacts(phase), [phase])
   const alertTasks = useMemo(() => alertingTasksOf(phase, !!row.done), [phase, row.done])
   const alertArtifacts = useMemo<Artifact[]>(() => alertingArtifacts(phase), [phase])
+  const renameTasks = useMemo(() => namingTasksOf(phase), [phase])
+  const renameArtifacts = useMemo<Artifact[]>(() => namingArtifacts(phase), [phase])
   // Every hook above runs on every render (Rules of Hooks); a row with no content entry renders nothing.
   if (!entry) return null
   // The recovery drill is Establish Emergency Access's fourth step (1.4), and it
@@ -109,10 +108,13 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   // 2026-09-25), completed by one Mark as done in the rail: IAMAI cannot read
   // the alert rule it asks for.
   const alerting = row.kind === 'alerting'
-  const taskHead = drill || alerting ? TASK_HEAD : null
+  // Align Policy Names is drawn the same way (owner, 2026-09-26), with no
+  // control: the scan that finds the last baseline name completes it.
+  const naming = row.kind === 'naming'
+  const taskHead = drill || alerting || naming ? TASK_HEAD : null
   const doneWhen = entry.doneWhen.filter(whole)
   const copyArtifact = (id: string, value: string): void => { void copyImplementationArtifact(value).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
-  const head = <StepHead eyebrow={drill ? CONTRACT.kind.check : alerting ? CONTRACT.kind.object : null} title={entry.title} badge={status.word} tone={status.tone} sub={status.waitingFor ? <p className="reason">{status.waitingFor}</p> : null} />
+  const head = <StepHead eyebrow={drill || naming ? CONTRACT.kind.check : alerting ? CONTRACT.kind.object : null} title={entry.title} badge={status.word} tone={status.tone} sub={status.waitingFor ? <p className="reason">{status.waitingFor}</p> : null} />
   const why = (
     <StepSection heading={taskHead?.why ?? HEAD.why}>
       <p>
@@ -126,7 +128,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
     </StepSection>
   )
   const done = <DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
-  const recorded = row.record && (row.kind !== 'drill' || row.record.outcome) && <section className="step-section"><h4>{row.kind === 'naming' || row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)} · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>
+  const recorded = row.record && (row.kind !== 'drill' || row.record.outcome) && <section className="step-section"><h4>{row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)} · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>
   // The Scan in the one footer every step closes on (StepSections.tsx
   // StepFooter): the scan's status over it while one runs, and it waits. The
   // row above the body is what closes it; no step draws a Close.
@@ -145,6 +147,25 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
           </StepActionColumn>
           <div className="step-main step-main-rest">
             <Implementation heading={TASK_HEAD.implementation} artifacts={alertArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={cleanupSourceLine(entry)} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={alertTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText="" />
+            {done}
+          </div>
+        </div>
+        {footer}
+      </article>
+    )
+  }
+  if (naming) {
+    return (
+      <article className="step panel panel-key" data-step-id="cleanup-naming" data-task-anatomy={groupOf('cleanup-naming')?.key}>
+        {head}
+        <div className="step-body has-rail">
+          <div className="step-main step-main-lead">
+            {why}
+            <EmergencySubjectReadiness subjects={namingSubjects(phase)} printing={!onDone} barMain="" onWhy={null} />
+          </div>
+          <StepActionColumn rail={{ headline: row.done ? status.word : namingMilestone(), instruction: null }} />
+          <div className="step-main step-main-rest">
+            <Implementation heading={TASK_HEAD.implementation} artifacts={renameArtifacts} drawnBy="translator" preview={null} notes={[]} title={entry.title} empty={{ key: 'none', tone: 'neutral', title: '', text: '' }} source={cleanupSourceLine(entry)} learn={entry.learn?.url ?? null} onTroubleshooting={null} open={implementationOpen} onOpen={() => setImplementationOpen(true)} onClose={() => setImplementationOpen(false)} copy={copyArtifact} copied={copied} printing={!onDone} tasks={renameTasks} chosenChannel={implementationChannel} onChooseChannel={setImplementationChannel} chosenTaskId={taskId} onChooseTask={setTaskId} emptyTaskText="" />
             {done}
           </div>
         </div>
@@ -193,13 +214,12 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
               step (StepSections.tsx, stepHeadings.ts). */}
           {why}
           <StepSection heading={CONTRACT.implementation.heading}>
-            <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
+            <ol className="sections">{(entry.whatToDo ?? []).filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
           </StepSection>
           {done}
           {recorded}
           {onDone && row.kind !== 'hardening' && row.kind !== 'namedExclusions' && (
             <div className="decision">
-              {row.kind === 'naming' && <div className="decision-fields"><ul>{namingProposals.map(p => <li key={p.id}><strong>{p.from}</strong><label><span className="sr-only">Approved name for {p.from}</span><input value={p.to} onChange={e => { const value = e.currentTarget.value; setNameDrafts(prev => ({ ...prev, [p.id]: value })) }} /></label><span className="reason">ID: {p.id}</span>{p.collision && <p>Name collision: resolve the duplicate name before saving this proposal.</p>}</li>)}</ul><label className="choice"><input type="checkbox" checked={toolingVerified} onChange={e => setToolingVerified(e.currentTarget.checked)} />Name-based scripts and reports have been checked.</label><p>Save the proposed names before renaming in Entra, then rescan. Confirm the tooling check after the names are updated.</p></div>}
               {row.kind === 'consolidation' && <div className="decision-fields">
                 <div className="decision-field"><label><strong>Review Outcome</strong><select value={consolidationDecision} onChange={e => { setConsolidationDecision(e.currentTarget.value as typeof consolidationDecision); setRetiredIds([]) }}><option value="retire">Retire Replaced Policies</option><option value="retain-both">Retain Both</option></select></label></div>
                 {consolidationDecision === 'retire' && <div className="decision-field"><label><strong>Retained Policy</strong><select value={replacementId} onChange={event => setReplacementId(event.currentTarget.value)}><option value="">Choose…</option>{policyOptions.filter(policy => policy.state === 'enabled').map(policy => <option key={policy.id} value={policy.id}>{policy.name}</option>)}</select></label></div>}
@@ -210,7 +230,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
               </div>}
               <><div className="dlabel">{A.cleanupDoneOn}</div>
               <input type="date" max={todayDate()} aria-label={A.cleanupDoneOn} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
-              <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady) || (row.kind === 'naming' && (!namingProposals.length || namingProposals.some(p => p.collision)))} onClick={() => onDone(date, [], { ...(row.kind === 'naming' ? { namingChanges: namingProposals.map(({id, from, to}) => ({id, from, to})), toolingVerified } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}) })}>{row.kind === 'naming' ? 'Save Naming Review' : row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button></>
+              <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady)} onClick={() => onDone(date, [], { ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}) })}>{row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button></>
               {row.done && <p className="reason">{cleanupWhen(row)}</p>}
             </div>
           )}

@@ -11,10 +11,11 @@
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 import { cleanupRows } from './cleanup.ts'
 import type { CleanupRow } from './cleanup.ts'
-import { cleanupBasis, validCompletionDate, latestRecoveryTest, consolidationVerified, replacementPolicyBasis, namingVerified, isLegacyManualDrillRecord } from './cleanupDone.ts'
+import { cleanupBasis, validCompletionDate, latestRecoveryTest, consolidationVerified, replacementPolicyBasis, isLegacyManualDrillRecord } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import type { CleanupCheckpoint, CleanupDone } from './cleanupDone.ts'
-import type { ConfigurationFinding } from './types.ts'
+import type { ConfigurationFinding, Step } from './types.ts'
+import type { Schedule } from './schedule.ts'
 import type { RecoveryCandidateReading } from './cleanupDone.ts'
 import { addWorkingDays } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
@@ -119,8 +120,6 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
   const naming = input.organisation.naming
   const convention = conventionShape(naming)
   const policyRows = (input.policies ?? []) as Record<string, unknown>[]
-  const namingProposals = convention ? policyRows.filter(p => typeof p.id === 'string' && naming.outliers.includes(String(p.displayName))).map(p => ({ id: String(p.id), from: String(p.displayName), to: proposedRename(String(p.displayName), naming), collision: false })) : []
-  for (const proposal of namingProposals) proposal.collision = policyRows.some(p => p.id !== proposal.id && String(p.displayName).trim().toLowerCase() === proposal.to.trim().toLowerCase()) || namingProposals.some(p => p.id !== proposal.id && p.to.trim().toLowerCase() === proposal.to.trim().toLowerCase())
   const overlaps = [...new Set([...input.organisation.consolidation.map((c) => c.policyNames.join(', ')), ...(input.superseded ?? [])])]
   const candidateNames = new Set([...input.organisation.consolidation.flatMap(c => c.policyNames), ...(input.superseded ?? [])])
   const consolidationCandidateIds = policyRows.filter(p => [...candidateNames].some(name => name === p.displayName || name.includes(`${p.displayName} (`))).map(p => String(p.id))
@@ -138,9 +137,8 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
   const rows = cleanupRows({
     emergencyAccounts: input.emergencyAccounts,
     emergencyAccountUpns: input.emergencyAccountUpns,
-    // Align Policy Names is left out of the plan until it can propose the
-    // baseline's own names (owner, 2026-09-25): it proposed names learned from
-    // the policies IAMAI itself had named.
+    // Align Policy Names needs each policy's name as tracking reads it, after
+    // this schedule is built: settleRenames adds it (owner, 2026-09-26).
     renames: [],
     overlaps: [...overlaps.map(line => `${line}${policyRows.filter(p => line.includes(String(p.displayName))).map(p => `; ${p.displayName} (ID: ${p.id})`).join('')}`), ...comparisonLines],
     hardening: input.hardening ?? [],
@@ -169,8 +167,7 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     const tests = accounts.map((id) => input.accountBasis && !input.accountBasis[id] ? null : latestRecoveryTest(id, records, now, input.accountBasis?.[id], { readings: input.recoveryCandidates?.[id] ?? [], tenantId: input.tenantId ?? '', currentSnapshotObservedAt: input.snapshotObservedAt ?? now, signInSource: input.signInEvidenceSource, candidateSetBasis: input.recoveryCandidateSetBasis?.[id] }))
     const tested = accounts.length > 0 && tests.every((date) => date !== null && Date.parse(now) - Date.parse(date) <= BREAK_GLASS_DRILL_DAYS * 86_400_000)
     const latestConsolidation = r.kind === 'consolidation' ? records.filter(c => c.cleanup === 'consolidation' && validCompletionDate(c.date, now, c.timeZone) && Date.parse(c.at) <= Date.parse(now)).sort((a,b) => a.at.localeCompare(b.at)).at(-1) : undefined
-    const latestNaming = r.kind === 'naming' ? records.filter(c => c.cleanup === 'naming' && validCompletionDate(c.date, now, c.timeZone) && c.at <= now).sort((a,b) => a.at.localeCompare(b.at)).at(-1) : undefined
-    const done = r.kind === 'naming' ? namingVerified(latestNaming, input.policies) && namingProposals.every(p => latestNaming?.namingChanges?.some(change => change.id === p.id)) ? latestNaming!.date : null : r.kind === 'hardening' ? input.hardeningVerified ? now : null : r.kind === 'consolidation' ? consolidationVerified(latestConsolidation, input.policies) && consolidationCandidateIds.every(id => [...(latestConsolidation?.retainedPolicyIds ?? []), ...(latestConsolidation?.retiredPolicyIds ?? []), latestConsolidation?.replacementPolicyId].includes(id)) ? latestConsolidation!.date : null : r.kind === 'drill' ? tested ? tests.filter((d): d is string => d !== null).sort().at(-1) ?? null : null : record && (r.kind !== 'alerting' || record.outcome !== 'failed') ? record.date : null
+    const done = r.kind === 'hardening' ? input.hardeningVerified ? now : null : r.kind === 'consolidation' ? consolidationVerified(latestConsolidation, input.policies) && consolidationCandidateIds.every(id => [...(latestConsolidation?.retainedPolicyIds ?? []), ...(latestConsolidation?.retiredPolicyIds ?? []), latestConsolidation?.replacementPolicyId].includes(id)) ? latestConsolidation!.date : null : r.kind === 'drill' ? tested ? tests.filter((d): d is string => d !== null).sort().at(-1) ?? null : null : record && (r.kind !== 'alerting' || record.outcome !== 'failed') ? record.date : null
     // The drill's recorded check is a legacy manual record only (overnight review
     // B1): the automatic per-account records are Step 4's Sign-in evidence tile.
     const latest = records.filter(c => c.cleanup === r.kind && (r.kind !== 'drill' || isLegacyManualDrillRecord(c))).sort((a,b) => a.at.localeCompare(b.at)).at(-1)
@@ -187,5 +184,63 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
   }
   dated.sort((a, b) => a.day.localeCompare(b.day))
   const latestFailedAtByAccount = Object.fromEntries(input.emergencyAccountIds.map(id => [id, (input.records ?? []).filter(record => record.cleanup === 'drill' && record.purpose === 'final' && record.outcome === 'failed' && record.accountIds?.some(accountId => accountId.toLowerCase() === id.toLowerCase())).sort((a, b) => a.at.localeCompare(b.at)).at(-1)?.at ?? null]))
-  return { start: dated.map(r => r.day).sort()[0], end: [input.after, ...dated.map(r => r.day)].sort().at(-1)!, rows: dated, consolidationCandidateIds, namingProposals: [...new Map([...namingProposals, ...((input.records ?? []).filter(r => r.cleanup === 'naming').sort((a,b) => a.at.localeCompare(b.at)).at(-1)?.namingChanges ?? []).map(p => ({ ...p, collision: false }))].map(p => [p.id, p])).values()], accountIds: input.emergencyAccountIds, accountUpnsById: Object.fromEntries(input.emergencyAccountIds.map((id, index) => [id, input.emergencyAccountUpns[index] ?? id])), accountBasis: input.accountBasis, recoveryCandidateSetBasis: input.recoveryCandidateSetBasis, signInEvidenceSource: input.signInEvidenceSource, recoveryFindings: input.recoveryFindings, recoveryCandidates: input.recoveryCandidates, preChangeRecoveryCandidates: input.preChangeRecoveryCandidates, tenantId: input.tenantId, configurationObservedAtByAccount: input.configurationObservedAtByAccount, latestFailedAtByAccount, preChangeConfigurationObservedAtByAccount: input.preChangeConfigurationObservedAtByAccount, snapshotObservedAt: input.snapshotObservedAt, policyOptions: [...policyOptions.values()], convention }
+  return { start: dated.map(r => r.day).sort()[0], end: [input.after, ...dated.map(r => r.day)].sort().at(-1)!, rows: dated, consolidationCandidateIds, accountIds: input.emergencyAccountIds, accountUpnsById: Object.fromEntries(input.emergencyAccountIds.map((id, index) => [id, input.emergencyAccountUpns[index] ?? id])), accountBasis: input.accountBasis, recoveryCandidateSetBasis: input.recoveryCandidateSetBasis, signInEvidenceSource: input.signInEvidenceSource, recoveryFindings: input.recoveryFindings, recoveryCandidates: input.recoveryCandidates, preChangeRecoveryCandidates: input.preChangeRecoveryCandidates, tenantId: input.tenantId, configurationObservedAtByAccount: input.configurationObservedAtByAccount, latestFailedAtByAccount, preChangeConfigurationObservedAtByAccount: input.preChangeConfigurationObservedAtByAccount, snapshotObservedAt: input.snapshotObservedAt, policyOptions: [...policyOptions.values()], convention }
+}
+
+/** One policy to rename: its id, the tenant's name for it, and the baseline's. */
+export type Rename = { id: string; from: string; to: string }
+
+/**
+ * The tenant's policies the plan tracks under a name that is not the
+ * baseline's (owner, 2026-09-26: Jon's names), one each, in plan order: tracking
+ * reads each member's name beside the one the step's create gives it
+ * (MemberTracking.plannedName). A difference in capitals only is none, and a
+ * step skipped, set aside or not applying renames nothing. A policy two steps
+ * track takes the first step's name, and a name another policy already has or
+ * takes first is none: two policies never share one.
+ */
+export function renamesOf(steps: readonly Step[]): Rename[] {
+  const key = (n: string): string => n.trim().toLowerCase()
+  const live = steps.filter((s) => s.status !== 'skipped' && !s.doesntApply && !s.state.setAside)
+  const members = live.flatMap((s) => s.tracking?.members ?? []).filter((m) => m.policyId && m.policyName)
+  const out = new Map<string, Rename>()
+  const seen = new Set<string>()
+  const taken = new Set(members.map((m) => key(m.policyName!)))
+  for (const m of members) {
+    if (seen.has(m.policyId!)) continue
+    seen.add(m.policyId!)
+    const to = m.plannedName?.trim() ?? ''
+    if (to === '' || key(to) === key(m.policyName!) || taken.has(key(to))) continue
+    taken.add(key(to))
+    out.set(m.policyId!, { id: m.policyId!, from: m.policyName!, to })
+  }
+  return [...out.values()]
+}
+
+/**
+ * Align Policy Names, once tracking has read each policy's name
+ * (roadmap/progress.ts applyProgress runs after the schedule is built): the
+ * renames, in the row's list and as the phase's proposals, dated where
+ * cleanup.ts orders the row, before Review Overlapping Policies. The row is in
+ * the plan only while a policy is left to rename, so the scan that finds the
+ * last baseline name completes it; nothing is recorded by hand.
+ */
+export function settleRenames(schedule: Schedule, steps: readonly Step[]): void {
+  const phase = schedule.cleanup
+  if (!phase) return
+  const renames = renamesOf(steps)
+  phase.rows = phase.rows.filter((r) => r.kind !== 'naming')
+  phase.namingProposals = renames.map((r) => ({ ...r, collision: false }))
+  // The rows after the rollout run one working day each from the last
+  // enforcement (cleanupPhaseFor); the drill is dated on its own. Naming comes
+  // before consolidation, which moves a day for it, and back without it.
+  const ctx = schedule.rhythm ? { rhythm: schedule.rhythm } : undefined
+  const consolidation = phase.rows.find((r) => r.kind === 'consolidation')
+  const last = phase.rows.filter((r) => r.kind !== 'drill' && r.kind !== 'consolidation').map((r) => r.day).sort().at(-1)
+  const day = addWorkingDays(last ?? schedule.targetEnd, 1, ctx)
+  if (consolidation) consolidation.day = renames.length > 0 ? addWorkingDays(day, 1, ctx) : day
+  if (renames.length > 0) phase.rows.push({ kind: 'naming', lists: { renames: renames.map((r) => `${r.from} → ${r.to} (ID: ${r.id})`) }, day, done: null })
+  phase.rows.sort((x, y) => x.day.localeCompare(y.day))
+  phase.start = phase.rows.map((r) => r.day).sort()[0]
+  phase.end = [schedule.targetEnd, ...phase.rows.map((r) => r.day)].sort().at(-1)!
 }

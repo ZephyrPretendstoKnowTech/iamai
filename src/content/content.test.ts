@@ -307,6 +307,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The third of them (stepVars.ts proposedNameNote): the example tenant has
   // policies, so the no-policies case cannot render here either.
   '.shared.proposedNameNoPolicies',
+  // And the convention sentence: no content line fills {proposedNameNote}, and
+  // the review page matched it only through Align Policy Names's old words
+  // ("the convention this tenant already uses"), gone with Jon's names (2026-09-26).
+  '.shared.proposedNameFollowsConvention',
   // The board row's line for a conditional input nobody has saved
   // (planBoard.ts waitingForOf): a runtime reading of the plan's own state,
   // and the review page draws rows from the file with no state to read.
@@ -365,8 +369,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // A step's pitfalls block is its pitfall cards' words (ui/surfaces/pitfalls.ts), and Create the Policies in
 // Report-only's batch block is its cards' and rail's (ui/surfaces/reportOnlyStep.ts): the review page draws no cards.
 // Alert on Emergency Account Sign-ins' task title, card, rail control and AI Info are its template's
-// (ui/surfaces/alertingTasks.ts), and the review page draws no tasks, cards, rail or AI Info.
-const isAppOnly = (p: string): boolean => /^\.cleanup\.alerting\.(taskTitle|cardLabel|cardDone|markDone|aiInfo)$/.test(p) || /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) || /^\.steps\[\d+\]\.(pitfalls|batch)\.\w+$/.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.\w+$/.test(p) || /^\.steps\[\d+\]\.(milestone|instruction)(\.\w+)?$/.test(p) || /^\.steps\[\d+\]\.campaign\.\w+$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p.startsWith('.shared.procedure.') || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
+// (ui/surfaces/alertingTasks.ts), and the review page draws no tasks, cards, rail or AI Info. Align
+// Policy Names's are its template's too (ui/surfaces/namingTasks.ts).
+const isAppOnly = (p: string): boolean => /^\.cleanup\.alerting\.(taskTitle|cardLabel|cardDone|markDone|aiInfo)$/.test(p) || /^\.cleanup\.naming\.(taskTitle|cardLabel|aiInfo)$/.test(p) || /^\.steps\[\d+\]\.who\.\w+Undated\./.test(p) || /^\.steps\[\d+\]\.(pitfalls|batch)\.\w+$/.test(p) ||p === '.pages.plan.howTo.intro' || p.startsWith('.pages.plan.changes.') || p.startsWith('.pages.plan.howTo.legend.') || /^\.pages\.plan\.howTo\.legend\[/.test(p) || p === '.shared.certificatePrompt' || /\.tileNote(Unread)?$/.test(p) || /\.whatToDo\.verification(Lead)?\[/.test(p) || /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus|taskTitle)$/.test(p) || /^\.steps\[\d+\]\.card\.\w+$/.test(p) || /^\.steps\[\d+\]\.(milestone|instruction)(\.\w+)?$/.test(p) || /^\.steps\[\d+\]\.campaign\.\w+$/.test(p) || /^\.steps\[\d+\]\.(keep|procedure)\./.test(p) || p.startsWith('.pages.plan.workflows.reviewCard.') || p === '.pages.plan.workflows.reviewTaskTitle' || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.blockedSubject.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p.startsWith('.shared.mailDevices.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p.startsWith('.shared.procedure.') || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.passkeyRestrictions.') || p === '.shared.policyDoneWhenUnobserved' || p.startsWith('.shared.registrationScope.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 
@@ -399,7 +404,8 @@ test('no orphan content string: every non-structural key renders, or is a known 
     const frags = s.split(/\{[^}]*\}/).map((f) => f.replace(/\s+/g, ' ').trim()).filter((f) => f.length >= 12)
     if (frags.length === 0) continue // a string that is entirely variables
     // A procedure line's bold renders as the product draws it (render.ts ol).
-    const bold = (x: string): string => x.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // A fragment beside a bold variable ("**{to}**") keeps that half of the marker.
+    const bold = (x: string): string => x.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^\*\*/, '</strong>').replace(/\*\*$/, '<strong>')
     if (frags.some((f) => body.includes(f) || body.includes(escHtml(f)) || body.includes(bold(escHtml(f))))) continue
     miss.push(path)
   }

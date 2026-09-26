@@ -45,7 +45,7 @@ test('Retain Both needs a rationale and the exact current configurations, and co
   }
 })
 
-test('naming completes only on approved names on the same ids with tooling confirmed, and proposals flag collisions before saving', () => {
+test('a saved naming review is verified on the same ids with tooling confirmed, and cleanupPhaseFor draws no naming row', () => {
   // naming completion requires approved names on the same IDs, no collision, and separate tooling confirmation
   {
     const record: CleanupCheckpoint = { at: now, date: now, cleanup: 'naming', namingChanges: [{ id: 'a', from: 'Staff MFA', to: 'CA - Staff MFA' }], toolingVerified: true }
@@ -54,27 +54,10 @@ test('naming completes only on approved names on the same ids with tooling confi
     assert.equal(namingVerified(record, changed), true)
     assert.equal(namingVerified({ ...record, toolingVerified: false }, changed), false)
     assert.equal(namingVerified(record, [...changed, { id: 'collision', displayName: 'ca - staff mfa' }]), false)
-    // Align Policy Names is left out of the plan until it proposes the baseline's
-    // own names (owner, 2026-09-25): a saved review draws no row.
+    // Align Policy Names is added once tracking has read each policy's name
+    // (cleanupPhase.ts settleRenames, owner 2026-09-26): a saved review draws no row.
     const phase = cleanupPhaseFor({ ...input, policies: changed, records: [record] })
     assert.equal(phase?.rows.some(r => r.kind === 'naming') ?? false, false)
-  }
-
-  // naming proposals identify collisions before saving and retain descriptive source words
-  {
-    // One live policy named off the tenant's own shape, so there is a proposal to
-    // collide with. `messy` used to supply this by accident, through its
-    // twenty-four switched-off policies outvoting its twelve live ones
-    // (coverage/organisation.ts).
-    const f = fixture('large')
-    const live = (f.snapshot.config.caPolicies.rows as { displayName?: string; state?: string }[]).filter((x) => x.state !== 'disabled')
-    live[0].displayName = 'Ad hoc legacy block'
-    const run = runFixture(f)
-    const phase = run.schedule.cleanup!
-    const proposal = phase.namingProposals![0]
-    assert.ok(proposal.id && proposal.from && proposal.to)
-    const collision = cleanupPhaseFor({ ...input, organisation: run.coverage.organisation, policies: [...f.snapshot.config.caPolicies.rows, { id: 'collision', displayName: proposal.to }] })!
-    assert.equal(collision.namingProposals!.find(p => p.id === proposal.id)!.collision, true)
   }
 })
 

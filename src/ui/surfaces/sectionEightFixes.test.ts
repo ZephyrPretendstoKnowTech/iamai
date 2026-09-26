@@ -1,7 +1,7 @@
 // Section 8 after its audit (owner, 2026-09-25 and 2026-09-26): Alert on
 // Emergency Account Sign-ins stays 8.1, on the step template, completed by one
-// Mark as done, and Align Policy Names is left out of the plan until it can
-// propose the baseline's own names.
+// Mark as done; Align Policy Names lists each policy to rename to the
+// baseline's own name, with no form, and a scan completes it.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -15,7 +15,9 @@ import { alertingAiInfo, alertingSteps, alertingSubjects } from './alertingTasks
 import { cleanupRowWho } from './rowWho.ts'
 import { cleanupExportView } from './cleanupExport.ts'
 import { boardReadingsOf } from './planBoard.ts'
-import { cleanupPhaseFor } from '../../roadmap/cleanupPhase.ts'
+import { cleanupPhaseFor, renamesOf } from '../../roadmap/cleanupPhase.ts'
+import type { Step } from '../../roadmap/types.ts'
+import { namingSteps, namingSubjects } from './namingTasks.ts'
 
 const demo = () => {
   const f = fixture('demo')
@@ -79,11 +81,59 @@ test('8.1 exports the same procedure the step draws, and one completion line', (
   assert.deepEqual(view.doneWhen, ['You mark this step done once a test sign-in by an emergency account raised the alert.'])
 })
 
-test('8.2 Align Policy Names is left out of the plan until it proposes the baseline’s own names', () => {
-  for (const name of ['demo', 'large', 'messy'] as const) {
-    const phase = runFixture(fixture(name)).schedule.cleanup
-    assert.equal(phase?.rows.some((x) => x.kind === 'naming') ?? false, false, name)
+test('8.2 lists each policy the plan tracks under a name other than the baseline’s, with its ID, before Review Overlapping Policies', () => {
+  // Owner, 2026-09-26 (Jon's names): the baseline author's own name, verbatim.
+  const { phase } = demo()
+  const naming = phase.rows.find((x) => x.kind === 'naming')!
+  assert.ok(naming, 'the demo tenant has policies under its own names')
+  assert.deepEqual(naming.lists.renames.map((l) => l.replace(/ \(ID: [^)]+\)$/, '')), [
+    'Core - Block - Legacy authentication → IAC - GLOBAL – BLOCK - Legacy Authentication',
+    'Core - Block - Device code flow → IAC - GLOBAL - BLOCK - Device Code Auth Flow',
+    'Core - Grant - MFA for all users → IAC - GLOBAL - GRANT - MFA - AllUsers',
+    'Core - Grant - Admins phishing-resistant → IAC - GLOBAL - GRANT - MFA - AllAdmins',
+  ])
+  assert.ok(naming.lists.renames.every((l) => / \(ID: [0-9a-f-]{36}\)$/.test(l)), 'each with its ID')
+  assert.equal(naming.done, null)
+  const consolidation = phase.rows.find((x) => x.kind === 'consolidation')
+  if (consolidation) assert.ok(consolidation.day > naming.day, 'consolidation follows it, as cleanup.ts orders them')
+})
+
+test('8.2 skips a difference in capitals, and never gives two policies one name', () => {
+  const member = (policyId: string, policyName: string, plannedName: string) => ({ key: policyId, sourceName: '', policyId, policyName, plannedName })
+  const step = (id: string, members: ReturnType<typeof member>[]) => ({ id, status: 'active', doesntApply: false, state: { setAside: false }, tracking: { members } }) as unknown as Step
+  const renames = renamesOf([
+    step('a', [member('p1', 'iac - global - block - x', 'IAC - GLOBAL - BLOCK - X')]),
+    step('b', [member('p2', 'Staff MFA', 'IAC - GLOBAL - GRANT - MFA')]),
+    step('c', [member('p3', 'Guest MFA', 'IAC - GLOBAL - GRANT - MFA'), member('p2', 'Staff MFA', 'IAC - OTHER')]),
+    step('d', [member('p4', 'Old', 'Staff MFA')]),
+  ])
+  assert.deepEqual(renames, [{ id: 'p2', from: 'Staff MFA', to: 'IAC - GLOBAL - GRANT - MFA' }])
+})
+
+test('8.2 is drawn on the step template with no fields and no Save, and exports the procedure it draws', () => {
+  const { phase } = demo()
+  const row = phase.rows.find((x) => x.kind === 'naming')!
+  const cards = namingSubjects(phase)
+  assert.equal(cards.length, 1, 'one card for the renames')
+  assert.equal(cards[0].detail?.split('\n').length, 4)
+  const steps = namingSteps(phase)
+  for (const p of phase.namingProposals ?? []) assert.ok(steps.some((l) => l.includes(`**${p.from}** (ID: ${p.id})`) && l.includes(`**${p.to}**`)), p.id)
+  assert.deepEqual(cleanupExportView(phase, row)!.whatToDo, steps.map((l) => l.replace(/\*\*/g, '')))
+  assert.deepEqual(cleanupExportView(phase, row)!.doneWhen, ['A scan finds each of these policies under its baseline name.'])
+  const source = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
+  assert.doesNotMatch(source, /Save Naming Review|setNameDrafts|setToolingVerified/)
+})
+
+test('8.2 leaves the plan once a scan finds every baseline name', () => {
+  const f = fixture('demo')
+  const renames = runFixture(f).schedule.cleanup!.namingProposals!
+  const snapshot = structuredClone(f.snapshot)
+  for (const row of snapshot.config.caPolicies.rows as { id: string; displayName: string }[]) {
+    const rename = renames.find((x) => x.id === row.id)
+    if (rename) row.displayName = rename.to
   }
+  const phase = runFixture({ ...f, snapshot }).schedule.cleanup!
+  assert.equal(phase.rows.some((x) => x.kind === 'naming'), false)
 })
 
 test('8.1: a saved Failed test does not complete it, and a marked-done 8.1 exports no Workflow Check', () => {

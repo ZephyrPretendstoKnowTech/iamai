@@ -31,6 +31,7 @@ import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, completedDaysOf, decisionsOf, applyProgress, securityDefaultsSeenOnAtOf } from '../../roadmap/progress.ts'
 import { perUserMfaSeenOnAtOf } from '../../roadmap/manualWork.ts'
 import { settleForecast } from '../../roadmap/forecast.ts'
+import { settleRenames } from '../../roadmap/cleanupPhase.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
@@ -431,6 +432,8 @@ export function usePlanData(
     // taken off the steps it was never earned for: an enforcement wave and an
     // enforce event were placed on every step before the scan found which
     // policies already exist (roadmap/forecast.ts settleForecast).
+    // Align Policy Names reads the names tracking has just read (cleanupPhase.ts settleRenames).
+    settleRenames(schedule, steps)
     settleForecast(steps, schedule)
     annotateStateReasons(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP, baselinePolicies: baseline.pkg.policies }

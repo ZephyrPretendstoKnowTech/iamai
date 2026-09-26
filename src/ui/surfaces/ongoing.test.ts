@@ -206,8 +206,9 @@ test('F1: the alert rule matches the accounts’ object IDs, not their sign-in n
 })
 
 test('F5: the Cleanup rows keep their shape — Why, the instructions, Done when', () => {
-  // Alert on Emergency Account Sign-ins is drawn on the step template (alertingTasks.ts) and carries its own words for it.
-  for (const kind of ['hardening', 'naming', 'consolidation']) {
+  // Alert on Emergency Account Sign-ins and Align Policy Names are drawn on the step template
+  // (alertingTasks.ts, namingTasks.ts) and carry their own words for it.
+  for (const kind of ['hardening', 'consolidation']) {
     const entry = cleanupOf(kind)
     assert.ok(typeof entry.why === 'string' && entry.why.length > 0, `${kind}: no Why`)
     assert.ok(entry.whatToDo.length > 0, `${kind}: no instructions`)

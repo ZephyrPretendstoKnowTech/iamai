@@ -1,6 +1,6 @@
 // Every control is exact (owner, 2026-09-25): a policy completes its step only
 // where each condition, grant and session setting is the plan's. Only the name
-// may differ, and the step says so.
+// may differ, and Align Policy Names lists the rename.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures } from './fixtures/index.ts'
@@ -36,19 +36,18 @@ function rescan(edit: (row: Row) => void) {
   rowsOf(snapshot).push(row)
   const run = runFixture({ ...DEMO, snapshot })
   const ctx: StepVarContext = { snapshot, mapping: DEMO.mapping, nameOf: (x) => run.input.names!.label(x), signature: 'IT', operatorId: DEMO.operatorId, now: snapshot.asOf, groups: DEMO.groups, naming: run.coverage.organisation.naming, ...planDates(run.steps, run.schedule.start, run.coverage.organisation.naming, snapshot) }
-  return { step: run.steps.find((s) => s.id === id)!, batch: run.steps.find((s) => s.id === REPORT_ONLY_STEP_ID), ctx }
+  return { step: run.steps.find((s) => s.id === id)!, batch: run.steps.find((s) => s.id === REPORT_ONLY_STEP_ID), ctx, run }
 }
 
-test('one session setting off the plan: the step asks for the correction, and Create the Policies in Report-only reads Correct', () => {
+test('one session setting off the plan: the step asks for the correction, and Create the Policies in Report-only lists it no second time', () => {
   const { step, batch, ctx } = rescan((row) => {
     row.sessionControls = { signInFrequency: { isEnabled: true, type: 'hours', value: 4, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication' } }
   })
   assert.deepEqual([...new Set(step.state.members.flatMap((m) => [...m.change.unwritten]))], ['sessionControls'])
   assert.equal(step.state.satisfied, false)
-  assert.ok(batch?.reportOnlyBatch?.correct?.includes(step.id), 'the batch lists it to correct')
-  assert.equal(batch!.state.satisfied, false, 'the batch is not done while a policy differs')
-  const card = stepBodyOf(batch!, ctx).readiness.tiles.find((t) => t.key === `batch:${step.id}`)
-  assert.equal(card?.value, 'Correct session controls')
+  // Only the policies still to create are 3.6's (owner, 2026-09-26): the correction is this step's own card.
+  assert.ok(batch!.reportOnlyBatch!.created.includes(step.id), 'the batch counts it created')
+  assert.equal(stepBodyOf(batch!, ctx).readiness.tiles.some((t) => t.key === `batch:${step.id}`), false, 'and draws no card for it')
 })
 
 test('built exactly from its create: nothing to correct, the batch counts it created, and no name card', () => {
@@ -56,7 +55,7 @@ test('built exactly from its create: nothing to correct, the batch counts it cre
   assert.equal(step.tracking?.policyId, 'p-built-from-step', 'the premise: the step finds the policy built from it')
   assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [])
   assert.equal(step.state.lifecycle, 'report-only')
-  assert.ok(batch!.reportOnlyBatch!.created.includes(step.id) && !(batch!.reportOnlyBatch!.correct ?? []).includes(step.id))
+  assert.ok(batch!.reportOnlyBatch!.created.includes(step.id))
   assert.equal(stepBodyOf(step, ctx).readiness.satisfied.some((t) => t.key.startsWith('policy-name')), false)
 })
 
@@ -69,7 +68,7 @@ test('built exactly from its create, as Graph returns it: its OData annotations 
     ;(row.conditions as Row).users = { ...users, excludeGuestsOrExternalUsers: users.excludeGuestsOrExternalUsers ?? null }
   })
   assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [])
-  assert.ok(!(batch!.reportOnlyBatch!.correct ?? []).includes(step.id))
+  assert.ok(batch!.reportOnlyBatch!.created.includes(step.id))
 })
 
 test('Token Protection as Graph returns it: secureAppSessionMode at its unset default is no session to correct, and a set value is', () => {
@@ -78,18 +77,19 @@ test('Token Protection as Graph returns it: secureAppSessionMode at its unset de
   assert.equal(sameDimension({ secureSignInSession: { isEnabled: true } }, { secureSignInSession: { secureAppSessionMode: 'enforced', isEnabled: true } }), false)
 })
 
-test('only the name off the plan: the step completes as before and names the step’s own name', () => {
+test('only the name off the plan: the step completes as before, draws no name card, and Align Policy Names lists the rename', () => {
   const before = rescan(() => {})
-  const { step, ctx } = rescan((row) => {
+  const { step, ctx, run } = rescan((row) => {
     row.displayName = 'Renamed by someone'
   })
   assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [])
   assert.equal(step.state.lifecycle, before.step.state.lifecycle)
   const member = step.tracking!.members!.find((m) => m.policyName === 'Renamed by someone')!
   assert.ok(member.plannedName && member.plannedName !== 'Renamed by someone', 'the step keeps its own name')
-  const tile = stepBodyOf(step, ctx).readiness.satisfied.find((t) => t.key.startsWith('policy-name'))
-  assert.equal(tile?.value, 'Renamed by someone')
-  assert.match(String(tile?.note), new RegExp(`This step names it ${member.plannedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+  // The rename is 8.2's, never a card on the step (owner, 2026-09-26).
+  assert.equal(stepBodyOf(step, ctx).readiness.satisfied.some((t) => t.key.startsWith('policy-name')), false)
+  const naming = run.schedule.cleanup!.rows.find((r) => r.kind === 'naming')
+  assert.ok(naming?.lists.renames.includes(`Renamed by someone → ${member.plannedName} (ID: p-built-from-step)`), JSON.stringify(naming?.lists))
 })
 
 test('a policy doing another step’s job is never corrected into this one: Shorten Admin Sessions creates the baseline’s beside the admins’ MFA policy', () => {

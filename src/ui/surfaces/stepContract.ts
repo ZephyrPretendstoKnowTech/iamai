@@ -2228,14 +2228,6 @@ function ownPolicyTile(step: Step): ReadinessTile | null {
   return { key: OWN_POLICY_DIFFERS, label: CONTRACT.ownPolicyDiffers.label, tone: 'good', value: dimensions, note: fillText(CONTRACT.ownPolicyDiffers.note, { policy: d.policyName, dimensions }) }
 }
 
-/** The key of the tile below: a fact about the tenant's policy, never a task (FINISHED_FINDINGS). */
-export const POLICY_NAME = 'policy-name'
-
-/**
- * Where the tenant's policy is the step's in every setting and only its name is
- * not the one the step gives it: said, and never holding the step (owner,
- * 2026-09-25: controls are exact, the name may differ, and the step says so).
- */
 /**
  * Where the tenant's policy is stricter than the baseline's (wider users, a
  * stronger grant or session): accepted, and always said, never silently passed
@@ -2258,12 +2250,6 @@ function acceptedTiles(step: Step): ReadinessTile[] {
     const dimensions = dimensionWords(m.accepted)
     return [{ key: `accepted:${m.key}`, label: CONTRACT.acceptDeviation.acceptedLabel, tone: 'good' as const, value: dimensions, note: fillText(CONTRACT.acceptDeviation.acceptedNote, { policy: m.policyName, dimensions, date: absoluteDate(d.at), reason: d.reason }) }]
   })
-}
-
-function policyNameTiles(step: Step): ReadinessTile[] {
-  return (step.tracking?.members ?? []).flatMap((m) =>
-    m.plannedName && m.policyName ? [{ key: `${POLICY_NAME}:${m.key}`, label: CONTRACT.policyName.label, tone: 'good' as const, value: m.policyName, note: fillText(CONTRACT.policyName.note, { planned: m.plannedName }) }] : [],
-  )
 }
 
 /** The key of the tile below: a fact about the tenant's own policy, never a task (FINISHED_FINDINGS). */
@@ -2961,7 +2947,7 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
   // The two blocks' sign-in card (roadmap/blockSignIns.ts) sits beside the
   // step's own state tile, never in its place.
   const stateFindings = configuration.filter((f) => f.key !== SIGN_INS_FINDING).length
-  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), ...policyNameTiles(step), ...stricterTiles(step), ...acceptedTiles(step), guestsCoveredTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c)].filter((x): x is ReadinessTile => x !== null)
+  const facts = [enforcedReadingTile(step), unwatchedTile(step), ownPolicyTile(step), ...stricterTiles(step), ...acceptedTiles(step), guestsCoveredTile(step), c.alsoExcluded ?? null, followUpTile(c), ...emergencyTiles(step, c), ...configuredTiles, ...((stateFindings && step.id !== 's-prereq-break-glass') || (c.satisfiedFacts?.length ?? 0) > 0 ? [] : [stateTile(step, c, o.setupAfterEnforcement === true)]), dormantTile(c), ...(c.pitfalls ?? []), ...(c.batch ?? []), exclusionsTile(step, c), exclusionsReachTile(c), implementationTile(step, c)].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
   // The drift card is the review's one card, and the exclusions card the exposure's
