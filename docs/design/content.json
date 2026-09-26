@@ -4056,7 +4056,7 @@
       "kind": "object",
       "title": "Create or Correct Allowed Countries Location",
       "changeLine": null,
-      "why": "The country rule depends on this list. Reviewing it before enforcement helps catch remote workers, travel and network routes that would otherwise be blocked.",
+      "why": "The country rule lets sign-ins in only from the countries on this list. Entra decides the country by IP address, and a sign-in whose country it cannot work out is blocked.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
@@ -4066,12 +4066,12 @@
         "operator": "Your own sign-ins came from {operatorCountries}; they are on the list."
       },
       "decision": {
-        "label": "Work Countries",
+        "label": "Work countries",
         "help": "Select the countries where people normally work.",
         "pickerRow": "{country} · {people} people · {signIns} sign-ins",
         "save": "Save Countries",
         "question": {
-          "label": "Recurring Travel Countries",
+          "label": "Recurring travel countries",
           "text": "Record recurring destinations separately from normal work countries.",
           "options": [
             "No Recurring Destinations",
@@ -4110,8 +4110,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "A countries named location in the tenant lists exactly {countries}, the countries people work from.",
-        "It decides country by IP address, and a sign-in whose country cannot be worked out stays outside the list."
+        "A countries named location in the tenant lists exactly {countries}, the countries people work from."
       ],
       "ifWrong": null,
       "comms": null,
@@ -5755,7 +5754,7 @@
       "kind": "policy",
       "title": "Block Sign-ins From Countries Not Allowed",
       "changeLine": null,
-      "why": "Country restrictions can reduce unwanted access from places the business does not use. Review legitimate travel and network routes so a location rule does not interrupt expected work.",
+      "why": "It keeps out sign-ins from countries the business does not work in. Check travel, VPN and partner routes before it is turned on, so it does not stop expected work.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },

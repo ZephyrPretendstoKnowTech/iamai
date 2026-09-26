@@ -550,13 +550,10 @@ test('006.9: the Step Contract states the stage, the condition, what changed, wh
   assert.match(contract.whatToDo.text, /changed/i)
   assert.match(contract.whatToDo.text, /rescan|scan again/i)
   assert.doesNotMatch(contract.whatToDo.text, DOING, `What to do tells the operator to change the tenant: ${contract.whatToDo.text}`)
-  // Done when leads with the review, and keeps the step's own gates behind it.
-  assert.ok(contract.doneWhen.length > 1)
-  assert.match(contract.doneWhen[0], /accounted for/i)
-  assert.ok(
-    contract.doneWhen.slice(1).some((l) => /policy is On/.test(l)),
-    `the step’s own gates were dropped: ${JSON.stringify(contract.doneWhen)}`,
-  )
+  // A section 6 policy finishes on the same two lines in every state (owner,
+  // 2026-09-25; walk list 4.x item 26): IAMAI sees it On, and its report-only period.
+  assert.equal(contract.doneWhen.length, 2)
+  assert.match(contract.doneWhen[0], /^IAMAI sees .+ On/)
   // The member line says the policy needs a look.
   assert.equal(contract.members.length, 1)
   assert.equal(contract.members[0].reviewRequired, true)

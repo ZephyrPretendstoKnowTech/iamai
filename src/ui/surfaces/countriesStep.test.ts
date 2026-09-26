@@ -193,7 +193,7 @@ test('6.3 draws the location as its own task in its one frame: the picker saved 
   // Task 1: the picker, the location's own words, saved under its id.
   assert.equal(body.decides, true, 'the picker is not drawn')
   assert.equal(body.taskDecision?.stepId, LOCATION)
-  assert.equal(body.taskDecision?.d.label, 'Work Countries')
+  assert.equal(body.taskDecision?.d.label, 'Work countries')
   // Task 2: the location's own Implementation leads while it is to be made; task 3 is the policy's.
   const portal = body.artifacts.find((a) => a.id === 'portal')
   assert.ok(portal, 'the location task hands over no Entra procedure')
