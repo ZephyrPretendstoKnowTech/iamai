@@ -24,7 +24,8 @@ const REQUEST_HOSTS = new Set<string>(CSP_REQUEST_HOSTS)
 // whatismyip.com is where the trusted-network step's instructions (content.json)
 // send a person to read the office's public address; the app never fetches it.
 // support.microsoft.com is the business-support contact the emergency recovery export names (cleanupExport.ts).
-const LINK_HOSTS = new Set(['learn.microsoft.com', 'support.microsoft.com', 'entra.microsoft.com', 'aka.ms', 'github.com', 'www.linkedin.com', 'example.test', 'react.dev', 'www.w3.org', 'localhost', 'getiamai.com', 'www.getiamai.com', 'whatismyip.com', 'conditionalaccess.tech', 'mysignins.microsoft.com'])
+// portal.azure.com: Alert on Emergency Account Sign-ins opens Monitor there (a link, never a request).
+const LINK_HOSTS = new Set(['learn.microsoft.com', 'support.microsoft.com', 'entra.microsoft.com', 'portal.azure.com', 'aka.ms', 'github.com', 'www.linkedin.com', 'example.test', 'react.dev', 'www.w3.org', 'localhost', 'getiamai.com', 'www.getiamai.com', 'whatismyip.com', 'conditionalaccess.tech', 'mysignins.microsoft.com'])
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
