@@ -244,6 +244,8 @@ test('demo: Require a Managed Device found Off is told to go to Report-only only
     const { body, whatToDo } = opened(f)
     // The procedure stands whole (owner, 2026-09-25): its Report-only task is shown, and nothing offers it.
     assert.match(body.artifacts.find((a) => a.id === 'portal')?.text() ?? '', REPORT_ONLY, 'the Entra procedure keeps its Report-only task')
+    // No channel previews a create beside the policy that is already there (Jordan D6).
+    for (const a of body.artifacts.filter((x) => x.id !== 'portal')) assert.doesNotMatch(a.text(), /\bPOST\b|in Create mode|ValidateSet\('Create'\)|does not exist in/, `the ${a.id} tab previews a second policy`)
     assert.ok(whatToDo[0]?.startsWith(CERTIFICATE), `the export says why it waits before its procedure: ${whatToDo.join(' | ')}`)
   }
 

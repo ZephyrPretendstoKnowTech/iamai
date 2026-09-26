@@ -467,7 +467,12 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // 20): while the report-only week runs, the day it ends; once it is over, the
   // turn-on, that report-only blocked no one, and what it still waits on.
   const next = tasks.find((t) => t.required) ?? null
-  if (next?.id === 'create' && createdOnStep && !turnOnHeld && input.contract.milestone.at) {
+  // A create, or a switched-off policy's Report-only patch, that the readiness
+  // threshold holds: the card names the readiness it waits for, as the rail
+  // does, never the task it is not offered.
+  const heldCreate = heldCreateMilestoneOf(step)
+  if (next !== null && heldCreate !== null) next.readinessTitle = heldCreate
+  else if (next?.id === 'create' && createdOnStep && !turnOnHeld && input.contract.milestone.at) {
     const announce = step.events?.announce?.at ?? null
     const date = shownDay(input.contract.milestone.at, input.estimate, 'sentence')
     next.readinessTitle = announce ? fillText(PW.card.createOnAnnounced, { announce: shownDay(announce, input.estimate, 'sentence'), date }) : fillText(PW.card.createOnDay, { date })
