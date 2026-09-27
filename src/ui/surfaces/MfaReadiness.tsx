@@ -413,7 +413,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   }
   const setupStep = planSteps.has(SETUP_STEP) ? SETUP_STEP : null
   const groupView = ({ state, rows }: { state: ReadinessState; rows: ReadinessRow[] }): ReactNode => {
-    // A group of people only the missing licence leaves unconfirmed is not "couldn't read these people".
+    // A group of people only the missing licence leaves unconfirmed is not "Waiting on one more read": no read is coming.
     const G = state === 'unknown' && rows.every(signInsUnavailableFor) ? T.groupNoP1 : T.groups[state]
     const isNext = state === lead && show !== 'lapsing'
     // Under Needs action a Ready group holds only the people about to lapse (OWN-R1): it opens on them.

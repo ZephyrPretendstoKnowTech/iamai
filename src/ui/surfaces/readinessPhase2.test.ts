@@ -23,6 +23,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { RE } from '../../content/contentChecks.ts'
 import { sourceReadFix } from '../../roadmap/readiness.ts'
+import { withOneMethodListMissed } from '../../testing/unreadMethods.ts'
 
 const R = pages.readiness as unknown as { checks: Record<string, Record<string, string>>; rail: { shownAbove: string } }
 const W = pages.readiness as unknown as { chip: { unread: string }; sub: { noDevices: string }; panel: { noDevices: string; noneRegistered: string }; methods: { unread: string } }
@@ -133,6 +134,9 @@ const methodsRefused = (): TenantSnapshot => {
   return s
 }
 
+/** The demo with one counted person's method list missed this time, and no registration report row for them: the sample itself reads every list (OWN-B3). */
+const missedOne = (): TenantSnapshot => withOneMethodListMissed(fixture('demo')).snapshot
+
 test('the headline and the footer count only the people IAMAI could judge, and never read as if the guests are ready', () => {
   {
     const f = fixture('demo')
@@ -213,16 +217,17 @@ test('a method list the tenant refused says so and is not retried; one merely mi
     assert.doesNotMatch(G.unknown.why, /next scan/i)
     // A method list merely missed this time is still retried.
     const demo = fixture('demo')
-    assert.equal(unreadMethodsWords(demo.snapshot, 1), fillText(E.unreadMethods, { n: 1 }))
-    const missed = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state === 'unknown' && r.readiness?.unknown === 'methods')
-    assert.ok(missed.length > 0, 'the premise: demo missed one person’s method list')
+    const one = missedOne()
+    assert.equal(unreadMethodsWords(one, 1), fillText(E.unreadMethods, { n: 1 }))
+    const missed = readinessView(one, one.asOf, demo.mapping).rows.filter((r) => r.state === 'unknown' && r.readiness?.unknown === 'methods')
+    assert.ok(missed.length > 0, 'the premise: one person’s method list was missed')
     for (const r of missed) assert.equal(nextCell(r), N.rescan.methods)
   }
   {
-    // demo read 37 method lists and missed one; the registration report is refused
+    // Most method lists read and one missed; the registration report is refused
     // (403), as it is on any Entra Free tenant where it is licence-gated.
     const f = fixture('demo')
-    const s = structuredClone(f.snapshot) as TenantSnapshot
+    const s = missedOne()
     s.registrationDetails = []
     s.sources.registrationDetails = { ...s.sources.registrationDetails!, status: 'disabled', reason: 'access denied (403)' }
     assert.equal(s.sources.authMethods?.status, 'partial', 'the premise: the per-person method read returned lists')
@@ -269,7 +274,7 @@ test('a setup check is filed as done only where it is: Windows Hello where the c
     assert.equal(h.view.context.windowsDirectory, 'unknown', 'the premise')
     assert.notEqual(h.c.outcome, 'pass')
     assert.equal(h.words, H.unread)
-    assert.match(h.words, /couldn’t read the device directory/, h.words)
+    assert.match(h.words, /waiting on a full read of the device directory/, h.words)
     assert.ok(remainingChecks([h.c]).length === 1, 'it is listed as remaining, not under Completed')
     // A directory read in full with no joined Windows computer still settles it.
     const s = structuredClone(fixture('small').snapshot)

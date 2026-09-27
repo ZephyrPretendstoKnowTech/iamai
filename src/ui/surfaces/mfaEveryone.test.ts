@@ -231,7 +231,8 @@ test('once 4.3 is On, 4.4 counts people against its own policy, never the admins
   assert.ok(mfa.state.satisfied && mfa.satisfiedBy?.sufficient, 'the premise: one policy delivers 4.4 by itself')
   assert.ok(mfa.satisfiedBy!.policies.some((n) => /Admins phishing-resistant/.test(n)), 'the premise: the admins’ policy is among those that deliver it too')
   // 20 counted the admin short of a phishing-resistant method as short of a method 4.4 accepts.
-  assert.match(mfa.readiness.lines[0] ?? '', /^21 of 30 people have a method it accepts\./)
+  // 22 since the sample's one unread person holds Microsoft Authenticator (OWN-B3); it was 21.
+  assert.match(mfa.readiness.lines[0] ?? '', /^22 of 30 people have a method it accepts\./)
 })
 
 test('4.4’s Not as asked says which resources differ: the tenant’s policy covers Microsoft Intune Enrollment, which the baseline excludes (net-new 14)', () => {

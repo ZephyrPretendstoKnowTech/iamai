@@ -22,6 +22,7 @@ import { CONTRACT, readinessOf, readinessSentence, readinessValueOf } from './st
 import type { PrerequisiteBlocker } from './stepContract.ts'
 import { waitingLine } from './stepJson.ts'
 import type { Step } from '../../roadmap/types.ts'
+import { withOneMethodListMissed } from '../../testing/unreadMethods.ts'
 
 const CONTRACT_SRC = readFileSync(new URL('./stepContract.ts', import.meta.url), 'utf8')
 const T = CONTRACT.readiness.tiles
@@ -373,8 +374,9 @@ test('every readiness tile says something its label has not already said', () =>
 // never wrong (roadmap/readiness.ts `atLeast`).
 test('a readiness the scan could only put a floor under says the floor, and says it is a floor', () => {
   let floors = 0
-  for (const name of ['demo', 'small', 'mid', 'large', 'messy'] as const) {
-    const f = fixture(name)
+  // The demo with one method list missed: the sample reads them all since OWN-B3, and this is the state a floor stands on.
+  for (const f of [...(['demo', 'small', 'mid', 'large', 'messy'] as const).map((n) => fixture(n)), withOneMethodListMissed(fixture('demo'))]) {
+    const name = f.name
     const r = runFixture(f, {}, null, f.snapshot.asOf)
     for (const step of r.steps) {
       const gate = step.action.readinessGate

@@ -28,6 +28,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { watchedArrive } from '../../roadmap/observation.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
+import { withOneMethodListMissed } from '../../testing/unreadMethods.ts'
 
 type Run = ReturnType<typeof runFixture>
 
@@ -312,8 +313,10 @@ test('contract 9: a baseline conflict renders with no implementation and nothing
 test('a readiness gate with no number states its threshold and claims no number', () => {
   let bare = 0
   let floored = 0
-  for (const name of ['demo', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) {
-    const r = runFixture(structuredClone(fixture(name)))
+  // The demo with one method list missed: the sample reads them all since OWN-B3, and this is the state a floor stands on.
+  for (const f of [...(['demo', 'small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const).map((n) => structuredClone(fixture(n))), withOneMethodListMissed(fixture('demo'))]) {
+    const name = f.name
+    const r = runFixture(f)
     for (const step of r.steps) {
       const gate = step.action.readinessGate
       if (!gate) continue

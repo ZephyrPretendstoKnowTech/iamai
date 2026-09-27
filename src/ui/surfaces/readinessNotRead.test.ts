@@ -146,3 +146,28 @@ test('no-P1: the headline, the second line and the licence caveat claim nothing 
     assert.match(W2.summaryNone, /No active people/, 'unchanged for a tenant whose activity WAS read')
   }
 })
+
+// OWN-B3 (owner rule: never tell a person IAMAI couldn't read something). The
+// demo's MFA Readiness said "IAMAI couldn't read these people" and "IAMAI
+// couldn't read the method list of 1 person": the sample's one unread person.
+// The sample now reads every method list, and the page's words for a real
+// tenant say what is waiting and what reads it, true where a rescan reads it and
+// where the tenant refused it.
+test('MFA Readiness never says "couldn\'t read", and the demo has nobody waiting on a read', () => {
+  const words: string[] = []
+  const walk = (v: unknown): void => {
+    if (typeof v === 'string') words.push(v)
+    else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) if (!k.startsWith('$')) walk(x)
+  }
+  walk(pages.readiness)
+  assert.deepEqual(words.filter((w) => /couldn.t read|could not read|couldn.t be read|could not be read/i.test(w)), [])
+  for (const name of ['demo', 'demo-week2'] as const) {
+    const f = fixture(name)
+    const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    assert.deepEqual(view.rows.filter((r) => r.state === 'unknown').map((r) => r.user.displayName), [], `${name}: nobody waits on a read`)
+    assert.equal(f.snapshot.sources.authMethods?.status, 'ok', `${name}: every method list is read`)
+  }
+  // The group, the drawer and the all-unknown headline promise no rescan: a refused read is not retried.
+  const R = pages.readiness as unknown as { groups: { unknown: { title: string; why: string } }; panel: { why: { unknown: string } }; summaryNotJudged: string }
+  for (const w of [R.groups.unknown.title, R.groups.unknown.why, R.panel.why.unknown, R.summaryNotJudged]) assert.doesNotMatch(w, /next scan/i, w)
+})

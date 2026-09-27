@@ -1262,7 +1262,7 @@
       "summaryNoneNoP1": "Nobody can be counted: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have, so this scan read nobody’s activity.",
       "summaryUnmeasured": "Readiness not measured for {cohort}: this scan holds no sign-in proof.",
       "$commentSummaryNotJudged": "Everyone counted is Unknown, though the sign-in proof was read: their method lists were refused, say. \"0 of 30 are ready\" put an unread count in the shape of a measurement. Each row says what was missing.",
-      "summaryNotJudged": "Readiness not measured for {cohort}: this scan couldn’t read what it depends on.",
+      "summaryNotJudged": "Readiness for {cohort} waits on one more read: each row says which.",
       "summaryNoP1": "Readiness can’t be measured for {cohort}: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have.",
       "groupNoP1": {
         "$comment": "The Unknown group's words where everyone in it is unconfirmed only because the tenant has no Entra ID P1 (summaryNoP1 says why, once).",
@@ -1365,9 +1365,9 @@
           }
         },
         "unknown": {
-          "title": "IAMAI couldn’t read these people",
+          "title": "Waiting on one more read",
           "$commentWhy": "It ended \"The next scan retries.\", which is false where the tenant refused the read. Each row says what was missing and whether a rescan reads it.",
-          "why": "Each row says what was missing."
+          "why": "Each row says which, and what reads it."
         },
         "ready": {
           "title": "Ready",
@@ -1494,7 +1494,7 @@
           "notCovered": "Nothing to do: the next scan reads their sign-ins",
           "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant",
           "$commentMethodsUnavailable": "Drawn only where no method list was read in this tenant and the registration report that stands in for one was refused (derive/readinessContext.ts methodListsUnread). The row states the fact; the evidence tile says what reads it. Where other lists were read, a missed one keeps \"methods\", because the next scan re-reads it.",
-          "methodsUnavailable": "Not known: IAMAI couldn’t read method lists in this tenant"
+          "methodsUnavailable": "Waiting on the fix under Evidence read"
         }
       },
       "notes": {
@@ -1564,7 +1564,7 @@
           "device": "Confirmed on one device, but {device} signs in without it.",
           "method": "No phishing-resistant method they can use.",
           "blocked": "A tenant setting stops them from setting one up.",
-          "unknown": "IAMAI couldn’t read what the answer depends on.",
+          "unknown": "Their readiness waits on one more read.",
           "usedRecently": "Microsoft reports their passkey used {date}, but no sign-in with it shows in 30 days. A last-used date alone never makes someone Ready.",
           "replaceKey": "The key works today, but its model isn’t on Configure Passkey Authentication’s approved list, so it stops working when you apply those settings."
         }
@@ -1606,7 +1606,7 @@
           "notSeen": "Windows Hello for Business isn’t seen working yet. Confirm it’s turned on in Intune: Devices, Enrollment, Windows Hello for Business.",
           "noJoined": "No joined Windows computers seen, so Windows Hello for Business doesn’t apply yet",
           "$commentUnread": "The device directory wasn't read in full, so an absent joined computer settles nothing. The check was filed as done under noJoined there, over a read that failed.",
-          "unread": "Whether Windows Hello for Business works here isn’t known: this scan couldn’t read the device directory in full",
+          "unread": "Windows Hello for Business: waiting on a full read of the device directory",
           "$commentSignInsUnread": "The device directory holds joined Windows computers, but no sign-in record was read, so nobody could be seen signing in with Windows Hello. It shared unread's words, which read as if the directory had failed.",
           "signInsUnread": "Whether Windows Hello for Business works here isn’t known: no sign-in records were read"
         },
@@ -1660,9 +1660,9 @@
         "none": "No sign-in records were read.",
         "$commentCounts": "These lines stood beside a count in its own cell, so a count of one read \"1 method lists\" and \"1 people’s sign-ins\". The count is now in each sentence, after its verb, so pluralise bends the noun and leaves the verbs alone.",
         "$commentUnreadMethods": "Each person has one method list, so the noun stays singular: \"1 person’s method lists\" read as several lists for one person.",
-        "unreadMethods": "IAMAI couldn’t read the method list of {n} people. The next scan retries.",
+        "unreadMethods": "The next scan reads the method list of {n} people.",
         "$commentUnreadMethodsRefused": "Where the registration report was refused (a permission or a licence), a rescan with the same sign-in reads no more of it. The line names that refusal and its fix, not a retry. The Plan's blind-source sentence names the same refusal; {fix} is its fix (roadmap/readiness.ts sourceReadFix). One contraction style, and the reason after a colon as in app.readiness.lineNoRecordsReason.",
-        "unreadMethodsRefused": "IAMAI couldn’t read the method list of {n} people, nor registration details in this tenant: {reason}. {fix}",
+        "unreadMethodsRefused": "The method list of {n} people comes from registration details, which this tenant refused: {reason}. {fix}",
         "notCovered": "IAMAI hasn’t read {n} people’s sign-ins yet. The next scan continues.",
         "individually": "IAMAI read {n} people individually for the older part of the window."
       },

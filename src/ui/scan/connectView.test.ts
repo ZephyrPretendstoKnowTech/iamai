@@ -353,9 +353,11 @@ test('a section Microsoft did not return in full is not blamed on the account; o
   assert.equal(built.learn?.label, 'Microsoft: Global Reader')
   assert.deepEqual(built.actions, [{ label: 'Scan again', weight: 'secondary', does: 'scanAgain' }], 'the plan was built: Scan again alone')
   // And a complete scan whose shortfall is not a refusal says nothing about the account.
-  const demo = fixture('demo').snapshot
+  // One person's method list missed this time (the sample itself reads them all, OWN-B3).
+  const demo = structuredClone(fixture('demo').snapshot)
+  demo.sources.authMethods = { ...demo.sources.authMethods!, status: 'partial', reason: "1 users' methods unavailable" }
   const partly = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater, unread: unreadSources(demo) })
-  assert.ok((partly.rows ?? []).length > 0, 'the premise: the demo scan read a section in part')
+  assert.ok((partly.rows ?? []).length > 0, 'the premise: the scan read a section in part')
   assert.doesNotMatch(said(partly), /this account|Global Reader/)
   assert.equal(partly.ask, undefined)
 })

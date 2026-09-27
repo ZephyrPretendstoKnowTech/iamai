@@ -30,6 +30,7 @@ import { goalFamily, mfaReady } from '../roadmap/readiness.ts'
 import { enforcementHeld } from '../roadmap/operations.ts'
 import { nextCell } from '../ui/surfaces/readinessCells.ts'
 import { readinessHref, readinessStepHref, resolveHash, showFromReadinessHash, stepFromReadinessHash } from '../ui/shell/routes.ts'
+import { withOneMethodListMissed } from '../testing/unreadMethods.ts'
 
 const TENANTS: FixtureName[] = ['demo', 'getiamai', 'mid', 'messy', 'hostile']
 
@@ -108,12 +109,14 @@ test('the states are true of the method inventory, and an inventory nobody could
       // hostile refused the registration report (403), so a rescan with the same sign-in reads no more: the row says so, never a finding.
       assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methodsUnavailable' }, `${r.user.id}: the method list is unread, never a finding`)
     }
-    // The demo, read: the only Unknown is the one person whose own read failed.
-    const read = fixture('demo')
-    const dv = readinessView(read.snapshot, read.snapshot.asOf, read.mapping)
+    // The demo, read, with one person's own read failed (and no report row for them): that person is the only Unknown.
+    const read = withOneMethodListMissed(fixture('demo'))
+    const missed = read.missedId
+    const snapshot = read.snapshot
+    const dv = readinessView(snapshot, snapshot.asOf, read.mapping)
     const unknown = dv.rows.filter((r) => r.state === 'unknown')
-    assert.ok(unknown.length > 0 && unknown.length < dv.people)
-    for (const r of unknown) assert.equal(read.snapshot.authMethods[r.user.id], 'unknown', `${r.user.id}: unknown only where the methods read failed`)
+    assert.deepEqual(unknown.map((r) => r.user.id), [missed])
+    for (const r of unknown) assert.equal(snapshot.authMethods[r.user.id], 'unknown', `${r.user.id}: unknown only where the methods read failed`)
   }
 })
 

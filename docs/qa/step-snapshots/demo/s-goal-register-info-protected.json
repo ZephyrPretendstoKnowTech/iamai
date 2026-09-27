@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "At least 27% ready for Modern MFA + TAP"
+      "state": "27% ready for Modern MFA + TAP"
     },
     {
       "label": "Configure Emergency Exclusions",

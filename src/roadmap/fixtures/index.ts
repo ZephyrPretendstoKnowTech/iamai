@@ -376,10 +376,8 @@ export function buildFixture(spec: Spec): Fixture {
     const shared = users.find((x) => x.id === sharedId(ids))
     if (shared) shared.skuIds = ['295a8eb0-f78d-45c7-8b5b-1eed5ed02dff']
   }
-  // What an earlier scan kept (scoring/mfaHistory.ts), and a person whose
-  // methods could not be read at all: the demo carries one of each (Step 7).
+  // What an earlier scan kept (scoring/mfaHistory.ts): the demo carries one (Step 7).
   let mfaHistory: MfaHistory | null = null
-  let unreadRegistration: string | null = null
   // The demo tenant, built to show the finished product (prompt 50 Part 2).
   if (spec.demo) {
     const at = (i: number): string => ids[i]
@@ -436,7 +434,7 @@ export function buildFixture(spec: Spec): Fixture {
     // MFA Readiness's other cases (Step 7), on people the sample does not
     // otherwise tell a story about: Ready with a passkey and Windows Hello (the
     // first admin), Ready with Windows Hello and no passkey, Ready with a passkey
-    // proven on macOS, a person whose methods could not be read, and a person
+    // proven on macOS, a person holding only Microsoft Authenticator, and a person
     // whose passkey an earlier scan saw and this one does not.
     const spare = ids.slice(spec.admins + 14).filter((id) => id !== printerId && id !== sharedId(ids))
     const proven = (id: string, reg: string[], methods: TenantSnapshot['authMethods'][string], proofs: { cls: MethodClass; os: Platform; method: string }[], platforms: Platform[]): void => {
@@ -449,7 +447,7 @@ export function buildFixture(spec: Spec): Fixture {
     proven(at(0), ['microsoftAuthenticatorPush', 'passKeyDeviceBound', 'windowsHelloForBusiness'], [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey', id: 'demo-passkey-admin', displayName: 'iPhone' }, { kind: 'windowsHelloForBusiness', id: 'demo-hello-admin', displayName: 'LAPTOP-ADMIN' }], [{ cls: 'passkey', os: 'iOS', method: 'Passkey (device-bound)' }, { cls: 'windowsHello', os: 'Windows', method: 'Windows Hello for Business' }], ['Windows', 'iOS'])
     const helloReady = spare[0]
     const macPasskey = spare[1]
-    const unread = spare[2]
+    const authenticatorOnly = spare[2]
     const passkeyGone = spare[3]
     if (helloReady) proven(helloReady, ['microsoftAuthenticatorPush', 'windowsHelloForBusiness'], [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'windowsHelloForBusiness', id: 'demo-hello-1', displayName: 'DESKTOP-4KD' }], [{ cls: 'windowsHello', os: 'Windows', method: 'Windows Hello for Business' }], ['Windows'])
     if (macPasskey) proven(macPasskey, ['microsoftAuthenticatorPush', 'passKeyDeviceBound'], [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey', id: 'demo-passkey-mac', displayName: 'MacBook' }], [{ cls: 'passkey', os: 'macOS', method: 'Passkey (device-bound)' }, { cls: 'passkey', os: 'iOS', method: 'Passkey (device-bound)' }], ['macOS', 'iOS'])
@@ -461,11 +459,15 @@ export function buildFixture(spec: Spec): Fixture {
         people: { [passkeyGone]: { methods: [{ key: 'demo-passkey-gone', cls: 'passkey', firstSeen: daysAgo(60), lastSeen: daysAgo(9), present: true }], proofs: [{ cls: 'passkey', os: 'iOS', at: daysAgo(12), method: 'Passkey (device-bound)' }], platforms: [{ os: 'iOS', at: daysAgo(12) }] } },
       }
     }
-    if (unread) {
-      setUser(unread, { lastSuccessfulSignIn: daysAgo(2), userType: 'member', externalUserState: null })
-      authMethods[unread] = 'unknown'
-      signInEvidence[unread] = { signInCount: 6, lastSignIn: daysAgo(2), lastMfaSuccess: null, countries: ['AU'], proofs: [], platforms: [{ os: 'Windows', at: daysAgo(2) }] }
-      unreadRegistration = unread
+    // The sample reads every method list (OWN-B3): this person holds only
+    // Microsoft Authenticator and signs in on Windows, so they need a method. They
+    // were the sample's unread person, which put the "couldn't read" wording the
+    // product never says on the demo's MFA Readiness page.
+    if (authenticatorOnly) {
+      setUser(authenticatorOnly, { lastSuccessfulSignIn: daysAgo(2), userType: 'member', externalUserState: null })
+      setReg(authenticatorOnly, { isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: false, methodsRegistered: ['microsoftAuthenticatorPush'], userType: 'member' })
+      authMethods[authenticatorOnly] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }]
+      signInEvidence[authenticatorOnly] = { signInCount: 6, lastSignIn: daysAgo(2), lastMfaSuccess: { at: daysAgo(2), method: 'Microsoft Authenticator (push notification)' }, countries: ['AU'], proofs: [], platforms: [{ os: 'Windows', at: daysAgo(2) }] }
     }
     // A Teams Room shared-device account (scenario 8): the reserved last id.
     const shared = users.find((x) => x.id === sharedId(ids))
@@ -712,7 +714,7 @@ export function buildFixture(spec: Spec): Fixture {
       users: p1 ? ok() : { ...ok(), status: 'partial' as const, reason: `signInActivity ${LICENCE_GATE}` },
       devices: hostile ? { status: 'disabled', coveredWindow: null, reason: 'access denied (403)', asOf: NOW } : ok(),
       spActivity: ok(),
-      authMethods: unreadRegistration ? { ...ok(), status: 'partial' as const, reason: "1 users' methods unavailable" } : ok(),
+      authMethods: ok(),
       appSignInSummary: ok(),
       signInEvidence: hostile ? { status: 'insufficient', coveredWindow: null, reason: 'no sign-in records could be read', asOf: NOW }
         : !p1 ? { status: 'disabled', coveredWindow: null, reason: LICENCE_GATE, asOf: NOW }
@@ -744,8 +746,7 @@ export function buildFixture(spec: Spec): Fixture {
       me: section([{ id: ids[0], displayName: 'Operator', userPrincipalName: `user0@${seed}.example.com` }]),
       organization: section([{ displayName: spec.demo ? 'Contoso Pty Ltd' : `Fixture ${spec.name}`, verifiedDomains: [{ name: `${seed}.example.com`, isInitial: false }, { name: `${seed}-fixture.onmicrosoft.com`, isInitial: true }] }]),
     },
-    // The person whose methods could not be read is not in the registration report either: nothing says what they hold.
-    registrationDetails: hostile ? [] : registrationDetails.filter((r) => r.id !== unreadRegistration),
+    registrationDetails: hostile ? [] : registrationDetails,
     users,
     devices: hostile
       ? []

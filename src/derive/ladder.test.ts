@@ -45,10 +45,10 @@ test('an account readiness does not score still shows its methods, from the meth
   // The demo's two emergency accounts hold a security key and Windows Hello.
   const classes = f.mapping.breakGlassUserIds.map((id) => methodClassesOf(s, id))
   assert.deepEqual(classes, [['passkey'], ['windowsHello']])
-  // The demo's person whose methods could not be read, with no report row either.
-  const unread = Object.entries(s.authMethods).find(([, m]) => m === 'unknown')?.[0]
-  assert.ok(unread, 'the demo has a person whose methods could not be read')
-  assert.equal(methodClassesOf(s, unread), null)
+  // A person whose method rows were not read, with no report row either (the sample itself reads every list, OWN-B3).
+  const unread = s.users.find((u) => !f.mapping.breakGlassUserIds.includes(u.id) && Array.isArray(s.authMethods[u.id]))!.id
+  const blind = { ...s, authMethods: { ...s.authMethods, [unread]: 'unknown' as const }, registrationDetails: s.registrationDetails.filter((r) => r.id !== unread) }
+  assert.equal(methodClassesOf(blind, unread), null)
   // The registration report stands in where the method rows were not read.
   const someone = s.registrationDetails.find((r) => r.methodsRegistered.includes('microsoftAuthenticatorPush'))!
   const fallback = { ...s, authMethods: { ...s.authMethods, [someone.id]: 'unknown' as const } }
