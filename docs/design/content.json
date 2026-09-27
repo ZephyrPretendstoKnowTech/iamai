@@ -197,6 +197,8 @@
         "createOnAnnounced": "Announce it {announce}; create it On {date}",
         "createOnDay": "Create it On {date}",
         "blockedNoOne": "Report-only blocked no one.",
+        "$commentBlockedNoOneBasis": "F-012: the sentence alone read the same whether thirty people were seen or none. {basis} is the two gates' own numbers (shared.engine.tracking.evidenceToday), as the row's reason line states them.",
+        "blockedNoOneBasis": "Report-only blocked no one: {basis}.",
         "after": "After {items}.",
         "$commentExclusionsEdit": "The card of a policy whose only change left is the exclusions group, which Configure Emergency Exclusions adds itself (walk list 4.x item 7): it read Correct the policy, beside that step's own task for the same edit.",
         "exclusionsEdit": "{step} adds {group} to it."

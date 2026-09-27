@@ -47,7 +47,7 @@ import type { ContractReadiness, ContractStage, StepContract } from './stepContr
 import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
-import { app, shared, stepById } from '../../content/content.ts'
+import { app, engine, shared, stepById } from '../../content/content.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { OwnCard } from './prepareSteps.ts'
 import { factSentence } from './policyFact.ts'
@@ -543,7 +543,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
     const clean = stepEvidenceStrategy(step) !== 'configuration' && (state.lifecycle === 'ready-to-enforce' || (state.lifecycle === 'report-only' && ready?.kind === 'now' && (ready.failures ?? 0) === 0))
     const after = turnOnHeld && waits.length > 0 ? fillText(PW.card.after, { items: list(waits.map((w) => w.after)) }) : null
     if (milestone.kind === 'observe' && milestone.at) next.readinessTitle = fillText(PW.card.reportOnlyUntil, { date: shownDay(milestone.at, input.estimate, 'sentence') })
-    else if (clean || after !== null) next.readinessDirection = [clean ? PW.card.blockedNoOne : null, after].filter((x): x is string => x !== null).join(' ')
+    else if (clean || after !== null) next.readinessDirection = [clean ? blockedNoOneLine(ready) : null, after].filter((x): x is string => x !== null).join(' ')
   }
   // Every task of its own done while the step still waits (a policy already On
   // whose exclusions edit Configure Emergency Exclusions makes, or whose answer
@@ -566,6 +566,17 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const at = tasks.findIndex((t) => t.id === 'turn-on')
   const ordered = mail === null ? tasks : at < 0 ? [...tasks, mail] : [...tasks.slice(0, at), mail, ...tasks.slice(at)]
   return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}) }
+}
+
+/**
+ * What report-only saw, on the card at turn-on (F-012): "Report-only blocked no
+ * one" with the two gates' own numbers, in the words the row's reason line uses
+ * (shared.engine.tracking.evidenceToday), so "nothing was evaluated" can never
+ * read as "safe to turn on". The bare sentence only where no count was taken.
+ */
+export function blockedNoOneLine(ready: ReturnType<typeof readyWhen>): string {
+  if (!ready || ready.failures === null || ready.seen === null || ready.people === null) return PW.card.blockedNoOne
+  return fillText(PW.card.blockedNoOneBasis, { basis: fillText(engine.tracking.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days }) })
 }
 
 /** This step's content kind (`policy`, `object`, `check`, `campaign`, `ladder`, `blocker`), or null where the content file has no entry for it. */

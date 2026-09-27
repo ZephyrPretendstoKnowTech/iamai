@@ -19,7 +19,7 @@ import { laneReadings } from './planLanes.ts'
 import { readinessBlockersOf } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { TASK_HEAD, taskHeadingsOf } from './stepHeadings.ts'
-import { cardCheckOf, cardWordsOf, drawsTaskAnatomy, isPolicyProcedureTask, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
+import { blockedNoOneLine, cardCheckOf, cardWordsOf, drawsTaskAnatomy, isPolicyProcedureTask, policyBarOf, policyCardsOf, policySubjectsOf, portalProcedureOf, taskSubjectOf } from './policyTasks.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { CONTRACT, FINISHED_READING, isAllClear } from './stepContract.ts'
@@ -406,7 +406,11 @@ test('while the emergency drill is outstanding the turn-on stands, reads the wai
   assert.doesNotMatch(turnOn.steps.join('\n'), /Enable policy\*\* to \*\*On/, 'the turn-on is handed over before the drill')
   const [card] = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   assert.equal(card.title, 'Turn the policy on')
-  assert.equal(card.detail, `Report-only blocked no one. After ${title}.`)
+  // What report-only saw, by the two gates' own numbers (F-012): "blocked no one" alone read the same
+  // whether thirty people were seen or none.
+  assert.equal(card.detail, `Report-only blocked no one: 0 failing or interrupted, 30 of 30 active people seen in 7 days. After ${title}.`)
+  // Where no count was taken, the sentence alone, never a zero nobody counted.
+  assert.equal(blockedNoOneLine(null), 'Report-only blocked no one.')
 })
 
 test('Turn Off Security Defaults reads "On" only where the scan read them on, and no check where it read neither', () => {
