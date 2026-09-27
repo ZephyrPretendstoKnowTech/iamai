@@ -19,7 +19,15 @@
    "files": [
     "src/ui/surfaces/ContentStep.tsx",
     "src/ui/exportGuard.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Export promises masked prompts while the step's AI Info copy carries client addresses and IDs with no warning, a disclosure risk with an XS fix."
   },
   {
    "id": "F-068",
@@ -38,7 +46,15 @@
     "docs/design/content.json",
     "src/roadmap/direction.ts",
     "src/ui/surfaces/directionStep.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Answering Yes keeps a policy that blocks SharePoint and OneDrive from home, the opposite of what the label suggests, so staff get blocked."
   },
   {
    "id": "F-070",
@@ -56,7 +72,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/sectionThreeTasks.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The field looks like a travel allowlist but does nothing, so travellers are blocked at turn-on; stating that before the pick is wording, not a reversal of the decision."
   },
   {
    "id": "F-004",
@@ -76,7 +100,15 @@
     "src/derive/finish.ts",
     "docs/design/content.json",
     "src/derive/estimatedFinish.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Connect says 9 weeks and the Plan says 5 for the same sample, the first number an evaluator quotes and the first contradiction they catch."
   },
   {
    "id": "F-071",
@@ -95,7 +127,15 @@
     "src/ui/surfaces/MfaReadiness.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/readinessTiles.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "Every 'Not counted' link opens an empty list, so nobody can check who was left out of the percentage."
   },
   {
    "id": "F-160",
@@ -117,7 +157,15 @@
     "src/ui/app.css",
     "docs/design/content.json",
     "src/ui/sessionTruth.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "One click on Forget erases every answer, deferral and date with no confirm or message afterwards; a confirm prevents lost work."
   },
   {
    "id": "OWN-B3",
@@ -137,7 +185,15 @@
     "src/roadmap/fixtures/index.ts",
     "src/ui/surfaces/readinessCells.ts",
     "src/ui/surfaces/readinessNotRead.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "The demo shows the banned 'couldn't read' wording, against the owner's standing rule to state what is known and the next step."
   },
   {
    "id": "OWN-W1",
@@ -156,7 +212,15 @@
     "src/ui/surfaces/Plan.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/planPage.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "A 'Next:' line naming the first Ready step is what makes the Plan read in doing order, and it also answers F-094."
   },
   {
    "id": "F-007",
@@ -176,7 +240,15 @@
     "src/ui/surfaces/ContentStep.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/emergencyAccounts.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "One stray click on the x removes an emergency account, drops a step and tells the admin to take a real break-glass account out of the exclusions group, a lockout path."
   },
   {
    "id": "F-016",
@@ -196,7 +268,15 @@
     "src/content/implementation/registry.generated.json",
     "src/ui/surfaces/ContentStep.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Troubleshooting opens by saying IAMAI is about to configure an account, contradicting the read-only promise, and buries the TAP section the step sends people to."
   },
   {
    "id": "F-057",
@@ -217,7 +297,15 @@
     "src/ui/scan/connectView.ts",
     "src/graph/msal.test.ts",
     "src/ui/scan/connectSignedOut.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "A cancelled or failed Microsoft sign-in leaves the Sign in button spinning forever, blocking the first step every real user takes."
   },
   {
    "id": "OWN-R1",
@@ -237,7 +325,15 @@
     "src/ui/surfaces/readinessCells.ts",
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/surfaces/readinessPhase2.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "'Nobody needs action' sits under '1 lapse in the next 7 days', a direct contradiction on MFA Readiness."
   },
   {
    "id": "OWN-W2",
@@ -258,7 +354,15 @@
     "src/ui/surfaces/planLanesHolds.test.ts",
     "src/ui/surfaces/enforcedLanes.test.ts",
     "src/ui/surfaces/directionStep.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "Eleven rows say 'Waiting on your answers' without naming the question, so the admin cannot tell which decision unblocks them."
   },
   {
    "id": "F-161",
@@ -279,7 +383,15 @@
     "src/ui/surfaces/Export.tsx",
     "src/ui/actions.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Two tabs on the same tenant silently overwrite each other's saves and lose decisions and deferral reasons; a stale-tab banner is the minimal guard."
   },
   {
    "id": "F-006",
@@ -300,7 +412,15 @@
     "src/ui/surfaces/Plan.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/estimatedDates.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "A saved change freeze moves no date, so the plan schedules turn-ons inside the freeze it invited; ship the XS note now and the engine change later."
   },
   {
    "id": "F-003",
@@ -318,7 +438,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/Plan.tsx"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "Tile words, row words and the legend disagree ('Observing' vs 'On Hold · Report-only', undefined 'Correct' and 'Enforced'), so P1 misreads what is already done."
   },
   {
    "id": "F-044",
@@ -336,7 +464,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/readinessWords.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The headline reads as '29 people and 1 guest are ready', a misreading that goes straight into the manager update."
   },
   {
    "id": "F-080",
@@ -354,7 +490,15 @@
    "files": [
     "docs/design/content.json",
     "src/home.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The hero already says 'You review and make the changes' beside the buttons, and Connect lists the read-only permissions before consent."
   },
   {
    "id": "F-094",
@@ -372,7 +516,16 @@
    "files": [
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/planPage.test.ts"
-   ]
+   ],
+   "bucket": "merged",
+   "judges": {
+    "user": "review-later",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "merged",
+   "bucket_reason": "Same defect as OWN-W1; tracked there.",
+   "merged_into": "OWN-W1"
   },
   {
    "id": "F-143",
@@ -392,7 +545,15 @@
     "src/ui/app.css",
     "docs/design/content.json",
     "src/ui/demo.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The sample tenant's data is plainly fictional, so losing the banner on scroll misleads nobody into acting."
   },
   {
    "id": "F-144",
@@ -411,7 +572,15 @@
     "src/ui/app.css",
     "src/ui/shell/AppShell.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "The demo's scan switch styles the selected option like a link, so evaluators cannot tell which scan they are looking at; restyling is CSS only."
   },
   {
    "id": "F-168",
@@ -428,7 +597,15 @@
    "fix": "AppShell.tsx:225: tabsOn = state === 'scanned' || (state === 'scanning' && snapshot !== null). This also restores aria-current on Plan during a rescan. Optional: make the disabled tabs visibly distinct (e.g. opacity/strike). Test in sessionTruth or a new shell test.",
    "files": [
     "src/ui/shell/AppShell.tsx"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "Every routine rescan disables Plan, Readiness and Export in the header although a plan exists, and the tooltip implies the plan is gone."
   },
   {
    "id": "F-184",
@@ -446,7 +623,15 @@
    "files": [
     "src/ui/surfaces/PrintPlan.tsx",
     "src/ui/surfaces/leadershipPrint.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "A briefing printed from a 40-day-old scan presents old counts as current without the stale-scan caveat the screen shows."
   },
   {
    "id": "OWN-F1",
@@ -466,7 +651,16 @@
     "src/ui/scan/connectView.ts",
     "docs/design/content.json",
     "src/ui/surfaces/connectAnatomy.test.ts"
-   ]
+   ],
+   "bucket": "merged",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "merged",
+   "bucket_reason": "Same defect as F-004; tracked there.",
+   "merged_into": "F-004"
   },
   {
    "id": "OWN-W3",
@@ -484,7 +678,16 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/Plan.tsx"
-   ]
+   ],
+   "bucket": "merged",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "merged",
+   "bucket_reason": "Same defect as F-003; tracked there.",
+   "merged_into": "F-003"
   },
   {
    "id": "F-041",
@@ -503,7 +706,15 @@
     "docs/design/content.json",
     "src/roadmap/direction.ts",
     "src/ui/surfaces/directionStep.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The partner exemption takes people out of guest MFA and the country block, and the baseline's version is not shown beside that choice as the product rule requires."
   },
   {
    "id": "F-062",
@@ -521,7 +732,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/policyTasks.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Read literally, the admin-policy instruction unticks Global Administrator from phishing-resistant MFA; an XS rewording is worth it until build-new retires correct tasks."
   },
   {
    "id": "F-063",
@@ -540,7 +759,15 @@
     "docs/design/content.json",
     "src/ui/surfaces/stepVars.ts",
     "src/ui/surfaces/prepareSteps.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "The plan names six people for Windows Hello for Business and the step it links to has no how-to, so the admin stalls on the MFA goal."
   },
   {
    "id": "F-195",
@@ -559,7 +786,15 @@
     "src/redact.ts",
     "src/ui/exportGuard.test.ts",
     "src/redactSnapshot.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Files labelled masked still spell out guest email addresses in the #EXT# form; a one-character regex fix closes a real disclosure."
   },
   {
    "id": "OWN-ACCEPT",
@@ -580,7 +815,15 @@
     "src/ui/surfaces/acceptPanel.test.ts",
     "docs/design/content.json",
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "other",
+   "bucket_reason": "The owner asked for the repeated 'Covers ...' text to be removed from the Difference Accepted panel, and the fix is a deletion."
   },
   {
    "id": "OWN-W6",
@@ -600,7 +843,15 @@
     "docs/design/content.json",
     "src/ui/surfaces/ongoing.test.ts",
     "src/ui/surfaces/sectionEightFixes.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Alert placement was an owner decision; revisit it because an emergency-account sign-in is most likely during the rollout itself."
   },
   {
    "id": "F-092",
@@ -620,7 +871,15 @@
     "src/roadmap/cleanupPhase.ts",
     "src/ui/surfaces/cleanupExport.ts",
     "src/ui/surfaces/sectionEightFixes.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "A row says Ready (act now) but is dated a month out at the bottom of the plan, a status that contradicts its own date; the owner picks fix (a) or (b)."
   },
   {
    "id": "F-021",
@@ -640,7 +899,15 @@
     "src/ui/surfaces/Export.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/leadershipPrint.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "The briefing was rebuilt for managers; add the baseline commit and the not-in-plan list when a change-board reader asks for them."
   },
   {
    "id": "F-058",
@@ -660,7 +927,15 @@
     "src/ui/surfaces/Connect.tsx",
     "docs/design/content.json",
     "src/ui/scan/connectView.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "The notice says to check the Scan row before acting and that row explains nothing, so the admin cannot tell whether it is safe to continue."
   },
   {
    "id": "F-075",
@@ -679,7 +954,15 @@
     "src/ui/surfaces/readinessCells.ts",
     "docs/design/content.json",
     "src/ui/surfaces/readyRowTruth.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The row tells Jamie to use a passkey the drawer says will stop working, and the CSV carries that advice to the client."
   },
   {
    "id": "F-077",
@@ -698,7 +981,15 @@
     "src/roadmap/prompts.ts",
     "src/ui/surfaces/Export.tsx",
     "src/exports.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The business-owner summary prompt sees only five cleanup items, so the owner is never told MFA is being turned on."
   },
   {
    "id": "F-116",
@@ -717,7 +1008,15 @@
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/surfaces/readinessCells.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "Search hides matches inside collapsed groups and says nobody matches, so the admin concludes a colleague is missing."
   },
   {
    "id": "F-162",
@@ -736,7 +1035,15 @@
     "src/ui/shell/AppShell.tsx",
     "src/ui/app.css",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cost-exceeds-value",
+   "bucket_reason": "F-160's confirm covers the destructive risk; fold the danger styling into it and skip the extra menu header and helper lines."
   },
   {
    "id": "F-171",
@@ -756,7 +1063,15 @@
     "src/ui/surfaces/Connect.tsx",
     "docs/design/content.json",
     "src/ui/scan/connectSignedOut.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "A 'copy a request for your admin' template is a new capability; wait for evidence that non-admins reach this dead end."
   },
   {
    "id": "F-010",
@@ -776,7 +1091,15 @@
     "src/ui/surfaces/aiGrounding.ts",
     "src/roadmap/artifactLines.ts",
     "src/ui/surfaces/aiGrounding.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The AI brief says no exclusions group exists while the same card shows it selected and verified."
   },
   {
    "id": "F-023",
@@ -795,7 +1118,15 @@
     "src/ui/surfaces/Export.tsx",
     "docs/design/content.json",
     "src/roadmap/planTenant.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Loading a plan file silently replaces current decisions and deferral reasons; a replace-or-cancel confirm prevents lost work."
   },
   {
    "id": "F-037",
@@ -815,7 +1146,15 @@
     "src/ui/surfaces/ContentStep.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/comms.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "One Copy button grabs the staff, admin and follow-up emails together, so staff will likely receive the admin message."
   },
   {
    "id": "F-040",
@@ -834,7 +1173,15 @@
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/planChanges.ts",
     "src/ui/surfaces/planPage.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "Approving a decision removes steps with the note off-screen and focus lost, a silent critical change on the main path."
   },
   {
    "id": "F-051",
@@ -853,7 +1200,15 @@
     "src/ui/surfaces/Plan.tsx",
     "src/ui/App.tsx",
     "src/ui/demo.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "Back after opening a step skips the plan or leaves IAMAI entirely; pushing a history entry is a small fix."
   },
   {
    "id": "F-056",
@@ -873,7 +1228,15 @@
     "src/ui/surfaces/DirectionQuestions.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/pickerPrefill.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The admin's own account is the first result in the printer picker, and approving silently takes it out of admin MFA."
   },
   {
    "id": "F-067",
@@ -892,7 +1255,15 @@
     "src/roadmap/direction.ts",
     "docs/design/content.json",
     "src/ui/surfaces/directionStep.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Only one answer's effect is shown, so answering No for partner technicians silently puts them under guest MFA and the country block."
   },
   {
    "id": "F-073",
@@ -911,7 +1282,15 @@
     "src/ui/surfaces/readinessCells.ts",
     "docs/design/content.json",
     "src/ui/surfaces/readinessNotRead.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "not-worth"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Readiness says 'Nothing to do' for a person the Plan tells to set up a passkey, under the banned 'couldn't read' wording."
   },
   {
    "id": "F-095",
@@ -930,7 +1309,15 @@
     "src/ui/demo.ts",
     "src/ui/App.tsx",
     "src/ui/demo.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The demo's follow-up scan changes its numbers between visits and shows the initial scan's time, the 'wrong once' an evaluator notices; keep the regenerate-today rule."
   },
   {
    "id": "F-109",
@@ -949,7 +1336,15 @@
     "src/ui/surfaces/acceptPanel.ts",
     "src/ui/surfaces/ContentStep.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "awaits-policy-matching-decision",
+   "bucket_reason": "The Differs panel exists for edited tenant policies; wait for the 'build new, retire old' decision."
   },
   {
    "id": "F-169",
@@ -968,7 +1363,15 @@
     "src/ui/shell/AppShell.tsx",
     "docs/design/content.json",
     "src/ui/shell/scanReturn.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "A failed rescan keeps the last full plan, which stays true as of its date; revisit when a real rescan failure is seen."
   },
   {
    "id": "F-186",
@@ -989,7 +1392,15 @@
     "src/ui/shell/AppShell.tsx",
     "docs/design/content.json",
     "src/ui/scan/connectView.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Connect says 'Ready to plan' for a 40-day-old scan while every other page says to scan again."
   },
   {
    "id": "OWN-W5",
@@ -1008,7 +1419,15 @@
     "src/roadmap/evidence.ts",
     "docs/design/content.json",
     "src/ui/surfaces/riskAndSessions.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "The medium-risk step waits forever because waiting never clears a risk, and it never says to reset the password or dismiss the detection."
   },
   {
    "id": "F-036",
@@ -1027,7 +1446,15 @@
     "src/roadmap/emergencyJourney.ts",
     "src/ui/surfaces/emergencyPasskeyTasks.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The passkey step names one account as affected and a different account as the one that would be locked out."
   },
   {
    "id": "F-177",
@@ -1044,7 +1471,15 @@
    "fix": "Leave input.operatorUserId out of `dormant` at generate.ts:1416: the account that just ran the scan is active by definition. Alternatively keep it but tag it 'you, signed in now' and offer no disable line. Test with ?operatorDormant: Dormant does not list u-1.",
    "files": [
     "src/roadmap/generate.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Telling the signed-in, only Global Administrator to disable their own account is a lockout, and the fix is one exclusion."
   },
   {
    "id": "OWN-B1",
@@ -1065,7 +1500,15 @@
     "docs/design/approved/anatomy/home-v2.html",
     "docs/design/approved/manifest.json",
     "src/home.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "A product image needs an owner-approved Home pack revision; batch the output wording with it."
   },
   {
    "id": "F-031",
@@ -1083,7 +1526,15 @@
    "files": [
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/planUsability.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "attention"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The list shown is right and the lit tile names the filter; a stale tab highlight is a small polish point."
   },
   {
    "id": "F-032",
@@ -1101,7 +1552,15 @@
    "files": [
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/planBoard.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "attention"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "Pressed toggles are a standard pattern and a second click brings the rows back, so nobody is misled into acting."
   },
   {
    "id": "F-033",
@@ -1120,7 +1579,15 @@
     "src/derive/notInPlan.ts",
     "docs/design/content.json",
     "src/ui/surfaces/doesntApply.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The generic line is true; specific reasons need the owner's words for why these policies are held out."
   },
   {
    "id": "F-034",
@@ -1138,7 +1605,15 @@
    "files": [
     "src/ui/app.css",
     "src/ui/responsive.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "At 1024px desktop width the plan tabs overlap and the On Hold count is cut off on the main screen."
   },
   {
    "id": "F-079",
@@ -1157,7 +1632,15 @@
     "src/ui/app.css",
     "home/home.css",
     "src/ui/accessibility.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "Keyboard focus is invisible on the primary buttons (Sign in, Approve answers, Scan) in the light theme."
   },
   {
    "id": "F-081",
@@ -1178,7 +1661,15 @@
     "docs/design/content.json",
     "src/ui/app.css",
     "src/ui/scan/connectSignedOut.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "Microsoft's consent screen shows the scope ids and How has the full table; plain names serve the person choosing."
   },
   {
    "id": "F-083",
@@ -1197,7 +1688,15 @@
     "src/ui/surfaces/Connect.tsx",
     "src/ui/app.css",
     "src/ui/scan/connectSignedOut.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "Focus reaches the disclosure before Sign in, a mild order issue with a visible ring and no trap."
   },
   {
    "id": "F-088",
@@ -1217,7 +1716,15 @@
     "src/ui/surfaces/planBoard.ts",
     "docs/design/content.json",
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "The empty state says 'No steps match this search' when nothing was searched, so users undo controls one at a time to find the cause."
   },
   {
    "id": "F-090",
@@ -1236,7 +1743,15 @@
     "src/ui/surfaces/Plan.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/planPage.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "other",
+   "bucket_reason": "Settings is off the main path; fix the pause and freeze wording together with F-006."
   },
   {
    "id": "F-097",
@@ -1254,7 +1769,15 @@
    "files": [
     "src/ui/app.css",
     "src/ui/accessibility.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Forced-colours gaps have no reported user; fix them when a High Contrast user reports it."
   },
   {
    "id": "F-099",
@@ -1273,7 +1796,15 @@
     "src/ui/surfaces/Plan.tsx",
     "src/ui/accessibility.test.ts",
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "The link-as-toggle works with Enter and a mouse; the button semantics are a screen-reader refinement with no reported user."
   },
   {
    "id": "F-112",
@@ -1291,7 +1822,15 @@
    "files": [
     "src/ui/surfaces/ContentStep.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Defer dialog focus and the required-reason hint are screen-reader refinements with no reported user."
   },
   {
    "id": "F-115",
@@ -1310,7 +1849,15 @@
     "src/ui/surfaces/readinessCells.ts",
     "docs/design/content.json",
     "src/ui/csv.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "attention"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "The Guest tag and extra CSV columns are nice to have; add them when a client asks for the chase list to carry them."
   },
   {
    "id": "F-118",
@@ -1327,7 +1874,15 @@
    "fix": "const printing = usePrinting(); open every group and sub-group when printing, render their rows, and ignore limits while printing.",
    "files": [
     "src/ui/surfaces/MfaReadiness.tsx"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Browser-printing Readiness is not an offered path, and the CSV carries everyone."
   },
   {
    "id": "F-120",
@@ -1346,7 +1901,15 @@
     "src/ui/surfaces/readinessCells.ts",
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/surfaces/mfaGuidance.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The guest row recommends Windows Hello for Business, which a guest cannot use, and gives no real action."
   },
   {
    "id": "F-121",
@@ -1364,7 +1927,15 @@
    "files": [
     "src/ui/surfaces/readinessCells.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Personal Windows devices get opposite advice about Windows Hello for Business in different places."
   },
   {
    "id": "F-129",
@@ -1384,7 +1955,15 @@
     "src/ui/surfaces/Export.tsx",
     "docs/design/content.json",
     "src/roadmap/promptInjection.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Cutting prompts at whole lines is cheap, but the prompt export is secondary; do it when prompts are next touched or a cut is reported."
   },
   {
    "id": "F-138",
@@ -1403,7 +1982,15 @@
     "src/copy/inventory.ts",
     "docs/design/content.json",
     "src/ui/surfaces/InventoryPage.tsx"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The Inventory tip says Readiness can count more when it counts fewer, an explanation that points the wrong way."
   },
   {
    "id": "F-146",
@@ -1422,7 +2009,15 @@
     "src/ui/shell/AppShell.tsx",
     "src/ui/app.css",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "A skip link is a keyboard convenience with no trap behind it; add it in the next accessibility pass."
   },
   {
    "id": "F-148",
@@ -1440,7 +2035,15 @@
    "files": [
     "src/ui/shell/AppShell.tsx",
     "src/ui/theme.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The theme toggle works and persists; not following a later OS switch is a small preference."
   },
   {
    "id": "F-156",
@@ -1459,7 +2062,15 @@
     "src/ui/surfaces/InventoryPage.tsx",
     "src/ui/app.css",
     "src/ui/accessibility.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "A heading-level refinement for screen readers with no reported user."
   },
   {
    "id": "F-164",
@@ -1478,7 +2089,15 @@
     "src/ui/surfaces/Export.tsx",
     "docs/design/content.json",
     "src/roadmap/planTenant.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "Only confusing when two tenants share a display name, and the refusal still protects; revisit if an MSP hits it."
   },
   {
    "id": "F-170",
@@ -1497,7 +2116,15 @@
     "src/ui/app.css",
     "src/ui/scan/ScanProgress.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "review-later",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cost-exceeds-value",
+   "bucket_reason": "A rescan takes moments and the numbers shown are the last complete scan's, so a sticky banner adds little."
   },
   {
    "id": "OWN-X1",
@@ -1515,7 +2142,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/exportPhase2.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Export says every policy step carries JSON and PowerShell, which is untrue for most steps; an XS rewording."
   },
   {
    "id": "F-066",
@@ -1533,7 +2168,15 @@
    "files": [
     "src/ui/surfaces/pickerRows.ts",
     "src/ui/surfaces/pickerPrefill.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Emergency accounts can be picked as service or shared-device accounts while the same card says they are already out."
   },
   {
    "id": "F-100",
@@ -1550,7 +2193,15 @@
    "fix": "On the task-anatomy preview, set max-height:none and keep Expand. Raise the list to var(--t-3) and the Task select and label to var(--t-2). Check the Establish Emergency Access steps (frozen) and Prepare Your Team at 1440px.",
    "files": [
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "An inner scroll box hides the last instructions, including 'Return to IAMAI and scan', against the never-hide-procedure rule."
   },
   {
    "id": "F-104",
@@ -1568,7 +2219,15 @@
    "files": [
     "src/ui/surfaces/PasskeyModelDecision.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "An added key model is lost unless a second Save is pressed, so the lockout warning stays while the admin believes it saved."
   },
   {
    "id": "F-108",
@@ -1585,7 +2244,15 @@
    "fix": "Say 'chosen' instead of 'you picked' in why and doneWhen, e.g. 'the service accounts chosen in Identify Service and Shared Accounts (suggested until you approve them)'. Do not hold the step on the decision, which is engine work.",
    "files": [
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The step says 'the accounts you picked' before anything was picked, presenting suggestions as decisions."
   },
   {
    "id": "F-114",
@@ -1604,7 +2271,15 @@
     "src/ui/components/Picker.tsx",
     "docs/design/content.json",
     "src/ui/primitives.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The picker says '8 results' when more match and 'no matches' for an account already picked."
   },
   {
    "id": "F-152",
@@ -1622,7 +2297,15 @@
    "files": [
     "src/ui/surfaces/planBoard.ts",
     "src/ui/surfaces/boardColumns.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "A decision row's bare date reads as a completion date, breaking the rule that every proposed day reads Est."
   },
   {
    "id": "OWN-I1",
@@ -1641,7 +2324,15 @@
     "src/ui/shell/AppShell.tsx",
     "docs/design/content.json",
     "src/ui/shell/routes.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Whether Inventory joins the top nav is an owner call on the surface model; experts want it but P1 never needs it."
   },
   {
    "id": "OWN-W7",
@@ -1662,7 +2353,15 @@
     "scripts/smoke.mjs",
     "scripts/template-check.mjs",
     "docs/plans/roadmap-flow/step-template.md"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Completed steps with nothing left still tell the admin to scan after making changes; deleting the line is XS."
   },
   {
    "id": "F-025",
@@ -1682,7 +2381,15 @@
     "src/ui/surfaces/inventoryTables.ts",
     "src/ui/components/DataTable.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "Multi-tenant switching and reusable answers are a new capability, not a fix."
   },
   {
    "id": "F-026",
@@ -1701,7 +2408,15 @@
     "scripts/build-home.ts",
     "docs/design/content.json",
     "src/home.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The Home claim is true via Connect; add the pinned commit and link with the next Home pack revision (OWN-B1)."
   },
   {
    "id": "F-027",
@@ -1721,7 +2436,15 @@
     "src/ui/surfaces/Plan.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/planUsability.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "Searching policy and people names inside steps is a new capability; wait for users asking for it."
   },
   {
    "id": "F-028",
@@ -1740,7 +2463,15 @@
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/planChanges.ts",
     "src/ui/surfaces/planState.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "After every scan the page jumps to the top and loses the open step, breaking the core do-then-scan loop."
   },
   {
    "id": "F-039",
@@ -1758,7 +2489,15 @@
    "files": [
     "src/ui/surfaces/stepBody.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Pretty-printed JSON is cheap but touches frozen steps; do it when a reviewer asks."
   },
   {
    "id": "F-047",
@@ -1779,7 +2518,15 @@
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/surfaces/inventoryTables.ts",
     "src/ui/csv.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Identical export file names across clients make attaching the wrong client's staff list likely; a tenant slug and date in the name prevents it."
   },
   {
    "id": "F-052",
@@ -1798,7 +2545,15 @@
     "src/ui/App.tsx",
     "src/ui/surfaces/Connect.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "Carrying a deep link through sign-in is a new capability."
   },
   {
    "id": "F-085",
@@ -1817,7 +2572,15 @@
     "src/ui/surfaces/Plan.tsx",
     "src/ui/shell/routes.ts",
     "src/ui/surfaces/planUsability.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cost-exceeds-value",
+   "bucket_reason": "Losing filters on a refresh is a small cost; restoring view state adds code for little gain."
   },
   {
    "id": "F-086",
@@ -1837,7 +2600,15 @@
     "src/ui/surfaces/Plan.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/planBoard.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "Search says 'No steps match' when the match sits in a collapsed group or is hidden as deferred, so the admin thinks a core step is missing."
   },
   {
    "id": "F-117",
@@ -1855,7 +2626,15 @@
    "files": [
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "Readiness names the same states differently in the legend and the groups; one vocabulary is the fix and the clickable legend can wait."
   },
   {
    "id": "F-119",
@@ -1874,7 +2653,15 @@
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/surfaces/readinessCells.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "The Readiness state is still true evidence; tag set-aside people if admins turn out to chase the wrong ones."
   },
   {
    "id": "F-126",
@@ -1893,7 +2680,15 @@
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/surfaces/inventoryTables.ts",
     "src/ui/exportGuard.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "other",
+   "bucket_reason": "Fold into F-047's file-name helper, which can carry the Readiness view name."
   },
   {
    "id": "F-127",
@@ -1913,7 +2708,15 @@
     "src/ui/format.ts",
     "src/ui/surfaces/inventoryTables.ts",
     "src/ui/csv.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "Without a UTF-8 marker, curly quotes and accented names garble in Excel in files meant for clients; the BOM is XS."
   },
   {
    "id": "F-130",
@@ -1932,7 +2735,15 @@
     "src/roadmap/prompts.ts",
     "src/ui/surfaces/Export.tsx",
     "src/exports.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The bundle's readme says it carries dates and it carries none, so assistants invent them; add the dates or reword the readme."
   },
   {
    "id": "F-134",
@@ -1952,7 +2763,15 @@
     "src/ui/scan/connectView.ts",
     "docs/design/content.json",
     "src/ui/surfaces/howView.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "Deep links into How sections are a new capability."
   },
   {
    "id": "F-135",
@@ -1972,7 +2791,15 @@
     "src/ui/surfaces/howView.ts",
     "src/ui/surfaces/How.tsx",
     "src/ui/surfaces/howView.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "A section titled 'Every check' leaves out most checks; renaming it is XS."
   },
   {
    "id": "F-137",
@@ -1992,7 +2819,15 @@
     "src/ui/surfaces/InventoryPage.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/readinessWords.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Inventory's 'Needs a method' beside 'Authenticator only' reads as having nothing, and the two pages name the same state differently."
   },
   {
    "id": "F-145",
@@ -2010,7 +2845,15 @@
    "files": [
     "src/ui/shell/AppShell.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Per-route titles and focus on navigation are refinements with no reported user; revisit with multi-tenant work."
   },
   {
    "id": "F-163",
@@ -2027,7 +2870,15 @@
    "fix": "Menu-button pattern: on open, focus the first menuitem; ArrowUp/Down/Home/End move between items; Escape closes and focuses the Account button; focusout outside ref closes; running an item or a route change closes. Put the key logic in a small pure helper and unit-test it.",
    "files": [
     "src/ui/shell/AppShell.tsx"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "The full menu keyboard pattern is a refinement once F-160 closes the menu after Forget."
   },
   {
    "id": "F-167",
@@ -2048,7 +2899,15 @@
     "src/ui/App.tsx",
     "src/ui/surfaces/Connect.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "Reachable only by URL during a first scan or after a failed one."
   },
   {
    "id": "F-176",
@@ -2068,7 +2927,15 @@
     "src/ui/surfaces/MfaReadiness.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/readinessWords.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "A no-P1 tenant state; revisit when a real no-P1 tenant signs in."
   },
   {
    "id": "F-199",
@@ -2086,7 +2953,15 @@
    "files": [
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/names.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "Guest addresses read badly, but the name and the Guest tag carry the meaning."
   },
   {
    "id": "OWN-F2",
@@ -2105,7 +2980,15 @@
     "src/ui/surfaces/Connect.tsx",
     "src/ui/scan/connectView.ts",
     "src/ui/surfaces/connectAnatomy.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Trimming the Connect hero for returning admins departs from the approved Connect pack, so it waits for the owner."
   },
   {
    "id": "F-042",
@@ -2125,7 +3008,15 @@
     "src/ui/surfaces/ContentStep.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/directionStep.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The page says 'change it any time', then silently discards a changed answer if the admin leaves without re-approving."
   },
   {
    "id": "F-043",
@@ -2146,7 +3037,15 @@
     "src/ui/surfaces/stepBody.ts",
     "src/ui/surfaces/emergencyImplementation.ts",
     "src/ui/surfaces/emergencyVerificationTasks.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "cost-exceeds-value",
+   "bucket_reason": "The AI Info warning is F-061, and the Inforcer card already shows the scan evidence needed to answer it."
   },
   {
    "id": "F-065",
@@ -2165,7 +3064,15 @@
     "src/ui/surfaces/ContentStep.tsx",
     "src/ui/surfaces/Plan.tsx",
     "src/ui/components/Picker.tsx"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "attention"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Returning focus after each action is a keyboard refinement with no reported user; the after-scan scroll part is F-028."
   },
   {
    "id": "F-084",
@@ -2185,7 +3092,15 @@
     "src/ui/actions.ts",
     "src/ui/demo.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "A 'start the sample fresh' reset is a new capability for repeat demos."
   },
   {
    "id": "F-091",
@@ -2203,7 +3118,15 @@
    "files": [
     "src/ui/components/InfoTip.tsx",
     "src/ui/primitives.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "not-worth"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "Clicking the (i) or pressing Enter closes the explanation hover just opened, so the help vanishes when someone asks for it."
   },
   {
    "id": "F-098",
@@ -2223,7 +3146,15 @@
     "src/ui/surfaces/StepSections.tsx",
     "src/ui/surfaces/Plan.tsx",
     "src/ui/accessibility.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Table semantics for screen readers with no reported user."
   },
   {
    "id": "F-113",
@@ -2243,7 +3174,15 @@
     "src/ui/surfaces/ContentStep.tsx",
     "docs/design/content.json",
     "src/ui/primitives.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "cost-exceeds-value",
+   "bucket_reason": "Answers do save; a Saved cue is polish and unifying the five patterns is L."
   },
   {
    "id": "F-185",
@@ -2262,7 +3201,15 @@
     "src/ui/surfaces/planData.ts",
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/planPage.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Only a tab left open for days shows stale dates, and any page change re-dates them."
   },
   {
    "id": "F-188",
@@ -2281,7 +3228,15 @@
     "src/ui/surfaces/ContentStep.tsx",
     "src/ui/app.css",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "A 2,914-person inline list only happens at 5,000 seats."
   },
   {
    "id": "OWN-W8",
@@ -2300,7 +3255,15 @@
     "src/ui/surfaces/stepContract.ts",
     "docs/design/content.json",
     "src/ui/surfaces/enforcedLanes.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "not-worth",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "'Enforced' versus Entra's 'On' is a vocabulary call that touches frozen steps and the lifecycle bar."
   },
   {
    "id": "OWN-W9",
@@ -2320,7 +3283,15 @@
     "src/ui/surfaces/reportOnlyStep.ts",
     "docs/design/content.json",
     "src/ui/surfaces/reportOnlyStep.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "awaits-policy-matching-decision",
+   "bucket_reason": "The duplicate create in 3.6 and 7.3 is by design; settle it with build-new rather than adding another line."
   },
   {
    "id": "F-139",
@@ -2340,7 +3311,15 @@
     "src/ui/surfaces/inventoryTables.ts",
     "src/ui/app.css",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "Search on Inventory tables is a new capability for an expert view."
   },
   {
    "id": "F-050",
@@ -2361,7 +3340,15 @@
     "src/ui/surfaces/InventoryPage.tsx",
     "src/ui/surfaces/inventoryTables.ts",
     "src/ui/shell/routes.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "review-later",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Inventory's place under MFA Readiness is deliberate, and cross-links would be a new feature."
   },
   {
    "id": "F-122",
@@ -2379,7 +3366,15 @@
    "files": [
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/shell/routes.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "Person deep links and scroll restore on Readiness are new capabilities."
   },
   {
    "id": "F-140",
@@ -2398,7 +3393,15 @@
     "src/roadmap/fixtures/index.ts",
     "docs/design/content.json",
     "src/ui/surfaces/readinessCells.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The sample data contradicts itself where an evaluator looks, and evaluators judge the product by the demo."
   },
   {
    "id": "F-192",
@@ -2417,7 +3420,15 @@
     "src/ui/surfaces/emergencyGroupTasks.ts",
     "src/ui/surfaces/ContentStep.tsx",
     "src/ui/surfaces/stepExport.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "awaits-policy-matching-decision",
+   "bucket_reason": "52 per-policy edits and 785 dormant accounts only occur at 5,000 seats, and the per-policy edits retire under build-new."
   },
   {
    "id": "F-193",
@@ -2436,7 +3447,15 @@
     "src/roadmap/cleanupPhase.ts",
     "src/ui/surfaces/CleanupStep.tsx",
     "src/roadmap/cleanupDone.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "awaits-policy-matching-decision",
+   "bucket_reason": "Sixty overlapping policies is synthetic, and the overlap review is reshaped by build-new's one-time Cleanup."
   },
   {
    "id": "F-196",
@@ -2454,7 +3473,15 @@
    "files": [
     "src/ui/surfaces/ContentStep.tsx",
     "src/ui/surfaces/stepBody.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "A slow step open at 5,000 seats; small tenants open in a fraction of a second."
   },
   {
    "id": "OWN-D4",
@@ -2473,7 +3500,15 @@
     "src/roadmap/forecast.ts",
     "src/ui/surfaces/planBoard.ts",
     "src/ui/surfaces/estimatedDates.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Staggering turn-ons by weekly capacity is an L change to the forecast model and needs the owner's call."
   },
   {
    "id": "F-054",
@@ -2491,7 +3526,15 @@
    "files": [
     "src/ui/components/Icon.tsx",
     "src/ui/surfaces/ContentStep.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "An icon glyph choice that slows nobody."
   },
   {
    "id": "F-132",
@@ -2508,7 +3551,15 @@
    "fix": "Add @media print { .plan-progress-tiles { grid-template-columns: repeat(3, minmax(0,1fr)); } } or reuse the narrow-screen rule (app.css:5105-5107).",
    "files": [
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "The briefing on Export is the print path; a Ctrl+P of the Plan cutting the date is XS CSS if anyone reports it."
   },
   {
    "id": "F-136",
@@ -2526,7 +3577,15 @@
    "files": [
     "src/ui/surfaces/How.tsx",
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "attention",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The text is reachable by scrolling the panel; tighten the column widths when How is next touched."
   },
   {
    "id": "F-149",
@@ -2543,7 +3602,15 @@
    "fix": "Add .connect-step .permissions .tile-rows li { display: grid; grid-template-columns: minmax(9rem, 14rem) 1fr; } with the description left-aligned. Batch with F-081.",
    "files": [
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "A ragged column on Connect is visual polish nobody is slowed by."
   },
   {
    "id": "F-151",
@@ -2561,7 +3628,15 @@
    "files": [
     "src/ui/app.css",
     "src/ui/scan/connectView.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "A repeated status line and an off-centre dot are visual polish."
   },
   {
    "id": "F-153",
@@ -2579,7 +3654,15 @@
    "files": [
     "src/ui/surfaces/Plan.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "A duplicate UTC entry and raw zone ids in a rarely used setting slow nobody."
   },
   {
    "id": "F-154",
@@ -2597,7 +3680,15 @@
    "files": [
     "src/ui/surfaces/emergencyAccountTasks.ts",
     "src/ui/surfaces/ContentStep.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "Markdown markers in pasted tasks are a small tidy-up, not a harm."
   },
   {
    "id": "F-155",
@@ -2616,7 +3707,15 @@
     "src/ui/tokens.ts",
     "src/ui/tokens.css",
     "src/ui/tokens.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The legend text carries the numbers, so similar bar colours mislead nobody."
   },
   {
    "id": "F-172",
@@ -2634,7 +3733,15 @@
    "files": [
     "src/ui/components/ErrorBoundary.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "The error page is rarely reached; relabel 'Start over' if a user reports avoiding it."
   },
   {
    "id": "F-197",
@@ -2653,7 +3760,15 @@
     "src/ui/surfaces/inventoryTables.ts",
     "docs/design/content.json",
     "src/ui/surfaces/inventoryTables.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "125 unreadable groups is a mock state."
   },
   {
    "id": "OWN-HOW",
@@ -2672,7 +3787,15 @@
     "vite.config.ts",
     "src/vite-env.d.ts",
     "src/ui/surfaces/How.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "A build stamp a day off in UTC matters to nobody."
   },
   {
    "id": "OWN-LI",
@@ -2691,7 +3814,15 @@
     "docs/design/content.json",
     "home/index.html",
     "src/ui/shell/footer.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "review-later",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The footer link is the owner's own choice for the launch."
   },
   {
    "id": "F-055",
@@ -2708,7 +3839,15 @@
    "fix": "Add .chip-name { white-space: nowrap; flex-shrink: 0 } and .chip-badge { min-width: 0 }. Or scope .direction-question .chip-select { flex-wrap: wrap } and give the badge its own line. The Picker CSS is shared, so check the other step pickers.",
    "files": [
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "Names wrap but stay legible, and the shared picker CSS reaches finished steps."
   },
   {
    "id": "F-182",
@@ -2726,7 +3865,15 @@
    "files": [
     "src/ui/surfaces/MfaReadiness.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "A no-P1 tenant state; revisit with the no-P1 page decision."
   },
   {
    "id": "F-198",
@@ -2743,7 +3890,15 @@
    "fix": "After a load, focus the first new row's Details button (a ref keyed by the row index) and announce 'Showing {shown} of {n}' in a visually hidden role=status.",
    "files": [
     "src/ui/surfaces/MfaReadiness.tsx"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "Paging past 50 people only happens in large tenants."
   },
   {
    "id": "F-017",
@@ -2763,7 +3918,15 @@
     "src/ui/shell/AppShell.tsx",
     "docs/design/content.json",
     "src/ui/demo.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "In the demo, Scan silently completes work and decisions the evaluator never made; one banner line keeps the behaviour and removes the confusion."
   },
   {
    "id": "F-002",
@@ -2782,7 +3945,15 @@
     "src/roadmap/fixtures/index.ts",
     "docs/design/content.json",
     "src/ui/surfaces/exclusionsStep.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Four screens give four answers on whether the emergency accounts sit outside the enforced MFA policy, the one question lockout safety rests on."
   },
   {
    "id": "F-013",
@@ -2803,7 +3974,15 @@
     "src/ui/surfaces/PrintPlan.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/leadershipPrint.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "A deferral's required reason is never shown again, and deferring shrinks the progress total the manager reads."
   },
   {
    "id": "F-018",
@@ -2823,7 +4002,15 @@
     "src/ui/surfaces/readinessCells.ts",
     "docs/design/content.json",
     "src/ui/surfaces/readinessAndStarted.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The Plan says 10 people are not ready while Readiness, its CSV and the briefing say 21, 25 or 26 with no bar named."
   },
   {
    "id": "F-078",
@@ -2840,7 +4027,15 @@
    "fix": "Add one sentence to the Connect removal line and to How > Where it runs: 'What IAMAI keeps in this browser stays after Sign out; Account → Forget this tenant deletes it.' These are content-only edits to existing keys. Update any publicTrust/connectSignedOut assertion that pins the old text.",
    "files": [
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Nothing says Sign out leaves tenant data in the browser, a disclosure risk on shared PCs that one sentence fixes."
   },
   {
    "id": "F-147",
@@ -2859,7 +4054,15 @@
     "src/ui/shell/AppShell.tsx",
     "src/ui/shell/routes.ts",
     "src/ui/shell/routes.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "Switching surfaces keeps the old scroll offset, so Readiness opens mid-list with no heading or navigation."
   },
   {
    "id": "F-035",
@@ -2878,7 +4081,15 @@
     "src/ui/surfaces/aiGrounding.ts",
     "src/ui/surfaces/policyFact.ts",
     "src/ui/surfaces/aiGrounding.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Done-when text keeps a by-name emergency exclusion and appears to exempt guests from the guest MFA policy."
   },
   {
    "id": "F-166",
@@ -2899,7 +4110,15 @@
     "src/ui/scan/ScanProgress.tsx",
     "docs/design/content.json",
     "src/ui/scan/connectView.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Scan-wait guidance matters only if real scans run long; check real scan durations first."
   },
   {
    "id": "F-174",
@@ -2918,7 +4137,15 @@
     "src/ui/surfaces/Export.tsx",
     "src/roadmap/prompts.ts",
     "src/exports.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "No-P1 exports; revisit with the no-P1 page decision (F-173)."
   },
   {
    "id": "F-175",
@@ -2938,7 +4165,15 @@
     "src/derive/notLicensed.ts",
     "src/roadmap/generate.ts",
     "src/ui/surfaces/exportPhase2.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "Lapsed-P1 tenants with leftover policies are real but unseen so far, and listing them needs owner input."
   },
   {
    "id": "F-180",
@@ -2958,7 +4193,15 @@
     "src/ui/surfaces/printPlan.ts",
     "src/ui/surfaces/PrintPlan.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "A tenant with no policies and security defaults off, a common starting point, is never told nobody is asked for MFA, and the briefing calls an empty exclusions step done."
   },
   {
    "id": "F-001",
@@ -2977,7 +4220,15 @@
     "src/ui/surfaces/policyTasks.ts",
     "docs/design/content.json",
     "src/ui/surfaces/removedExclusionChannels.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Up Next policy steps offer 'Turn the policy on' with no 'not yet' while emergency-access prerequisites are unfinished, a lockout path for P1."
   },
   {
    "id": "F-012",
@@ -2996,7 +4247,15 @@
     "src/ui/surfaces/policyTasks.ts",
     "docs/design/content.json",
     "src/ui/surfaces/enforceWaits.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "'Report-only blocked no one' reads the same whether nothing was evaluated or everything passed, so unknown reads as safe to enforce."
   },
   {
    "id": "F-020",
@@ -3017,7 +4276,15 @@
     "src/roadmap/artifactLines.ts",
     "docs/design/content.json",
     "src/roadmap/ics.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Whether the calendar dates held turn-ons follows the owner's undated-held-steps decision; ask first, then date them or narrow the card's claim."
   },
   {
    "id": "F-060",
@@ -3036,7 +4303,15 @@
     "src/ui/surfaces/DirectionQuestions.tsx",
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/directionStep.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The one-click answer is deliberate; revisit a confirm, since it removes five steps and marks a decision approved."
   },
   {
    "id": "F-064",
@@ -3056,7 +4331,15 @@
     "src/ui/surfaces/inventoryTables.ts",
     "src/roadmap/fixtures/index.ts",
     "src/roadmap/blockSignIns.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The legacy-auth block names one account while Inventory shows two, so the second mailbox stops with nobody warned."
   },
   {
    "id": "F-072",
@@ -3075,7 +4358,15 @@
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/ui/surfaces/personNext.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The same person gets different next steps on three screens."
   },
   {
    "id": "F-105",
@@ -3095,7 +4386,15 @@
     "src/ui/surfaces/StepSections.tsx",
     "src/ui/surfaces/stepBody.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "OWN-W1's Next line covers what comes next; a per-step Next link can wait."
   },
   {
    "id": "F-110",
@@ -3114,7 +4413,15 @@
     "src/roadmap/emergencyJourney.ts",
     "src/ui/surfaces/PasskeyModelDecision.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "The card-versus-task account mismatch is F-036; approving a model from its card is a later feature."
   },
   {
    "id": "OWN-W4",
@@ -3133,7 +4440,15 @@
     "src/ui/surfaces/policyTasks.ts",
     "docs/design/content.json",
     "src/ui/surfaces/policyTasks.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "awaits-policy-matching-decision",
+   "bucket_reason": "Leading a stricter admin policy with weakening instructions goes away under build-new; revisit with that decision."
   },
   {
    "id": "F-191",
@@ -3152,7 +4467,15 @@
     "src/roadmap/generate.ts",
     "src/copy/reasons.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "attention",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Completed-while-Blocked appeared only with 53 unreadable mock groups; reproduce with a real deleted excluded group before engine work, and promote it if it reproduces."
   },
   {
    "id": "F-183",
@@ -3172,7 +4495,15 @@
     "src/derive/finish.ts",
     "src/ui/surfaces/Plan.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Weeks later the finish tip blames report-only for a slip it did not cause; fix the tip's reason now and leave slip tracking for later."
   },
   {
    "id": "F-015",
@@ -3190,7 +4521,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/exportPhase2.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "The untrue Export sentence is OWN-X1; target-policy JSON on every step is a feature."
   },
   {
    "id": "F-087",
@@ -3209,7 +4548,15 @@
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/planBoard.ts",
     "src/ui/surfaces/planBoard.test.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The header count is true for the group; only filtered views look short, and the filter is visibly on."
   },
   {
    "id": "F-089",
@@ -3227,7 +4574,15 @@
    "files": [
     "src/ui/surfaces/planBoard.ts",
     "src/ui/surfaces/planBoard.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-confusion",
+   "bucket_reason": "The 'Conditional Access' work type leaves out the step that creates six policies, so the filter hides the main CA work."
   },
   {
    "id": "F-128",
@@ -3246,7 +4601,15 @@
     "docs/design/content.json",
     "src/ui/surfaces/Export.tsx",
     "src/copy/comms.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The unredacted warning shows whether or not redaction is ticked, and the print card never says it carries addresses and the tenant id."
   },
   {
    "id": "F-141",
@@ -3264,7 +4627,15 @@
    "files": [
     "src/ui/surfaces/How.tsx",
     "src/ui/App.tsx"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "not-worth",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Back returns to Home; add the two Connect actions to How if evaluators report getting stuck."
   },
   {
    "id": "F-005",
@@ -3283,7 +4654,15 @@
     "src/ui/shell/AppShell.tsx",
     "docs/design/content.json",
     "src/ui/shell/routes.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Only the partial-read half: the Plan never says it was built on a partial read. The beta-caveat half is dropped: the banner was removed on purpose (cdf79d82)."
   },
   {
    "id": "F-069",
@@ -3302,7 +4681,15 @@
     "docs/design/content.json",
     "src/roadmap/direction.ts",
     "src/ui/surfaces/directionStep.test.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "'Everyone works remotely' silently puts service accounts and the Teams Room under MFA for Everyone while their completed decision says otherwise."
   },
   {
    "id": "F-106",
@@ -3320,7 +4707,15 @@
    "files": [
     "src/ui/surfaces/ContentStep.tsx",
     "src/ui/surfaces/Plan.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "review-later"
+   },
+   "bucket_category": "cost-exceeds-value",
+   "bucket_reason": "Opening another row closes the step and the admin scrolls back to the list anyway; Esc-to-close is a nicety."
   },
   {
    "id": "F-107",
@@ -3338,7 +4733,15 @@
    "files": [
     "src/ui/surfaces/prepareSteps.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Prepare Your Team says the registration campaign is already on, then tells the admin to turn it on."
   },
   {
    "id": "F-111",
@@ -3356,7 +4759,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/stepContract.ts"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "The admin Readiness view gives a 'personal computer' reason that is not true; reword it to name no cause."
   },
   {
    "id": "F-049",
@@ -3376,7 +4787,15 @@
     "src/ui/surfaces/InventoryPage.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/inventoryTables.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Inventory lists only policy-referenced groups by design; revisit so the plan's own exclusions group always appears."
   },
   {
    "id": "F-074",
@@ -3396,7 +4815,15 @@
     "src/ui/surfaces/MfaReadiness.tsx",
     "src/derive/readinessProgress.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "A 'changed since' view is a new capability; seed the demo history if evaluators ask for it."
   },
   {
    "id": "F-102",
@@ -3416,7 +4843,15 @@
     "src/roadmap/cleanupPhase.ts",
     "docs/design/content.json",
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "awaits-policy-matching-decision",
+   "bucket_reason": "The overlap review form is the retire-old Cleanup that build-new will reshape; restyle it then."
   },
   {
    "id": "F-123",
@@ -3435,7 +4870,15 @@
     "src/ui/modalPanel.ts",
     "src/ui/app.css",
     "src/ui/surfaces/MfaReadiness.tsx"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "review-later",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "main-path-friction",
+   "bucket_reason": "Keyboard focus moves behind the open Readiness drawer, which also covers controls at 1024-1280px, invisible focus on the main Readiness path."
   },
   {
    "id": "F-165",
@@ -3455,7 +4898,15 @@
     "src/ui/surfaces/ContentStep.tsx",
     "src/ui/surfaces/Export.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "Real tenants with unreadable policies already stop at the gaps state; only the mock bypasses it."
   },
   {
    "id": "F-059",
@@ -3475,7 +4926,15 @@
     "src/ui/surfaces/ContentStep.tsx",
     "docs/design/content.json",
     "src/ui/accessibility.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "attention"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Live-region announcements are a screen-reader refinement with no reported user."
   },
   {
    "id": "F-093",
@@ -3495,7 +4954,15 @@
     "src/derive/whoLine.ts",
     "src/ui/surfaces/Plan.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "not-worth",
+    "owner": "attention",
+    "cost": "review-later"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The counts agree once read; unify the units when Plan row wording is next touched."
   },
   {
    "id": "F-189",
@@ -3515,7 +4982,15 @@
     "src/roadmap/artifactLines.ts",
     "docs/design/content.json",
     "src/roadmap/ics.test.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "not-worth"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "A 354-page print needs 5,000 seats, and the briefing rebuild already cut most of it."
   },
   {
    "id": "F-038",
@@ -3533,7 +5008,15 @@
    "files": [
     "src/ui/surfaces/Plan.tsx",
     "src/derive/finish.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Whether a cosmetic rename step sets the finish date and can be deferred is the owner's scheduling call; F-004 fixes the tip."
   },
   {
    "id": "F-009",
@@ -3552,7 +5035,15 @@
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/acceptPanel.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "A plan-wide deviations list is a new report; F-041 puts the baseline beside the partner choice now."
   },
   {
    "id": "F-029",
@@ -3571,7 +5062,15 @@
     "src/ui/surfaces/Plan.tsx",
     "src/ui/App.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The zone only reverts on the demo re-seed; ask the owner whether the control earns its place before explaining it."
   },
   {
    "id": "F-053",
@@ -3588,7 +5087,15 @@
    "fix": "Add font-size: var(--t-1) to header.app .right .text-control in home/home.css.",
    "files": [
     "home/home.css"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "A toggle size mismatch and 'preview' versus 'beta' are polish nobody acts on."
   },
   {
    "id": "F-142",
@@ -3608,7 +5115,15 @@
     "home/index.html",
     "src/ui/shell/AppShell.tsx",
     "scripts/build-home.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "The home-to-planner seam is visual polish, not a harm."
   },
   {
    "id": "F-101",
@@ -3627,7 +5142,15 @@
     "docs/implementation-content/s-prereq-service-accounts-group/s-prereq-service-accounts-group/CONTENT.md",
     "src/content/implementation/registry.generated.json",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "attention",
+   "judges": {
+    "user": "attention",
+    "owner": "attention",
+    "cost": "attention"
+   },
+   "bucket_category": "truth-or-safety",
+   "bucket_reason": "Instructions name a picker, a Done and a 'Mark as done' the step does not have, so P1 hunts for controls that are not there."
   },
   {
    "id": "F-181",
@@ -3646,7 +5169,15 @@
     "src/ui/surfaces/inventoryTables.ts",
     "src/copy/definitions.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "A no-P1 tenant state; revisit with the no-P1 page decision."
   },
   {
    "id": "F-082",
@@ -3664,7 +5195,16 @@
    "files": [
     "src/ui/surfaces/Connect.tsx",
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "merged",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "merged",
+   "bucket_reason": "Same defect as OWN-F2; tracked there.",
+   "merged_into": "OWN-F2"
   },
   {
    "id": "F-158",
@@ -3682,7 +5222,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/Export.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "A capitalisation sweep across frozen screens and pinned tests costs more than it returns."
   },
   {
    "id": "F-159",
@@ -3702,7 +5250,15 @@
     "src/ui/components/DataTable.tsx",
     "src/ui/surfaces/Export.tsx",
     "src/ui/surfaces/MfaReadiness.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "cosmetic-or-taste",
+   "bucket_reason": "Layout rhythm across surfaces is low-value polish that reaches finished steps."
   },
   {
    "id": "F-190",
@@ -3720,7 +5276,15 @@
    "files": [
     "src/ui/surfaces/Export.tsx",
     "src/roadmap/prompts.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "unseen-data-state",
+   "bucket_reason": "A 12-33 second freeze at 5,000 seats is synthetic stress."
   },
   {
    "id": "F-194",
@@ -3739,7 +5303,15 @@
     "src/ui/surfaces/Export.tsx",
     "src/ui/surfaces/planData.ts",
     "src/graph/collect/cache.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "attention",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Status unclear; reproduce outside the 5,000-seat mock first, and if a normal plan-file load changes the plan it becomes attention."
   },
   {
    "id": "F-179",
@@ -3757,7 +5329,15 @@
    "files": [
     "src/roadmap/reportOnlyBatch.ts",
     "src/roadmap/generate.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "attention",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Status unclear; run the live check on the no-policies mock before touching the scheduler."
   },
   {
    "id": "F-173",
@@ -3774,7 +5354,15 @@
    "fix": "Content only. Rewrite content.json:3605 to match the refusal ('Without Entra ID P1 IAMAI offers no plan; …'). With owner yes, append one sentence to conditionalAccessNeedsP1 naming security defaults as the no-P1 route and its admin-center path. A fuller no-P1 page is an owner decision.",
    "files": [
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "attention"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The no-P1 refusal is an owner decision in a state no real tenant has shown; revisit naming security defaults when one does."
   },
   {
    "id": "F-011",
@@ -3792,7 +5380,15 @@
    "files": [
     "src/ui/surfaces/StepSections.tsx",
     "src/ui/surfaces/ContentStep.tsx"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Keeping rollback content off the step screens was decided; revisit whether turn-on steps should link the emergency runbook."
   },
   {
    "id": "F-008",
@@ -3810,7 +5406,15 @@
    "files": [
     "src/ui/surfaces/policyTasks.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "awaits-policy-matching-decision",
+   "bucket_reason": "Steering a stricter admin grant down to the baseline's is an exact-controls outcome that build-new would retire."
   },
   {
    "id": "F-014",
@@ -3828,7 +5432,15 @@
    "files": [
     "src/ui/surfaces/policyTasks.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "awaits-policy-matching-decision",
+   "bucket_reason": "Create-versus-correct alternatives exist only because steps edit tenant policies; settle them with build-new."
   },
   {
    "id": "F-048",
@@ -3848,7 +5460,15 @@
     "src/ui/components/InfoTip.tsx",
     "docs/design/content.json",
     "src/ui/surfaces/Plan.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The owner's vocabulary plan chose four hover definitions and no glossary page."
   },
   {
    "id": "F-124",
@@ -3867,7 +5487,15 @@
     "src/ui/surfaces/PrintPlan.tsx",
     "src/ui/surfaces/printPlan.ts",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The briefing could carry one line per answer; revisit if a manager or board asks why a policy is in or out."
   },
   {
    "id": "F-096",
@@ -3885,7 +5513,15 @@
    "files": [
     "src/ui/surfaces/Plan.tsx",
     "src/ui/surfaces/planBoard.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The fold is deliberate and answered decisions stay reachable."
   },
   {
    "id": "F-103",
@@ -3902,7 +5538,15 @@
    "fix": "Leave the names as the baseline has them. Optionally fold dashes in tracking.ts:186 nameKey the way cleanupPhase.ts does, and add a per-name copy control later.",
    "files": [
     "src/roadmap/tracking.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "attention",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "needs-evidence",
+   "bucket_reason": "Names stay as the baseline writes them; fold dashes in matching if a rename is reported not to match."
   },
   {
    "id": "F-131",
@@ -3920,7 +5564,15 @@
    "files": [
     "src/ui/surfaces/Export.tsx",
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The Export grouping was chosen deliberately and every format is one toggle away."
   },
   {
    "id": "F-157",
@@ -3937,7 +5589,15 @@
    "fix": "Leave the label. If wanted, give aria-label 'Switch to {theme} theme' and keep the visible text. Do not add aria-pressed to a button whose label changes (an anti-pattern).",
    "files": [
     "src/ui/shell/AppShell.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The theme label works and persists; the owner chose to leave it."
   },
   {
    "id": "F-187",
@@ -3954,7 +5614,15 @@
    "fix": "No engine change. Optional XS: say it in the demo banner, e.g. 'Sample data, regenerated for today' (content-only edit to demoBanner or a new phrase).",
    "files": [
     "docs/design/content.json"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Regenerating the sample as of today is the owner's design; F-095 handles the follow-up's timestamp."
   },
   {
    "id": "F-030",
@@ -3972,7 +5640,15 @@
    "files": [
     "docs/design/content.json",
     "src/ui/surfaces/CleanupStep.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Placement is an owner decision, and the timing question is carried by OWN-W6."
   },
   {
    "id": "F-046",
@@ -3989,7 +5665,15 @@
    "fix": "If the owner wants a change: show '×' (aria 'Hide the tip') while the tip is open and '?' only while it is collapsed. This is shared, so check every page that uses the tip.",
    "files": [
     "src/ui/components/PageTip.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "A deliberate dismissible tip that returns on a second click; the harm is small."
   },
   {
    "id": "F-150",
@@ -4006,7 +5690,15 @@
    "fix": "None. A solid dark primary would contradict the approved reference and needs the owner's decision.",
    "files": [
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The dark primary follows the approved reference."
   },
   {
    "id": "F-133",
@@ -4023,7 +5715,15 @@
    "fix": "None. Optionally add a readme line saying 'title' is the goal and 'plainTitle' is the screen title.",
    "files": [
     "src/roadmap/plan.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "The plan file's internal names are a data format, not a screen, and were left deliberately."
   },
   {
    "id": "F-178",
@@ -4042,7 +5742,15 @@
     "src/derive/operator.ts",
     "src/derive/sets.ts",
     "src/scoring/fromSnapshot.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "owner-decision",
+   "bucket_reason": "Same root as F-177; counting the operator as active reverses a documented rule, so revisit once F-177 lands."
   },
   {
    "id": "F-024",
@@ -4060,7 +5768,15 @@
    "files": [
     "src/ui/surfaces/Export.tsx",
     "src/ui/surfaces/inventoryTables.ts"
-   ]
+   ],
+   "bucket": "review-later",
+   "judges": {
+    "user": "review-later",
+    "owner": "review-later",
+    "cost": "review-later"
+   },
+   "bucket_category": "feature-not-fix",
+   "bucket_reason": "A whole-plan baselines-as-code export is a new capability outside current scope."
   },
   {
    "id": "F-019",
@@ -4078,7 +5794,15 @@
    "files": [
     "src/ui/surfaces/PrintPlan.tsx",
     "src/ui/surfaces/printPlan.ts"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "superseded-or-fixed",
+   "bucket_reason": "The leadership briefing now gives the manager summary."
   },
   {
    "id": "F-022",
@@ -4095,7 +5819,15 @@
    "fix": "None.",
    "files": [
     "src/ui/surfaces/PrintPlan.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "superseded-or-fixed",
+   "bucket_reason": "The old runbook print was replaced by the leadership briefing."
   },
   {
    "id": "F-045",
@@ -4112,7 +5844,15 @@
    "fix": "None.",
    "files": [
     "src/ui/surfaces/PrintPlan.tsx"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "superseded-or-fixed",
+   "bucket_reason": "The old runbook print was replaced by the leadership briefing."
   },
   {
    "id": "F-076",
@@ -4129,7 +5869,15 @@
    "fix": "None.",
    "files": [
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "superseded-or-fixed",
+   "bucket_reason": "The briefing dropped the running footer that printed over text."
   },
   {
    "id": "F-125",
@@ -4146,7 +5894,19 @@
    "fix": "None.",
    "files": [
     "src/ui/app.css"
-   ]
+   ],
+   "bucket": "not-worth",
+   "judges": {
+    "user": "not-worth",
+    "owner": "not-worth",
+    "cost": "not-worth"
+   },
+   "bucket_category": "superseded-or-fixed",
+   "bucket_reason": "The 102-page print was replaced by the short leadership briefing."
   }
- ]
+ ],
+ "worth_review": {
+  "date": "2026-09-27",
+  "method": "three independent judges (user, owner rules, cost vs benefit), majority vote; three splits put under review later; owner rules applied"
+ }
 }
