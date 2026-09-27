@@ -2,7 +2,8 @@
 // the sign-in on the live site depended on a fragment the first render wiped.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isAuthResponseHash, resolveHash } from './routes.ts'
+import { readFileSync } from 'node:fs'
+import { isAuthResponseHash, planTabsOn, resolveHash } from './routes.ts'
 
 test('an auth response in the fragment is home and never rewritten; every other route and legacy redirect resolves as it was', () => {
   {
@@ -39,4 +40,16 @@ test('an auth response in the fragment is home and never rewritten; every other 
     assert.deepEqual(resolveHash('#/nonsense'), { route: 'connect', redirect: '#/connect' })
     for (const h of ['#/connect', '#/start', '#', '#/roadmap/step/x', '#/today?state=1']) assert.equal(isAuthResponseHash(h), false, h)
   }
+})
+
+test('Plan, MFA Readiness and Export stay live through a rescan, and wait only for the first scan (F-168)', () => {
+  assert.equal(planTabsOn('scanned', true), true)
+  // A rescan over a plan: the last plan is on screen, so the header reaches it.
+  assert.equal(planTabsOn('scanning', true), true)
+  // The first scan: nothing to show yet.
+  assert.equal(planTabsOn('scanning', false), false)
+  assert.equal(planTabsOn('noScan', false), false)
+  assert.equal(planTabsOn('signedOut', false), false)
+  const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
+  assert.match(shell, /const tabsOn = planTabsOn\(state, snapshot !== null\)/)
 })

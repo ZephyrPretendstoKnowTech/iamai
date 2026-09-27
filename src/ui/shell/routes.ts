@@ -130,6 +130,16 @@ export function opensAtTop(from: Route, to: Route): boolean {
   return from !== to
 }
 
+/**
+ * Whether the header's Plan, MFA Readiness and Export work (F-168): once a scan
+ * has made a plan, and through every rescan after it, since the last plan stays
+ * on screen until the new one lands. Before the first scan there is nothing for
+ * them to show.
+ */
+export function planTabsOn(state: 'signedOut' | 'noScan' | 'scanning' | 'scanned', hasPlan: boolean): boolean {
+  return state === 'scanned' || (state === 'scanning' && hasPlan)
+}
+
 /** The Show key an MFA Readiness hash carries (#/readiness/rung-3, and the old #/today/rung-3), or null for the whole table. */
 export function showFromReadinessHash(hash: string): string | null {
   const h = hash.replace(/^#\/?/, '')

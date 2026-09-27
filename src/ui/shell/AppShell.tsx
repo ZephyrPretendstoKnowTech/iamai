@@ -25,7 +25,7 @@ import { forgetTenant, showDemoSnapshot, signOut, stopScan } from '../actions.ts
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { PausedNotice, scanLineText } from '../scan/ScanProgress.tsx'
-import { opensAtTop, PLAN_HREF, READINESS_HREF, resolveHash } from './routes.ts'
+import { opensAtTop, PLAN_HREF, planTabsOn, READINESS_HREF, resolveHash } from './routes.ts'
 import type { Route } from './routes.ts'
 
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
@@ -271,7 +271,8 @@ export function AppShell({
   const behind = useSyncExternalStore(subscribeBehind, () => isBehind(snapshot?.tenantId ?? account?.tenantId), () => false)
   const [theme, toggleTheme] = useTheme()
   const signedIn = account !== null && state !== 'signedOut'
-  const tabsOn = state === 'scanned'
+  // Plan, MFA Readiness and Export stay live through a rescan: the last plan is on screen (F-168).
+  const tabsOn = planTabsOn(state, snapshot !== null)
   const readinessActive = route === 'readiness' || route === 'inventory'
   const exportActive = route === 'export'
   const planActive = route === 'plan'
