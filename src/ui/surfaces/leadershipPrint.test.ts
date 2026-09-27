@@ -230,3 +230,32 @@ test('the briefing says which scan it was made from, and warns when that scan is
   assert.equal(scanAgeDays(daysAgo(8)) >= STALE_SCAN_DAYS, true, 'eight days: warned')
   assert.equal(scanAgeDays(daysAgo(6)) >= STALE_SCAN_DAYS, false, 'six days: not')
 })
+
+// F-013: the Defer dialog requires a reason, and it was never shown again: the
+// deferred step's Next milestone kept the create it was deferred from, the
+// Completed tile's total dropped with no word, and the briefing's Set aside
+// list named the title alone. The step, the tile and the briefing now say it.
+test('a deferral says why: on the step\'s Next milestone, under the Completed tile and in the briefing', async () => {
+  const { stepBodyOf } = await import('./stepBody.ts')
+  const { deferralOf } = await import('./deferral.ts')
+  const { app, structuralWords } = await import('../../content/content.ts')
+  const { absoluteDate } = await import('../../copy/dates.ts')
+  const f = curatedFixture('demo')
+  const id = 's-goal-block-auth-transfer'
+  const { brief, steps, board, ctx } = briefFor(f, { skips: [id] })
+  const step = steps.find((s) => s.id === id)!
+  const deferral = deferralOf(step)
+  assert.deepEqual(deferral, { at: f.snapshot.asOf, reason: 'Not needed for this tenant' })
+  const expected = fillText(app.plan.deferredWhy, { date: absoluteDate(f.snapshot.asOf), reason: 'Not needed for this tenant' })
+  assert.equal(stepBodyOf(step, ctx(step), { lane: board.laneOf(id) }).rail.headline, expected)
+  const line = brief.aside.find((a) => a.id === id)
+  assert.equal(line?.reason, 'Not needed for this tenant')
+  assert.equal(fillText(BRIEF.asideWhy, { title: line!.title, reason: line!.reason! }), `${line!.title}: Not needed for this tenant`)
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /\{a\.reason \? fillText\(BRIEF\.asideWhy, \{ title: a\.title, reason: a\.reason \}\) : a\.title\}/)
+  // The Completed tile's line says how many are deferred.
+  const S = (structuralWords as unknown as { summary: { deferred: string } }).summary
+  assert.equal(fillText(S.deferred, { n: 1 }), '1 deferred')
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /\.\.\.\(deferredCount > 0 \? \{ sub: \[fillText\(summary\.deferred, \{ n: deferredCount \}\)\] \} : \{\}\)/)
+  // A step that is not deferred reads no deferral.
+  assert.equal(deferralOf(steps.find((s) => s.id !== id && s.status !== 'skipped')!), null)
+})

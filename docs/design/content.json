@@ -2021,6 +2021,8 @@
         "constraintTip": "What set the plan length",
         "exclusionsGroupRailSub": "Select the group containing your emergency accounts for policy exclusions.",
         "putBack": "Put this step back",
+        "$commentDeferredWhy": "F-013 (owner, 2026-09-27): a deferred step's Next milestone is its deferral, the day and the reason the Defer dialog required, never the create it was deferred from.",
+        "deferredWhy": "Deferred {date}: {reason}",
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
         "jsonWaitsDecision": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in {tenant} or is left out.",
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
@@ -3228,6 +3230,8 @@
           "input": "Needs your input",
           "$commentObserving": "F-003 (owner, 2026-09-27): the tile counts the steps whose policy is in report-only, and says it in the chip's own word; \"Observing\" named a state no row showed.",
           "observing": "In report-only",
+          "$commentDeferred": "F-013 (owner, 2026-09-27): the Completed tile's count leaves deferred steps out of its total; the line under it says how many, so the total dropping is explained.",
+          "deferred": "{n} deferred",
           "completed": "Completed",
           "finish": "Estimated finish",
           "all": "Show the full plan",
@@ -3518,6 +3522,8 @@
             "notInPlan": "Not in this plan",
             "aside": "Set aside for now"
           },
+          "$commentAsideWhy": "F-013 (owner, 2026-09-27): a step set aside is listed with the reason the person recorded when they deferred it.",
+          "asideWhy": "{title}: {reason}",
           "$commentRecovery": "The one procedure the briefing keeps (owner, 2026-09-27): Prepare Emergency Access Accounts' own recovery runbook (steps[].lockedOut), on a page of its own at the end, for IT. On the day a change locks people out nobody can sign in to open the Planner, and the paper copy is what IT has in hand (ui/surfaces/printPlan.ts recoveryOf).",
           "recovery": {
             "lead": "For IT. Keep this page where you can reach it without signing in: it is for the day a change locks people out.",

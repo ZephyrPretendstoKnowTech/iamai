@@ -247,7 +247,7 @@ export function PrintPlan({
               <ul>
                 {brief.aside.map((a) => (
                   <li key={a.id}>
-                    <span className="print-number">{a.number}</span> {a.title}
+                    <span className="print-number">{a.number}</span> {a.reason ? fillText(BRIEF.asideWhy, { title: a.title, reason: a.reason }) : a.title}
                   </li>
                 ))}
               </ul>

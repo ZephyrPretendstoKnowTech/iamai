@@ -3218,6 +3218,12 @@ export type RailWords = {
    * needs, the exclusions group, a Direction step's approval sentence (U3).
    */
   words?: string | null
+  /**
+   * A deferred step's deferral, when and why ("Deferred Sep 27, 2026: …"): the
+   * headline as it stands. Its day is the deferral's own, not the schedule's, so
+   * the rule that keeps a day off the headline does not apply to it (F-013).
+   */
+  deferred?: string | null
   /** The step's next task, by the title its Implementation Tasks selector shows. */
   task?: string | null
   /** The instruction line under the divider, where the column carries one. */
@@ -3247,7 +3253,7 @@ export function railOf(c: StepContract, o: RailWords = {}): RailReading {
   const label = c.milestone.label
   const engineWords = FILLER.has(label.trim().replace(/[.:]$/, '')) || sentenceCount(label) > 1 ? null : label
   const days = [c.milestone.at, c.schedule?.at ?? null, c.scheduledOn].filter((d): d is string => d !== null).map(absoluteDate)
-  const headline = milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [o.words, drawn !== null && sentenceCount(drawn) <= 1 ? drawn : null, o.task, first, engineWords], days)
+  const headline = o.deferred ?? milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [o.words, drawn !== null && sentenceCount(drawn) <= 1 ? drawn : null, o.task, first, engineWords], days)
   // The same words with or without their stop are the same sentence (the wait the rail names, walk list 4.x item 23).
   const same = (a: string, b: string): boolean => a.trim().replace(/[.]$/, '') === b.trim().replace(/[.]$/, '')
   const barLead = lead === null || same(headline, lead) ? null : first !== null && headline === first ? lead.slice(first.length).trim() || null : lead

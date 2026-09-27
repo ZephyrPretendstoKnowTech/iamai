@@ -376,11 +376,13 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const licenceLine = conditionalAccessLicenceLine(scan.snapshot)
   // A tile closes the open step, and the address with it, as openStep does: a link to that step (the Next line) then opens it again.
   const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({}); setOpen(null); window.history.replaceState(null, '', '#/plan') }
+  const deferredCount = items.filter((i) => i.lane === 'Deferred').length
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string; select?: () => void }[] = [
     { key: 'ready', label: summary.ready, value: counts.lanes.ready, select: () => { selectSummary(null); setTab('ready') } },
     { key: 'input', label: summary.input, value: inputIds.size, select: () => selectSummary('input') },
     { key: 'observing', label: summary.observing, value: observingIds.size, select: () => selectSummary('observing') },
-    { key: 'completed', label: summary.completed, value: `${counts.complete} / ${items.filter((i) => i.lane !== 'Deferred').length}`, select: () => selectSummary('completed') },
+    // Deferred steps leave the total; the line under it says how many, so the total dropping is explained (F-013).
+    { key: 'completed', label: summary.completed, value: `${counts.complete} / ${items.filter((i) => i.lane !== 'Deferred').length}`, ...(deferredCount > 0 ? { sub: [fillText(summary.deferred, { n: deferredCount })] } : {}), select: () => selectSummary('completed') },
     // An estimate, and it says so (pages.plan.when.estimate): "Est. Oct 5, 2026".
     { key: 'projectedFinish', label: summary.finish, value: fillText(schedulingWords.estimate, { date: absoluteDate(projected.estimate ?? finish.finish ?? c.schedule.start) }), tip: lengthTip },
   ]

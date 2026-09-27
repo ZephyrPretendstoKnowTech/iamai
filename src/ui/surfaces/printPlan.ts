@@ -24,6 +24,7 @@ import { NAMES_UP_TO } from '../../derive/contentLists.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { LaneView } from './stepContract.ts'
 import type { Lane } from '../../actionability/lanes.ts'
+import { deferralOf } from './deferral.ts'
 
 /**
  * Whether the document is a plan at all. Without Entra ID P1 no Conditional
@@ -129,6 +130,7 @@ type BriefWords = {
   finishOn: string
   cards: { done: string; ahead: string; needs: string }
   headings: { needs: string; journey: string; ahead: string; risk: string; done: string; notInPlan: string; aside: string }
+  asideWhy: string
   labels: { does: string; matters: string; notice: string; reaches: string }
   lanes: Record<Lane, string>
   needDecision: string
@@ -149,7 +151,7 @@ export type BriefEntry = { id: string; number: string | null; title: string; sta
 /** Something the plan needs a decision or an action on before it can move. */
 export type BriefNeed = { id: string; number: string | null; title: string; why: string }
 /** A row by its number and title: a finished one with the day it finished, or one the person set aside. */
-export type BriefLine = { id: string; number: string | null; title: string; when: string | null }
+export type BriefLine = { id: string; number: string | null; title: string; when: string | null; /** A deferred step's recorded reason (deferral.ts). */ reason?: string }
 /** One of the Plan's sections, told as a chapter of the journey: its progress is the board's own summary of it. */
 export type BriefChapter = { key: string | null; number: number | null; title: string; purpose: string | null; progress: string; entries: BriefEntry[] }
 /** What the briefing states: the chapters, the needs, what is done and set aside, and the counts the summary cards show. */
@@ -217,7 +219,9 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
         continue
       }
       if (r.lane.lane === 'Deferred') {
-        aside.push({ id: r.id, number, title: r.title, when: null })
+        // Set aside with the reason the person recorded (F-013): a control someone chose not to deploy says why.
+        const deferral = r.step ? deferralOf(r.step) : null
+        aside.push({ id: r.id, number, title: r.title, when: null, ...(deferral ? { reason: deferral.reason } : {}) })
         continue
       }
       if (!OPEN.has(r.lane.lane)) continue
