@@ -651,6 +651,12 @@ test('Implementation is the pack’s pill channels over a fixed preview, or one 
   assert.match(rule('.step .impl-preview .preview-text'), /overflow-wrap: anywhere;/, 'a long line widens the step')
 })
 
+test('a task\'s instructions scroll only past 37rem, so a one-line overflow shows whole (F-100)', () => {
+  const box = rule(".step:is([data-task-anatomy], [data-step-id='cleanup-drill']) .impl-preview")
+  assert.match(box, /max-height: 37rem;/)
+  assert.match(box, /overflow: auto;/, 'a long task no longer scrolls inside its box')
+})
+
 test('Done when is prose on every step, and the footer carries the rollout exception and the scan', () => {
   const pack = read(PACK)
   assert.match(variant(pack, 'v1'), /<section class="step-section"><h4>Done when<\/h4><p>/, 'the pack’s Done when is no longer prose')

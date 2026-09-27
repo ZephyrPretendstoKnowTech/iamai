@@ -5209,10 +5209,14 @@ th .th-sort:focus-visible,
   align-self: center;
 }
 .step:is([data-task-anatomy], [data-step-id='cleanup-drill']) .tile-detail p { overflow-wrap: break-word; }
+/* The box scrolls so a long task (a role list of fifty) can't make the page
+   endless (owner). 37rem at the 14px root is 518px: at 32rem three steps'
+   instructions were cut by a single line and 4.3's by 58px (F-100, measured on
+   the demo at 1280px); the longer ones still scroll. */
 .step:is([data-task-anatomy], [data-step-id='cleanup-drill']) .impl-preview {
   height: auto;
   min-height: 12rem;
-  max-height: 32rem;
+  max-height: 37rem;
   overflow: auto;
 }
 .step:is([data-task-anatomy], [data-step-id='cleanup-drill']) .preview-actions {
