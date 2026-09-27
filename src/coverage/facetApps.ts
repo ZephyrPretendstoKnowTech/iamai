@@ -11,6 +11,5 @@ export const FACET_APPS: Partial<Record<Facet, { ids: string[]; namePattern: Reg
   copilot: { ids: [], namePattern: /copilot/i },
   azureDevOps: { ids: ['499b84ac-1321-427f-aa17-267ca6975798'], namePattern: /devops/i },
   sharepoint: { ids: ['00000003-0000-0ff1-ce00-000000000000'], namePattern: /sharepoint/i },
-  agents: { ids: [], namePattern: /\bagents?\b/i },
   azureManagement: { ids: ['797f4846-ba00-4fd7-ba43-dac1f8f63013'], namePattern: /azure (service management|portal)/i },
 }

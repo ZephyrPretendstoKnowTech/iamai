@@ -13,7 +13,7 @@ import { securityDefaultsState } from '../../derive/readinessContext.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { PolicyFacts } from '../../coverage/types.ts'
 import type { ResolvedObject } from '../../graph/collect/onDemand.ts'
-import { buildNameDirectory } from '../../names.ts'
+import { UNNAMED, buildNameDirectory } from '../../names.ts'
 import type { NameDirectory } from '../../names.ts'
 import { policyFacts } from '../../coverage/facts.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
@@ -776,16 +776,20 @@ export function appsModel(snapshot: TenantSnapshot, names: NameDirectory): Inven
   const summaryRead = sectionHasData(snapshot, 'appSignInSummary')
   const spRead = sectionHasData(snapshot, 'spActivity')
   if (!spRead) lastSpByApp.clear()
+  const appName = (appId: string): string => {
+    const label = names.label(appId)
+    return appId !== '' && (label === UNNAMED || label === appId) ? fillText(W.unknownApp, { id: appId }) : label
+  }
   const byApp = new Map<string, AppRow>()
   for (const r of (summaryRead ? snapshot.appSignInSummary : []) as Raw[]) {
     const appId = str(r.appId)
-    const name = typeof r.appDisplayName === 'string' ? r.appDisplayName : names.label(appId)
+    const name = typeof r.appDisplayName === 'string' ? r.appDisplayName : appName(appId)
     const row = byApp.get(appId) ?? { id: appId || name, app: name, signIns: 0, lastSp: lastSpByApp.get(appId) ?? null }
     row.signIns += Number(r.signInCount ?? 0)
     byApp.set(appId, row)
   }
   for (const [appId, last] of lastSpByApp) {
-    if (!byApp.has(appId)) byApp.set(appId, { id: appId, app: names.label(appId), signIns: 0, lastSp: last })
+    if (!byApp.has(appId)) byApp.set(appId, { id: appId, app: appName(appId), signIns: 0, lastSp: last })
   }
   const rows = [...byApp.values()]
   const summary = notReadLine(snapshot, 'appSignInSummary')
