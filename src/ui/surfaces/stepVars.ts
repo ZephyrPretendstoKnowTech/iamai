@@ -44,7 +44,7 @@ import { engine, shared, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
-import { SERVICE_ACCOUNTS_TRUSTED_GOAL, supersededBy } from '../../roadmap/generate.ts'
+import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
 import { PER_USER_MFA_STEP_ID, PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
@@ -427,7 +427,15 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // coverage that predates the plan, and What IAMAI found says of the same
   // policy, on the same step, that IAMAI watched it get there. One of the two is
   // always wrong; this is the one that is.
-  v.existingPolicies = !watchedArrive(step) ? [...supersededBy(step)] : []
+  // Never the step's own policy: a policy the step corrects is how it delivers the
+  // goal, not coverage beside it (generate.ts deliveredBy, "never the policy it
+  // changes"). Tracking can match a step to a policy its resolution did not, and
+  // 4.3 then said the tenant "already covers this" with the policy its tasks correct.
+  const rows = (ctx.snapshot.config.caPolicies?.rows ?? []) as { id?: string; displayName?: string }[]
+  const corrected = (step.action.resolution?.policies ?? []).flatMap((o) => (o.mode === 'update' ? [rows.find((p) => p.id === o.policyId)?.displayName ?? ''] : []))
+  const ownPolicies = [...(step.tracking?.members ?? []).map((m) => m.policyName ?? ''), ...corrected].filter((n) => n !== '')
+  const beside = step.deliveredBy.filter((d) => !ownPolicies.some((n) => d === n || d.startsWith(`${n} (`)))
+  v.existingPolicies = step.status !== 'done' && beside.length > 0 && !watchedArrive(step) ? beside : []
   // In place: the step asks nobody to do anything, so its email does not render (stepExport.ts commsFor).
   if (step.status === 'done') v.stepDone = true
 

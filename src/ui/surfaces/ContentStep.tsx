@@ -208,6 +208,9 @@ function Line({ s, ex, cls }: { s: unknown; ex: Ex; cls?: string }) {
   return <p className={cls}><T s={s} ex={ex} /></p>
 }
 
+/** The steps that change a Conditional Access policy: printed, they draw the task cards their screen draws (Phase 4). */
+const POLICY_KINDS: ReadonlySet<Step['kind']> = new Set(['create', 'adjust', 'enforce'])
+
 type Dialog = 'readiness' | 'implementation' | 'troubleshooting' | 'confirm' | 'rollout' | 'doesnt-apply' | null
 
 export function ContentStep({
@@ -469,7 +472,7 @@ export function ContentStep({
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           {decisionHead ? <DirectionQuestions draft={directionDraft} ctx={ctx} heading={decisionHead.questions} printing={printing} />
           : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? '' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
-          : isTaskStep && emergencyAccountTasks && (!printing || isOwnTaskStep) ? <EmergencySubjectReadiness
+          : isTaskStep && emergencyAccountTasks && (!printing || (isOwnTaskStep && POLICY_KINDS.has(step.kind))) ? <EmergencySubjectReadiness
             subjects={taskSubjects}
             printing={printing}
             barMain={isOwnTaskStep ? policyBarOf(taskSubjects) : displayedReadiness.bar.main}

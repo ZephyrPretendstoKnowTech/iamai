@@ -3664,28 +3664,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 }
 
 /**
- * The policies a step found already covering its goal that the baseline's
- * version supersedes: a policy step still to do, with something delivering its
- * goal today. A done step's policies are what makes it In place; a step that
- * corrects a policy delivers through it, so that policy is neither covered
- * beside it nor one to retire (Phase 4: 4.3, which edits the tenant's admin
- * policy, said it "creates the baseline's version").
- */
-export function supersededBy(s: Step): readonly string[] {
-  if (s.status === 'done' || s.status === 'skipped' || (s.kind !== 'create' && s.kind !== 'adjust') || s.deliveredBy.length === 0) return []
-  return operationsOf(s).some((o) => o.mode === 'update') ? [] : s.deliveredBy
-}
-
-/**
  * The policies the plan's steps found already covering their goal (the step's
- * existingCoverage line names them, supersededBy), which the consolidation row
- * retires once the baseline's version is enforced.
+ * existingCoverage line names them), which the consolidation row retires once
+ * the baseline's version is enforced: a policy step still to do, with something
+ * delivering its goal today. A done step's policies are what makes it In place.
  */
 export function supersededPolicies(steps: readonly Step[]): string[] {
   const out: string[] = []
   for (const s of steps) {
-    const names = supersededBy(s).join(', ')
-    if (names !== '' && !out.includes(names)) out.push(names)
+    if (s.status === 'done' || s.status === 'skipped' || (s.kind !== 'create' && s.kind !== 'adjust') || s.deliveredBy.length === 0) continue
+    const names = s.deliveredBy.join(', ')
+    if (!out.includes(names)) out.push(names)
   }
   return out
 }
