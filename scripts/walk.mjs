@@ -853,7 +853,7 @@ async function walkFixture(fx) {
               if (perm.rows.length < 5) add('P0', `${label}: ${perm.rows.length} consent rows; every requested scope, in Microsoft's wording`)
               if (!/^Read directory data/.test(perm.rows[0] || '')) add('P0', `${label}: the first consent row reads "${perm.rows[0]}"`)
               if (perm.tables > 0) add('P0', `${label}: the permissions collapsible still renders a table`)
-              if (!/^Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete\. Nothing it read leaves this browser unless you export it\.$/.test(perm.last.replace(/\s+/g, ' ').trim())) add('P0', `${label}: the collapsible does not end with the removal line: "${perm.last}"`)
+              if (!/^Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete\. Nothing it read leaves this browser unless you export it\. What it keeps here stays after Sign out; Account → Forget this tenant deletes it\.$/.test(perm.last.replace(/\s+/g, ' ').trim())) add('P0', `${label}: the collapsible does not end with the removal line: "${perm.last}"`)
             }
             writeFileSync(join(wdir, 'connect-permissions.txt'), await mainText())
             await shot(join(wdir, 'connect-permissions.png'))

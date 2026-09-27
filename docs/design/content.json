@@ -758,7 +758,7 @@
         "workAccount": "Sign in with a work or school account",
         "permissionsSummary": "What IAMAI asks for, and how to remove it",
         "consentLead": "Microsoft's consent screen will list these {n} directory permissions, plus signing you in and keeping you signed in:",
-        "removal": "Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete. Nothing it read leaves this browser unless you export it.",
+        "removal": "Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete. Nothing it read leaves this browser unless you export it. What it keeps here stays after Sign out; Account → Forget this tenant deletes it.",
         "errors": {
           "consent": {
             "state": "Microsoft asked for admin approval",
@@ -3710,7 +3710,7 @@
         "limitsFeedback": "Something wrong or unclear? feedback@getiamai.com — I would rather hear about it than not.",
         "hosting": "Where it runs",
         "$commentHostingBody": "Phase 2 audit (How): Connect asks GitHub whether the baseline's author has published changes since the pinned version (src/ui/baseline.ts checkAuthorHead, then baselineReview when the author's head has moved). This named Cloudflare's beacon and never the one other third party the app contacts. src/ui/surfaces/publicTrust.test.ts holds it to every non-Microsoft host in scripts/csp.ts REQUEST_HOSTS.",
-        "hostingBody": "IAMAI runs in your browser. It reads tenant data directly from Microsoft Graph and keeps the scan in this browser. On Connect it also asks GitHub (api.github.com, raw.githubusercontent.com) whether the baseline's author has published changes since the pinned version, and, when there are changes, reads the changed files; no tenant data is sent. The public source and site files are on GitHub Pages, served through Cloudflare. Hosting includes a Cloudflare page-load beacon, which is not in IAMAI's application bundle. IAMAI does not send the tenant snapshot to that beacon. Review exports before sharing them.",
+        "hostingBody": "IAMAI runs in your browser. It reads tenant data directly from Microsoft Graph and keeps the scan in this browser. What it keeps here stays after Sign out; Account → Forget this tenant deletes it. On Connect it also asks GitHub (api.github.com, raw.githubusercontent.com) whether the baseline's author has published changes since the pinned version, and, when there are changes, reads the changed files; no tenant data is sent. The public source and site files are on GitHub Pages, served through Cloudflare. Hosting includes a Cloudflare page-load beacon, which is not in IAMAI's application bundle. IAMAI does not send the tenant snapshot to that beacon. Review exports before sharing them.",
         "credits": "Credits",
         "creditBaseline": "The baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech.",
         "creditAnalyzer": "CA Policy Analyzer by Jon Hope",

@@ -62,7 +62,7 @@ test('tile 1 signed out: no tenant connected, the Global Reader line with the co
     assert.ok(r.name.length > 10, `${r.scope}: Microsoft's wording`)
     assert.ok(r.reads.length > 10, `${r.scope}: what it reads`)
   }
-  assert.equal(P.removal, 'Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete. Nothing it read leaves this browser unless you export it.')
+  assert.equal(P.removal, 'Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete. Nothing it read leaves this browser unless you export it. What it keeps here stays after Sign out; Account → Forget this tenant deletes it.')
   onlyItsOwn('none', t)
 })
 
