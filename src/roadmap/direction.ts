@@ -41,7 +41,7 @@ import { directionWords } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { list } from '../copy/statements.ts'
-import { contentTitle } from '../content/stepTitle.ts'
+import { contentStepFor, contentTitle } from '../content/stepTitle.ts'
 import type { NotAssessed } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -56,7 +56,7 @@ import { mailAnswerMoot } from './blockSignIns.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { checkStep, serviceEvidence, serviceNameOf, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
-import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, answeredReasonOf, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
@@ -429,13 +429,28 @@ export function countDirectionImpact(steps: Step[], availableGoalIds: readonly s
  * service's answer (directionDependenciesOf), already set aside or not. Written
  * over the finished plan (progress.ts applyProgress), so it names only steps
  * the plan holds.
+ *
+ * And its Yes line (F-068): what the steps Yes keeps do to people, in those
+ * steps' own words (their brief's notice). "SharePoint and OneDrive from outside
+ * the office: Yes" kept a policy that blocks them outside the office and said
+ * nothing. Only a step that would apply says it: one another answer took off
+ * (everyone works remotely) keeps nothing, while one only this card's No took
+ * off still does, so switching back to Yes says what it brings back.
  */
 export function noteServiceConsequences(steps: Step[]): void {
   const use = steps.find((s) => s.id === DIRECTION_STEP.use)
   for (const q of use?.directionQuestions ?? []) {
     if (!q.key.startsWith('service:')) continue
-    const titles = [...new Set(steps.filter((s) => !isDirectionStep(s.id) && directionDependenciesOf(s).includes(q.key as DirectionQuestionKey)).map((s) => contentTitle(s)))]
-    q.chosen = titles.length > 0 ? { no: fillText(Q.serviceConsequence, { steps: list(titles) }) } : null
+    const key = q.key as DirectionQuestionKey
+    const dependents = steps.filter((s) => !isDirectionStep(s.id) && directionDependenciesOf(s).includes(key))
+    const titles = [...new Set(dependents.map((s) => contentTitle(s)))]
+    const byThisNo = answeredReasonOf(key, 'no')
+    const notices = [...new Set(dependents.filter((s) => s.doesntApply == null || s.doesntApply === byThisNo).map((s) => ((contentStepFor(s) as { brief?: { notice?: unknown } } | undefined)?.brief?.notice)).filter((n): n is string => typeof n === 'string' && n.trim() !== ''))]
+    const chosen: Record<string, string> = {
+      ...(titles.length > 0 ? { no: fillText(Q.serviceConsequence, { steps: list(titles) }) } : {}),
+      ...(notices.length > 0 ? { yes: notices.join(' ') } : {}),
+    }
+    q.chosen = Object.keys(chosen).length > 0 ? chosen : null
   }
 }
 

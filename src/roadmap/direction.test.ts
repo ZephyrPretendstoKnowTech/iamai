@@ -374,3 +374,30 @@ test('a saved None on the mail-sending devices reopened over a partial sign-in r
   assert.equal(mail.needsReview, true)
   assert.match(mail.evidence, /^You answered None\. The sign-in records this scan read show \d+ accounts? signing in to send email\.$/)
 })
+
+// F-068: "SharePoint and OneDrive from outside the office: Yes" was the
+// suggestion, said nothing, and kept a policy that blocks SharePoint and
+// OneDrive outside the office; only No had a line. The card names the choice
+// Yes makes, and every service card says what Yes keeps, in the kept step's own
+// words, while that step would apply.
+test('each service card says what Yes keeps as well as what No takes off, and SharePoint names the choice', () => {
+  const f = fixture('demo')
+  const cards = (mapping = f.mapping) => runFixture({ ...f, mapping }, { mapping }).steps.flatMap((s) => s.directionQuestions ?? [])
+  const card = (qs: DirectionQuestion[], key: string): DirectionQuestion => qs.find((x) => x.key === key)!
+  const qs = cards()
+  const sharepoint = card(qs, 'service:sharepoint')
+  assert.equal(sharepoint.label, 'Limit SharePoint and OneDrive to the office network')
+  assert.equal(sharepoint.chosen?.yes, "People can't open SharePoint or OneDrive files from outside the office.")
+  assert.equal(sharepoint.chosen?.no, 'Takes Restrict SharePoint and OneDrive to the Trusted Network off your plan.')
+  assert.equal(card(qs, 'service:avd').chosen?.yes, "Virtual desktops can't be opened from outside the office.")
+  assert.equal(card(qs, 'service:inforcer').chosen?.yes, 'Inforcer users confirm their sign-in with MFA.')
+  // A saved No keeps its Yes line: switching back says what it brings back.
+  const use = runFixture(f).steps.find((s) => s.id === DIRECTION_STEP.use)!
+  const no = applyStepDecisions(f.mapping, { [DIRECTION_STEP.use]: { ...directionDecisionWith(use, 'service:sharepoint', { value: 'no', picked: [] }), at: AT } })
+  assert.equal(card(cards(no), 'service:sharepoint').chosen?.yes, "People can't open SharePoint or OneDrive files from outside the office.")
+  // Everyone works remotely: the office blocks don't apply, so Yes keeps nothing and says nothing.
+  const devices = runFixture(f).steps.find((s) => s.id === DIRECTION_STEP.devices)!
+  const remote = applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionWith(devices, 'officeNetwork', { value: 'remote', picked: [] }), at: AT } })
+  assert.equal(card(cards(remote), 'service:sharepoint').chosen?.yes, undefined)
+  assert.equal(card(cards(remote), 'service:inforcer').chosen?.yes, 'Inforcer users confirm their sign-in with MFA.', 'a card the office does not decide keeps its line')
+})

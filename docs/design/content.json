@@ -3329,7 +3329,8 @@
           "questions": {
             "services": {
               "avd": "Azure Virtual Desktop",
-              "sharepoint": "SharePoint and OneDrive from outside the office",
+              "$commentSharepoint": "F-068 (owner, 2026-09-27): the card asked \"SharePoint and OneDrive from outside the office\", and Yes kept a policy that blocks them outside the office. It names the choice Yes makes; the Yes line is the kept step's own notice (direction.ts noteServiceConsequences).",
+              "sharepoint": "Limit SharePoint and OneDrive to the office network",
               "azureManagement": "Azure portal, CLI or PowerShell for managing Azure",
               "inforcer": "Inforcer"
             },
