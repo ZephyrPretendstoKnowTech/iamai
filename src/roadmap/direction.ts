@@ -37,7 +37,7 @@
 //
 // Pure: no DOM, no network.
 import goals from '../../data/goals.json' with { type: 'json' }
-import { directionWords } from '../content/content.ts'
+import { directionWords, shared } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { list } from '../copy/statements.ts'
@@ -48,7 +48,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { detectServiceAccounts } from '../mapping/serviceAccounts.ts'
 import { personLabels } from '../names.ts'
 import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
-import { notPeopleIds, personAccounts } from '../derive/sets.ts'
+import { notPeopleIds, personAccounts, serviceAccountIdsOf } from '../derive/sets.ts'
 import { setState } from './lifecycle.ts'
 import { DEVICE_GOALS } from './deviations.ts'
 import { QUESTION_STEP } from './answers.ts'
@@ -137,7 +137,8 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     label: Q.mailDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
     suggested: pickable.length > 0 ? answer('some', pickable) : answer('none'),
     evidence: mailReview ? fillText(W.reopened, { answer: Q.accountOptions.none, evidence: mailSeen !== '' ? mailSeen : fillText(Q.mailDevices.seenPartial, { n: senders?.length ?? pickable.length }) }) : mailSeen,
-    chosen: { some: Q.mailDevices.consequence },
+    // None says what it does to the senders the scan saw (F-067).
+    chosen: { some: Q.mailDevices.consequence, ...(pickable.length > 0 ? { none: Q.mailDevices.chosenNone } : {}) },
     needsReview: mailReview,
     basis: senders === null ? 'unread' : pickable.length > 0 ? 'present' : 'absent',
   }))
@@ -150,7 +151,9 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     label: Q.partner.label, control: 'choice', options: optionsOf(Q.partner.options),
     suggested: answer(partnersUsed ? 'yes' : 'no'),
     evidence: partnerReview ? fillText(W.reopened, { answer: Q.partner.options.no, evidence: partnerSeen !== '' ? partnerSeen : Q.partner.seenPartial }) : partnerSeen,
-    chosen: { yes: Q.partner.consequence },
+    // Yes departs from the baseline, which asks partner and MSP technicians for MFA like any guest: the
+    // card says so beside the choice (F-041). No is the baseline's own version, and says what it does (F-067).
+    chosen: { yes: fillText((shared.deviation as { line: string }).line, { line: Q.partner.consequence, baseline: Q.partner.baseline }), no: Q.partner.chosenNo },
     needsReview: partnerReview,
     basis: partnersUsed ? 'present' : partners !== null && signInsRead(snapshot) ? 'absent' : 'unread',
   }))
@@ -166,8 +169,11 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
   // times (partial: signInActivity is licence-gated) still holds every account.
   const usersRead = snapshot.sources.users?.status === 'ok' || snapshot.sources.users?.status === 'partial'
   const candidates = detectServiceAccounts(snapshot, [...mapping.breakGlassUserIds, ...mapping.serviceAccountRejectedIds]).map((c) => c.id)
-  const shared = sharedDeviceUsers(snapshot).map((u) => u.id).filter((id) => !mapping.breakGlassUserIds.includes(id))
+  const sharedIds = sharedDeviceUsers(snapshot).map((u) => u.id).filter((id) => !mapping.breakGlassUserIds.includes(id))
   const setAside = mapping.breakGlassUserIds.length > 0 ? fillText(W.alreadySetAside, { names: mapping.breakGlassUserIds.map(nameOf).join(', ') }) : null
+  // Everyone working remotely leaves no office network to keep these accounts to: they get MFA like
+  // anyone (roadmap/deviations.ts serviceAccountsExclusionDue), and both cards say so (F-069).
+  const remote = savedAnswerOf('officeNetwork', mapping)?.value === 'remote'
   // What the scan saw; where the user rows were not read it holds no fact, and the card shows no evidence line.
   const seen = (words: { seen: string; seenOne: string; notSeen: string }, n: number): string => !usersRead ? '' : n > 1 ? fillText(words.seen, { n }) : n === 1 ? words.seenOne : words.notSeen
   return [
@@ -177,16 +183,16 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
       evidence: seen(Q.serviceAccounts, candidates.length),
       // None says what it does to "these accounts" only while there are some: found, or already picked.
       // With shared-device accounts picked, the restriction stays on the plan for them.
-      chosen: candidates.length > 0 || mapping.serviceAccountUserIds.length > 0 ? { none: (mapping.sharedDeviceUserIds ?? []).length > 0 ? Q.sharedDevices.note : Q.serviceAccounts.note } : null,
+      chosen: candidates.length > 0 || mapping.serviceAccountUserIds.length > 0 ? { none: (mapping.sharedDeviceUserIds ?? []).length > 0 ? Q.sharedDevices.note : Q.serviceAccounts.note, ...(remote ? { some: Q.sharedDevices.joinsRemote } : {}) } : remote ? { some: Q.sharedDevices.joinsRemote } : null,
       note: setAside,
     }),
     question('sharedDevices', ctx, {
       label: Q.sharedDevices.label, control: 'accounts', options: optionsOf(Q.accountOptions), pickedWith: 'some',
-      suggested: shared.length > 0 ? answer('some', shared) : answer('none'),
-      evidence: seen(Q.sharedDevices, shared.length),
+      suggested: sharedIds.length > 0 ? answer('some', sharedIds) : answer('none'),
+      evidence: seen(Q.sharedDevices, sharedIds.length),
       // Picked, they join the service-accounts group (owner, 2026-09-24): Jon's baseline has no policy of its own for them.
       // With everyone remote there is no office to keep them to (Phase 2d): they count as people.
-      chosen: shared.length > 0 || (mapping.sharedDeviceUserIds ?? []).length > 0 ? { none: Q.sharedDevices.note, some: savedAnswerOf('officeNetwork', mapping)?.value === 'remote' ? Q.sharedDevices.joinsRemote : Q.sharedDevices.joins } : null,
+      chosen: sharedIds.length > 0 || (mapping.sharedDeviceUserIds ?? []).length > 0 ? { none: Q.sharedDevices.note, some: remote ? Q.sharedDevices.joinsRemote : Q.sharedDevices.joins } : null,
     }),
   ]
 }
@@ -248,7 +254,8 @@ function officeNetworkQuestion(ctx: Context): DirectionQuestion {
     // Named locations not read: no evidence line (walk list 60). A remote answer
     // beside a location Entra trusts says what it does with it (walk list 61).
     evidence: read && trusted.length > 0 && savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote' ? fillText(Q.officeNetwork.savedRemoteUnused, { names }) : '',
-    chosen: Q.officeNetwork.chosen,
+    // Accounts picked in Identify Service and Shared Accounts then get MFA like anyone (F-069).
+    chosen: serviceAccountIdsOf(ctx.mapping).length > 0 ? { ...Q.officeNetwork.chosen, remote: `${Q.officeNetwork.chosen.remote} ${Q.officeNetwork.remoteAccounts}` } : Q.officeNetwork.chosen,
   })
 }
 

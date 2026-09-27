@@ -358,7 +358,9 @@ test('the office network asks one thing, an office or everyone remote; an old No
   // What each answer does, one line each.
   assert.match(q.chosen?.office ?? '', /Define the Trusted Network sets that up in Entra\.$/)
   // Phase 2d: the policies that only block sign-ins from outside it leave with it.
-  assert.match(q.chosen?.remote ?? '', /Define the Trusted Network leaves your plan, and so do the policies that only block sign-ins from outside it\.$/)
+  assert.match(q.chosen?.remote ?? '', /Define the Trusted Network leaves your plan, and so do the policies that only block sign-ins from outside it\./)
+  // The demo has service and shared-device accounts picked: the remote line says they get MFA like anyone (F-069).
+  assert.match(q.chosen?.remote ?? '', /Your service and shared-device accounts then count as people and get MFA like anyone\.$/)
 })
 
 
