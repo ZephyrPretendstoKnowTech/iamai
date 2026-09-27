@@ -1,0 +1,4152 @@
+{
+ "generated": "2026-09-27",
+ "main": "d9516a22",
+ "rubric": "see 2026-09-27-low-hanging-fruit.md",
+ "items": [
+  {
+   "id": "F-061",
+   "title": "The step 'AI Info' copy carries sign-in addresses, object IDs and the tenant name with no purpose line, warning or redaction, though Export says every copied prompt is masked",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": true,
+   "round": 1,
+   "fix": "Restore the Callout: {tab === 'ai' && <Callout kind=\"warning\">{W.aiWarning}</Callout>} above the AI Info preview and in the expanded overlay. Add a test that AI Info shows the warning, which exportGuard's invariant needs.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/exportGuard.test.ts"
+   ]
+  },
+  {
+   "id": "F-068",
+   "title": "'SharePoint and OneDrive from outside the office: Yes' keeps a policy that blocks SharePoint outside the office",
+   "severity": "Major",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": true,
+   "round": 1,
+   "fix": "Reword the label to the real choice, for example 'Keep SharePoint and OneDrive to the office network'. Give Yes an effect line ('Company files open only from your office network'). Check that doesntApplyAnswered, which quotes the label, still reads. Saved answers are keyed service:sharepoint yes/no, so no migration.",
+   "files": [
+    "docs/design/content.json",
+    "src/roadmap/direction.ts",
+    "src/ui/surfaces/directionStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-070",
+   "title": "'Recurring travel countries' looks like an allowlist but does nothing, so travellers will be blocked",
+   "severity": "Major",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": true,
+   "round": 1,
+   "fix": "Reword text and effect so the consequence shows before any pick: 'Sign-ins from these countries stay blocked. Add a country to Work countries before someone travels there.' The owner should choose the traveller guidance. Folding recurring destinations into the allowed list instead would be M.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/sectionThreeTasks.ts"
+   ]
+  },
+  {
+   "id": "F-004",
+   "title": "Estimated rollout is '9 weeks' on Connect and '5 weeks / Est. Oct 29' on the Plan, and the finish tip credits a step dated Oct 5",
+   "severity": "Major",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 4,
+   "frozen": false,
+   "round": 1,
+   "fix": "(1) demoFacts.ts: pass { startDate: proposedStart(d.mapping.displayTimeZone) } to runFixture, so the Connect tile and the Plan start from the same day. Test: demoFacts().weeks equals the Plan's planWeeks. (2) finish.ts forecastLengthSentence: when statedEstimate equals the cleanup end and falls after the last forecast span, give the Cleanup reason ('the Ongoing Checks and Cleanup rows follow the rollout and end with {step}'). This needs a new content key under critical. Test: the demo tip names Align Policy Names.",
+   "files": [
+    "src/ui/demoFacts.ts",
+    "src/derive/finish.ts",
+    "docs/design/content.json",
+    "src/derive/estimatedFinish.test.ts"
+   ]
+  },
+  {
+   "id": "F-071",
+   "title": "Every 'Not counted' link on MFA Readiness opens an empty list",
+   "severity": "Major",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 4,
+   "frozen": false,
+   "round": 1,
+   "fix": "When show is notActive or a Kind (or no counted row matches), render one flat list of view.rows.filter(r => r.state === null && matches(r)). Its reason column is rowCells' state word (the explained reason or the kind), plus the existing dormant link. Optionally give each explained reason its own hash.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/readinessTiles.test.ts"
+   ]
+  },
+  {
+   "id": "F-160",
+   "title": "Forget this tenant deletes the whole plan on one click: no confirmation, no list of what goes, no offer to save the plan file, no undo and no message afterwards",
+   "severity": "Major",
+   "surface": "Shell",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 4,
+   "frozen": false,
+   "round": 1,
+   "fix": "Clicking Forget shows an inline confirm in the menu (role=alertdialog). It names the tenant and what goes: the scan, answers, deferrals and dates. Buttons: 'Save a plan file first' (#/export), Cancel (focused), and a danger-styled 'Forget {tenant}'. After it runs, close the menu and show a Connect status line '{tenant} forgotten on this browser' (session flash). New pages.app.shell keys. Test in sessionTruth.test.ts that Forget needs a second action.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "src/ui/actions.ts",
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/app.css",
+    "docs/design/content.json",
+    "src/ui/sessionTruth.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-B3",
+   "title": "Demo MFA Readiness shows banned 'couldn't read' phrasing",
+   "severity": "own",
+   "surface": "Readiness",
+   "origin": "own",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 4,
+   "frozen": false,
+   "round": 1,
+   "fix": "Fix the source in the demo: give that fixture person a method list that was read. For real tenants, say what is known and the next step, e.g. title 'Scan again to finish these people' and 'The next scan reads {n} person’s method list.'",
+   "files": [
+    "docs/design/content.json",
+    "src/roadmap/fixtures/index.ts",
+    "src/ui/surfaces/readinessCells.ts",
+    "src/ui/surfaces/readinessNotRead.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-W1",
+   "title": "Plan board names no next action (no 'Next up')",
+   "severity": "own",
+   "surface": "Plan",
+   "origin": "own",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 4,
+   "frozen": false,
+   "round": 1,
+   "fix": "Under the tiles, one line 'Next: {n.n} {title} →' linking #/plan/<id> to the first Ready row in All work order (boardOrderOf over items). Hidden when nothing is Ready, where nothingReady already speaks.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/planPage.test.ts"
+   ]
+  },
+  {
+   "id": "F-007",
+   "title": "One click on the × beside an emergency account saves at once, survives reload, removes a plan step and turns the exclusions advice into 'remove Break-glass 2', with no Done, confirmation or undo",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": true,
+   "round": null,
+   "fix": "Give Picker a holdRemovals (or confirmRemove) prop, used only by the emergency-accounts picker. With it, × updates the chips and shows Done, and nothing saves until Done, or a confirm names the effect ('changes the exclusions advice'). Word the rail by state ('Search for an account, select it, then select Done'). Test that a removal does not save until Done.",
+   "files": [
+    "src/ui/components/Picker.tsx",
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/emergencyAccounts.test.ts"
+   ]
+  },
+  {
+   "id": "F-016",
+   "title": "Troubleshooting opens with 'IAMAI is about to configure…' in internal runbook language, and the section the step points to is last of eight",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": true,
+   "round": null,
+   "fix": "Drop 'candidate-treated-as-decision' and 'report-only-confusion'. Rewrite 'object-state-passes-drill-fails' in the user's voice and regenerate the registry. Put TAP first ([tap, ...scenarios]). Change the three 'Minimize' close labels to 'Close'. Test the scenario order and the wording.",
+   "files": [
+    "docs/implementation-content/s-prereq-break-glass/s-prereq-break-glass/CONTENT.md",
+    "src/content/implementation/registry.generated.json",
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-057",
+   "title": "After a cancelled or failed Microsoft sign-in, the Sign in button spins forever, ignores clicks, and the admin-consent guidance disappears",
+   "severity": "Major",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": false,
+   "round": null,
+   "fix": "Make authReady = Promise.all([initAuth().catch(() => null), warmAuthority()]) so an error return still readies the button; App.tsx:306 keeps classifying the error. Add a .catch at Connect.tsx:352. Keep note: W.account.note on the cancelled and failed states. Test in msal.test.ts and connectSignedOut.test.ts.",
+   "files": [
+    "src/graph/msal.ts",
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/scan/connectView.ts",
+    "src/graph/msal.test.ts",
+    "src/ui/scan/connectSignedOut.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-R1",
+   "title": "MFA Readiness 'Nobody needs action' while a person lapses in 7 days",
+   "severity": "own",
+   "surface": "Readiness",
+   "origin": "own",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": false,
+   "round": 1,
+   "fix": "Count lapsing people in Needs action: needsAction becomes !isReady(state) || lapsing.includes(id), with the same change in needsActionWords. Show the empty text only when both are zero.",
+   "files": [
+    "src/derive/mfaReadiness.ts",
+    "src/ui/surfaces/readinessCells.ts",
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/readinessPhase2.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-W2",
+   "title": "Rows say 'Waiting on your answers' without naming the question",
+   "severity": "own",
+   "surface": "Plan",
+   "origin": "own",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": false,
+   "round": null,
+   "fix": "Add directionWords.waitingIn, 'Waiting on your answers in {step}', and return it with titleOf(r.reason.id) in holdLabelOf. On Hold then groups by the question's step, which is truer.",
+   "files": [
+    "src/ui/surfaces/planBoard.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/planLanesHolds.test.ts",
+    "src/ui/surfaces/enforcedLanes.test.ts",
+    "src/ui/surfaces/directionStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-161",
+   "title": "Two open tabs silently overwrite each other: the tab that saves last replaces the whole plan, even undoing a plan file the other tab just loaded",
+   "severity": "Major",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "M",
+   "risk": "high",
+   "reward": 4,
+   "frozen": false,
+   "round": null,
+   "fix": "Minimal and safe: after each plan/mapping save, Load a plan file and Forget, post {tenantId} on BroadcastChannel('iamai-plan'). Another tab for the same tenant then enters a stale state: readOnly (planData skips persisting) with a banner 'This plan changed in another tab. Reload to see it.' and a Reload button (new keys). Per-field merging is out of scope. Test: planData stale flag blocks persist.",
+   "files": [
+    "src/ui/surfaces/planData.ts",
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/Export.tsx",
+    "src/ui/actions.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-006",
+   "title": "A saved change freeze has no visible effect on the plan rows, the finish tip, the PDF or the calendar",
+   "severity": "Major",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "L",
+   "risk": "high",
+   "reward": 4,
+   "frozen": true,
+   "round": null,
+   "fix": "Engine: make the forecast (roadmap/forecast.ts) push every turn-on or enforcing estimate and every Cleanup day out of the freeze and the working day before it, as schedule.ts placement does. Use the existing critical.freeze reason in the tip when the freeze moved the finish. Cheap interim (XS, low risk): while a pause is saved, add a line under the tiles: 'Paused {from} to {to}: nothing is turned on in this window.'",
+   "files": [
+    "src/roadmap/forecast.ts",
+    "src/derive/finish.ts",
+    "src/ui/surfaces/Plan.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/estimatedDates.test.ts"
+   ]
+  },
+  {
+   "id": "F-003",
+   "title": "Tile counts and state words don't match the rows, and the legend defines only half of them: 'Needs your input 6' against 11 'Waiting on your answers' rows, an 'Observing' tile whose row says 'On Hold · Report-only', and undefined 'Correct' and 'Enforced'",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Content only: add legend entries for Create, Correct, Decision, Review, Turn on and for the chips ('Enforced' / 'Report-only' = what the policy is set to today). Rename summary.observing to 'In report-only' so it matches the chip, and add a tip on Needs your input: 'questions you can answer now; rows marked Waiting on your answers open once they are saved'. Naming the Direction step on the row ('Waiting on your answers in {step}', holdLabelOf via titleOf(r.reason.id)) also changes step Readiness tiles, so it needs a yes and is a separate item.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/Plan.tsx"
+   ]
+  },
+  {
+   "id": "F-044",
+   "title": "The MFA Readiness headline reads as if 29 people and a guest are ready",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Change the content to '{ready} of {total} ({cohort}) are ready for phishing-resistant sign-in.' This keeps the whole count after 'of' as the owner's comment asks. Update the headline test.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/readinessWords.test.ts"
+   ]
+  },
+  {
+   "id": "F-080",
+   "title": "The home page never says 'read-only' or names MFA and Conditional Access beside its buttons, and its no-change promise sits below the fold",
+   "severity": "Minor",
+   "surface": "Home",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Make heroMeta[1] read 'Read-only: you review and make the changes', or add 'Read-only' as its own item. Rebuild home and update home.test.ts.",
+   "files": [
+    "docs/design/content.json",
+    "src/home.test.ts"
+   ]
+  },
+  {
+   "id": "F-094",
+   "title": "On first view nothing says where to start; the guidance is hidden behind 'How to use this plan +'",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": 1,
+   "fix": "Open 'How to use this plan' on the first visit per tenant: useState(() => no localStorage 'iamai.howSeen.<tenant>' flag), set the flag on close, and wrap storage in try/catch. No new words. Test: planPage.test asserts the default is open when the flag is absent.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planPage.test.ts"
+   ]
+  },
+  {
+   "id": "F-143",
+   "title": "Demo banner scrolls away while the header stays, so a scrolled plan no longer says it is sample data",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "When isDemo(), render a compact 'Sample data' chip in header .right (new key pages.app.shell.demoMarker), so it sticks with the header on Plan. Avoid making the banner sticky: that would break the scroll-margin-top anchors (app.css:1048). Test: shell source assertion in demo.test.ts.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "src/ui/app.css",
+    "docs/design/content.json",
+    "src/ui/demo.test.ts"
+   ]
+  },
+  {
+   "id": "F-144",
+   "title": "The demo's 'Initial scan / Follow-up scan' switch is unexplained, and its styling is backwards: the selected option looks like a link and the other barely looks clickable",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Restyle .demo-snapshots as a two-segment control: a border, the selected segment filled brand-soft, the unselected one clearly a button. Add one visible phrase from a new key, e.g. 'Two scans of the same sample tenant, weeks apart'. The aria-pressed semantics are already right. CSS and content only.",
+   "files": [
+    "src/ui/app.css",
+    "src/ui/shell/AppShell.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-168",
+   "title": "Plan, MFA Readiness and Export in the header stop working before the first scan and during every rescan, look the same as live links, and say 'after the first scan' even when a plan exists",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "AppShell.tsx:225: tabsOn = state === 'scanned' || (state === 'scanning' && snapshot !== null). This also restores aria-current on Plan during a rescan. Optional: make the disabled tabs visibly distinct (e.g. opacity/strike). Test in sessionTruth or a new shell test.",
+   "files": [
+    "src/ui/shell/AppShell.tsx"
+   ]
+  },
+  {
+   "id": "F-184",
+   "title": "A printed plan made from an old scan drops the screen's 'Scan again before acting' warning",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "In the brief cover, add the scan date (reuse app.print.cover.scanned + absoluteDate(scanAt)), and when scanAgeDays(scanAt) >= STALE_SCAN_DAYS print SHELL.staleEvidence under the status line. Optionally add a scan-date line to each ICS description.",
+   "files": [
+    "src/ui/surfaces/PrintPlan.tsx",
+    "src/ui/surfaces/leadershipPrint.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-F1",
+   "title": "Connect sample card '9 weeks' vs sample plan 'Est. Oct 29'",
+   "severity": "own",
+   "surface": "Connect",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": 1,
+   "fix": "Count weeks from snapshot.asOf rather than schedule.start, since the facts are computed at build time and a date would go stale. The label could read 'to finish from today'.",
+   "files": [
+    "src/ui/demoFacts.ts",
+    "src/ui/scan/connectView.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/connectAnatomy.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-W3",
+   "title": "Legend omits suffixes and tags",
+   "severity": "own",
+   "surface": "Plan",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Add two legend items. 'Ready · Create / Correct / Turn on / Decision / Review': the kind of next action. 'Report-only / Enforced': the policy's state in the tenant today, so On Hold beside Enforced means the policy is on but the step still has work. Move 'Legend' into content.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/Plan.tsx"
+   ]
+  },
+  {
+   "id": "F-041",
+   "title": "Exempting partner and MSP technicians is suggested 'Yes', and the baseline's version is not shown at the decision",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Add a content key questions.partner.baseline (for example: the baseline's version asks partner and MSP technicians for MFA like any guest and blocks them outside your work countries). Show it as the card's note, or add it to chosen.yes, while the answer is Yes. Batch with F-067 and F-068.",
+   "files": [
+    "docs/design/content.json",
+    "src/roadmap/direction.ts",
+    "src/ui/surfaces/directionStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-062",
+   "title": "'Require Phishing-Resistant MFA for Admins' says 'change the Directory roles selection as listed below. Select (45)', and the list leaves out Global Administrator",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Reword rolesChangeInclude and rolesChangeExclude: 'Under Users → Include → Directory roles, tick each role under Select and untick each under Clear; leave every other role as it is.' Test on the demo admins correction.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/policyTasks.ts"
+   ]
+  },
+  {
+   "id": "F-063",
+   "title": "'Set up Windows Hello for Business' rows have no how-to in the Plan step they link to",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Add one conditional line to the s-verify-mfa steps: 'Anyone named for Windows Hello for Business: on their joined Windows PC, Settings → Accounts → Sign-in options, set up a PIN, fingerprint or face.' Take the words from methodGuides and fill the names from the readiness next-step list. Test that the line appears only when someone's next step is WHfB.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/stepVars.ts",
+    "src/ui/surfaces/prepareSteps.ts"
+   ]
+  },
+  {
+   "id": "F-195",
+   "title": "The 'masked' calendar and prompts file keep guest sign-in addresses in full (43 in the calendar at 5,000 seats)",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Add '#' to the local-part class: /[A-Za-z0-9._%+'#-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/g. Add a test that a #EXT# guest UPN masks whole in exportText for .ics and .md. The regex is shared with diagnostics, and the change only masks more.",
+   "files": [
+    "src/redact.ts",
+    "src/ui/exportGuard.test.ts",
+    "src/redactSnapshot.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-ACCEPT",
+   "title": "Owner ask: the Completed 'Difference Accepted' panel repeats fluff",
+   "severity": "own",
+   "surface": "Step",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": 1,
+   "fix": "Delete ContentStep.tsx:1588 and :1590. Drop covers from AcceptPanel.accepted (acceptPanel.ts:94, :246) and the 'covers' key. Update acceptPanel.test.ts:73 and remove .accepted-covers from app.css:2531. Keep the pre-acceptance caption unless the owner says otherwise. Frozen only because it changes Completed steps (e.g. 4.3); the owner asked for it.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/surfaces/acceptPanel.ts",
+    "src/ui/surfaces/acceptPanel.test.ts",
+    "docs/design/content.json",
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "OWN-W6",
+   "title": "8.1 Alert on Emergency Account Sign-ins waits until after the rollout",
+   "severity": "own",
+   "surface": "Plan",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Remove 'alerting' from AFTER_ROLLOUT. 8.1 stays in section 8 but reads Ready · Create now, and the forecast dates it with the rest (forecast.ts:489). Move the label to content.json.",
+   "files": [
+    "src/ui/surfaces/planBoard.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/ongoing.test.ts",
+    "src/ui/surfaces/sectionEightFixes.test.ts"
+   ]
+  },
+  {
+   "id": "F-092",
+   "title": "A 'Ready' step is dated a month out and sits at the very bottom of the plan",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "high",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Owner picks one of two fixes. (a) Add 'namedExclusions' to AFTER_ROLLOUT so the row reads 'On Hold · After security rollout', which agrees with its date. (b) Keep it Ready and give it the Ready-review date, i.e. the phase's first day, in cleanupPhaseFor, so the forecast stays one source. Either way, update readyRowTruth/sectionEightFixes tests.",
+   "files": [
+    "src/ui/surfaces/planBoard.ts",
+    "src/roadmap/cleanupPhase.ts",
+    "src/ui/surfaces/cleanupExport.ts",
+    "src/ui/surfaces/sectionEightFixes.test.ts"
+   ]
+  },
+  {
+   "id": "F-021",
+   "title": "The printed plan omits the pinned baseline version, the deviations from baseline and the 'In the baseline, not in this plan' list",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Destructure baselinePin and add '(commit {pin7})' to the meta through a content key. Pass c.baselinePolicies into PrintPlan and render notInPlanRows(...) under 'Not in this plan' with the footer's own notInPlan/notInPlanRow words. Leave per-policy deviations on screen, since the briefing is for a manager.",
+   "files": [
+    "src/ui/surfaces/PrintPlan.tsx",
+    "src/ui/surfaces/Export.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/leadershipPrint.test.ts"
+   ]
+  },
+  {
+   "id": "F-058",
+   "title": "'1 section was not read in full … check what is listed under Scan' leads to a row that explains nothing",
+   "severity": "Minor",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Give the Scan step its own lead that says what is known and the next step, with no 'couldn't read' wording, for example: 'Registered methods: {n} people not read; MFA Readiness lists them and the next scan retries.' The strip keeps 'listed under Scan'. Link each row: registeredMethods to #/readiness, the other sections to How's permissions.",
+   "files": [
+    "src/ui/scan/connectView.ts",
+    "src/ui/surfaces/Connect.tsx",
+    "docs/design/content.json",
+    "src/ui/scan/connectView.test.ts"
+   ]
+  },
+  {
+   "id": "F-075",
+   "title": "Jamie Brown's row says to use a passkey that the drawer says will stop working",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "rowNote adds a note when a held credential has afterStep3 === 'no', e.g. 'Not on Configure Passkey Authentication’s list: register an approved key before it’s applied'. The note also goes into the CSV Next step. Rename 'Step 3' in panel.step3.* and panel.why.replaceKey to the step's title.",
+   "files": [
+    "src/ui/surfaces/readinessCells.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/readyRowTruth.test.ts"
+   ]
+  },
+  {
+   "id": "F-077",
+   "title": "'Summarise this plan for a non-technical business owner' prompt is grounded only on five cleanup items, with no MFA step in it",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Ground Summarise on the same manager-level facts as the briefing. Pass Export.tsx a compact block per board row: number, title, lane word, When, and the manager/brief 'does' line (printPlan.ts briefOf output), plus the needs list. Do not use the 70k-char Explain blocks. Label each block with its step title, not 'Cleanup'.",
+   "files": [
+    "src/roadmap/prompts.ts",
+    "src/ui/surfaces/Export.tsx",
+    "src/exports.test.ts"
+   ]
+  },
+  {
+   "id": "F-116",
+   "title": "Search leaves matches hidden in collapsed groups and gives a dead-end empty state",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Open groups and sub-groups when q !== ''. Add credential names to searchText. When q is set, show is not 'all' and nothing matches, add a 'Search everyone' button that selects 'all' (new content key).",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/readinessCells.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-162",
+   "title": "The Account menu explains neither action on screen, hides who is signed in to which tenant, and styles the destructive item like Sign out",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Do this in the same AccountMenu change as F-160/F-163. Add a menu header '{username} · {tenant}', a one-line visible helper under each item (Sign out: 'Your plan stays in this browser'; Forget: reuse the forgetTooltip text), a separator before Forget, and danger styling for it. New keys signOutHelp and menuHeader.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "src/ui/app.css",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-171",
+   "title": "When an admin has to act (consent or a missing role), IAMAI names the need but gives the user nothing to hand to that admin",
+   "severity": "Minor",
+   "surface": "Connect",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "On the consent and role states, add 'Copy a request for your admin'. It copies a new content template: the app name, the consentRows names or Global Reader, why IAMAI needs them, and for consent https://login.microsoftonline.com/{domain or organizations}/adminconsent?client_id=<msal clientId>. Add a cancelled lead: 'Nothing was granted or changed.' Everything stays read-only.",
+   "files": [
+    "src/ui/scan/connectView.ts",
+    "src/ui/surfaces/Connect.tsx",
+    "docs/design/content.json",
+    "src/ui/scan/connectSignedOut.test.ts"
+   ]
+  },
+  {
+   "id": "F-010",
+   "title": "The AI Info brief for 'Configure Emergency Exclusions' says no exclusions group exists, while the same card shows the group as selected and verified",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "For the exclusions step with a chosen group, use the package's verificationRequired or partial AI block ('Policies still missing the exclusion: …'). Or drop the package's own State line when the step's ex.exclusionsGroup is set. In aiGrounding, draw What to do as numbered lines, not joined with ' | '. Test that the brief never says 'no confirmed exclusions group' when the rail names one.",
+   "files": [
+    "src/ui/surfaces/stepPackage.ts",
+    "src/ui/surfaces/aiGrounding.ts",
+    "src/roadmap/artifactLines.ts",
+    "src/ui/surfaces/aiGrounding.test.ts"
+   ]
+  },
+  {
+   "id": "F-023",
+   "title": "Loading a plan file silently replaces current decisions and recorded deferrals, with no preview, warning or summary of what came back",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "After the checks pass, keep the parsed record in state and show an inline confirm: what the file holds against the current record (decisionsOf: answered decisions, deferred steps with their reasons, completions; the file's createdAt), with 'Replace' / 'Cancel' and a 'Save a plan file first' button. Call importPlanRecords only on Replace. After loading, announce 'Loaded the plan file saved <date>'. The words go in new app.export keys.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "docs/design/content.json",
+    "src/roadmap/planTenant.test.ts"
+   ]
+  },
+  {
+   "id": "F-037",
+   "title": "The Email tab's single Copy button copies the staff, admin and follow-up emails as one blob, signed 'IT', in a code-style monospace box",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Give each message its own copy box, with subject and body. Replace 'Contact IT' with the signature or a helpdesk variable. Reword the admin line: 'Admins still without a passkey or security key: {list}.' Add a comms test.",
+   "files": [
+    "src/ui/surfaces/stepBody.ts",
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/comms.test.ts"
+   ]
+  },
+  {
+   "id": "F-040",
+   "title": "Approving a decision jumps to the next one while the 'steps removed' note sits off-screen, focus is lost, and a removed review step is never listed",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "After the scroll at Plan.tsx:163, focus the opened row's heading (tabIndex -1). Keep the change line visible near the opened row until the next action, and append to it instead of replacing it inside one visit. Tracing a vanished Cleanup row under Doesn't apply here is a separate engine change (M, high risk); leave it out. Do not put the line inside the approved Direction cards: that would reach frozen screens.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planChanges.ts",
+    "src/ui/surfaces/planPage.test.ts"
+   ]
+  },
+  {
+   "id": "F-051",
+   "title": "Opening a step replaces the history entry, so Back skips the plan or leaves IAMAI, and the demo's Follow-up scan resets on reload",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Plan.tsx:170/460: pushState instead of replaceState. Back then fires hashchange, and the existing onHash handler (Plan.tsx:141) reopens or closes the step. Demo: before the first demoTenant() call, read the stored DemoSnapshotState.current and seed demoWeek2 from it, or keep the choice in sessionStorage. Test: pure check that openStep pushes; demo.test for restoring the selection.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/App.tsx",
+    "src/ui/demo.ts"
+   ]
+  },
+  {
+   "id": "F-056",
+   "title": "You can mark your own admin account as a printer: it is the first search result, nothing warns, and approving takes it out of admin MFA",
+   "severity": "Major",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "In pickerUniverse, for mailDevices and the D2 serviceAccountsGroup universe, give administrators and the operator (derive/operator.ts operatorUserId, plus the snapshot's role holders) a why line and a chip badge from new keys, for example 'Administrator · your account'. Sort signalled accounts first. Add a reason line under Approve answers when a picked account is an admin or the operator.",
+   "files": [
+    "src/ui/surfaces/pickerRows.ts",
+    "src/ui/surfaces/DirectionQuestions.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/pickerPrefill.test.ts"
+   ]
+  },
+  {
+   "id": "F-067",
+   "title": "Confirm What You Use explains only one direction of each choice, so the other answer's effect is invisible, including an MSP lockout risk",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Add keys serviceKeep ('Keeps {steps} on your plan.'), partner.chosenNo and a mail-device None line, and fill chosen for every option. Add a caution key shown when the answer is No or None while the question's basis is 'present'. Batch with F-041 and F-068.",
+   "files": [
+    "src/roadmap/direction.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/directionStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-073",
+   "title": "'Couldn't read' has no usable next step: 'Nothing to do' stays after a rescan",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "For a person whose method list wasn't read, show the Plan's own line ('Set up a passkey in Microsoft Authenticator') and state what is known: the devices seen. Retitle the group to an action, e.g. 'Check their sign-in methods', with the Entra path Users → person → Authentication methods. Drop the 'couldn't read' words. personNext skips Unknown rows, so the Plan is unaffected.",
+   "files": [
+    "src/ui/surfaces/readinessCells.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/readinessNotRead.test.ts"
+   ]
+  },
+  {
+   "id": "F-095",
+   "title": "The demo's Follow-up scan gives different results on repeat visits and shows the Initial scan's timestamp",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Anchor the demo clock once: store an anchor instant in DemoSnapshotState on first entry and compute offset from it for both snapshots. Give the follow-up a later scan by shifting week2 by +7 days over the anchor, or leave that out if fixture windows break. Test: calling demoTenant twice gives identical snapshots and the same completed count.",
+   "files": [
+    "src/ui/demo.ts",
+    "src/ui/App.tsx",
+    "src/ui/demo.test.ts"
+   ]
+  },
+  {
+   "id": "F-109",
+   "title": "No baseline version shown next to the step or the 'Differs from the Baseline' panel",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Add a content key such as acceptDeviation.baseline, 'Baseline: Defense in Depth, pinned {commit}', and render it beside the Differs panel label and inside the Difference Accepted record. It could take the place of the 'Covers {items}' line the owner wants removed. Display only; the record's shape does not change.",
+   "files": [
+    "src/ui/surfaces/acceptPanel.ts",
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-169",
+   "title": "After a rescan fails, Plan, MFA Readiness, Export and Inventory never say so; only Connect explains that the last full plan was kept",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "In ScanLine, when state==='done' and gaps.length>0 on non-Connect routes, render one role=status line from a new content key with a Connect link: 'Your latest scan didn't finish, so this plan is still from {date}. Details on Connect.' Say the fact and the next step, never 'couldn't read'. Test in scanReturn/footer tests.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "docs/design/content.json",
+    "src/ui/shell/scanReturn.test.ts"
+   ]
+  },
+  {
+   "id": "F-186",
+   "title": "Connect says 'Ready to plan' for a 40-day-old scan while every other page says to scan again, and the warning is a small grey line that never escalates",
+   "severity": "Minor",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Pass the scan age into scanTile 'complete'. At STALE_SCAN_DAYS or more, add a caveat ('This scan is {days} days old. Scan again before acting on it.') with tone 'wait', so the strip no longer reads Ready unqualified. In AppShell, fill the age into staleEvidence, link it to Scan again (#/connect), and use a stronger key past 30 days.",
+   "files": [
+    "src/ui/scan/connectView.ts",
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/shell/AppShell.tsx",
+    "docs/design/content.json",
+    "src/ui/scan/connectView.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-W5",
+   "title": "5.9 Reset Passwords for Medium-Risk Users has no path forward",
+   "severity": "own",
+   "surface": "Step",
+   "origin": "own",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Add BLOCKED_LINE entries for user-risk and user-risk-medium, e.g. 'Report-only would have asked {names} to change their password. Have each sign in and change it, or review and dismiss the risk in ID Protection, then scan again.' Add a sign-in-risk variant. Clearing the gate on remediation would be a separate engine change.",
+   "files": [
+    "src/roadmap/evidence.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/riskAndSessions.test.ts"
+   ]
+  },
+  {
+   "id": "F-036",
+   "title": "'Configure Passkey Authentication' names one account as affected and a different account as the one that would be locked out",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "high",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Make one reading of the at-risk accounts: either the card also lists lockedOut, or strandedSentence reads the card's set. Pluralise 'those accounts' by count. Test that the card and the sentence name the same accounts on the demo.",
+   "files": [
+    "src/roadmap/emergencyJourney.ts",
+    "src/ui/surfaces/emergencyPasskeyTasks.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-177",
+   "title": "The Plan tells the signed-in admin, the only Global Administrator, to disable their own account as dormant",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "high",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Leave input.operatorUserId out of `dormant` at generate.ts:1416: the account that just ran the scan is active by definition. Alternatively keep it but tag it 'you, signed in now' and offer no disable line. Test with ?operatorDormant: Dormant does not list u-1.",
+   "files": [
+    "src/roadmap/generate.ts"
+   ]
+  },
+  {
+   "id": "OWN-B1",
+   "title": "Home shows no product image and undersells the output",
+   "severity": "own",
+   "surface": "Home",
+   "origin": "own",
+   "status": "present",
+   "effort": "M",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Words now (XS): name the outputs in workLead or siteLine (a dated plan, exact changes per step, a leadership briefing). Image (M): an owner-approved pack revision with one demo Plan-board screenshot, then update the manifest hash and build-home.",
+   "files": [
+    "scripts/build-home.ts",
+    "docs/design/content.json",
+    "docs/design/approved/anatomy/home-v2.html",
+    "docs/design/approved/manifest.json",
+    "src/home.test.ts"
+   ]
+  },
+  {
+   "id": "F-031",
+   "title": "After the 'Ready now' tile is clicked, the Ready tab stays selected even while other tiles show On Hold or Completed rows",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "In selectSummary, when a filter is set, also setTab(ALL_WORK_TAB), and have 'Show the full plan' do the same. The Ready tile keeps setting 'ready'. Test in planUsability.test.ts: after Ready tile, then Completed tile, the active tab is All work and togglesOf reads completed=true.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planUsability.test.ts"
+   ]
+  },
+  {
+   "id": "F-032",
+   "title": "'Show completed' and 'Show deferred' start on, so clicking them hides rows under an unchanged label",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Switch the label on state: shows.completed ? 'Hide completed' : 'Show completed' (same for deferred), with the words added beside BOARD's or in content. Drop aria-pressed if the label now carries the state, or keep the label fixed as 'Completed' with a check-style pressed look. Test the label follows togglesOf.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planBoard.ts"
+   ]
+  },
+  {
+   "id": "F-033",
+   "title": "Three excluded baseline policies give no reason, and baseline names appear only in collapsed sections",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add two REASONS entries (/\\bAGENT\\b/i -> 'agents'; /Admin Portal/i -> 'adminPortal') and two content keys with owner-approved words, e.g. agents: 'Controls for AI agent identities, a Microsoft preview. Not in this plan yet.' adminPortal: 'Blocks admin portals for everyone but admins. Held out of this plan for now.' Test: no demo row reads generic.",
+   "files": [
+    "src/derive/notInPlan.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/doesntApply.test.ts"
+   ]
+  },
+  {
+   "id": "F-034",
+   "title": "At 1024px wide the plan tabs overlap ('Up Next 8On Hold') and the On Hold count is cut off",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Either raise the stacking breakpoint for .plan-controls to about 1180px (search on its own row), or set .tabs.view-tabs grid-auto-columns: minmax(max-content,1fr) and let .plan-search shrink first (minmax(160px,1fr)). Add a responsive.test.ts assertion on the rule.",
+   "files": [
+    "src/ui/app.css",
+    "src/ui/responsive.test.ts"
+   ]
+  },
+  {
+   "id": "F-079",
+   "title": "Keyboard focus is invisible on every filled primary button in the light theme",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Light theme only: .btn-primary:focus-visible { box-shadow: 0 0 0 2px var(--canvas), 0 0 0 4px var(--brand-primary); } (an offset ring). Mirror it in home.css for the home 'Open IAMAI' button. Adjust accessibility.test.ts so it accepts the offset ring for .btn-primary. Frozen because the focus look of Approve answers and similar buttons changes on finished steps' screens (CSS focus state only, no layout change).",
+   "files": [
+    "src/ui/app.css",
+    "home/home.css",
+    "src/ui/accessibility.test.ts"
+   ]
+  },
+  {
+   "id": "F-081",
+   "title": "Connect's permission list gives no scope names and no link to How's full permission table",
+   "severity": "Minor",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Draw <code>{r.scope}</code> beside each name. End the disclosure with a link to #/how#permissions, adding the id to How's details and opening it on that hash. New content key for the link label. Batch with F-149.",
+   "files": [
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/surfaces/How.tsx",
+    "docs/design/content.json",
+    "src/ui/app.css",
+    "src/ui/scan/connectSignedOut.test.ts"
+   ]
+  },
+  {
+   "id": "F-083",
+   "title": "On Connect, keyboard focus reaches the permissions disclosure before the Sign in button",
+   "severity": "Minor",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Emit .connect-step-actions before .connect-step-body in the DOM and pin it with grid-column:3 and grid-row:1, including the narrow grid at app.css:4061, so nothing moves on screen. Or move the permissions details under the step's actions. Test the DOM order.",
+   "files": [
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/app.css",
+    "src/ui/scan/connectSignedOut.test.ts"
+   ]
+  },
+  {
+   "id": "F-088",
+   "title": "Plan empty states don't say which filter emptied the list and offer no way out: 'No steps match this search.' with nothing searched, and 'Nothing in this lane.'",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Build the empty line from the active filters: 'No {type} steps on {tab}' / 'No steps match “{q}”', plus a Clear filters button (setFocus(NO_FOCUS)). Give each tile its own empty line (e.g. input: 'Nothing needs your input right now.'), with words in content. Centre .plan-board-empty on the content column.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planBoard.ts",
+    "docs/design/content.json",
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-090",
+   "title": "Plan settings mixes instant-apply and Save, gives no confirmation, and says 'freeze' for 'Pause'",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Content: freezeNote 'No step is turned on during the pause or on the last working day before it.', plus a signature hint ('Signs the Tell your people emails in each step'). Move the hardcoded status words into content and show a brief 'Saved' after instant-apply fields (persistence==='saved'). Add +/− to the Settings link. Render Settings before How. Disable Cancel edits when !freezeDirty.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/planPage.test.ts"
+   ]
+  },
+  {
+   "id": "F-097",
+   "title": "In forced colours, the selected tab, pressed toggles and the Readiness bar disappear",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "In the forced-colors block: .tab[aria-selected='true'] and [aria-pressed='true'] get {border-bottom/outline: 2px solid Highlight; color: Highlight}; .readiness-bar span and .state-dot get {forced-color-adjust:none} or {border:1px solid CanvasText}. Extend accessibility.test.ts:329 to assert them.",
+   "files": [
+    "src/ui/app.css",
+    "src/ui/accessibility.test.ts"
+   ]
+  },
+  {
+   "id": "F-099",
+   "title": "'Plan settings' and 'How to use this plan' are links that act as toggles",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Change both to <button type=\"button\" className=\"link-button\" aria-expanded aria-controls>, keep the settingsLink ref (HTMLButtonElement) for focus return, and update accessibility.test.ts:453-455 to the button form.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/accessibility.test.ts",
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-112",
+   "title": "Defer dialog: focus starts on an icon named 'Cancel', and the disabled primary button gives no reason",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Pass the existing Close word as closeLabel for the rollout and doesnt-apply dialogs. Give the textarea autoFocus, required and aria-describedby pointing at a new 'A reason is required' hint key, shown while the reason is empty.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-115",
+   "title": "The Readiness CSV drops the Guest tag and gives no reason, department or last-seen date for each state",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "roleWord joins Admin and Guest ('Admin, Guest'). Add a 'Why' column = whyLine(r) to csvColumns and rowCells, so the page and Inventory CSVs change together.",
+   "files": [
+    "src/ui/surfaces/readinessCells.ts",
+    "docs/design/content.json",
+    "src/ui/csv.test.ts"
+   ]
+  },
+  {
+   "id": "F-118",
+   "title": "Printing Readiness silently omits the people in collapsed groups",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "const printing = usePrinting(); open every group and sub-group when printing, render their rows, and ignore limits while printing.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx"
+   ]
+  },
+  {
+   "id": "F-120",
+   "title": "The guest row has no real action and a contradictory 'best option'",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "For guest rows, panelDevices names Microsoft Authenticator (methodsInline.authenticator) or leaves out Best option. The guest's drawer and row link to Require MFA for Guests when that step is on the plan.",
+   "files": [
+    "src/ui/surfaces/readinessCells.ts",
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/mfaGuidance.test.ts"
+   ]
+  },
+  {
+   "id": "F-121",
+   "title": "Personal (registered) Windows devices get opposite advice about Windows Hello for Business",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "When builtInProof is set, label the fact 'Signs in with' (new panel key) instead of 'Best option', and name the credential's class. The label then describes what was seen and gives no advice.",
+   "files": [
+    "src/ui/surfaces/readinessCells.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-129",
+   "title": "The prompt list shows titles only; the 68,000-character prompt gives no size warning, and three steps are cut mid-instruction",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "In dataBlock, cut at the last '\\n' or ' | ' before PROMPT_BLOCK_MAX so whole lines survive. Show each prompt's length beside its title ('70k characters') through a content key.",
+   "files": [
+    "src/roadmap/prompts.ts",
+    "src/ui/surfaces/Export.tsx",
+    "docs/design/content.json",
+    "src/roadmap/promptInjection.test.ts"
+   ]
+  },
+  {
+   "id": "F-138",
+   "title": "Inventory's 'distinct users' note says Readiness can count more, but Readiness counts fewer (30 against 34)",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Rewrite the tip: every account with a record in the window, emergency, service and shared included. MFA Readiness counts only people and guests, so it can be lower. Sign-ins with no country are left out of By country. Move the string to content.json. Adding an 'Unknown' country row is optional.",
+   "files": [
+    "src/copy/inventory.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/InventoryPage.tsx"
+   ]
+  },
+  {
+   "id": "F-146",
+   "title": "No skip link: every page starts with the header, and the first Plan step is the 25th Tab stop",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Make the first child of .shell a visually-hidden-until-focus 'Skip to content' control (new key) whose click calls preventDefault and focuses main.page (tabIndex=-1). Add CSS .skip-link:focus to show it. Optional: a second skip to the step list on Plan.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "src/ui/app.css",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-148",
+   "title": "The theme stops following the computer's light/dark setting after the first visit",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Write localStorage only inside the toggle callback. With nothing stored, follow matchMedia('(prefers-color-scheme: dark)') and listen for its change event. theme.test.ts pins only the key name.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "src/ui/theme.test.ts"
+   ]
+  },
+  {
+   "id": "F-156",
+   "title": "Inventory heading outline skips a level and the info button is part of the heading",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Render an h2 with the InfoTip next to it, not inside it (a heading-row div). Make sub-table captions h3.",
+   "files": [
+    "src/ui/surfaces/InventoryPage.tsx",
+    "src/ui/app.css",
+    "src/ui/accessibility.test.ts"
+   ]
+  },
+  {
+   "id": "F-164",
+   "title": "The wrong-tenant message names only display names, so two tenants with the same name read 'made for Contoso Pty Ltd, and you are connected to Contoso Pty Ltd. Nothing was loaded.'",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "When plan.tenant.name equals tenantName, use a new key naming both primary domains (plan.tenant.domains[0] vs the snapshot's verifiedDomains[0]), or both tenant ids shortened to 8 characters.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "docs/design/content.json",
+    "src/roadmap/planTenant.test.ts"
+   ]
+  },
+  {
+   "id": "F-170",
+   "title": "During a rescan, Plan shows one small grey line that scrolls away, and nothing says the tiles and evidence may change",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": ".shell.shell-sticky .scan-line {position:sticky; top:var(--header); z-index:29; background:var(--canvas)}. Optional: prefix the line with a content key 'Rescanning: numbers update when it finishes' while lastScan exists.",
+   "files": [
+    "src/ui/app.css",
+    "src/ui/scan/ScanProgress.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "OWN-X1",
+   "title": "Export claims JSON/PowerShell are on each policy step",
+   "severity": "own",
+   "surface": "Export",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Reword: 'A policy's JSON and PowerShell are on its step in the Plan while it is still to create or correct.'",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/exportPhase2.test.ts"
+   ]
+  },
+  {
+   "id": "F-066",
+   "title": "Emergency access accounts can be picked as service or shared-device accounts, and the card that offers them says they are already out",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "In pickerUniverse, when stepId is PREREQ_STEP_ID.serviceAccountsGroup and the kind is accounts, drop mapping.breakGlassUserIds. Leave the emergency-account pickers alone. Unit test: searching 'Break' in the D2 universe returns nothing.",
+   "files": [
+    "src/ui/surfaces/pickerRows.ts",
+    "src/ui/surfaces/pickerPrefill.test.ts"
+   ]
+  },
+  {
+   "id": "F-100",
+   "title": "The admin-center instructions sit in an inner scroll box that hides the last steps, in the smallest text on the step",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "On the task-anatomy preview, set max-height:none and keep Expand. Raise the list to var(--t-3) and the Task select and label to var(--t-2). Check the Establish Emergency Access steps (frozen) and Prepare Your Team at 1440px.",
+   "files": [
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-104",
+   "title": "A key model added to the list is silently lost unless a second Save is pressed",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Save on Add and on Remove by calling onDecide with the new list, and delete the Save Additional Authenticators button. Add a role=status 'Saved' line. Move the strings into content.json. Test: an added model is still there after the step collapses and reopens.",
+   "files": [
+    "src/ui/surfaces/PasskeyModelDecision.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-108",
+   "title": "The service-accounts step says 'the accounts you picked' before anything was picked",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Say 'chosen' instead of 'you picked' in why and doneWhen, e.g. 'the service accounts chosen in Identify Service and Shared Accounts (suggested until you approve them)'. Do not hold the step on the decision, which is engine work.",
+   "files": [
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-114",
+   "title": "The account picker says '8 results' when more match, and already-picked accounts vanish from search",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Count shown.length. When it is over 8, use a new key 'Showing 8 of {n}: keep typing'. When the query matches only picked chips, show a new 'Already picked' key instead of No matches.",
+   "files": [
+    "src/ui/components/Picker.tsx",
+    "docs/design/content.json",
+    "src/ui/primitives.test.ts"
+   ]
+  },
+  {
+   "id": "F-152",
+   "title": "A decision row's due date has no 'Est.', so it reads like a completion date",
+   "severity": "Cosmetic",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Wrap both returns in fillText(schedulingWords.estimate, {date}). Add a withDirectionApproved(demo) case to WHEN_CASES so the 'every proposed day reads Est.' test covers Ready · Decision rows. Changes the date word on 6.x Countries' row and rail.",
+   "files": [
+    "src/ui/surfaces/planBoard.ts",
+    "src/ui/surfaces/boardColumns.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-I1",
+   "title": "Inventory is not in the top nav",
+   "severity": "own",
+   "surface": "Inventory",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add a Tab to #/inventory with SHELL.tabs.inventory after MFA Readiness (enabled={tabsOn}), and set readinessActive to route === 'readiness' only.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "docs/design/content.json",
+    "src/ui/shell/routes.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-W7",
+   "title": "Completed steps still say 'After making changes, select Scan to update the plan.'",
+   "severity": "own",
+   "surface": "Step",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Draw the note only when remaining.length > 0, and move the sentence into content.json. Update smoke and template-check to expect no note on Completed steps, and amend step-template.md.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json",
+    "scripts/smoke.mjs",
+    "scripts/template-check.mjs",
+    "docs/plans/roadmap-flow/step-template.md"
+   ]
+  },
+  {
+   "id": "F-025",
+   "title": "No multi-tenant path: the tenant is barely visible, there is no switcher or guidance, and every artefact is tied to one tenant",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "One route effect in AppShell sets document.title to '{surface} · {tenant} · IAMAI Planner' (new pages.app.shell key; shares code with F-145). Prefix CSV names with a tenant slug (DataTable csvName / READINESS_CSV callers). Optional XS: one How > Limits line saying IAMAI plans one tenant at a time and each tenant's plan stays in this browser until Forget. Leave answer reuse across tenants out.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/ui/components/DataTable.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-026",
+   "title": "The home page promises an inspectable baseline version but shows none and links nowhere",
+   "severity": "Minor",
+   "surface": "Home",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "At build time, build-home.ts reads the pinned commit and read date and fills the note, e.g. 'Pinned: commit 90d9b89, read Sep 25, 2026'. It links to the source repository at that commit. The words live in pages.home.",
+   "files": [
+    "scripts/build-home.ts",
+    "docs/design/content.json",
+    "src/home.test.ts"
+   ]
+  },
+  {
+   "id": "F-027",
+   "title": "Plan search matches step titles only, so the people, accounts and policy names shown inside steps return nothing, and the empty state points nowhere",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "XS part: when a search finds nothing, add 'Looking for a person or account? Search MFA Readiness →' (#/readiness) under the empty line (content key). S part: add a searchTerms field to BoardItem in boardReadingsOf, holding the matched baseline policy displayName and the tracked tenant policy name, and match q against title + terms. Test: 'Core - Grant - MFA for all users' finds Require MFA for Everyone.",
+   "files": [
+    "src/ui/surfaces/planBoard.ts",
+    "src/ui/surfaces/Plan.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/planUsability.test.ts"
+   ]
+  },
+  {
+   "id": "F-028",
+   "title": "After a scan the page jumps to the top, and 'what changed' is a truncated sentence that cannot be expanded or exported",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "(1) In Plan, an effect on scan.snapshot.asOf sets moveTo.current = open when a step is open, so the row scrolls back into view once drawn. (2) Have planChangeLine return parts with full title lists, and render 'and N more' as a <details> or button that lists them all. Tests: observePlan returns every title; the Plan re-anchors after a snapshot change.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planChanges.ts",
+    "src/ui/surfaces/planState.test.ts"
+   ]
+  },
+  {
+   "id": "F-039",
+   "title": "Script and payload style varies between steps, and IAMAI writes an unexplained tag into policy descriptions",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Pretty-print packaged JSON in packageArtifact (parse, then stringify with 2 spaces). Add one JSON-tab note from a new key: the description tag is how the next scan recognises the policy, so keep it. Do not make the tag optional. Unifying the script style is a separate M job in the package CONTENT.md files.",
+   "files": [
+    "src/ui/surfaces/stepBody.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-047",
+   "title": "Export files carry no tenant or date in their names, and 'Accounts as CSV' saves as people.csv",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add one helper exportFileName(stem, tenantSlug, date) that returns 'iamai-<stem>-<slug>-<yyyy-mm-dd>.<ext>'. Use it for every exportDownload in Export.tsx, MfaReadiness.tsx:455 and the DataTable csvName. Rename the stems to match the button labels (accounts, authentication, licensing, sign-in-countries). Update the tests that assert names.",
+   "files": [
+    "src/ui/exportGuard.ts",
+    "src/ui/surfaces/Export.tsx",
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/ui/csv.test.ts"
+   ]
+  },
+  {
+   "id": "F-052",
+   "title": "A step link or saved plan cannot be opened without that tenant loaded, and nothing says why",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Before the redirect at App.tsx:325, save the requested hash in sessionStorage. After restoreSession gives an account, go to it once, then clear it. Connect's sign-in tile shows 'Sign in to open {step}' (new key; step title from content steps). Skip the plan-file viewer.",
+   "files": [
+    "src/ui/App.tsx",
+    "src/ui/surfaces/Connect.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-085",
+   "title": "A refresh drops the Plan's tab, search, Work type and tile filter",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Per-viewer convenience: save {tab, focus.search, focus.workType, summaryFilter} to sessionStorage under a key per tenant, with try/catch, and restore it on mount. Or encode them as a query on #/plan?tab=onHold&q=… and teach stepFromPlanHash to ignore the query. Test the round trip in a pure helper.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/shell/routes.ts",
+    "src/ui/surfaces/planUsability.test.ts"
+   ]
+  },
+  {
+   "id": "F-086",
+   "title": "Search says 'No steps match' or shows nothing when matches are inside a collapsed group or hidden as deferred",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "(1) While focusActive, draw a group open if it has a match: clear toggled when search or workType changes (in the onFocus handler), or have groupClosed ignore presses made before the filter. (2) When shown is empty, count matches in applyFocus(items, tab, {...focus, showCompleted:true, showDeferred:true}). If there are any, say '{n} deferred/completed steps match · Show them' with a button that sets the toggle (content key). Tests on groupClosed and the hidden-match count.",
+   "files": [
+    "src/ui/surfaces/planBoard.ts",
+    "src/ui/surfaces/Plan.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/planBoard.test.ts"
+   ]
+  },
+  {
+   "id": "F-117",
+   "title": "Legend states and list groups use different names, and the legend cannot be clicked",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Render each legend item as a button that calls select(state) and scrolls to the worklist; the state show keys already exist. Put the state word in each group summary, e.g. before group-why, so the two vocabularies meet.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-119",
+   "title": "A person the Plan set aside ('Turn On Without Them') still shows as needing action on Readiness",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Pass the campaign step's preparation.followUpIds to ReadinessPage. Tag those rows 'Turned on without them' (new content key) on screen and in the CSV Role/Why. The state stays tenant evidence.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/readinessCells.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-126",
+   "title": "Readiness CSVs share one name whatever they hold: the page's Export CSV follows the on-screen filter, the Export page's copy holds everyone, and nothing names the view, tenant or date",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Use F-047's helper, with the Readiness view in the stem ('mfa-readiness-needs-action-<slug>-<date>.csv'). Put the button's privacy note in visible text, or reuse the CSV card's words. Fix it together with F-047.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/ui/exportGuard.ts"
+   ]
+  },
+  {
+   "id": "F-127",
+   "title": "CSVs are hard to use in Excel: no UTF-8 marker, a sample-data sentence in column A of every row, mixed blanks and dashes, and different header names for the same field",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "XS part: prefix '﻿' in exportDownload when type is text/csv (after the watermark). S part: one empty-cell convention across the tables, and aligned headers ('Sign-in address'; country column 'Country').",
+   "files": [
+    "src/ui/exportGuard.ts",
+    "src/ui/format.ts",
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/ui/csv.test.ts"
+   ]
+  },
+  {
+   "id": "F-130",
+   "title": "The grounding bundle carries no dates, although its readme says it does",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Write plan.estimatedFinish = statedEstimate(...) (derive/finish.ts, as PrintPlan.tsx uses it) and give each step `when: boardWhenOf(step, waveStartOf(step), lane)` ('Est. …'), keeping enforcement.basis. Alternatively, reword the readme.",
+   "files": [
+    "src/roadmap/prompts.ts",
+    "src/ui/surfaces/Export.tsx",
+    "src/exports.test.ts"
+   ]
+  },
+  {
+   "id": "F-134",
+   "title": "No page links to the right part of How, and its sections can't be linked to",
+   "severity": "Minor",
+   "surface": "How",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Give each details an id (permissions, reads, checks, packages). Generalise revealPackage to open the matching details, then scroll to it. Link How from Connect's partly-read row and from the Plan legend.",
+   "files": [
+    "src/ui/surfaces/How.tsx",
+    "src/ui/scan/connectView.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/howView.test.ts"
+   ]
+  },
+  {
+   "id": "F-135",
+   "title": "'Every check' leaves out the checks behind most steps",
+   "severity": "Minor",
+   "surface": "How",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Rename the summary to something like 'Checks IAMAI runs on your tenant'. Add one caption group, 'How a policy is compared with the baseline', with four rows built from ACCEPT_WORDS().tags plus a one-line meaning each.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/howView.ts",
+    "src/ui/surfaces/How.tsx",
+    "src/ui/surfaces/howView.test.ts"
+   ]
+  },
+  {
+   "id": "F-137",
+   "title": "Inventory and MFA Readiness describe the same people's MFA state in different, undefined words",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Show the MFA_STATE text in an InfoTip on the Inventory 'MFA state' column header, or as a legend line under Accounts. Rename the readiness method title and filter to 'Needs a phishing-resistant method'.",
+   "files": [
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/ui/surfaces/InventoryPage.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/readinessWords.test.ts"
+   ]
+  },
+  {
+   "id": "F-145",
+   "title": "The browser tab title never changes by page or tenant, and a surface change is not announced",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "In AppShell, one effect on [route, tenantName] sets the title from SHELL.tabs[route] plus the tenant (new format key). On a route change (not a step deep link), focus the page h1, given tabIndex=-1. Share this effect with F-025 and F-147.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-163",
+   "title": "The Account menu doesn't behave like a menu from the keyboard: arrow keys do nothing, Escape from an item drops focus to the page, and the menu stays open after focus leaves",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Menu-button pattern: on open, focus the first menuitem; ArrowUp/Down/Home/End move between items; Escape closes and focuses the Account button; focusout outside ref closes; running an item or a route change closes. Put the key logic in a small pure helper and unit-test it.",
+   "files": [
+    "src/ui/shell/AppShell.tsx"
+   ]
+  },
+  {
+   "id": "F-167",
+   "title": "During a scan and after a failed first scan, other pages still say 'Scan the tenant', Export tells a signed-in user to 'Connect a tenant first', and every link lands at the top of Connect with the Scan button off-screen",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "XS part: Export uses account ? app.plan.needsScan/scanLink : scanNeedsConnect, the same as Plan. S part: one shared NoScanYet component reads useSession().scan. While running it says 'A scan is running' (new key), which links to Connect. When failed it reuses CONNECT.failed. Link to #/connect with a focus target on the Scan button.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/App.tsx",
+    "src/ui/surfaces/Connect.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-176",
+   "title": "Without P1, Readiness says it can't be measured for anyone, then lists three people as measured and counts people 'who signed in' after saying no sign-ins were read",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Without P1, lead with the known part: '{n} need a method; confirming the rest’s sign-ins needs Microsoft Entra ID P1'. Add a no-P1 countedLine and guests.count variant that make no sign-in claim.",
+   "files": [
+    "src/ui/surfaces/readinessCells.ts",
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/readinessWords.test.ts"
+   ]
+  },
+  {
+   "id": "F-199",
+   "title": "Guest accounts appear under raw '#EXT#' sign-in names, which wrap to three lines in Readiness and repeat '(guest)' in the dormant list",
+   "severity": "Cosmetic",
+   "surface": "Readiness",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add a helper that shows a guest's home address (user.mail, or 'x_domain#EXT#@t' → 'x@domain') and use it in the Readiness row and drawer. Doing the same in names.ts would reach the dormant step screen and needs the owner's yes.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/names.ts"
+   ]
+  },
+  {
+   "id": "OWN-F2",
+   "title": "Returning admin sees the full Connect hero + Global Reader explainer every visit",
+   "severity": "own",
+   "surface": "Connect",
+   "origin": "own",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Once signed in with a complete scan (done[2]), drop the lede and the account note, or move the note into the permissions disclosure. Keep both for a first visit. Check against the approved connect-v3 anatomy.",
+   "files": [
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/scan/connectView.ts",
+    "src/ui/surfaces/connectAnatomy.test.ts"
+   ]
+  },
+  {
+   "id": "F-042",
+   "title": "An answer changed on a completed decision is thrown away silently if the user leaves without re-approving",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "While any card on a step with saved answers reads Not approved yet, show a reason line under Approve answers (new key, e.g. 'Your change is saved only when you approve it'). Add a beforeunload and hashchange guard while an edit is pending. Alternative: hold the draft in sessionStorage keyed by step id and directionDraftKey.",
+   "files": [
+    "src/ui/surfaces/DirectionQuestions.tsx",
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/directionStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-043",
+   "title": "Labels a beginner cannot decode: an 'Inforcer' yes/no question with no explanation, and an 'AI Info' tab that is really a prompt to paste into an assistant",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "(1) Add a one-line key questions.serviceHelp.inforcer and set it as the Inforcer card's note. (2) Draw implementation.aiWarning as a quiet line beside the AI Info copy button. (3) Move the two hard-coded 'Entra channel' sentences into content.json as 'Follow the Entra tab for the full procedure…'. Renaming the tab needs the owner's yes, because the label comes from the approved pack.",
+   "files": [
+    "docs/design/content.json",
+    "src/roadmap/direction.ts",
+    "src/ui/surfaces/stepBody.ts",
+    "src/ui/surfaces/emergencyImplementation.ts",
+    "src/ui/surfaces/emergencyVerificationTasks.ts"
+   ]
+  },
+  {
+   "id": "F-065",
+   "title": "After Defer, Put back, Approve answers, picker Done, chip removal or Scan, keyboard focus drops to the page body and the user's place is lost",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "After skip or unskip, focus the control that replaced the pressed one: a ref plus a useEffect keyed on step.status, focusing Put back or Defer. After picker Done or chip removal, focus the picker's search field. After Scan, keep the open step and restore scroll to it instead of 0. Keep the status line in place and update its text rather than inserting a new filled node.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/components/Picker.tsx"
+   ]
+  },
+  {
+   "id": "F-084",
+   "title": "After 'Leave the demo', Connect gives no sign that sample progress is kept, and the sample can't be reset",
+   "severity": "Minor",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add 'Start the sample fresh' beside 'Try it with sample data'. It deletes only store rows whose id starts with DEMO_TENANT_ID (demoMode.ts:13, 26), then opens demoUrl(). Optionally add a line 'Your sample progress is kept in this browser' when a demo record exists. New content keys, and a test that no real tenant row is touched.",
+   "files": [
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/actions.ts",
+    "src/ui/demo.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-091",
+   "title": "The Estimated finish (i) opens on hover, closes on click, and closes on Enter",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add a pinned ref: click or Enter/Space sets pinned=true and opens. mouseleave and blur close only when not pinned. Esc or an outside mousedown unpins and closes. Focus alone may still open it unpinned. This is a shared component used on step screens (behaviour only, no words). Unit-test the state machine as a pure reducer.",
+   "files": [
+    "src/ui/components/InfoTip.tsx",
+    "src/ui/primitives.test.ts"
+   ]
+  },
+  {
+   "id": "F-098",
+   "title": "Plan list rows and the Readiness person list look like tables but are not",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Readiness first: give each cell a visually hidden prefix from T.columns ('Devices seen: …'), or use role=table/row/cell with the head as columnheader, not aria-hidden. Plan: reorder PlanRow's accessible name to start with the title (aria-label = title · state · impact · when). Keep class names for walk/smoke.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/StepSections.tsx",
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/accessibility.test.ts"
+   ]
+  },
+  {
+   "id": "F-113",
+   "title": "The decisions use five different patterns, and Save Countries gives no feedback",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Quick part only: when onCommit is set, have Picker save on every pick. Give the ContentStep decision Save a saved state: disabled until something changes, plus a quiet 'Saved' line from a new key. Unifying the five patterns is L; defer it.",
+   "files": [
+    "src/ui/components/Picker.tsx",
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json",
+    "src/ui/primitives.test.ts"
+   ]
+  },
+  {
+   "id": "F-185",
+   "title": "A plan left open doesn't notice time passing: two weeks on it still shows past 'Est.' dates and no stale-scan line, then every date jumps when you change page",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add a useToday() hook that returns the display-zone day and refreshes on visibilitychange/focus and a 60s interval. Pass it into the plan compute key (planData/usePlanData) so a new day re-dates and shows the stale line. When dates move, reuse the PlanChanges line. Test the hook with a fake clock.",
+   "files": [
+    "src/ui/surfaces/planData.ts",
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planPage.test.ts"
+   ]
+  },
+  {
+   "id": "F-188",
+   "title": "On a 5,000-seat tenant, '2,914 more' opens a 2,914-person list inside the step: the page grows from 5,500 to 132,000 px, with no search, paging, export or bottom collapse",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Cap account.more at about 50 lines, then add '+N more · Open MFA Readiness →' (readinessStepHref) when the step has a readiness scope. At minimum, give .emergency-account-more .emergency-account-lines a max-height of 20rem with overflow:auto.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/app.css",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "OWN-W8",
+   "title": "'Enforced' badge vs Entra's own word 'On'",
+   "severity": "own",
+   "surface": "Plan",
+   "origin": "own",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Chip an enforced policy with policyFact.on ('On') in factOf. Whether the lifecycle bar's 'Enforced' stage is renamed too is the owner's call. Sweep the tests that expect the chip text.",
+   "files": [
+    "src/ui/surfaces/stepContract.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/enforcedLanes.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-W9",
+   "title": "Same create appears in 3.6 and 7.3",
+   "severity": "own",
+   "surface": "Step",
+   "origin": "own",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "On a policy step still to create that the batch lists (the report-only step's reportOnlyBatch.create includes its id), add one line under the create task: 'Create the Policies in Report-only lists this one too: creating it from either closes both.'",
+   "files": [
+    "src/ui/surfaces/policyTasks.ts",
+    "src/ui/surfaces/reportOnlyStep.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/reportOnlyStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-139",
+   "title": "Inventory tables sort but can't be searched or filtered, unlike Plan and Readiness, and have small layout inconsistencies",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "demo",
+   "status": "present",
+   "effort": "M",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add one search input over ModelTable rows that filters on the model's cell text. Show 'and N others' in full or behind a <details>. Move Export CSV into a toolbar above each table, as Readiness does.",
+   "files": [
+    "src/ui/surfaces/InventoryPage.tsx",
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/ui/app.css",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-050",
+   "title": "Inventory, the expert's best raw view, has no nav entry and no links to plan steps",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "demo",
+   "status": "present",
+   "effort": "M",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Nav (XS): add an Inventory Tab (new SHELL.tabs.inventory) and remove inventory from readinessActive. Cross-links (M): the Policies name cell links #/plan/<stepId> for policies a step's tracking.members owns, and the step's policy line links back.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/InventoryPage.tsx",
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/ui/shell/routes.test.ts"
+   ]
+  },
+  {
+   "id": "F-122",
+   "title": "Returning to MFA Readiness loses your place, an open person can't be linked, and a step opened from Readiness has no way back",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "M",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Save the scroll position and the open groups per hash in sessionStorage and restore them on mount. Add #/readiness/<show>/p/<id> in routes.ts to hold the open person, so Back closes the drawer. A '← MFA Readiness' link on steps would touch step screens and needs the owner's yes.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/shell/routes.ts"
+   ]
+  },
+  {
+   "id": "F-140",
+   "title": "The sample data contradicts itself in places an expert will notice",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "demo",
+   "status": "present",
+   "effort": "M",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Generator: iOS devices registered, not joined; the printer typed as a member with no Entra-joined PC; svc-mailer sign-ins marked as legacy clients; app sign-in counts no higher than the total. Words: 'None registered now.' when a restore line shows. Check Quinn Ivanova's device-owner derivation separately.",
+   "files": [
+    "src/roadmap/fixtures/index.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/readinessCells.ts"
+   ]
+  },
+  {
+   "id": "F-192",
+   "title": "Per-object instructions don't scale: 52 policies to edit by hand (156 numbered lines in a 370 px box) and 785 dormant accounts to disable one at a time, with no bulk path or tick-off",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "M",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Above about 10 objects, show one pattern line plus a checklist of objects with their last-scan state. Add a read-only 'Download list (IDs, names)' CSV through the existing export path, and an optional PowerShell tab for the admin to run.",
+   "files": [
+    "src/ui/surfaces/emergencyGroupTasks.ts",
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/surfaces/stepExport.ts"
+   ]
+  },
+  {
+   "id": "F-193",
+   "title": "Review Overlapping Policies at 60 policies runs three overlap sets into one 250-word sentence and gives a single form for all of them",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "M",
+   "risk": "high",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Render each overlap group from phase data as its own list with policies listed once (S, low risk). Per-set outcomes need the checkpoint keyed by set (persisted shape) plus a form per set.",
+   "files": [
+    "src/roadmap/cleanupPhase.ts",
+    "src/ui/surfaces/CleanupStep.tsx",
+    "src/roadmap/cleanupDone.ts"
+   ]
+  },
+  {
+   "id": "F-196",
+   "title": "Opening a step freezes the page for 1.8–6.5 s at 5,000 seats (0.15–0.34 s at 30 seats) with no loading state",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "L",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Render the step shell and rail first, and defer the heavy parts (people folds, per-object procedures) with startTransition or a lazy child that shows a short 'Loading step…' line. Profile on ?big=1 first.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/surfaces/stepBody.ts"
+   ]
+  },
+  {
+   "id": "OWN-D4",
+   "title": "Demo dates cluster on one day",
+   "severity": "own",
+   "surface": "Plan",
+   "origin": "own",
+   "status": "present",
+   "effort": "L",
+   "risk": "high",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Stagger turn-ons by a weekly capacity (N policies a week) in roadmap/forecast.ts. The demo-only alternative is to spread the demo's progress so its waits clear on different days.",
+   "files": [
+    "src/roadmap/forecast.ts",
+    "src/ui/surfaces/planBoard.ts",
+    "src/ui/surfaces/estimatedDates.test.ts"
+   ]
+  },
+  {
+   "id": "F-054",
+   "title": "The 'Expand implementation' icon is an external-link glyph but opens an in-page overlay",
+   "severity": "Cosmetic",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": true,
+   "round": null,
+   "fix": "Add an 'expand' path to Icon.tsx (four corner brackets, e.g. 'M3.5 8V3.5H8M12 3.5h4.5V8M16.5 12v4.5H12M8 16.5H3.5V12') and use it at ContentStep.tsx:917 and :919.",
+   "files": [
+    "src/ui/components/Icon.tsx",
+    "src/ui/surfaces/ContentStep.tsx"
+   ]
+  },
+  {
+   "id": "F-132",
+   "title": "Printing the Plan screen with the browser cuts the Estimated finish tile to 'Est. Oct 2'",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Add @media print { .plan-progress-tiles { grid-template-columns: repeat(3, minmax(0,1fr)); } } or reuse the narrow-screen rule (app.css:5105-5107).",
+   "files": [
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-136",
+   "title": "The 'What IAMAI reads' table in How cuts off its WHY column at 1024, 1280 and 1440 px",
+   "severity": "Minor",
+   "surface": "How",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Lower minWidth on gate (12 to 9rem) and purpose (18 to 14rem), and let the Permissions cell wrap, so the table fits 1008px. Keep the panel's scroll as the fallback.",
+   "files": [
+    "src/ui/surfaces/How.tsx",
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-149",
+   "title": "Connect's permission table has a ragged second column squeezed into half the card",
+   "severity": "Cosmetic",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Add .connect-step .permissions .tile-rows li { display: grid; grid-template-columns: minmax(9rem, 14rem) 1fr; } with the description left-aligned. Batch with F-081.",
+   "files": [
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-151",
+   "title": "Connect's status bar repeats step 1, and its dot sits below the text",
+   "severity": "Cosmetic",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Raise the specificity of .connect-status-copy { margin: 0 } (e.g. .connect .connect-status-copy) and align the dot to the first text line. Optionally, when the current stage is 0, have the strip say the next action instead of repeating the state.",
+   "files": [
+    "src/ui/app.css",
+    "src/ui/scan/connectView.ts"
+   ]
+  },
+  {
+   "id": "F-153",
+   "title": "The Display time zone list shows UTC twice and raw zone IDs",
+   "severity": "Cosmetic",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Build options as unique(['UTC', ...zones]) minus the default's zone when zone==='' . Label the default from a new content key 'Browser time zone ({zone})'. Optional: show the label as zone.replace(/_/g,' ').",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-154",
+   "title": "Copied tasks are Markdown and include IDs the screen does not show",
+   "severity": "Cosmetic",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "For Copy, drop the facts block or draw it on screen too. Strip '**' and turn [text](url) into 'text (url)' in a plain-text copy helper, leaving AI Info and the exports unchanged.",
+   "files": [
+    "src/ui/surfaces/emergencyAccountTasks.ts",
+    "src/ui/surfaces/ContentStep.tsx"
+   ]
+  },
+  {
+   "id": "F-155",
+   "title": "The two greens and the two browns in the readiness bar are almost the same colour",
+   "severity": "Cosmetic",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Move s-device toward red-orange and s-ready toward a lighter green in the tokens, or add a title on each segment. Check chip contrast and the tokens test.",
+   "files": [
+    "src/ui/tokens.ts",
+    "src/ui/tokens.css",
+    "src/ui/tokens.test.ts"
+   ]
+  },
+  {
+   "id": "F-172",
+   "title": "The error page's 'Start over' doesn't say what it does, and the way to report is plain text",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Relabel startOver 'Go to Connect (your work is kept)'. Render send as <a href='mailto:feedback@getiamai.com'> (split the address into its own key). Add role=alert and focus the h2 (tabIndex=-1) on mount. Name the file iamai-error-YYYY-MM-DD-HHMM.json and add BUILD_COMMIT to the bundle.",
+   "files": [
+    "src/ui/components/ErrorBoundary.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-197",
+   "title": "Unreadable groups show as 125 identical 'an unnamed group' rows in Inventory, while steps, pickers and the CSV use IDs such as g-003 that Inventory never shows",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Name a missing group '{unnamed} ({id})' via the object labels, and show the Id column whenever any row has no name.",
+   "files": [
+    "src/ui/surfaces/inventoryTables.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/inventoryTables.test.ts"
+   ]
+  },
+  {
+   "id": "OWN-HOW",
+   "title": "How build stamp shows the UTC date",
+   "severity": "own",
+   "surface": "How",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Define __BUILD_TIME__ as the full ISO instant and format it with absoluteDate in the viewer's time zone.",
+   "files": [
+    "vite.config.ts",
+    "src/vite-env.d.ts",
+    "src/ui/surfaces/How.tsx"
+   ]
+  },
+  {
+   "id": "OWN-LI",
+   "title": "Footer 'Follow me on LinkedIn' is personal in a product footer",
+   "severity": "own",
+   "surface": "Shell",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Owner call: reword it to 'Made by the owner' with the same link, or remove the entry. Then regenerate home/index.html, which home.test.ts guards.",
+   "files": [
+    "docs/design/content.json",
+    "home/index.html",
+    "src/ui/shell/footer.test.ts"
+   ]
+  },
+  {
+   "id": "F-055",
+   "title": "Service-account names in decision chips wrap mid-name onto three lines ('svc- / mailer- / 1')",
+   "severity": "Cosmetic",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "present",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": true,
+   "round": null,
+   "fix": "Add .chip-name { white-space: nowrap; flex-shrink: 0 } and .chip-badge { min-width: 0 }. Or scope .direction-question .chip-select { flex-wrap: wrap } and give the badge its own line. The Picker CSS is shared, so check the other step pickers.",
+   "files": [
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-182",
+   "title": "Without P1, Readiness still points into a plan that isn't there, and loses its only how-to link",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "When planSteps lacks s-prereq-passkey-settings, show an admin-center path line instead (new key). Without P1, hide G.suggestion and footer.plan. Give the method group a How or admin-center link when no plan step exists.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-198",
+   "title": "After 'Show the next 50', keyboard focus stays on a button now 3,000 px off-screen, and the next Tab skips the 50 new rows",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "dev-mock",
+   "status": "present",
+   "effort": "S",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "After a load, focus the first new row's Details button (a ref keyed by the row index) and announce 'Showing {shown} of {n}' in a visually hidden role=status.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx"
+   ]
+  },
+  {
+   "id": "F-017",
+   "title": "In the demo, 'Scan to update the plan' quietly switches to a pretend follow-up scan that completes work, and decisions, the user never did",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 4,
+   "frozen": false,
+   "round": null,
+   "fix": "When scan() switches the demo, set a session flag and show one demo-only line in the banner from a new shell key: 'In the sample, Scan shows a follow-up scan: the work and answers in it are the sample's, not yours.' Clear it when Initial scan is chosen. Add a unit test.",
+   "files": [
+    "src/ui/actions.ts",
+    "src/ui/shell/AppShell.tsx",
+    "docs/design/content.json",
+    "src/ui/demo.test.ts"
+   ]
+  },
+  {
+   "id": "F-002",
+   "title": "Four places give four answers to 'are both emergency accounts outside the enforced MFA policy?', and 'Configure Emergency Exclusions' says 5 policies in one place and 4 in another",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": true,
+   "round": null,
+   "fix": "Add excludeGroups: [] to the demo day-one MFA row (Graph always returns the array). The exclusions step then lists and counts 5, and the MFA step's add becomes that step's edit. Reword cleanup 'why' so it does not say the group is already in place. Re-run the demo and exclusionsStep tests and the step snapshots.",
+   "files": [
+    "src/roadmap/fixtures/index.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/exclusionsStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-013",
+   "title": "A deferral's required reason is never shown again (not on the step, the plan or the print), and deferring shrinks the progress total",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": true,
+   "round": null,
+   "fix": "Show 'Deferred {date}: {reason}' on the deferred card from milestone.gatedBy and the skipped history date. Add the reason to BriefLine for aside rows and print it in 'Not in this plan'. Optionally add a sub-line to the Completed tile ('1 deferred'). Test the print and the card.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/surfaces/printPlan.ts",
+    "src/ui/surfaces/PrintPlan.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/leadershipPrint.test.ts"
+   ]
+  },
+  {
+   "id": "F-018",
+   "title": "The Plan says 10 of 30 people are not ready; the linked MFA Readiness page, its CSV and the print say 21, 25 or 26, and no count names its bar",
+   "severity": "Major",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": false,
+   "round": null,
+   "fix": "When the page is opened from s-verify-mfa and the step is not complete, scope to preparation.missingIds instead of preparation.ids. Add a new planContext.notReady key: 'Filtered to the {cohort} {step} names as not ready.' The headline then reads 'x of 10'. When scoped, show footer.plan under the headline. The step screen and its link stay unchanged.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/readinessCells.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/readinessAndStarted.test.ts"
+   ]
+  },
+  {
+   "id": "F-078",
+   "title": "The demo, Connect and How never say how to remove the tenant data kept in this browser",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Add one sentence to the Connect removal line and to How > Where it runs: 'What IAMAI keeps in this browser stays after Sign out; Account → Forget this tenant deletes it.' These are content-only edits to existing keys. Update any publicTrust/connectSignedOut assertion that pins the old text.",
+   "files": [
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-147",
+   "title": "Switching from a scrolled Plan to MFA Readiness keeps the old scroll offset, and Readiness has no sticky header, so the page opens mid-list with no heading or navigation",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "In useHashRoute's onChange, when the resolved route differs from the previous one and the hash is not a deep link (#/plan/<id>, #/how#package), call window.scrollTo(0,0). Same-route hash changes (Readiness filters, step open/close) keep their position. Put the route-change logic in a pure helper and unit-test it.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "src/ui/shell/routes.ts",
+    "src/ui/shell/routes.test.ts"
+   ]
+  },
+  {
+   "id": "F-035",
+   "title": "Completion criteria and the AI briefing contain contradictions and stray text: 'except Core - Exclusions and Break-glass 1', 'for guests except Core - Exclusions and guests', and a stray 'strong:' line",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "In aiGrounding, skip role-keyed lines on a single-member step, or use the member's title in place of the key. In policyFact, name the excluded guest types by their portal names ('service provider users') instead of w.guests. Test both on the demo guests step with the partner answer Yes.",
+   "files": [
+    "src/ui/surfaces/aiGrounding.ts",
+    "src/ui/surfaces/policyFact.ts",
+    "src/ui/surfaces/aiGrounding.test.ts"
+   ]
+  },
+  {
+   "id": "F-166",
+   "title": "The scan wait shows only the current section and elapsed seconds; the read-only line disappears, nothing says whether you can leave, and Stop or a reload silently discards the scan",
+   "severity": "Minor",
+   "surface": "Connect",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Keep ready.note in the scanning state and add a new key: keep this tab open, you can read How meanwhile. Show '{done} of {total} sections' from TOTAL_SECTIONS. Put role=status on the state line. Add a beforeunload handler while runner.state is 'running'. A Stop confirmation is optional.",
+   "files": [
+    "src/ui/scan/connectView.ts",
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/scan/ScanProgress.tsx",
+    "docs/design/content.json",
+    "src/ui/scan/connectView.test.ts"
+   ]
+  },
+  {
+   "id": "F-174",
+   "title": "Without P1, the calendar, prompts and bundle still export a 'Conditional Access rollout' that the screen says doesn't exist, including work that needs P1",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "In Export.tsx compute noPlanLine(snapshot). When it is set, replace the calendar and prompts cards' buttons with that sentence (pages.plan.conditionalAccessNeedsP1), and make bundle.plan = { none: line } with no steps or cleanup. Keep the CSVs and the plan file.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "src/roadmap/prompts.ts",
+    "src/exports.test.ts"
+   ]
+  },
+  {
+   "id": "F-175",
+   "title": "Without P1, Conditional Access policies that still exist and still enforce MFA are ignored",
+   "severity": "Major",
+   "surface": "Plan",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Export mirrors Plan and print: if conditionalAccessLicenceLine(snapshot) is set, render that Callout and offer no plan files, only the inventory CSVs. Alternatively, generate.ts skips cleanupPhaseFor when !canUseConditionalAccess (engine; same outcome everywhere). Listing the lapsed policies on the refusal page needs owner input.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "src/derive/notLicensed.ts",
+    "src/roadmap/generate.ts",
+    "src/ui/surfaces/exportPhase2.test.ts"
+   ]
+  },
+  {
+   "id": "F-180",
+   "title": "A tenant with no policies and security defaults off is never told nobody is asked for MFA today, and the print counts an empty exclusions step as 'in place'",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "When caPolicies is read in full with 0 enabled policies and securityDefaults is off, show one line above the tiles and in the briefing's intro from a new content key: 'Nobody is asked for MFA today: no Conditional Access policies are on and security defaults are off.' Use sectionHasData guards and a unit test on the policies=0 mock snapshot.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/printPlan.ts",
+    "src/ui/surfaces/PrintPlan.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-001",
+   "title": "'Up Next' steps give go-live and exclusion-removal instructions, plus a script that writes to the tenant, and never say 'not yet'",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "In policyProcedureOf, when a corrected member has exclusionsEdit=true and the exclusions step is still open, start the 'correct' task with one line from a new key, e.g. 'Do this after {step} adds {group} to this policy.' Reword changeRemoves as the swap ('replaces {removed} with {group}') when the body adds the group. Test on demo legacy-auth, device-code and admins.",
+   "files": [
+    "src/ui/surfaces/policyTasks.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/removedExclusionChannels.test.ts"
+   ]
+  },
+  {
+   "id": "F-012",
+   "title": "Report-only evidence is one unquantified sentence, so 'nothing was evaluated' reads the same as 'safe to enforce'",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Add readyBasis(ready) to the blockedNoOne card line (e.g. 'Report-only blocked no one: 0 failures in {n} days, {seen} of {people} seen'). Where there is no ready reading, give the date the window started. Test on demo-week2 Token Protection.",
+   "files": [
+    "src/ui/surfaces/policyTasks.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/enforceWaits.test.ts"
+   ]
+  },
+  {
+   "id": "F-020",
+   "title": "No export says when a policy is turned on: the calendar holds 7–8 eight-day blocks for Ready preparation steps only, and the print has no per-step dates",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Ask the owner first whether the calendar follows the 2026-09-23 reversal. If yes: in buildIcs, book a held row as a one-day event on the board's estimate (board.readings.get(id).estimate, carried on the export view) titled '… · Est. <date>', instead of skipping it at ics.ts:118. If no: narrow cards.calendar to 'Steps with a day of their own'. Either way, render whatToDo as numbered lines and turn [text](url) into 'text (url)'.",
+   "files": [
+    "src/roadmap/ics.ts",
+    "src/ui/surfaces/stepExport.ts",
+    "src/roadmap/artifactLines.ts",
+    "docs/design/content.json",
+    "src/roadmap/ics.test.ts"
+   ]
+  },
+  {
+   "id": "F-060",
+   "title": "One click on 'Everyone works remotely' inside Define the Trusted Network answers a decision, removes 5 steps and makes the open step vanish, with no confirmation or undo",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Make the button two presses: the first shows chosen.remote plus Confirm and Cancel, and only Confirm calls onAnswer. After a change that removes the open step, move focus and scroll to the Updated status. Add a unit test.",
+   "files": [
+    "src/ui/surfaces/DirectionQuestions.tsx",
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/directionStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-064",
+   "title": "Inventory shows two accounts using legacy authentication; the Block Legacy Authentication step names only one",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Keep one source. Point Inventory and serviceAccounts.ts at legacySignInIds(), and drop evidenceUsage.legacyAuth as the legacy reading. Make the demo's legacy data come from its own sign-in rows so Inventory, Identify Service Accounts and Block Legacy Authentication name the same accounts. Test: the demo Inventory legacy list equals the block step's names.",
+   "files": [
+    "src/mapping/serviceAccounts.ts",
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/roadmap/fixtures/index.ts",
+    "src/roadmap/blockSignIns.ts"
+   ]
+  },
+  {
+   "id": "F-072",
+   "title": "The same person is given different next steps on MFA Readiness, Prepare Your Team for MFA and Require MFA to Register a Device",
+   "severity": "Major",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "In a step-scoped view where stepRegistersDevice(step), draw each row's next step from readinessNextOf(snapshot, now, mapping, true), the card's own words. Reword s-verify-mfa instruction 9 to '…set up the method named beside them'; this is approved step content, so it needs the owner's yes. The Readiness-only part can ship alone.",
+   "files": [
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/ui/surfaces/personNext.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-105",
+   "title": "Completing a step leaves no 'what next', and the confirmation appears off-screen",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "When the open step's lane turns Completed, show the change line inside the step's rail. Add 'Next: <first Ready step on the board> →' (a new content key) linking #/plan/<id>. Keep the procedure. Also drop the empty 'For each account:' list on Dormant once every account is kept.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/surfaces/StepSections.tsx",
+    "src/ui/surfaces/stepBody.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-110",
+   "title": "Passkey model decision needs raw AAGUIDs typed in; the affected model cannot be approved from its card",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "At emergencyJourney.ts:302, always add the lockedOut accounts to the card items so card and task name the same accounts. In PasskeyModelDecision, check duplicates against passkeyApprovedModelsOf(mapping) as well. Optionally add 'Approve this model' on each affected item to prefill name and AAGUID.",
+   "files": [
+    "src/roadmap/emergencyJourney.ts",
+    "src/ui/surfaces/PasskeyModelDecision.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "OWN-W4",
+   "title": "4.3 leads with weakening a stricter admin policy",
+   "severity": "own",
+   "surface": "Step",
+   "origin": "own",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Where every open difference is stricter (no weaker or required piece), open the Correct card with one line: 'Yours is stricter than the baseline in {n} ways: keep it by accepting the difference with a reason, or match the baseline below.' The exact-controls rule is unchanged.",
+   "files": [
+    "src/ui/surfaces/policyTasks.ts",
+    "docs/design/content.json",
+    "src/ui/surfaces/policyTasks.test.ts"
+   ]
+  },
+  {
+   "id": "F-191",
+   "title": "Require MFA for Everyone blocks on 53 raw group IDs, says 'scan again', and then turns Completed after the next scan while the panel still says Blocked",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "M",
+   "risk": "high",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "XS part: word the reason as '{n} groups this policy names could not be read' with at most 5 display names and 'and N more' (namesOf). Engine part: after a live check at ?dev=1&mock=1&big=1, make sure a step still carrying an unverified-exclusion blocker is never counted as satisfied.",
+   "files": [
+    "src/roadmap/generate.ts",
+    "src/copy/reasons.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-183",
+   "title": "Weeks later the plan silently re-dates every unfinished step to today: nothing reads overdue, the finish slides, and the (i) blames report-only for the slip",
+   "severity": "Major",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "L",
+   "risk": "high",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "Split it. XS: add SEQUENCE:<minutes since epoch> to each VEVENT, and mark a freeze whose 'to' < today as past. S: when planWeeks > the forecast span, the tip says 'N weeks since the plan started on {start}; the remaining work finishes {date} because …' (new engine.critical key). L: persist the first-planned finish and show 'finish moved from {date}', which needs owner approval since it's data that persists.",
+   "files": [
+    "src/roadmap/ics.ts",
+    "src/derive/finish.ts",
+    "src/ui/surfaces/Plan.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-015",
+   "title": "Policy JSON and PowerShell exist on only 8 of 19 policy steps, not on the two core MFA policies, and vanish when a step is deferred, though Export says they are on each step",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Reword Export implementationNote to 'Where a step hands over a change it can make now, its JSON and PowerShell are on that step in the Plan.' Optional (S, frozen): one line on a policy step with no PS/JSON naming what holds them.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/exportPhase2.test.ts"
+   ]
+  },
+  {
+   "id": "F-087",
+   "title": "Group headers and tab badges don't follow the active filters",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "(a) When focusActive, draw All work headers with the filtered count ('1 of 4 steps', groupSummary with total) instead of progress. (b) Pass total=null for secondary (aside) groups. Optional: badges count the focus-filtered set when a focus is on. Tests in planBoard.test.ts for both headers.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planBoard.ts",
+    "src/ui/surfaces/planBoard.test.ts"
+   ]
+  },
+  {
+   "id": "F-089",
+   "title": "Work type categories leave policy work out of 'Conditional Access', and the select has no label",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add s-create-report-only and s-prereq-exclusion-group (and the cleanup consolidation and naming rows, if they should count) to WORK_TYPE_IDS as 'ca'. Rename BOARD.type.resolution to something like 'Accounts & decisions' after an owner yes. Test: workTypeOf for those ids.",
+   "files": [
+    "src/ui/surfaces/planBoard.ts",
+    "src/ui/surfaces/planBoard.test.ts"
+   ]
+  },
+  {
+   "id": "F-128",
+   "title": "Redaction differs by export, and the bundle's switch gives no sign of which version will download",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add an identifiers sentence to pages.export.cards.print[1]. Render the warning Callout only when !bundleRedacted. Read the warning from pages.export.unredactedWarning and delete the comms.ts copy. Use 'sign-in addresses' in both places.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/Export.tsx",
+    "src/copy/comms.ts"
+   ]
+  },
+  {
+   "id": "F-141",
+   "title": "Before sign-in the planner shows no navigation, and How is a dead end from the home page",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "When no account is signed in, end How with the two Connect actions, reusing the keys at content.json:757 ('Try it with sample data' → demoUrl(), 'Sign in with Microsoft' → #/connect). App.tsx:380 passes account to How. Leave the header as it is.",
+   "files": [
+    "src/ui/surfaces/How.tsx",
+    "src/ui/App.tsx"
+   ]
+  },
+  {
+   "id": "F-005",
+   "title": "The demo path never shows the 'Public beta — check every script' caveat or the '1 section was not read in full' notice; both live only on Connect",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "In AppShell, drive the partialEvidence line from unreadSources(snapshot).length > 0, the same source Connect uses, rather than a second check on config status==='error'. Consider rewording partialEvidence to name the section and the next step (the owner rule: say what is known), e.g. 'Registered methods were read in part; readiness counts are conservative. Scan again to complete them.' Test: the demo snapshot shows the line on Plan. No beta banner.",
+   "files": [
+    "src/ui/shell/AppShell.tsx",
+    "docs/design/content.json",
+    "src/ui/shell/routes.test.ts"
+   ]
+  },
+  {
+   "id": "F-069",
+   "title": "'Everyone works remotely' silently undoes the service-accounts decision: service accounts and the Teams Room fall under MFA for Everyone",
+   "severity": "Minor",
+   "surface": "Decision",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Add keys steps.accounts.whyRemote and serviceAccounts.joinsRemote. Choose them when savedAnswerOf('officeNetwork') is 'remote', the way direction.ts:189 already does for shared devices.",
+   "files": [
+    "docs/design/content.json",
+    "src/roadmap/direction.ts",
+    "src/ui/surfaces/directionStep.test.ts"
+   ]
+  },
+  {
+   "id": "F-106",
+   "title": "An open step can be closed only from its row header: no Close control in the panel, and Esc does nothing",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Add an onKeyDown on the open step article. On Escape, when not inside a dialog, input or open picker, close the step the way the row header does and focus the row button.",
+   "files": [
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/surfaces/Plan.tsx"
+   ]
+  },
+  {
+   "id": "F-107",
+   "title": "Prepare Your Team says the registration campaign is already on, then tells you to turn it on",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Have campaignToday name what differs when the campaign is on, e.g. 'on, with no method or users set' (new campaign keys). Alternatively reword line 13 as 'Change it to:'.",
+   "files": [
+    "src/ui/surfaces/prepareSteps.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-111",
+   "title": "The admin MFA step has no Readiness hand-off, and its Readiness view gives a misleading reason",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Reword seamlessNotPossible so it names no cause, e.g. 'Nobody can be seamless yet: each person's row says what stops their devices.' Optionally let the admin gate card carry the readinessLink too, by widening the condition at stepContract.ts:2662 for the admin family.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/stepContract.ts"
+   ]
+  },
+  {
+   "id": "F-049",
+   "title": "The exclusions group the plan calls 'Verified' is missing from Inventory's 'Everything the scan read' and from the Groups CSV",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "In groupsModel, add the plan's selected groups (exclusions, service-accounts and break-glass groups from the mapping) to the referenced ids. Fill Referenced by with the plan role ('Plan: exclusions group'). The badge at InventoryPage.tsx:155 counts the combined set.",
+   "files": [
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/ui/surfaces/InventoryPage.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/inventoryTables.test.ts"
+   ]
+  },
+  {
+   "id": "F-074",
+   "title": "After a Follow-up scan the numbers change with no explanation of who moved, including a silent regression",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "In demo.ts, seed the Follow-up snapshot's mfaHistory with the Initial fixture's scanStates, dated before its asOf, so the delta block appears. Then add a 'Changed since {date}' filter that lists the rows whose state differs from earlier.states.",
+   "files": [
+    "src/ui/demo.ts",
+    "src/ui/surfaces/MfaReadiness.tsx",
+    "src/derive/readinessProgress.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-102",
+   "title": "The cleanup steps look like a different product, and the overlap review form is unstyled and opaque",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Move the form words to content.json. Stack each label above its control using the shared decision-field classes, and make inputs full width. Pass listAll to the Picker. Add a hint naming the missing field when Save is disabled. Render record.date with absoluteDate(). Drop the '; name (ID)' suffix in cleanupPhase.ts:143 so each policy is listed once.",
+   "files": [
+    "src/ui/surfaces/CleanupStep.tsx",
+    "src/roadmap/cleanupPhase.ts",
+    "docs/design/content.json",
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-123",
+   "title": "The Readiness Details drawer lets focus leave while it stays open, covers focusable controls at 1024–1280, and hides device join state from keyboard users",
+   "severity": "Minor",
+   "surface": "Readiness",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Either make the panel modal wherever it overlaps (widen COVERS_PAGE, e.g. max-width: 1760px), or reserve right padding on .readiness-layout while it is open. Add a .readiness-row:has(.open[aria-expanded='true']) highlight.",
+   "files": [
+    "src/ui/modalPanel.ts",
+    "src/ui/app.css",
+    "src/ui/surfaces/MfaReadiness.tsx"
+   ]
+  },
+  {
+   "id": "F-165",
+   "title": "When Conditional Access policies can't be read, the plan still says 'Ready', tells you to create policies and a trusted location that already exist, and nothing on Plan, Export or the printed plan says so",
+   "severity": "Major",
+   "surface": "Plan",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Mock: when denied=1, route through coreGaps as state=gaps does (XS, dev only). Real residue: Export names the CSVs it doesn't offer, in known-fact words and without 'couldn't read'. Replace ContentStep.tsx:1214's hard-coded line with a content key saying the next step: 'Scan again with Security Reader to include your office networks'.",
+   "files": [
+    "src/ui/App.tsx",
+    "src/ui/surfaces/ContentStep.tsx",
+    "src/ui/surfaces/Export.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-059",
+   "title": "Most state changes are silent to assistive technology",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Mount one always-present visually-hidden <p role=status aria-live=polite> on Plan and write short messages into it: 'Step deferred', 'Step put back', 'No steps match', 'Copied'. Make the change line write into it too. Set the copy button's aria-label to 'Copied' for 2s. After defer or put back, move focus to the step's toggle button. Words go in content. This is invisible on the step screens, but it touches the ContentStep and Implementation handlers.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/ContentStep.tsx",
+    "docs/design/content.json",
+    "src/ui/accessibility.test.ts"
+   ]
+  },
+  {
+   "id": "F-093",
+   "title": "IMPACT mixes units (steps, people, text labels) and counts the same population three ways",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "cleanupRowWho counts its lists: renames gives 'N policies', overlaps gives 'N policies', namedExclusions gives 'N policies'. Policy rows use cohortWords when pop.guests>0. Add a title/InfoTip to the Impact head from a new content key (pages.plan.columns tip).",
+   "files": [
+    "src/ui/surfaces/rowWho.ts",
+    "src/derive/whoLine.ts",
+    "src/ui/surfaces/Plan.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-189",
+   "title": "At 5,000 seats the printed plan runs to 354 pages, 262 of them name lists, with the same 2,919 people printed twice",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "For the calendar only, cap any name list in a DESCRIPTION line (the first NAMES_UP_TO, then 'and N more: see the MFA Readiness CSV') with a content key. The prompt pack reads the same artifactLines, so cap there only if the owner agrees.",
+   "files": [
+    "src/roadmap/ics.ts",
+    "src/roadmap/artifactLines.ts",
+    "docs/design/content.json",
+    "src/roadmap/ics.test.ts"
+   ]
+  },
+  {
+   "id": "F-038",
+   "title": "'Align Policy Names' forces the baseline's names, can't be deferred, and sets the plan's finish date",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "high",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "Leave the after-rollout cleanup kinds (naming, alerting, consolidation; planBoard.ts:321) out of the cleanupEnd passed to planFinish, or make the length tip name that row. This is a scheduling change and needs the owner's call.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/derive/finish.ts"
+   ]
+  },
+  {
+   "id": "F-009",
+   "title": "The 'Differs from the Baseline' block appears on one policy step; other gaps, and the user's own narrowing, show only as small inline grey text or not at all",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "L",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "If wanted, add one 'Deviations from the baseline' list on Plan or Export, gathered from accepted differences, shared.deviation choices and deferrals, each with its reason and date. Leave the per-step panel rule as it is.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/acceptPanel.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-029",
+   "title": "Display time zone resets to UTC after reload and changes nothing visible",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Add one reason line under the select: 'Plan dates and the calendar use this zone; the scan time shows your computer's zone.' (content key). Optionally keep an existing demo displayTimeZone when re-seeding (App.tsx: load it first and merge). Or, if it has no job, remove the control after an owner yes.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/App.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-053",
+   "title": "Home header 'Dark theme' is larger and off-baseline, and the release stage is 'Free public preview' on Home but 'Public beta' on Connect",
+   "severity": "Cosmetic",
+   "surface": "Home",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Add font-size: var(--t-1) to header.app .right .text-control in home/home.css.",
+   "files": [
+    "home/home.css"
+   ]
+  },
+  {
+   "id": "F-142",
+   "title": "Home page and planner feel like two products at the seam",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Pick one affiliation line and one separator, add target=_blank rel=noopener to home/index.html:111, and align the two title strings. Content and markup only. Check footer.test.ts for a pinned separator.",
+   "files": [
+    "docs/design/content.json",
+    "home/index.html",
+    "src/ui/shell/AppShell.tsx",
+    "scripts/build-home.ts"
+   ]
+  },
+  {
+   "id": "F-101",
+   "title": "Instructions name controls the step doesn't have: a Service accounts group picker, a Done shown only inside the open list, and 'Mark as done'",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": true,
+   "round": null,
+   "fix": "Optional. Qualify the two lines by state: 'Once the scan finds it, under Service accounts group…' and, on the held Alert step, the rail already names the wait. Content change only, in approved package text (CONTENT.md, then regenerate the registry) and alerting words.",
+   "files": [
+    "docs/implementation-content/s-prereq-service-accounts-group/s-prereq-service-accounts-group/CONTENT.md",
+    "src/content/implementation/registry.generated.json",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-181",
+   "title": "Without P1, Inventory says everyone holds P1 and shows recent sign-ins, while Licensing says no P1 and How says those dates need P1; every registered method becomes 'Possibly broken'",
+   "severity": "Minor",
+   "surface": "Inventory",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "S",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "When the tenant holds no sign-in records (no P1), label a registered but unproven method 'Registered', a neutral word, instead of 'Possibly broken'. State the licence reason once over the sign-in columns.",
+   "files": [
+    "src/ui/surfaces/inventoryTables.ts",
+    "src/copy/definitions.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-082",
+   "title": "Connect repeats the full marketing hero and beta notice even after a scan",
+   "severity": "Minor",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Low value. If wanted, once a scan exists, shrink or collapse the h1 and lede and lift the Plan destination above the flow. That departs from the approved pack, so it needs the owner's yes.",
+   "files": [
+    "src/ui/surfaces/Connect.tsx",
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-158",
+   "title": "Capitalisation switches between Title Case, sentence case and mixed forms",
+   "severity": "Cosmetic",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": true,
+   "round": null,
+   "fix": "Quick part (XS, not frozen): move Export.tsx:137/293 strings into content.json, using the existing pages.app.plan.loadFailed and a new export key, in sentence case. The step-heading and lane casing sweep is a content change on finished steps' screens, so it needs the owner's yes, and many tests pin these strings.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/Export.tsx"
+   ]
+  },
+  {
+   "id": "F-159",
+   "title": "Layout rhythm and control styles vary between surfaces",
+   "severity": "Cosmetic",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "partly",
+   "effort": "M",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": true,
+   "round": null,
+   "fix": "One download-button style through DataTable/Button, plus a shared hover tint for .tab/.text-control/collapse buttons in app.css. Frozen because shared control hover reaches finished steps' screens. Low value; defer.",
+   "files": [
+    "src/ui/app.css",
+    "src/ui/components/DataTable.tsx",
+    "src/ui/surfaces/Export.tsx",
+    "src/ui/surfaces/MfaReadiness.tsx"
+   ]
+  },
+  {
+   "id": "F-190",
+   "title": "Print, 'Download every prompt', 'See the prompts' and the masked bundle freeze the tab for 12–33 s at 5,000 seats, with no busy state",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "dev-mock",
+   "status": "partly",
+   "effort": "M",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Quick part (S): list the prompt titles from PROMPTS.pack words without building the pack, and build a prompt only on Copy. Disable the clicked button with a 'Preparing…' label via setTimeout before heavy work. Larger part: mask in a worker.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "src/roadmap/prompts.ts"
+   ]
+  },
+  {
+   "id": "F-194",
+   "title": "Loading an unchanged plan file removes 3 steps and moves the finish date 7 weeks earlier until the next reload",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "dev-mock",
+   "status": "unclear",
+   "effort": "M",
+   "risk": "high",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Reproduce first on the dev mock. Diff the IndexedDB plan and mapping records before the load, after it and after a reload. Diff usePlanData's inputs (mapping, groups size, directory.universe, saved.stepDecisions) between the post-load and post-reload renders. Fix the source so both paths are the same. Pairs with F-023's confirm.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "src/ui/surfaces/planData.ts",
+    "src/graph/collect/cache.ts"
+   ]
+  },
+  {
+   "id": "F-179",
+   "title": "With no existing policies, 'Require MFA for Everyone' gives two creation dates and two go-live bars",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "dev-mock",
+   "status": "unclear",
+   "effort": "M",
+   "risk": "high",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Live check: open ?dev=1&mock=1&policies=0#/plan and compare the two rows' Est. dates, and whether Create the Policies in Report-only lists IAC - GLOBAL - GRANT - MFA - AllUsers. If both hold, make the batch the only thing that dates the report-only create for policies it lists (roadmap/reportOnlyBatch.ts plus the scheduler).",
+   "files": [
+    "src/roadmap/reportOnlyBatch.ts",
+    "src/roadmap/generate.ts"
+   ]
+  },
+  {
+   "id": "F-173",
+   "title": "Without Entra ID P1 the Plan is one sentence: no security defaults route, no steps that need no licence, no link to MFA Readiness",
+   "severity": "Major",
+   "surface": "Plan",
+   "origin": "dev-mock",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 3,
+   "frozen": false,
+   "round": null,
+   "fix": "Content only. Rewrite content.json:3605 to match the refusal ('Without Entra ID P1 IAMAI offers no plan; …'). With owner yes, append one sentence to conditionalAccessNeedsP1 naming security defaults as the no-P1 route and its admin-center path. A fuller no-P1 page is an owner decision.",
+   "files": [
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-011",
+   "title": "Rollback, blast radius and 'what could go wrong' appear only in the printed plan, never on screen",
+   "severity": "Major",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 3,
+   "frozen": true,
+   "round": null,
+   "fix": "If the owner wants it: on a policy step whose next task is the turn-on, draw the ifWrong card and a link to Prepare Emergency Access Accounts' runbook beside the task, for example by enabling WHY_LINK_SHOWN for turn-on steps only.",
+   "files": [
+    "src/ui/surfaces/StepSections.tsx",
+    "src/ui/surfaces/ContentStep.tsx"
+   ]
+  },
+  {
+   "id": "F-008",
+   "title": "'Require Phishing-Resistant MFA for Admins' tells you, by default, to replace the stricter Phishing-resistant strength with the baseline's Modern MFA + TAP",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "Optional: add the existing strengthMethods words (content.json:4871) after the grant line on the admin correction ('Modern MFA + TAP: Windows Hello for Business, passkeys, CBA, one-time TAP'). Keep the stricter-grant default as the owner decided.",
+   "files": [
+    "src/ui/surfaces/policyTasks.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-014",
+   "title": "Steps that correct an existing policy also offer to create a second, baseline-named one, and an existing guest MFA policy is ignored",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": true,
+   "round": null,
+   "fix": "No fix under current rules. If wanted, on a step matched to a tenant policy, title the create 'Create the baseline's policy instead (replaces {name})' so it does not read as the next action.",
+   "files": [
+    "src/ui/surfaces/policyTasks.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-048",
+   "title": "The How page has no glossary for the words the plan relies on",
+   "severity": "Minor",
+   "surface": "How",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "If the owner reopens this, build the vocabulary plan's four hover definitions (TAP, AAGUID, attestation, authentication strength) through InfoTip and src/copy/definitions.ts. Cover the Report-only/Enforced chips with OWN-W3's legend lines. No glossary page.",
+   "files": [
+    "src/copy/definitions.ts",
+    "src/ui/components/InfoTip.tsx",
+    "docs/design/content.json",
+    "src/ui/surfaces/Plan.tsx"
+   ]
+  },
+  {
+   "id": "F-124",
+   "title": "Printed plan lists the decisions as Completed but not the answers",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "S",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "If the owner wants it: under 'Done so far', add one line per answered Direction decision ('Company phones: not enrolled'), built from the saved stepDecisions through the same decision-line words the step uses.",
+   "files": [
+    "src/ui/surfaces/PrintPlan.tsx",
+    "src/ui/surfaces/printPlan.ts",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-096",
+   "title": "Answered decisions collapse into 'All 3 completed' behind a small +, which makes changing your mind hard to find",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 2,
+   "frozen": false,
+   "round": null,
+   "fix": "If wanted: when every Direction step is answered, the Needs your input tile (Plan.tsx:379) at 0 selects the answered Direction steps ('Review your answers'). Alternatively, search also matches the lane/substatus word 'Decision'. Needs an owner yes, because it changes a deliberate fold.",
+   "files": [
+    "src/ui/surfaces/Plan.tsx",
+    "src/ui/surfaces/planBoard.ts"
+   ]
+  },
+  {
+   "id": "F-103",
+   "title": "Policy names to type by hand mix en dashes and hyphens",
+   "severity": "Minor",
+   "surface": "Step",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": true,
+   "round": null,
+   "fix": "Leave the names as the baseline has them. Optionally fold dashes in tracking.ts:186 nameKey the way cleanupPhase.ts does, and add a per-name copy control later.",
+   "files": [
+    "src/roadmap/tracking.ts"
+   ]
+  },
+  {
+   "id": "F-131",
+   "title": "Export page: most formats are hidden behind a small 'Additional Formats' toggle, several buttons look disabled, and a download gives no confirmation",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Move the label to pages.export.groups.additional (sentence case). Optionally give the CSV buttons the secondary style. Download confirmation is a separate choice for the owner.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-157",
+   "title": "The theme switch reads like a status ('Dark theme' while light is on) and exposes no pressed state",
+   "severity": "Cosmetic",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Leave the label. If wanted, give aria-label 'Switch to {theme} theme' and keep the visible text. Do not add aria-pressed to a button whose label changes (an anti-pattern).",
+   "files": [
+    "src/ui/shell/AppShell.tsx"
+   ]
+  },
+  {
+   "id": "F-187",
+   "title": "In the demo every reload silently re-runs the scan as of now, so the scan never ages and the sample's dates shift under your saved decisions",
+   "severity": "Minor",
+   "surface": "Shell",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "No engine change. Optional XS: say it in the demo banner, e.g. 'Sample data, regenerated for today' (content-only edit to demoBanner or a new phrase).",
+   "files": [
+    "docs/design/content.json"
+   ]
+  },
+  {
+   "id": "F-030",
+   "title": "Emergency-access safeguards sit after the rollout: the print files 'Verify Emergency Access' under Cleanup, and 'Alert on Emergency Account Sign-ins' waits for 'After security rollout' with no reason",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": true,
+   "round": null,
+   "fix": "Only if the owner wants it: one line on the held alert step saying why it waits (e.g. 'Set up once the policies are on, so test sign-ins during the rollout do not raise alerts'). This touches a finished section's step screen.",
+   "files": [
+    "docs/design/content.json",
+    "src/ui/surfaces/CleanupStep.tsx"
+   ]
+  },
+  {
+   "id": "F-046",
+   "title": "On Export, the '?' beside the plan-file tip hides the tip instead of explaining it",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "If the owner wants a change: show '×' (aria 'Hide the tip') while the tip is open and '?' only while it is collapsed. This is shared, so check every page that uses the tip.",
+   "files": [
+    "src/ui/components/PageTip.tsx"
+   ]
+  },
+  {
+   "id": "F-150",
+   "title": "In dark theme the primary action looks almost like the secondary one",
+   "severity": "Cosmetic",
+   "surface": "Connect",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "XS",
+   "risk": "medium",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "None. A solid dark primary would contradict the approved reference and needs the owner's decision.",
+   "files": [
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-133",
+   "title": "The plan file uses internal goal names and statuses rather than the screen's words",
+   "severity": "Cosmetic",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "S",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "None. Optionally add a readme line saying 'title' is the goal and 'plainTitle' is the screen title.",
+   "files": [
+    "src/roadmap/plan.ts"
+   ]
+  },
+  {
+   "id": "F-178",
+   "title": "When the signed-in admin looks dormant, admin policies show 'No user impact' and the admin vanishes from Readiness",
+   "severity": "Minor",
+   "surface": "Plan",
+   "origin": "dev-mock",
+   "status": "intentional",
+   "effort": "M",
+   "risk": "high",
+   "reward": 1,
+   "frozen": true,
+   "round": null,
+   "fix": "If wanted: in derive/sets.ts, count operatorUserId as active when the scan's /me read succeeded. This reverses a documented rule and moves impacts and Readiness on approved steps, so owner yes first.",
+   "files": [
+    "src/derive/operator.ts",
+    "src/derive/sets.ts",
+    "src/scoring/fromSnapshot.ts"
+   ]
+  },
+  {
+   "id": "F-024",
+   "title": "No whole-plan policy export for baselines-as-code, and the Policies CSV has no baseline mapping",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "intentional",
+   "effort": "L",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "None unless the owner widens scope. If so, add a 'Target policies (JSON)' download keyed by baseline name with baselinePin and gap, plus baseline-name and gap columns in the Policies CSV.",
+   "files": [
+    "src/ui/surfaces/Export.tsx",
+    "src/ui/surfaces/inventoryTables.ts"
+   ]
+  },
+  {
+   "id": "F-019",
+   "title": "Nothing gives a short status or client summary: the print's 'one-page summary' is a paragraph of 30+ step names, followed by about 98 pages of runbook",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "fixed",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "No fix needed. A 'Copy status' control on Plan would be a new feature (M), not a defect.",
+   "files": [
+    "src/ui/surfaces/PrintPlan.tsx",
+    "src/ui/surfaces/printPlan.ts"
+   ]
+  },
+  {
+   "id": "F-022",
+   "title": "The printed plan runs alternative tasks together as one sequence (create a new MFA policy, then correct the existing one, then turn it on)",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "superseded",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "None.",
+   "files": [
+    "src/ui/surfaces/PrintPlan.tsx"
+   ]
+  },
+  {
+   "id": "F-045",
+   "title": "The printed plan keeps live controls and IAMAI-only instructions, prints 'Learn →' links with no URL, and drops policy names from evidence rows",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "superseded",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "None.",
+   "files": [
+    "src/ui/surfaces/PrintPlan.tsx"
+   ]
+  },
+  {
+   "id": "F-076",
+   "title": "Printed plan: the page footer is printed over body text on 17 of 102 pages, including the lockout-recovery PowerShell command",
+   "severity": "Major",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "superseded",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "None.",
+   "files": [
+    "src/ui/app.css"
+   ]
+  },
+  {
+   "id": "F-125",
+   "title": "The printed plan wastes pages and strands headings: a blank page, a page per phase heading, and a Contents list with no page numbers in a 102-page document",
+   "severity": "Minor",
+   "surface": "Export",
+   "origin": "demo",
+   "status": "superseded",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "None.",
+   "files": [
+    "src/ui/app.css"
+   ]
+  }
+ ]
+}
