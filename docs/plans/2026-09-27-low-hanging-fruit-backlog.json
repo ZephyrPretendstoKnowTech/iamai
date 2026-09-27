@@ -236,7 +236,7 @@
    "severity": "Major",
    "surface": "Step",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "medium",
    "reward": 4,
@@ -256,7 +256,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "One stray click on the x removes an emergency account, drops a step and tells the admin to take a real break-glass account out of the exclusions group, a lockout path."
+   "bucket_reason": "One stray click on the x removes an emergency account, drops a step and tells the admin to take a real break-glass account out of the exclusions group, a lockout path.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-016",
@@ -264,7 +265,7 @@
    "severity": "Major",
    "surface": "Step",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "medium",
    "reward": 4,
@@ -284,7 +285,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "Troubleshooting opens by saying IAMAI is about to configure an account, contradicting the read-only promise, and buries the TAP section the step sends people to."
+   "bucket_reason": "Troubleshooting opens by saying IAMAI is about to configure an account, contradicting the read-only promise, and buries the TAP section the step sends people to.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-057",
@@ -292,7 +294,7 @@
    "severity": "Major",
    "surface": "Connect",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "medium",
    "reward": 4,
@@ -313,7 +315,8 @@
     "cost": "attention"
    },
    "bucket_category": "main-path-friction",
-   "bucket_reason": "A cancelled or failed Microsoft sign-in leaves the Sign in button spinning forever, blocking the first step every real user takes."
+   "bucket_reason": "A cancelled or failed Microsoft sign-in leaves the Sign in button spinning forever, blocking the first step every real user takes.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "OWN-R1",
@@ -350,7 +353,7 @@
    "severity": "own",
    "surface": "Plan",
    "origin": "own",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "medium",
    "reward": 4,
@@ -371,7 +374,8 @@
     "cost": "attention"
    },
    "bucket_category": "main-path-confusion",
-   "bucket_reason": "Eleven rows say 'Waiting on your answers' without naming the question, so the admin cannot tell which decision unblocks them."
+   "bucket_reason": "Eleven rows say 'Waiting on your answers' without naming the question, so the admin cannot tell which decision unblocks them.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-161",
@@ -437,7 +441,7 @@
    "severity": "Minor",
    "surface": "Plan",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "low",
    "reward": 3,
@@ -455,7 +459,8 @@
     "cost": "attention"
    },
    "bucket_category": "main-path-confusion",
-   "bucket_reason": "Tile words, row words and the legend disagree ('Observing' vs 'On Hold · Report-only', undefined 'Correct' and 'Enforced'), so P1 misreads what is already done."
+   "bucket_reason": "Tile words, row words and the legend disagree ('Observing' vs 'On Hold · Report-only', undefined 'Correct' and 'Enforced'), so P1 misreads what is already done.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-044",
@@ -571,7 +576,7 @@
    "severity": "Minor",
    "surface": "Shell",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "low",
    "reward": 3,
@@ -590,7 +595,8 @@
     "cost": "attention"
    },
    "bucket_category": "main-path-confusion",
-   "bucket_reason": "The demo's scan switch styles the selected option like a link, so evaluators cannot tell which scan they are looking at; restyling is CSS only."
+   "bucket_reason": "The demo's scan switch styles the selected option like a link, so evaluators cannot tell which scan they are looking at; restyling is CSS only.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-168",
@@ -623,7 +629,7 @@
    "severity": "Minor",
    "surface": "Export",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "low",
    "reward": 3,
@@ -641,7 +647,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "A briefing printed from a 40-day-old scan presents old counts as current without the stale-scan caveat the screen shows."
+   "bucket_reason": "A briefing printed from a 40-day-old scan presents old counts as current without the stale-scan caveat the screen shows.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "OWN-F1",
@@ -679,7 +686,7 @@
    "severity": "own",
    "surface": "Plan",
    "origin": "own",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "low",
    "reward": 3,
@@ -698,7 +705,8 @@
    },
    "bucket_category": "merged",
    "bucket_reason": "Same defect as F-003; tracked there.",
-   "merged_into": "F-003"
+   "merged_into": "F-003",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-041",
@@ -3920,7 +3928,7 @@
    "severity": "Minor",
    "surface": "Step",
    "origin": "demo",
-   "status": "partly",
+   "status": "fixed",
    "effort": "XS",
    "risk": "low",
    "reward": 4,
@@ -3940,7 +3948,8 @@
     "cost": "attention"
    },
    "bucket_category": "main-path-confusion",
-   "bucket_reason": "In the demo, Scan silently completes work and decisions the evaluator never made; one banner line keeps the behaviour and removes the confusion."
+   "bucket_reason": "In the demo, Scan silently completes work and decisions the evaluator never made; one banner line keeps the behaviour and removes the confusion.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-002",
@@ -3948,7 +3957,7 @@
    "severity": "Major",
    "surface": "Step",
    "origin": "demo",
-   "status": "partly",
+   "status": "fixed",
    "effort": "S",
    "risk": "medium",
    "reward": 4,
@@ -3967,7 +3976,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "Four screens give four answers on whether the emergency accounts sit outside the enforced MFA policy, the one question lockout safety rests on."
+   "bucket_reason": "Four screens give four answers on whether the emergency accounts sit outside the enforced MFA policy, the one question lockout safety rests on.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-013",
@@ -3975,7 +3985,7 @@
    "severity": "Major",
    "surface": "Step",
    "origin": "demo",
-   "status": "partly",
+   "status": "fixed",
    "effort": "S",
    "risk": "medium",
    "reward": 4,
@@ -3996,7 +4006,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "A deferral's required reason is never shown again, and deferring shrinks the progress total the manager reads."
+   "bucket_reason": "A deferral's required reason is never shown again, and deferring shrinks the progress total the manager reads.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-018",
@@ -4004,7 +4015,7 @@
    "severity": "Major",
    "surface": "Readiness",
    "origin": "demo",
-   "status": "partly",
+   "status": "fixed",
    "effort": "S",
    "risk": "medium",
    "reward": 4,
@@ -4024,7 +4035,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "The Plan says 10 people are not ready while Readiness, its CSV and the briefing say 21, 25 or 26 with no bar named."
+   "bucket_reason": "The Plan says 10 people are not ready while Readiness, its CSV and the briefing say 21, 25 or 26 with no bar named.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
   },
   {
    "id": "F-078",
@@ -5933,7 +5945,7 @@
    "risk": "medium",
    "reward": 4,
    "frozen": true,
-   "fix": "Reword each to what is known and the next step, or solve the read (owner rule: never say couldn't read): shared.engine.readiness.blind, noneJudged, noneJudgedOne, detectionGap.policies, tracking.evidenceSourceUnread, app.plan.emergencyUnproven, pages.plan.impact.notEstablished, pages.readiness.planContext.unknown, stepContract.implementation.workloadIdentity.unknown. File-parse errors (plan file damaged) are not tenant evidence and stay.",
+   "fix": "Reword each to what is known and the next step, or solve the read (owner rule: never say couldn't read): shared.engine.readiness.blind, noneJudged, noneJudgedOne, detectionGap.policies, tracking.evidenceSourceUnread, app.plan.emergencyUnproven, pages.plan.impact.notEstablished, pages.readiness.planContext.unknown, stepContract.implementation.workloadIdentity.unknown. File-parse errors (plan file damaged) are not tenant evidence and stay. Also the hard-coded \"Named locations could not be fully read. Scan again to load existing office networks.\" in the office network decision (ContentStep.tsx).",
    "files": [
     "docs/design/content.json"
    ],
@@ -5942,14 +5954,14 @@
   {
    "severity": "own",
    "origin": "own",
-   "round": null,
+   "round": 2,
    "bucket": "attention",
    "judges": [],
    "bucket_category": "main-path-friction",
    "id": "F-160b",
    "title": "The Forget confirm's \"Save a plan file first\" takes the header's plain text style, so it does not look like a link",
    "surface": "Shell",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "low",
    "reward": 2,
@@ -5958,7 +5970,29 @@
    "files": [
     "src/ui/app.css"
    ],
-   "bucket_reason": "Found in the Round 1 live audit of F-160."
+   "bucket_reason": "Found in the Round 1 live audit of F-160.",
+   "fixed_in": "1265bb24 (Round 2, 2026-09-27)"
+  },
+  {
+   "id": "F-003b",
+   "title": "The legend's new label \"Create, Correct, Turn on, Decision, Review\" wraps to four lines in its column",
+   "severity": "own",
+   "surface": "Plan",
+   "origin": "own",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 1,
+   "frozen": false,
+   "round": null,
+   "fix": "Give .plan-legend dt room for the longer label, or break the label after the first two words.",
+   "files": [
+    "src/ui/app.css"
+   ],
+   "bucket": "attention",
+   "judges": [],
+   "bucket_category": "other",
+   "bucket_reason": "Found in the Round 2 live audit."
   }
  ],
  "worth_review": {
