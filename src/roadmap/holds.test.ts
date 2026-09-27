@@ -48,6 +48,7 @@ import { scheduleOf, scheduledEventOf } from './stepSchedule.ts'
 import { WHEN, boardReadingsOf, boardWhenOf } from '../ui/surfaces/planBoard.ts'
 import { planStateOf } from '../ui/surfaces/planState.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
+import { lockedStart } from '../derive/planStart.ts'
 import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
 import { demoTenant } from '../ui/demo.ts'
 
@@ -315,7 +316,10 @@ test('Step 4: no plan finishes on a date while work it requires is held, and its
   assert.deepEqual([bundle.plan.targetEnd, bundle.plan.weeks, bundle.plan.finish], [null, null, null], 'the bundle exports a finish')
   // Connect's sample tile is the Plan's length, and says it is an estimate when the Plan cannot finish.
   const d = demoTenant(false)
-  const demo = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
+  // From the day the demo Plan starts (derive/planStart.ts lockedStart), as the tile counts it.
+  const now = new Date()
+  const start = lockedStart<{ startDate?: string; firstDeployment?: string; startedAt?: string }>({}, d.mapping.displayTimeZone ?? null, now)
+  const demo = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping }, { startDate: start.startDate, firstDeployment: start.firstDeployment, reviewNow: now.toISOString() })
   // The rows the Plan draws, and the weeks to the Estimated finish its tile states (derive/finish.ts statedEstimate).
   const drawn = customerPlanSteps(demo.steps)
   const demoFinish = planFinish(drawn, demo.schedule.cleanup?.end ?? null)

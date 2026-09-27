@@ -9,6 +9,7 @@ import { planFinish, planWeeks, statedEstimate } from '../derive/finish.ts'
 import { customerPlanSteps } from './surfaces/customerPlanSteps.ts'
 import { boardReadingsOf } from './surfaces/planBoard.ts'
 import { demoTenant } from './demo.ts'
+import { lockedStart } from '../derive/planStart.ts'
 
 /** `estimated`: the sample plan cannot finish yet, so `weeks` is the rollout's estimate (derive/finish.ts planWeeks), never a finish. */
 export type DemoFacts = { people: number; steps: number; inPlace: number; weeks: number; estimated: boolean }
@@ -18,7 +19,13 @@ let cached: DemoFacts | null = null
 export function demoFacts(): DemoFacts {
   if (cached) return cached
   const d = demoTenant(false)
-  const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
+  // The demo Plan's own start (ui/surfaces/planData.ts): its record locks today in the
+  // display zone, a weekend moved to the Monday after (derive/planStart.ts lockedStart).
+  // The fixture's written start (Aug 31) under a snapshot shifted to today said
+  // "9 weeks" over a demo Plan whose tile read Est. Oct 29, five weeks out (F-004).
+  const now = new Date()
+  const start = lockedStart<{ startDate?: string; firstDeployment?: string; startedAt?: string }>({}, d.mapping.displayTimeZone ?? null, now)
+  const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping }, { startDate: start.startDate, firstDeployment: start.firstDeployment, reviewNow: now.toISOString() })
   const cleanup = run.schedule.cleanup ?? null
   // The steps the Plan draws, not the steps the engine produced: a customer plan
   // is the engine's rows through `customerPlanSteps`, the one projection every

@@ -19,6 +19,7 @@ import { planFinish, planLengthSentence, planWeeks, statedEstimate } from './fin
 import { fillText } from '../content/render.ts'
 import { demoTenant } from '../ui/demo.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
+import { lockedStart } from './planStart.ts'
 import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
 
 const ms = (iso: string): number => Date.parse(iso)
@@ -82,9 +83,17 @@ test('the Estimated finish is a date on every plan, from the first scan on, and 
 // forecast, Connect's sample tile still counted the rollout's drawn estimate
 // ("3 weeks · estimated rollout") over a demo Plan whose tile read "Est. Sep 24,
 // 2026" and whose ⓘ said "The plan is 4 weeks because …".
-test('Connect\'s sample tile counts the weeks the demo Plan\'s ⓘ states', () => {
+//
+// And from the day the demo Plan starts: its record locks today (ui/surfaces/planData.ts,
+// derive/planStart.ts lockedStart). The tile ran the fixture from its written start,
+// Aug 31, under a snapshot shifted to today, and said "9 weeks" over a demo Plan whose
+// tile read "Est. Oct 29, 2026" and whose ⓘ said "The plan is 5 weeks" (F-004).
+test('Connect\'s sample tile counts the weeks the demo Plan\'s ⓘ states, from the day the demo Plan starts', () => {
   const d = demoTenant(false)
-  const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
+  const now = new Date()
+  const start = lockedStart<{ startDate?: string; firstDeployment?: string; startedAt?: string }>({}, d.mapping.displayTimeZone ?? null, now)
+  const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping }, { startDate: start.startDate, firstDeployment: start.firstDeployment, reviewNow: now.toISOString() })
+  assert.equal(run.schedule.start.slice(0, 10), start.startDate?.slice(0, 10), 'the premise: the plan starts on the demo Plan\'s day')
   // The rows the Plan draws (ui/surfaces/planData.ts), as the tile counts them.
   const steps = customerPlanSteps(run.steps)
   const cleanup = run.schedule.cleanup ?? null
