@@ -21,6 +21,7 @@ import { detectFacets } from '../../coverage/applicability.ts'
 import { serviceEvidence, serviceReading } from '../../roadmap/workflows.ts'
 import { SERVICE_KEYS, savedAnswerOf } from '../../roadmap/directionAnswers.ts'
 import type { MappingState } from '../../mapping/types.ts'
+import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import { portalName } from '../../roadmap/portalLines.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
@@ -535,18 +536,44 @@ export function groupEntriesOf(groups: GroupMembers): GroupEntry[] {
   return [...groups].map(([groupId, g]) => ({ groupId, displayName: g.displayName ?? null, memberCount: g.memberCount, sampled: g.sampled, membershipRule: g.membershipRule ?? null, read: true }))
 }
 
-export function groupsModel(referenced: Map<string, { include: string[]; exclude: string[] }>, groups: GroupEntry[] | null, names: NameDirectory, snapshot: TenantSnapshot | null = null): InventoryModel<GroupRow> {
+/** The groups the plan itself names, by the role it gives them: the exclusions group the operator chose, and the service accounts group. */
+export type PlanGroupRole = 'exclusions' | 'serviceAccounts'
+export function planGroupRolesOf(mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId'> | null | undefined): Map<string, PlanGroupRole> {
+  const roles = new Map<string, PlanGroupRole>()
+  if (!mapping) return roles
+  const exclusions = operatorExclusionsDecision(mapping)
+  if (exclusions) roles.set(exclusions.id, 'exclusions')
+  if (mapping.serviceAccountsGroupId) roles.set(mapping.serviceAccountsGroupId, 'serviceAccounts')
+  return roles
+}
+
+/**
+ * The groups the Groups tab lists (F-049): every group a policy references, and
+ * the plan's own that none does yet. The plan's exclusions group was missing
+ * from "Everything the scan read" until a policy excluded it, while the plan
+ * called it verified.
+ */
+export function listedGroupsOf(referenced: ReadonlyMap<string, { include: string[]; exclude: string[] }>, plan: ReadonlyMap<string, PlanGroupRole> = new Map()): Map<string, { include: string[]; exclude: string[] }> {
+  const listed = new Map(referenced)
+  const known = new Set([...listed.keys()].map((id) => id.toLowerCase()))
+  for (const id of plan.keys()) if (!known.has(id.toLowerCase())) listed.set(id, { include: [], exclude: [] })
+  return listed
+}
+
+export function groupsModel(referenced: Map<string, { include: string[]; exclude: string[] }>, groups: GroupEntry[] | null, names: NameDirectory, snapshot: TenantSnapshot | null = null, plan: ReadonlyMap<string, PlanGroupRole> = new Map()): InventoryModel<GroupRow> {
   const G = C.groups
   const group = (id: string): string => names.nameOf(id) ?? (groups === null ? '…' : W.unnamedGroup)
-  const rows: GroupRow[] = [...referenced.entries()].map(([id, refs]) => {
-    const g = groups?.find((x) => x.groupId === id)
+  const roleOf = (id: string): PlanGroupRole | null => [...plan].find(([planId]) => planId.toLowerCase() === id.toLowerCase())?.[1] ?? null
+  const rows: GroupRow[] = [...listedGroupsOf(referenced, plan).entries()].map(([id, refs]) => {
+    const g = groups?.find((x) => x.groupId.toLowerCase() === id.toLowerCase())
+    const role = roleOf(id)
     return {
       id,
       name: g?.displayName ?? group(id),
       // A read that failed, or a group nobody read, has no count: its members are not read, never 0.
       members: groups === null ? '…' : g && g.read ? (g.sampled ? G.sampled(g.memberCount) : figure(g.memberCount)) : NOT_READ,
       membership: g && g.read ? (g.membershipRule ? G.dynamic : G.assigned) : G.unknown,
-      policies: [...refs.include.map(G.include), ...refs.exclude.map(G.exclude)].join('; '),
+      policies: [...(role ? [W.planGroups[role]] : []), ...refs.include.map(G.include), ...refs.exclude.map(G.exclude)].join('; '),
     }
   })
   // The groups are the ones the policies reference: policies not read reference none the scan could see.
@@ -947,7 +974,7 @@ export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
  * model that tab draws. The groups the plan loaded name the groups (E5);
  * without them a group is named by the directory alone.
  */
-export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers = new Map()): InventoryTable[] {
+export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers = new Map(), plan: ReadonlyMap<string, PlanGroupRole> = new Map()): InventoryTable[] {
   const names = buildNameDirectory(snapshot, groups)
   const facts = policyFactsOf(snapshot)
   // A table whose section the scan did not read is offered as no file: a
@@ -958,7 +985,7 @@ export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers =
     ...offer(locationsModel(snapshot, facts)),
     ...offer(authMethodsModel(snapshot, names)),
     ...offer(peopleModel(snapshot, names)),
-    ...offer(groupsModel(referencedGroupsOf(facts), groupEntriesOf(groups), names, snapshot)),
+    ...offer(groupsModel(referencedGroupsOf(facts), groupEntriesOf(groups), names, snapshot, plan)),
     ...offer(devicesModel(snapshot, names)),
     ...offer(rolesModel(snapshot, names)),
     ...offer(appsModel(snapshot, names)),

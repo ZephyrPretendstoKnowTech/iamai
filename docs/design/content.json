@@ -3716,6 +3716,11 @@
         "creditsNote": "Microsoft MVP is an award for community contribution. It is not a Microsoft certification of this baseline, and Microsoft does not endorse or support IAMAI."
       },
       "inventory": {
+        "$commentPlanGroups": "F-049: the groups the plan itself names, listed in the Groups tab and its CSV even before a policy references them (ui/surfaces/inventoryTables.ts planGroupRolesOf), with this in Referenced by. The plan's exclusions group used to be missing from \"Everything the scan read\" on a tenant whose policies did not exclude it yet, while 1.2 called it verified.",
+        "planGroups": {
+          "exclusions": "The plan's exclusions group",
+          "serviceAccounts": "The plan's service accounts group"
+        },
         "caps": {
           "entraP1": "Entra ID P1",
           "entraP2": "Entra ID P2",

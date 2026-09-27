@@ -24,7 +24,7 @@ import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
-import { inventoryTables, readinessTable } from './inventoryTables.ts'
+import { inventoryTables, planGroupRolesOf, readinessTable } from './inventoryTables.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile, planFileRefusal, sameBaselineSource } from '../../roadmap/plan.ts'
@@ -98,7 +98,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   // They are built once for the scan and the groups they read, which is what
   // they are made of.
   const csvTables = useMemo(
-    () => (snapshot ? [readinessTable(snapshot, data.mapping ?? undefined), ...inventoryTables(snapshot, data.groups)] : []),
+    () => (snapshot ? [readinessTable(snapshot, data.mapping ?? undefined), ...inventoryTables(snapshot, data.groups, planGroupRolesOf(data.mapping))] : []),
     [snapshot, data.mapping, data.groups],
   )
   // The prompt pack is the whole plan rendered through the export view, once per

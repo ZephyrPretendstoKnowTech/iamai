@@ -157,6 +157,8 @@ export type AppWords = {
     policiesNone: string
     licencesNone: string
     blockedNone: string
+    /** Referenced by, for a group the plan itself names (F-049). */
+    planGroups: { exclusions: string; serviceAccounts: string }
   }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; keep: string; takeOff: string; matched: string; choose: string }
 }

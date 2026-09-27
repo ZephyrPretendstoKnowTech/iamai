@@ -34,6 +34,8 @@ import {
   excludedGuestsWords,
   includedGuestsWords,
   groupsModel,
+  listedGroupsOf,
+  planGroupRolesOf,
   methodTargetGroupsOf,
   objectLabels,
   licencesModel,
@@ -53,7 +55,7 @@ import {
   viabilityOf,
   workloadsModel,
 } from './inventoryTables.ts'
-import type { GroupEntry, InventoryModel } from './inventoryTables.ts'
+import type { GroupEntry, InventoryModel, PlanGroupRole } from './inventoryTables.ts'
 import { useAppliedMapping } from './planData.ts'
 
 type Raw = Record<string, unknown>
@@ -104,12 +106,16 @@ const cellOf = <R,>(model: InventoryModel<R>, key: string) => model.columns.find
 
 export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
   const [groups, setGroups] = useState<GroupMembersCacheEntry[] | null>(null)
+  const planMapping = useAppliedMapping(snapshot)
 
   const policies = useMemo(() => (snapshot.config.caPolicies?.rows ?? []) as Raw[], [snapshot])
   const facts = useMemo(() => policyFactsOf(snapshot, policies), [policies, snapshot])
   const referencedGroups = useMemo(() => referencedGroupsOf(facts), [facts])
-  // The groups whose names the page reads: those a policy references (the Groups tab), and those an authentication method targets.
-  const readGroups = useMemo(() => [...new Set([...referencedGroups.keys(), ...methodTargetGroupsOf(snapshot)])], [referencedGroups, snapshot])
+  // The groups the plan itself names (the exclusions group, the service accounts group), listed even before a policy references them (F-049).
+  const planGroups = useMemo(() => planGroupRolesOf(planMapping), [planMapping])
+  const listedGroups = useMemo(() => listedGroupsOf(referencedGroups, planGroups), [referencedGroups, planGroups])
+  // The groups whose names the page reads: those the Groups tab lists, and those an authentication method targets.
+  const readGroups = useMemo(() => [...new Set([...listedGroups.keys(), ...methodTargetGroupsOf(snapshot)])], [listedGroups, snapshot])
 
   useEffect(() => {
     let cancelled = false
@@ -149,7 +155,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
           { id: 'locations', label: C.tabs.locations, render: () => <LocationsTab snapshot={snapshot} facts={facts} /> },
           { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} groupsPending={groups === null} /> },
           { id: 'people', label: C.tabs.people, badge: badge('users', snapshot.users.length), render: () => <PeopleTab snapshot={snapshot} names={names} viability={viability} readiness={readiness} /> },
-          { id: 'groups', label: C.tabs.groups, badge: badge('caPolicies', referencedGroups.size), render: () => <GroupsTab snapshot={snapshot} referenced={referencedGroups} groups={groupEntries} names={names} /> },
+          { id: 'groups', label: C.tabs.groups, badge: badge('caPolicies', listedGroups.size), render: () => <GroupsTab snapshot={snapshot} referenced={referencedGroups} plan={planGroups} groups={groupEntries} names={names} /> },
           { id: 'devices', label: C.tabs.devices, badge: badge('devices', snapshot.devices.length), render: () => <DevicesTab snapshot={snapshot} names={names} /> },
           { id: 'roles', label: C.tabs.roles, render: () => <RolesTab snapshot={snapshot} names={names} /> },
           { id: 'apps', label: C.tabs.apps, render: () => <AppsTab snapshot={snapshot} names={names} /> },
@@ -310,13 +316,13 @@ function PeopleTab({ snapshot, names, viability, readiness }: { snapshot: Tenant
 // ---------- Groups ----------
 
 // L3: Groups used to be a sub-tab of People, a tab strip inside a tab strip. It is its own tab.
-function GroupsTab({ snapshot, referenced, groups, names }: { snapshot: TenantSnapshot; referenced: Map<string, { include: string[]; exclude: string[] }>; groups: GroupEntry[] | null; names: NameDirectory }) {
+function GroupsTab({ snapshot, referenced, plan, groups, names }: { snapshot: TenantSnapshot; referenced: Map<string, { include: string[]; exclude: string[] }>; plan: ReadonlyMap<string, PlanGroupRole>; groups: GroupEntry[] | null; names: NameDirectory }) {
   const G = C.groups
   return (
     <div>
       <Heading text={C.tabs.groups} source="groups" />
       {groups === null && <p className="reason">{G.loading}</p>}
-      <ModelTable model={groupsModel(referenced, groups, names, snapshot)} render={{ policies: (r) => <span className="sub">{r.policies}</span> }} />
+      <ModelTable model={groupsModel(referenced, groups, names, snapshot, plan)} render={{ policies: (r) => <span className="sub">{r.policies}</span> }} />
     </div>
   )
 }
