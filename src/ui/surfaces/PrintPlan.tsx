@@ -175,6 +175,11 @@ export function PrintPlan({
                     <span className="print-number">{n.number}</span> {n.title}
                   </strong>
                   <span className="brief-why">{n.why}</span>
+                  {n.asks && (
+                    <ul className="brief-asks">
+                      {n.asks.map((a) => <li key={a}>{a}</li>)}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>

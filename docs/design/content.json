@@ -3562,6 +3562,8 @@
             "Deferred": "Set aside"
           },
           "needDecision": "A decision is needed.",
+          "$commentNeedAnswers": "OWN-P1 (owner, 2026-09-27): a decision the manager can act on names what it asks. Under What we need from you, a Direction step reads this, with the questions it still waits on listed under it in the step's own words (roadmap/direction.ts question labels). A decision with no questions of its own keeps needDecision.",
+          "needAnswers": "Answers needed on:",
           "$commentNeed": "Why a row is in What we need from you (ui/surfaces/printPlan.ts briefOf): the people it waits on, by name for admins and for the people a report-only week would have stopped when there are three or fewer, by count otherwise. The board's own tail (\"When every admin has a method it accepts (2 of 3)\") is the administrator's reading, not the ask.",
           "need": {
             "adminsNamed": "Waiting on {list:names} to set up the sign-in method this step needs.",

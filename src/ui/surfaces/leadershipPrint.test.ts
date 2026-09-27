@@ -14,7 +14,7 @@ import { content, directionWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { applySkips } from '../../roadmap/progress.ts'
 import { boardOf } from './planBoard.ts'
-import { BRIEF, briefOf, printSectionsOf, readinessNeed, recoveryOf } from './printPlan.ts'
+import { BRIEF, briefOf, decisionAsksOf, printSectionsOf, readinessNeed, recoveryOf } from './printPlan.ts'
 import type { Brief } from './printPlan.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -81,7 +81,7 @@ test('the briefing prints every open row with its three lines, and no procedure'
 })
 
 test('what we need from you is a decision or a wait on people, in the briefing\'s words, never the plan\'s own order', () => {
-  const NEED = new Set([BRIEF.needDecision, ...Object.values(BRIEF.need)].map((w) => w.split('{')[0]!))
+  const NEED = new Set([BRIEF.needDecision, BRIEF.needAnswers, ...Object.values(BRIEF.need)].map((w) => w.split('{')[0]!))
   let decisions = 0
   let waits = 0
   for (const f of PLANS()) {
@@ -90,7 +90,7 @@ test('what we need from you is a decision or a wait on people, in the briefing\'
       const row = board.rows.find((r) => r.item.id === n.id)!
       // Never the board's tail ("When every admin has a method it accepts (2 of 3)", "After …", "Report-only until …").
       assert.ok([...NEED].some((w) => n.why.startsWith(w)), `${f.name}/${n.id}: "${n.why}" is not the briefing's own wording`)
-      if (n.why === BRIEF.needDecision) {
+      if (n.why === BRIEF.needDecision || n.why === BRIEF.needAnswers) {
         decisions++
         assert.equal(row.lane.substatus, 'Decision', `${f.name}/${n.id}: a decision the board does not read as one`)
         continue
@@ -114,7 +114,7 @@ test('a report-only result lists people only once its week is over, never a row 
   const { brief, board } = briefFor(f, { over: (steps) => { for (const s of steps) if (s.tracking) s.tracking = { ...s.tracking, failuresByUser: [{ userId: 'u-1', count: 1 }] } } })
   for (const n of brief.needs) {
     const row = board.rows.find((r) => r.item.id === n.id)!
-    if (n.why === BRIEF.needDecision) continue
+    if (n.why === BRIEF.needDecision || n.why === BRIEF.needAnswers) continue
     assert.ok(row.lane.lane === 'On Hold' || (row.lane.lane === 'Ready' && row.lane.substatus === 'Observing'), `${n.id}: listed from ${row.lane.lane} "${row.lane.waitingFor}"`)
   }
   assert.ok(board.rows.some((r) => r.lane.lane === 'Up Next' && r.step?.tracking), 'the premise: a row on its report-only week carries the injected failure')
@@ -126,7 +126,7 @@ test('an admin the plan waits on is named, as the owner decided: names for admin
     const { brief, board, ctx } = briefFor(f)
     for (const n of brief.needs) {
       const step = board.rows.find((r) => r.item.id === n.id)?.step
-      if (!step || step.goalId !== 'admins-phishing-resistant' || n.why === BRIEF.needDecision) continue
+      if (!step || step.goalId !== 'admins-phishing-resistant' || n.why === BRIEF.needDecision || n.why === BRIEF.needAnswers) continue
       const ex = stepVars(step, ctx(step)) as Record<string, unknown>
       const names = (ex.adminsWithout as string[] | undefined) ?? []
       if (names.length === 0) continue
@@ -262,4 +262,18 @@ test('a deferral says why: on the step\'s Next milestone, under the Completed ti
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /\.\.\.\(deferredCount > 0 \? \{ sub: \[fillText\(summary\.deferred, \{ n: deferredCount \}\)\] \} : \{\}\)/)
   // A step that is not deferred reads no deferral.
   assert.equal(deferralOf(steps.find((s) => s.id !== id && s.status !== 'skipped')!), null)
+})
+
+// OWN-P1: "2.1 Confirm What You Use: A decision is needed.", three times over,
+// told a manager nothing they could act on. A decision names what it asks, in
+// the step's own question words; one with no questions of its own keeps the line.
+test('a decision under What we need from you lists the questions it still waits on, in the step\'s own words', () => {
+  const f = curatedFixture('demo')
+  const { brief } = briefFor(f)
+  const use = brief.needs.find((n) => n.id === 's-direction-use')!
+  assert.equal(use.why, 'Answers needed on:')
+  assert.deepEqual(use.asks, ['Azure Virtual Desktop', 'Limit SharePoint and OneDrive to the office network', 'Inforcer', 'Devices or apps that send email by signing in (printers, scanners, line-of-business apps)', 'Partner or MSP technicians who sign in to your tenant'])
+  assert.deepEqual(brief.needs.find((n) => n.id === 's-direction-devices')!.asks, ['Company computers', 'Phones', 'Office network'])
+  assert.equal(decisionAsksOf({ directionQuestions: undefined }).length, 0, 'a decision with no questions of its own asks nothing')
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /<span className="brief-why">\{n\.why\}<\/span>\n\s+\{n\.asks && \(\n\s+<ul className="brief-asks">/)
 })

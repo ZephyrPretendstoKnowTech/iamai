@@ -5521,3 +5521,9 @@ header.app .right .menu-confirm a {
   color: var(--danger-text);
   border-color: var(--danger);
 }
+
+/* A decision's questions under What we need from you (OWN-P1): a short list under its line, in the line's colour. */
+@media print {
+  .brief-needs .brief-asks { margin: 1mm 0 0; }
+  .brief-needs .brief-asks li { margin: 0; color: var(--secondary-text); }
+}

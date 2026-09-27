@@ -134,6 +134,7 @@ type BriefWords = {
   labels: { does: string; matters: string; notice: string; reaches: string }
   lanes: Record<Lane, string>
   needDecision: string
+  needAnswers: string
   need: { adminsNamed: string; admins: string; adminsCount: string; peopleCount: string; peopleShare: string; mfaShare: string; guestsShare: string; devicesShare: string; people: string; stoppedNamed: string; stopped: string }
   recovery: { lead: string; accounts: string }
   journey: Record<string, string>
@@ -149,7 +150,7 @@ type BriefLines = { does?: string; matters?: string; notice?: string }
 /** One open step as the briefing prints it. */
 export type BriefEntry = { id: string; number: string | null; title: string; status: string; when: string | null; does: string | null; matters: string | null; notice: string | null; reaches: string | null }
 /** Something the plan needs a decision or an action on before it can move. */
-export type BriefNeed = { id: string; number: string | null; title: string; why: string }
+export type BriefNeed = { id: string; number: string | null; title: string; why: string; /** A decision's questions still waiting on an answer, in the step's own words (OWN-P1). */ asks?: string[] }
 /** A row by its number and title: a finished one with the day it finished, or one the person set aside. */
 export type BriefLine = { id: string; number: string | null; title: string; when: string | null; /** A deferred step's recorded reason (deferral.ts). */ reason?: string }
 /** One of the Plan's sections, told as a chapter of the journey: its progress is the board's own summary of it. */
@@ -180,6 +181,13 @@ export function readinessNeed(step: Step, ex: Record<string, unknown>): string {
   const family = readinessFamilyOf(gate)
   const words = family === 'mfa' ? BRIEF.need.mfaShare : family === 'guest' ? BRIEF.need.guestsShare : family === 'device' ? BRIEF.need.devicesShare : BRIEF.need.peopleShare
   return fillText(words, { value: gate.value, threshold: gate.threshold })
+}
+
+/** A decision step's questions still waiting on an answer, by the labels the step shows; every question where none is saved yet. None for a decision that asks no questions of its own. */
+export function decisionAsksOf(step: Pick<Step, 'directionQuestions'> | null | undefined): string[] {
+  const questions = step?.directionQuestions ?? []
+  const open = questions.filter((q) => q.saved === null)
+  return (open.length > 0 ? open : questions).map((q) => q.label)
 }
 
 /**
@@ -250,7 +258,11 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
       entries.push({ id: r.id, number, title: r.title, status: BRIEF.lanes[r.lane.lane], when, does, matters: briefLine(lines.matters, ex), notice: briefLine(lines.notice, ex), reaches: people })
       const reason = readings.get(r.id)?.reason ?? null
       const failures = r.step?.tracking?.failuresByUser ?? []
-      if (r.lane.lane === 'Ready' && r.lane.substatus === 'Decision') needs.push({ id: r.id, number, title: r.title, why: BRIEF.needDecision })
+      if (r.lane.lane === 'Ready' && r.lane.substatus === 'Decision') {
+        // What the decision asks, so a manager can act on it (OWN-P1): "A decision is needed." said nothing about what.
+        const asks = decisionAsksOf(r.step)
+        needs.push({ id: r.id, number, title: r.title, why: asks.length > 0 ? BRIEF.needAnswers : BRIEF.needDecision, ...(asks.length > 0 ? { asks } : {}) })
+      }
       else if (r.step && r.lane.lane === 'On Hold' && r.step.action.readinessGate != null && reason?.kind === 'evidence' && reason.id.startsWith('evidence:readiness:')) needs.push({ id: r.id, number, title: r.title, why: readinessNeed(r.step, ex) })
       else if (r.step && r.lane.lane === 'Ready' && r.lane.substatus === 'Observing' && failures.length > 0) {
         const nameOf = stepCtx(r.step).nameOf
