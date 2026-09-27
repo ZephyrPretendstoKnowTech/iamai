@@ -31,6 +31,8 @@ test('sign-in waits for MSAL readiness, another account is a fresh picker, and s
     assert.ok(start >= 0, 'authReady is not exported')
     const body = src.slice(start, src.indexOf('\n}', start))
     assert.match(body, /initAuth\(\)/, 'authReady does not await initAuth')
+    // F-057: a redirect that came back with an error still leaves sign-in ready (App.tsx reports the error).
+    assert.match(body, /initAuth\(\)\.catch\(\(\) => null\)/, 'a cancelled or failed redirect leaves Sign in spinning')
     assert.match(body, /warmAuthority\(\)/, 'authReady does not warm the authority metadata')
   }
 

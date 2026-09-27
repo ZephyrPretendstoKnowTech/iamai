@@ -108,7 +108,10 @@ test('a sign-in error is one of three states from the MSAL error code, and a fai
     assert.equal(x.state, 'sign-in was cancelled')
     assert.equal(x.tone, null)
     assert.equal(x.lead, null)
-    assert.equal(x.note, null)
+    // F-057: a sign-in usually stops on Microsoft's consent screen, so the Global Reader and consent paragraph stays.
+    assert.equal(x.note, signInTile({ error: null }).note)
+    assert.match(x.note ?? '', /Consent on behalf of your organization/)
+    assert.equal(signInTile({ error: { kind: 'failed', message: 'AADSTS65004: User declined to consent' } }).note, x.note, 'and on a failed sign-in')
     assert.deepEqual(
       x.actions.map((a) => a.weight),
       ['primary', 'secondary'],

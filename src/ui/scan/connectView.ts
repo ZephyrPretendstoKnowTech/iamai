@@ -160,11 +160,13 @@ export function signInTile({ error }: { error: SignInError | null }): SignInTile
       return { ...base, state: S.errors.consent.state, tone: 'wait', lead: fillText(S.errors.consent.lead, { domain: error.domain ?? S.errors.consent.thisTenant }), note: null, actions: [signIn, demo] }
     case 'personal':
       return { ...base, state: S.errors.personal.state, tone: 'stop', lead: fillText(S.errors.personal.lead, { account: error.account ?? S.errors.personal.thatAccount }), note: null, actions: [{ label: S.workAccount, weight: 'primary' }, demo] }
+    // Cancelled and failed keep the Global Reader and consent paragraph: a sign-in
+    // usually stops on Microsoft's consent screen, which is what it explains (F-057).
     case 'cancelled':
-      return { ...base, state: S.errors.cancelled.state, tone: null, lead: null, note: null, actions: [signIn, demo] }
+      return { ...base, state: S.errors.cancelled.state, tone: null, lead: null, note: W.account.note, actions: [signIn, demo] }
     case 'failed':
       // "Microsoft answered:" only over something Microsoft said.
-      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: error.message ? fillText(S.errors.failed.lead, { message: error.message }) : null, note: null, actions: [signIn, demo] }
+      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: error.message ? fillText(S.errors.failed.lead, { message: error.message }) : null, note: W.account.note, actions: [signIn, demo] }
   }
 }
 

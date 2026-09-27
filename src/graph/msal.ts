@@ -55,9 +55,15 @@ export function warmAuthority(): Promise<void> {
   return authorityWarm
 }
 
-/** MSAL is ready to sign in: initialised, the redirect handled, the metadata warmed. */
+/**
+ * MSAL is ready to sign in: initialised, the redirect handled, the metadata
+ * warmed. A redirect that came back with an error (the person cancelled, or
+ * Microsoft refused) is handled too: the app reports it (App.tsx classifies
+ * initAuth's rejection), and signing in again must still work. Rejecting here
+ * left the Sign in button spinning and every click dead until a reload (F-057).
+ */
 export function authReady(): Promise<unknown> {
-  return Promise.all([initAuth(), warmAuthority()])
+  return Promise.all([initAuth().catch(() => null), warmAuthority()])
 }
 
 export async function signIn(): Promise<void> {
