@@ -1913,6 +1913,8 @@
         "forgetCancel": "Cancel",
         "forgetYes": "Forget {tenant}",
         "demoBanner": "Sample data · nothing here is from a real tenant",
+        "$commentDemoBannerFollowUp": "F-017 (owner, 2026-09-27): Scan in the demo moves to the sample's follow-up scan, where steps are done and answers given that the visitor never did. The banner's announced sentence says so while that scan shows.",
+        "demoBannerFollowUp": "Sample data · a follow-up scan weeks later, after the sample's own technician did some of the work",
         "demoSnapshots": "Sample snapshot",
         "demoSnapshotInitial": "Initial scan",
         "demoSnapshotFollowUp": "Follow-up scan",

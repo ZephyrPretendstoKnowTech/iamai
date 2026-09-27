@@ -339,7 +339,9 @@ export function AppShell({
               in a screen reader, in print's absence and at any width. It stands
               on its own so the live region announces the sample and never the
               selector's own labels every time a snapshot lands. */}
-          <span role="status">{SHELL.demoBanner}</span>
+          {/* On the follow-up scan the sentence says what changed and why, so Scan's
+              jump to it explains itself where the visitor is looking (F-017). */}
+          <span role="status">{demoWeek2 ? SHELL.demoBannerFollowUp : SHELL.demoBanner}</span>
           {' · '}
           {/* The progression: two synthetic scans, named. Pressing one changes
               the facts the app derives from (ui/actions.ts showDemoSnapshot) and

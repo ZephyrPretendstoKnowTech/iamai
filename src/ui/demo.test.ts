@@ -400,3 +400,20 @@ test('the sample uses the pinned baseline, not a copy', () => {
   // rather than shipping the fixture's copy to the surfaces.
   assert.ok(/loadPinnedBaseline\(\)/.test(read('src/ui/App.tsx')))
 })
+
+// F-017, F-144: Scan in the demo moves to the sample's follow-up scan, where
+// steps are done and answers given that the visitor never did, and the only
+// sign was an underline moving between two options that looked like the
+// "Leave the demo" link. The switch is a two-segment control with the selected
+// one filled, and on the follow-up the announced sentence says what it is.
+test('the demo banner says which sample scan is showing, as a two-segment switch', async () => {
+  const { app } = await import('../content/content.ts')
+  const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
+  assert.match(shell, /<span role="status">\{demoWeek2 \? SHELL\.demoBannerFollowUp : SHELL\.demoBanner\}<\/span>/)
+  assert.equal(app.shell.demoBannerFollowUp, "Sample data · a follow-up scan weeks later, after the sample's own technician did some of the work")
+  const css = readFileSync('src/ui/app.css', 'utf8')
+  const rule = (sel: string): string => css.slice(css.indexOf(`${sel} {`), css.indexOf('}', css.indexOf(`${sel} {`)))
+  assert.match(rule('.demo-banner .demo-snapshots'), /border: 1px solid var\(--strong-line\);/)
+  assert.match(rule(".demo-banner .demo-snapshots button[aria-pressed='true']"), /background: var\(--brand-soft\);/)
+  assert.doesNotMatch(rule(".demo-banner .demo-snapshots button[aria-pressed='true']"), /underline/, 'the selected scan no longer looks like a link')
+})
