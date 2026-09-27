@@ -132,7 +132,8 @@ type BriefWords = {
   labels: { does: string; matters: string; notice: string; reaches: string }
   lanes: Record<Lane, string>
   needDecision: string
-  need: { adminsNamed: string; admins: string; adminsCount: string; peopleCount: string; peopleShare: string; people: string; stoppedNamed: string; stopped: string }
+  need: { adminsNamed: string; admins: string; adminsCount: string; peopleCount: string; peopleShare: string; mfaShare: string; guestsShare: string; devicesShare: string; people: string; stoppedNamed: string; stopped: string }
+  recovery: { lead: string; accounts: string }
   journey: Record<string, string>
   risk: string[]
 }
@@ -163,16 +164,20 @@ const briefLine = (s: unknown, ex: Record<string, unknown>): string | null => (t
 /**
  * A readiness wait as the people it waits on: the admins by name where the
  * step names them (stepVars.ts adminsWithout, three or fewer), else how many;
- * a count gate's own "2 of 3"; a share gate's number beside the one it needs.
+ * a count gate's own "2 of 3"; a share gate's number beside the one it needs,
+ * worded as its family's people and what they do (set up MFA, move to a managed device).
  */
-function readinessNeed(step: Step, ex: Record<string, unknown>): string {
+export function readinessNeed(step: Step, ex: Record<string, unknown>): string {
   const gate = step.action.readinessGate!
   const named = Array.isArray(ex.adminsWithout) ? (ex.adminsWithout as string[]) : []
   if (named.length > 0) return fillText(BRIEF.need.adminsNamed, { names: named })
   if (typeof ex.adminsWithoutCount === 'number') return fillText(BRIEF.need.admins, { n: ex.adminsWithoutCount })
   const count = readinessCountOf(step)
   if (count !== null) return fillText(readinessFamilyOf(gate) === 'admin' ? BRIEF.need.adminsCount : BRIEF.need.peopleCount, count)
-  return gate.floor !== true && SHARE.test(gate.value) && SHARE.test(gate.threshold) ? fillText(BRIEF.need.peopleShare, { value: gate.value, threshold: gate.threshold }) : BRIEF.need.people
+  if (gate.floor === true || !SHARE.test(gate.value) || !SHARE.test(gate.threshold)) return BRIEF.need.people
+  const family = readinessFamilyOf(gate)
+  const words = family === 'mfa' ? BRIEF.need.mfaShare : family === 'guest' ? BRIEF.need.guestsShare : family === 'device' ? BRIEF.need.devicesShare : BRIEF.need.peopleShare
+  return fillText(words, { value: gate.value, threshold: gate.threshold })
 }
 
 /**
@@ -252,4 +257,27 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
   })
   const ahead = chapters.reduce((n, c) => n + c.entries.length, 0)
   return { chapters, needs, done, aside, counts: { done: done.length, ahead, needs: needs.length } }
+}
+
+/** The emergency-access step whose runbook the recovery page prints. */
+const RECOVERY_STEP = 's-prereq-break-glass'
+
+/** The recovery page: the runbook's heading, the saved emergency accounts, and its steps, filled. */
+export type Recovery = { label: string; accounts: string[]; steps: string[] }
+
+/**
+ * The one procedure the briefing keeps (owner, 2026-09-27): Prepare Emergency
+ * Access Accounts' own recovery runbook (steps[].lockedOut, the lines the
+ * opened step shows under If a change locks you out), with the emergency
+ * accounts the person saved and the tenant id Microsoft support asks for. On
+ * the day a change locks people out nobody can sign in to open the Planner.
+ * Null where the plan carries no such step.
+ */
+export function recoveryOf(steps: readonly Step[], stepCtx: (s: Step) => StepVarContext): Recovery | null {
+  const step = steps.find((s) => s.id === RECOVERY_STEP)
+  const locked = step ? ((contentStepFor(step) ?? {}) as { lockedOut?: { label?: unknown; steps?: unknown[] } }).lockedOut : undefined
+  if (!step || !locked || typeof locked.label !== 'string') return null
+  const ex = stepVars(step, stepCtx(step)) as Record<string, unknown>
+  const accounts = Array.isArray(ex.emergencyAccountUpns) ? (ex.emergencyAccountUpns as string[]) : []
+  return { label: locked.label, accounts, steps: (locked.steps ?? []).flatMap((l) => (typeof l === 'string' && whole(l, ex) ? [fillText(l, ex)] : [])) }
 }

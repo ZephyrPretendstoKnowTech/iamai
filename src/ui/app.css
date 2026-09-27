@@ -3482,6 +3482,10 @@ footer.app a {
   .brief-step dd { margin: 0; }
   .brief-done ul { columns: 2; column-gap: 8mm; list-style: none; padding: 0; margin: 0; }
   .brief-done li { break-inside: avoid; margin: 0 0 1mm; }
+  /* The recovery runbook: its own page, so IT can keep it apart from the briefing. */
+  .brief-recovery { break-before: page; }
+  .brief-recovery ol { margin: 0; padding-left: 5mm; }
+  .brief-recovery li { margin: 0 0 2mm; overflow-wrap: anywhere; }
   .print-cover { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; break-after: page; }
   .print-cover h1 { font-size: var(--t-6); margin: 0 0 12mm; }
   .print-cover dl { display: grid; grid-template-columns: 8rem 1fr; gap: 3mm 6mm; }

@@ -20,7 +20,7 @@ import { fillText } from '../../content/render.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
 import { boardOf } from './planBoard.ts'
-import { BRIEF, briefOf, doesntApplyLinesOf, noPlanLine } from './printPlan.ts'
+import { BRIEF, briefOf, doesntApplyLinesOf, noPlanLine, recoveryOf } from './printPlan.ts'
 import type { BriefEntry } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 
@@ -133,6 +133,7 @@ export function PrintPlan({
   // The header's own count (derive/facts.ts): the steps and the Cleanup rows, so the briefing and the Plan agree.
   const { steps: total, done: doneCount } = stepFacts(steps, schedule.cleanup, answers)
   const brief = briefOf({ board, stepCtx, cleanup: schedule.cleanup ?? null, undated: finish.held })
+  const recovery = recoveryOf(steps, stepCtx)
   const doesntApply = doesntApplyLinesOf(steps)
   const notLicensed = notLicensedRows(coverage, goalMap)
   const open = brief.chapters.filter((c) => c.entries.length > 0)
@@ -257,6 +258,21 @@ export function PrintPlan({
             </ul>
           )}
           {notLicensed.length > 0 && <p>{notLicensedPrintLine(notLicensed)}</p>}
+        </section>
+      )}
+
+      {/* The one procedure on paper, last and on a page of its own, for IT: the
+          day a change locks people out, nobody can sign in to open the Planner. */}
+      {recovery && recovery.steps.length > 0 && (
+        <section className="brief-recovery">
+          <h2>{recovery.label}</h2>
+          <p className="brief-why">{BRIEF.recovery.lead}</p>
+          {recovery.accounts.length > 0 && <p>{fillText(BRIEF.recovery.accounts, { accounts: recovery.accounts })}</p>}
+          <ol>
+            {recovery.steps.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ol>
         </section>
       )}
     </div>,

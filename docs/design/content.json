@@ -3496,6 +3496,11 @@
             "notInPlan": "Not in this plan",
             "aside": "Set aside for now"
           },
+          "$commentRecovery": "The one procedure the briefing keeps (owner, 2026-09-27): Prepare Emergency Access Accounts' own recovery runbook (steps[].lockedOut), on a page of its own at the end, for IT. On the day a change locks people out nobody can sign in to open the Planner, and the paper copy is what IT has in hand (ui/surfaces/printPlan.ts recoveryOf).",
+          "recovery": {
+            "lead": "For IT. Keep this page where you can reach it without signing in: it is for the day a change locks people out.",
+            "accounts": "Emergency accounts: {list:accounts}"
+          },
           "labels": {
             "does": "What it does for you",
             "matters": "Why it matters",
@@ -3517,6 +3522,9 @@
             "adminsCount": "Waiting on admins to set up the sign-in method this step needs: {ready} of {total} have.",
             "peopleCount": "Waiting on people to set up the sign-in method this step needs: {ready} of {total} have.",
             "peopleShare": "Waiting on more people to get ready for this step: {value} are ready, and it needs {threshold}.",
+            "mfaShare": "Waiting on more people to set up MFA: {value} have, and this step needs {threshold}.",
+            "guestsShare": "Waiting on more guests to set up MFA: {value} have, and this step needs {threshold}.",
+            "devicesShare": "Waiting on more people to move to devices the business manages: {value} have, and this step needs {threshold}.",
             "people": "Waiting on more people to get ready for this step.",
             "stoppedNamed": "Its report-only week would have stopped {list:names}; they need to be ready before it is switched on.",
             "stopped": "Its report-only week would have stopped {n} people; they need to be ready before it is switched on."
@@ -7390,7 +7398,7 @@
           "Someone stuck in a password-change loop: reset the account for them. Completing the remediation clears the risk by itself, so nothing has to be dismissed by hand afterwards.",
           "A guest reporting a block: their risk and their password both live in their home directory. There is nothing to reset or dismiss in this tenant."
         ],
-        "manager": "When Microsoft rates an account high risk, the person is asked to complete remediation at the next sign-in instead of waiting for someone to read a report.",
+        "manager": "When Microsoft rates an account as high risk, the person secures it at their next sign-in, instead of waiting for someone to notice.",
         "waits": null
       },
       "example": {
@@ -7471,7 +7479,7 @@
           "Repeated prompts after travel: answering the prompt clears the sign-in risk by itself, so there is nothing to dismiss afterwards.",
           "A sign-in blocked with AADSTS53004: the person has no registered method, and cannot register one while the sign-in is risky."
         ],
-        "manager": "Sign-ins Microsoft rates medium risk need MFA before they continue; sign-ins outside that rating are not affected by this policy.",
+        "manager": "Sign-ins Microsoft rates as medium risk need MFA before they go through.",
         "waits": null
       },
       "example": {
@@ -7547,7 +7555,7 @@
         "helpDesk": [
           "Check the sign-in failure and the Medium-risk policy’s actual recovery requirement. Help the person complete the supported secure password-change or administrator recovery process, then verify the risk and sign-in result. Investigate the detection before dismissing risk."
         ],
-        "manager": "When Microsoft rates an account medium risk, the person completes MFA and a secure password change at the next sign-in. The separate High-risk policy stays in place.",
+        "manager": "When Microsoft rates an account as medium risk, the person confirms with MFA and changes their password at their next sign-in.",
         "waits": null
       },
       "example": {

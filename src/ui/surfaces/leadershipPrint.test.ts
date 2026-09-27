@@ -14,7 +14,7 @@ import { content, directionWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { applySkips } from '../../roadmap/progress.ts'
 import { boardOf } from './planBoard.ts'
-import { BRIEF, briefOf, printSectionsOf } from './printPlan.ts'
+import { BRIEF, briefOf, printSectionsOf, readinessNeed, recoveryOf } from './printPlan.ts'
 import type { Brief } from './printPlan.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -175,4 +175,41 @@ test('the printed plan draws the briefing, never a step\'s procedure or a runnin
   assert.match(print, /briefOf\(\{ board, stepCtx, cleanup: schedule\.cleanup \?\? null, undated: finish\.held \}\)/)
   assert.doesNotMatch(print, /print-running/, 'a running header printed over the last lines of a page')
   assert.doesNotMatch(readFileSync('src/ui/app.css', 'utf8'), /\.print-running/, 'the running header style is back')
+})
+
+test('the one procedure on paper is the emergency recovery runbook, whole, on a page of its own at the end', () => {
+  // Owner, 2026-09-27: the day a change locks people out, nobody can sign in to
+  // open the Planner, and the paper copy is what IT has in hand.
+  const words = (content.steps as unknown as { id: string; lockedOut?: { label: string; steps: string[] } }[]).find((s) => s.id === 's-prereq-break-glass')!.lockedOut!
+  let printed = 0
+  for (const f of PLANS()) {
+    const { steps, ctx } = briefFor(f)
+    const recovery = recoveryOf(steps, ctx)
+    if (!steps.some((s) => s.id === 's-prereq-break-glass')) {
+      assert.equal(recovery, null, `${f.name}: a runbook with no emergency-access step`)
+      continue
+    }
+    printed++
+    assert.equal(recovery!.label, words.label, f.name)
+    assert.equal(recovery!.steps.length, words.steps.length, `${f.name}: a runbook line did not print`)
+    assert.ok(recovery!.steps.some((s) => s.includes(f.snapshot.tenantId)), `${f.name}: the tenant id Microsoft support asks for`)
+    assert.equal(recovery!.accounts.length, f.mapping.breakGlassUserIds.length, `${f.name}: the saved emergency accounts`)
+  }
+  assert.ok(printed > 0, 'the premise: plans with an emergency-access step')
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.ok(print.indexOf('className="brief-recovery"') > print.indexOf('className="brief-not"'), 'the runbook does not print last')
+  assert.match(readFileSync('src/ui/app.css', 'utf8'), /\.brief-recovery \{ break-before: page; \}/, 'the runbook shares a page with the briefing')
+})
+
+test('a wait on a share says whose move it is: people setting up MFA, guests, or people moving to managed devices', () => {
+  // "Waiting on more people to get ready for this step: 0% are ready" left a
+  // manager asking ready for what, on a wait for managed devices (live, 7.4).
+  const { steps } = briefFor(curatedFixture('demo'))
+  const step = steps.find((s) => s.action.readinessGate != null && s.goalId !== 'admins-phishing-resistant')
+  assert.ok(step, 'the premise: a step with a readiness gate')
+  const at = (measure: string): string => readinessNeed({ ...step!, readiness: { ...step!.readiness, lines: [] }, action: { ...step!.action, readinessGate: { measure, threshold: '80%', value: '12%' } } }, {})
+  assert.equal(at('device readiness'), fillText(BRIEF.need.devicesShare, { value: '12%', threshold: '80%' }))
+  assert.equal(at('MFA readiness'), fillText(BRIEF.need.mfaShare, { value: '12%', threshold: '80%' }))
+  assert.equal(at('guest MFA readiness'), fillText(BRIEF.need.guestsShare, { value: '12%', threshold: '80%' }))
+  assert.equal(at('something else'), fillText(BRIEF.need.peopleShare, { value: '12%', threshold: '80%' }))
 })
