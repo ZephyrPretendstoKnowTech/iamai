@@ -46,6 +46,24 @@ leadership briefing (c623ff0d..d9516a22) and the beta notice was removed
 - **Frozen:** the fix reaches a finished step's screen. Each fix is approved
   on its own, so a frozen fix still ships once the owner says yes.
 
+## Readiness scores
+
+The goal: an overall score of **90 or better, with no surface below 85**. Each score is the share of its reader's job the surface does well: would the reader finish what they came to do, trust what it says, and not regret the time?
+
+The baseline comes from the audience-framed audit on 2026-09-26 (live 55017e45), which gave an overall of about 74. Every round re-scores every surface from a live walk and adds a column.
+
+| Surface | Reader | Baseline 2026-09-26 | Notes |
+|---|---|---|---|
+| Home + demo | Evaluator deciding whether to try it | 72 | |
+| Connect | First-time admin deciding whether to trust it | 82 | Beta notice removed since (cdf79d82), which the audit put at about 86 |
+| Plan + steps | Admin doing the work | 82 | |
+| MFA Readiness | Admin and help desk running the campaign | 85 | |
+| Inventory | Admin checking what the scan saw | 78 | |
+| Export page | Other tools and records | 80 | |
+| Printed plan | Manager, director, owner | 25 | Rebuilt as the leadership briefing since (c623ff0d..d9516a22); not re-scored |
+| How | Security-minded evaluator | 85 | |
+| **Overall** | | **about 74** | |
+
 ## Round 1: the top 10 (each verified live on 2026-09-27)
 
 | # | ID | Fix | Effort | Risk |
@@ -516,69 +534,107 @@ is in the -backlog.json (`judges`, `bucket`, `bucket_reason`).
 
 ## Prompt for the next chat
 
-Copy everything in the block below into a new chat, opened in `C:\Dev\IAMAI`. Change `ROUND` to the round you want.
+Paste the block below into a new chat opened in `C:\Dev\IAMAI`. It runs one round;
+start a fresh chat for each round, with the same prompt.
 
 ```text
-We're working the low-hanging-fruit backlog in docs/plans/2026-09-27-low-hanging-fruit.md
-(and its -backlog.json). ROUND = 2.
+We're taking IAMAI Planner from about 74% ready to 90% or better across the board,
+ten fixes at a time. Read docs/plans/2026-09-27-low-hanging-fruit.md first: the Needs
+attention list, the round candidates and the Readiness scores. Then run one round.
 
-Read that plan first, then CLAUDE.md's rules as always. Don't read the whole backlog
-JSON into context: filter it with a small node script.
-
-1. Pick the round's ten (skip if the plan already lists this round's ten as approved).
-   - Pick only from "Needs attention" (bucket "attention" in the JSON). Start from the
-     plan's "Round N" candidates, then the rest of that list: status present or partly,
-     effort XS or S, highest reward first, low risk before medium.
+1. Pick the ten.
+   - If the plan has a round that isn't done yet, use its list. Round 1 is already
+     picked and verified.
+   - Otherwise take the top ten from "Needs attention" only:
+     - status present or partly, effort XS or S
+     - highest reward first, low risk before medium
+     - favour the surfaces with the lowest Readiness scores
    - Never pick from "Not worth fixing / review later" unless an item's trigger has
-     fired (a decision was made, a real tenant showed the data state, users reported
-     it). In that case move it to Needs attention first and tell the owner why.
-   - Leave out anything already done in an earlier round (git log, the plan's round
-     notes) and anything the plan lists under "Not low-hanging".
-   - Re-verify every candidate before presenting it. Code moves, and the audits ran on
-     55017e4.
-     - Code: read the files the fix sketch names at HEAD.
-     - Screen: check it live, solo, in the built-in browser on
-       https://getiamai.com/planner/?demo=1, or on the owner's tenant in Claude in Chrome
-       (read-only: never click Forget, Sign out, Scan or any save).
-     - A finding that no longer reproduces is marked fixed in the plan and replaced.
-   - For full detail on an F-* finding (steps, expected, actual, verifier notes), read
-     C:\Users\Owner\Downloads\IAMAI UX Audit.zip (index.html, the JSON in
-     <script id="data">). Extract it to your scratchpad.
-   - Present the ten to the owner as low-hanging fruit: one line each on what's wrong
-     (as verified today), the fix, effort, risk, and whether it reaches a finished step.
-     Recommend an order.
+     fired. Then move it to Needs attention first and say why.
+   - Filter the -backlog.json with a small node script; don't load it whole.
+   - For full detail on an F-* item, use C:\Users\Owner\Downloads\IAMAI UX Audit.zip.
+     It has index.html with the findings JSON in <script id="data">. Extract it to
+     your scratchpad.
 
-2. Build them one at a time. The owner approves every fix.
-   - Before each fix: say what the reader sees now, what they'll see after, and which
-     finished screens it touches. For wording on an approved step, show the exact new
-     words. Wait for a yes.
-   - Build on one branch per round from origin/main (fix/low-hanging-N).
-   - Words come from docs/design/content.json. Name added, removed and edited keys in
-     the commit message.
+2. Verify each one before planning it.
+   - Code: read the files its fix sketch names, as they are at HEAD.
+   - Live, on your own:
+     - the demo: https://getiamai.com/planner/?demo=1 in the built-in browser
+     - or the owner's tenant in Claude in Chrome, read-only: never click Forget,
+       Sign out, Scan or any save without asking.
+   - If one no longer reproduces, mark it fixed in the plan and take the next item.
+
+3. Plan the best way to fix each one, for the customer. Aim for the best fix, not
+   the quickest patch.
+   - Name the reader (evaluator, admin doing the work, help desk, manager) and what
+     they are trying to do at that moment.
+   - Before and after: what they see now, what they'll see, and why that is better
+     for them.
+   - Prefer deleting or shortening over adding text. Keep one place per fact. Take
+     words from docs/design/content.json.
+   - Where there is a real choice, lay out the options and recommend one.
+   - Show the exact new words for any wording change.
+   - Name the finished screens it touches, the effort and the risk.
+   - State the acceptance: the unit test, and the exact live check in Chrome that
+     will prove it.
+
+4. Approve the methods with the owner.
+   - Present all ten plans together, and ask about each open choice.
+   - Build only what the owner approves, the way they approved it.
+   - Anything rejected or deferred goes back on the list with the owner's reason.
+
+5. Build.
+   - One branch per round from origin/main: fix/low-hanging-N.
+   - One commit per fix, plain message. Name the content keys added, removed or
+     edited.
    - Each fix gets a unit test that fails before the fix and passes after. Run
-     `npm run verify -- <the test files>`. Commit per fix, plain message.
-   - If a fix turns out bigger or riskier than sized, stop and say so. Don't widen it.
+     `npm run verify -- <the tests>` while working.
+   - If a fix turns out bigger or riskier than planned, stop and tell the owner.
+     Don't widen it.
+   - To close the build:
+     - Run `NODE_OPTIONS=--max-old-space-size=14000 npm test` once.
+     - Run `npm run verify -- --prepush <the round's tests>`.
+     - Run a review workflow over the round's diff (workflows review only; audits
+       stay solo) and fix what it confirms.
+   - Ask the owner before pushing (`git push origin HEAD:main`; deploy-pages
+     publishes it). Wait for the deploy to finish.
 
-3. Close the round.
-   - Run `NODE_OPTIONS=--max-old-space-size=14000 npm test` once, and
-     `npm run verify -- --prepush <the round's test files>`.
-   - Run a review workflow over the round's diff (ultracode: reviews only; audits stay
-     solo).
-   - Ask the owner before pushing. After deploy-pages finishes, re-check every fix
-     live and report what you saw.
-   - Update the plan: mark the round done (commits, what was verified live), move any
-     item whose worth changed between the two lists (with the reason), list the
-     next round's candidates, and keep this prompt current. Commit that update with
-     the round.
+6. Audit the live result in Claude in Chrome, on your own, one fix at a time.
+   - Did it land as intended? Check that the screen matches the approved plan
+     exactly: words, placement, behaviour, and the before/after you promised.
+     Quote the screen or take a screenshot.
+   - Is the customer genuinely better off? Judge it as the reader: clearer, fewer
+     steps, nothing new to misread, nothing nearby broken. Say so plainly when it
+     isn't.
+   - For anything that falls short: fix it with the owner's OK before the round
+     closes, or add it to Needs attention.
+
+7. Re-score and close the round.
+   - Walk every surface live and re-score it in the plan's Readiness scores table,
+     using the baseline's lens: would its reader finish what they came to do,
+     trust what it says, and not regret the time? Base it on this walk, not
+     memory, and note what moved each score.
+   - Update the plan:
+     - mark the round done, with its commits and what the Chrome audit saw
+     - move items between the two lists, with reasons
+     - write the next round's candidates
+     - keep this prompt current
+     Commit the update with the round.
+   - Report to the owner: the ten fixes, what the customer sees now, the new scores,
+     and the proposed next ten.
+
+Repeat rounds until the overall score is at least 90 and no surface is below 85.
+Then stop, and ask the owner whether to take the remaining surfaces to 90.
 
 Standing rules:
-- Read-only product.
+- The product stays read-only.
 - Never commit tenant data (UPNs, object ids, tenant GUIDs).
 - Never say "couldn't read".
 - Exact controls: every difference is corrected or accepted with a reason.
 - The pinned baseline wins.
+- Finished screens change only with the owner's yes.
 - Don't run the walk.
-- Stop idle servers and agents when done.
-- Ring the chime (bash "$HOME/.claude/hooks/chime.sh" call "<reason>") when the owner
-  must look.
+- Stop idle servers and agents.
+- Ring the chime (bash "$HOME/.claude/hooks/chime.sh" call "<reason>") whenever the
+  owner must look.
 ```
