@@ -918,6 +918,10 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
           <div className="impl-preview" data-emergency-account-tasks={tasks && tab === 'portal' ? 'true' : undefined} {...onePanelProps(base, tab)}>
             {(!tasks || tab === 'portal') && <div className={`${tasks ? 'emergency-task-toolbar' : 'preview-actions'} no-print`}>{taskControls}{copyControl}<button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}><Icon name="external-link" size={14} /></button></div>}
             {copied === 'copy-failed' && <p role="status">{W.copyFailed}</p>}
+            {/* AI Info is copied with the tenant's names and object ids in it, to paste into an
+                assistant outside the tenant: the warning stands over it, here and in the expanded
+                viewer (exportGuard.ts implementation-artifact; F-061). */}
+            {tab === 'ai' && <Callout kind="warning">{W.aiWarning}</Callout>}
             {body('preview-text')}
           </div>
           {/* The expanded viewer (S6): the same channel the preview shows, the
@@ -941,6 +945,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
           >
             {copied === 'copy-failed' && <p role="status">{W.copyFailed}</p>}
             {active?.note && <p className="impl-dialog-note">{active.note}</p>}
+            {tab === 'ai' && <Callout kind="warning">{W.aiWarning}</Callout>}
             <div data-emergency-account-tasks={tasks && tab === 'portal' ? 'true' : undefined} {...onePanelProps(dialogBase, tab)}>{body('dialog-code', true)}</div>
           </StepDialog>
         </>

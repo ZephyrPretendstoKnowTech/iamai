@@ -108,3 +108,21 @@ test('the grounding bundle warns before its redaction control, and redaction def
     assert.match(page, /bundleRedacted[\s\S]{0,80}useState\(true\)|useState\(true\)[\s\S]{0,80}bundleRedacted/, 'bundleRedacted does not default to redacted')
   }
 })
+
+// F-061: the Implementation viewer's Copy is the unredacted
+// `implementation-artifact` surface, and its AI Info (the step handed to an
+// assistant outside the tenant, names and object ids in full) was justified by
+// a warning above the preview that a V1 rewrite had dropped. stepPackage.ts
+// artifactText strips the package's own copy of that warning because the tab
+// draws it, so it was said nowhere. It stands above the AI Info text in the
+// preview and in the expanded viewer, before the text Copy copies.
+test('AI Info carries its tenant-context warning above the text, in the preview and in the expanded viewer', () => {
+  const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  const viewer = step.slice(step.indexOf('export function Implementation('), step.indexOf('return (', step.indexOf('export function Implementation(')))
+  const warnings = [...viewer.matchAll(/\{tab === 'ai' && <Callout kind="warning">\{W\.aiWarning\}<\/Callout>\}/g)].map((m) => m.index)
+  assert.equal(warnings.length, 2, 'the preview and the expanded viewer each draw the warning')
+  const preview = viewer.indexOf("{body('preview-text')}")
+  const dialog = viewer.indexOf("{body('dialog-code', true)}")
+  assert.ok(warnings[0]! < preview && preview < warnings[1]! && warnings[1]! < dialog, 'each warning stands above the text it warns about')
+  assert.match(readFileSync(GUARD, 'utf8'), /AI Info carries its tenant-context warning above the same/, 'the guard still names the warning')
+})
