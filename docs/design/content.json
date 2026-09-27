@@ -3116,6 +3116,17 @@
         "manualReviewExplain": "IAMAI cannot verify the whole review. Confirm only after you have met the completion criteria above. Changes to the reviewed accounts or settings may reopen this step.",
         "manualReviewConfirm": "I completed this review",
         "manualReviewUndo": "Reopen this review",
+        "passkeyModels": {
+          "$comment": "Configure Passkey Authentication's list of extra key models (PasskeyModelDecision.tsx). Add and Remove save at once (F-104): a model added was lost unless a second Save was pressed, and that button is gone.",
+          "name": "Authenticator Name",
+          "aaguid": "AAGUID",
+          "add": "Add to List",
+          "remove": "Remove",
+          "removeLabel": "Remove {name}",
+          "invalid": "Enter an authenticator name and a valid AAGUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).",
+          "duplicate": "This AAGUID is already listed.",
+          "none": "No additional authenticators accepted."
+        },
         "manualReviewScanFirst": "Complete the changes above and scan again. The account or setting checks must pass before you can record this review.",
         "workflows": {
           "title": "Confirm the Services You Use",
