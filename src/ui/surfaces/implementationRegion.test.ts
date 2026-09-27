@@ -113,5 +113,6 @@ test('P0-5: the viewer’s tabs and Copy are in its sticky head, and no dialog b
   )
   assert.doesNotMatch(CONTENT_STEP, /dialog-toolbar/)
   assert.match(CSS, /\.step-dialog \.dialog-head \{\s*position: sticky;\s*top: 0;\s*z-index: 1;/)
-  assert.equal(CONTRACT.implementation.close, 'Minimize')
+  // F-016 (owner, 2026-09-27): every step dialog's × reads Close.
+  assert.equal(CONTRACT.implementation.close, 'Close')
 })

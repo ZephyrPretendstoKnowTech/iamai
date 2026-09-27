@@ -2557,7 +2557,7 @@
             "why": "Why IAMAI says this →",
             "dialogEyebrow": "Readiness evidence",
             "dialogTitle": "Why IAMAI says this",
-            "close": "Minimize",
+            "close": "Close",
             "tiles": {
               "baseline": "Baseline definition",
               "conflictValue": "Conflict unresolved",
@@ -2684,7 +2684,7 @@
             "copy": "Copy implementation",
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",
-            "close": "Minimize",
+            "close": "Close",
             "channelUnavailable": "This format has no output for the current action. Use the available guidance and readiness checks on this step.",
             "empty": {
               "inPlace": [
@@ -3053,7 +3053,7 @@
           "troubleshooting": {
             "$comment": "The labels a package troubleshooting scenario is drawn under (authoring guide v2.5 §30.3). Every scenario itself is the package author's (docs/implementation-content/<step-id>/CONTENT.md troubleshooting.model).",
             "eyebrow": "Troubleshooting",
-            "close": "Minimize",
+            "close": "Close",
             "seeing": "What you're seeing",
             "cause": "Likely cause",
             "check": "Check",

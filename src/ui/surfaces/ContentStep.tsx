@@ -328,7 +328,9 @@ export function ContentStep({
   const taskHead = taskHeadingsOf(step.id)
   // The three decision-step headings, for a member of a decision-anatomy group (Define Your Rollout Scope).
   const decisionHead = decisionHeadingsOf(step.id)
-  const displayedScenarios: TroubleshootingScenario[] = isEmergencyAccounts ? [...scenarios, {
+  // Temporary Access Pass first (F-016): the step's own instruction sends the
+  // person here for it ("Use Troubleshooting → Temporary Access Pass").
+  const displayedScenarios: TroubleshootingScenario[] = isEmergencyAccounts ? [{
     id: 'emergency-temporary-access-pass', title: 'Temporary Access Pass',
     symptom: 'The emergency account cannot complete the sign-in needed to register its approved passkey.', likelyCauses: [],
     check: ['Confirm which one emergency account needs bootstrap access and keep another authorized administrator session open.'],
@@ -341,7 +343,7 @@ export function ContentStep({
     doNot: ['Do not assume Temporary Access Pass bypasses Conditional Access or authentication-strength requirements. Do not weaken a blocking policy automatically.'],
     then: ['Return to Set up an approved passkey and finish the selected method procedure.'],
     sources: [{ id: 'microsoft-temporary-access-pass', title: 'Temporary Access Pass roles and use', url: 'https://learn.microsoft.com/entra/identity/authentication/howto-authentication-temporary-access-pass', checkedOn: '2026-09-12' }],
-  }] : scenarios
+  }, ...scenarios] : scenarios
   const hasPasskeyFindings = isPasskeySettings && !!step.configurationFindings?.length
   const baseReadiness = passkeyReadiness(step, readiness)
   const emergencyAccountUpns = new Map(ctx.mapping.breakGlassUserIds.flatMap(id => {
@@ -927,7 +929,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
           </div>
           {/* The expanded viewer (S6): the same channel the preview shows, the
               whole artifact at reading size, with the channel tabs and the
-              icon-only Copy in the sticky head beside Minimize (U16, U17). */}
+              icon-only Copy in the sticky head beside Close (U16, U17; F-016). */}
           <StepDialog
             open={open}
             onClose={onClose}

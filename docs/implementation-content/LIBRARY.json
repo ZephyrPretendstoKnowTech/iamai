@@ -1390,7 +1390,7 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "strictValidationErrors": 21,
+      "strictValidationErrors": 19,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"

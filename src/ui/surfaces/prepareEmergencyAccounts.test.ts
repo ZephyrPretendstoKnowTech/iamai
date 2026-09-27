@@ -262,3 +262,31 @@ test('taking an emergency access account off asks first, and only there', async 
   assert.equal(app.picker.keep, 'Keep')
   assert.equal(app.picker.takeOff, 'Take it off')
 })
+
+// F-016: 1.1's instruction says "Use Troubleshooting → Temporary Access Pass",
+// and the dialog opened on "IAMAI is about to configure an emergency account
+// that the owner never confirmed", in runbook words, with Temporary Access Pass
+// last of eight and the × announced "Minimize". It opens on Temporary Access
+// Pass, says nothing about IAMAI's own workings, speaks to the person, and
+// every step dialog's × reads Close.
+test('Troubleshooting on Prepare Emergency Access Accounts opens on Temporary Access Pass and speaks to the person', async () => {
+  const { CONTRACT } = await import('./stepContract.ts')
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  assert.match(step, /const displayedScenarios: TroubleshootingScenario\[\] = isEmergencyAccounts \? \[\{\n\s+id: 'emergency-temporary-access-pass'/, 'Temporary Access Pass comes first')
+  assert.match(step, /\}, \.\.\.scenarios\] : scenarios/)
+  const content = read('docs/implementation-content/s-prereq-break-glass/s-prereq-break-glass/CONTENT.md')
+  const scenarios = JSON.parse(content.split('\n').find((l) => l.startsWith('{"scenarios":'))!).scenarios as { id: string; symptom: string; check: string; fix: string; then: string }[]
+  assert.deepEqual(scenarios.map((s) => s.id).filter((id) => ['candidate-treated-as-decision', 'report-only-confusion'].includes(id)), [])
+  for (const s of scenarios) for (const t of [s.symptom, s.check, s.fix, s.then]) assert.doesNotMatch(t, /IAMAI is about to|Needs decision|held state|lockout-sensitive/, `${s.id}: ${t}`)
+  const drill = scenarios.find((s) => s.id === 'object-state-passes-drill-fails')!
+  assert.deepEqual([drill.symptom, drill.check, drill.fix, drill.then], [
+    "Every check passes, but an emergency account can't sign in.",
+    "Try the account's own credential in a clean browser, and look for an enforced policy that still reaches it.",
+    "Don't turn on any more policies until it signs in; fix what stopped it.",
+    'Run the emergency access check again before turning anything on.',
+  ])
+  // The registry the product reads carries the same entries.
+  const registry = read('src/content/implementation/registry.generated.json')
+  assert.doesNotMatch(registry, /IAMAI is about to configure an emergency account/)
+  assert.deepEqual([CONTRACT.troubleshooting.close, CONTRACT.readiness.close, CONTRACT.implementation.close], ['Close', 'Close', 'Close'])
+})
