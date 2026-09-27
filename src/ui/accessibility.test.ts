@@ -702,7 +702,8 @@ test('a readiness state is a word beside its dot, and a device chip carries its 
   assert.match(rule(css, '.surface.readiness .dev-word.s-seamless') ?? '', /color:\s*var\(--brand-primary\)/)
   assert.match(rule(css, '.surface.readiness .dev-word.s-method') ?? '', /color:\s*var\(--danger-text\)/)
   // Nothing to do is words, not an empty cell or a mark.
-  assert.match(read('src/ui/surfaces/readinessCells.ts'), /if \(rd\.next\.kind === 'none'\) return rd\.recommended && !r\.guest \? nextWords\(rd\.recommended\) : T\.next\.none/)
+  // A lapsing person is asked to sign in again (Phase 4); everyone else reads the words.
+  assert.match(read('src/ui/surfaces/readinessCells.ts'), /if \(rd\.next\.kind === 'none'\) \{\n    if \(rd\.recommended && !r\.guest\) return nextWords\(rd\.recommended\)[\s\S]*?\n    return T\.next\.none\n  \}/)
 })
 
 // ------------------------------------------------------------- F. reflow / width
