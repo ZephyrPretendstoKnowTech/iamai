@@ -81,11 +81,11 @@ export const RE = {
    * The readiness summary, in either tense: pluralise() may bend the noun and the verb to the count.
    * The counted are people, guests, or people and guests (derive/whoLine.ts cohortWords): the total is 2 + 3.
    * People and guests together put the whole count after "of" and name the cohort
-   * after a colon (pages.readiness.summaryWithGuests): there 3 is absent and 2 is the total.
+   * in brackets after it (pages.readiness.summaryWithGuests): there 3 is absent and 2 is the total.
    * Each count carries its thousands separator ("1,234 of 4,169 people"), so a
    * reader strips the commas before it adds them.
    */
-  readinessSummary: /(\d[\d,]*) of (\d[\d,]*) (?:(?:people|person|guests?)(?: and (\d[\d,]*) guests?)? )?(?:is|are) ready for phishing-resistant sign-in(?:\.|: \d[\d,]* (?:people|person) and \d[\d,]* guests?\.)/,
+  readinessSummary: /(\d[\d,]*) of (\d[\d,]*) (?:(?:people|person|guests?)(?: and (\d[\d,]*) guests?)? |\(\d[\d,]* (?:people|person) and \d[\d,]* guests?\) )?(?:is|are) ready for phishing-resistant sign-in\./,
   /** A tenant with nobody active says so instead, and has no numbers to state. */
   readinessSummaryNone: /No active people to count/,
 }

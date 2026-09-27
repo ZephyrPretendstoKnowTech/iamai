@@ -55,7 +55,7 @@ const PRINT_FORBID = [...FORBID_EVERYWHERE, ...STEP_FORBID.filter((f) => !MORE_H
 // counted are people, guests, or people and guests: the total is 2 + 3. People and
 // guests together (pages.readiness.summaryWithGuests) put the whole count after "of"
 // and the cohort after a colon: there 3 is absent and 2 is the total.
-const SUMMARY_LINE = /(\d+) of (\d+) (?:(?:people|person|guests?)(?: and (\d+) guests?)? )?(?:is|are) ready for phishing-resistant sign-in(?:\.|: \d+ (?:people|person) and \d+ guests?\.)/
+const SUMMARY_LINE = /(\d+) of (\d+) (?:(?:people|person|guests?)(?: and (\d+) guests?)? |\(\d+ (?:people|person) and \d+ guests?\) )?(?:is|are) ready for phishing-resistant sign-in\./
 
 // The states the bar and the groups name, read from the words the page ships
 // rather than copied here (prompt 62).

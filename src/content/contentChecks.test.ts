@@ -50,6 +50,12 @@ test('the readiness summary reads in the shape the walk reads, at a count of one
   const m = withGuest.match(RE.readinessSummary)!
   assert.equal(Number(m[2]) + Number(m[3] ?? 0), 31, 'the walk reads the whole cohort: people plus guests')
   assert.match(textAt('pages.readiness.summaryNone'), RE.readinessSummaryNone)
+  // People and guests together (F-044): the cohort in brackets after the whole count, never after a
+  // colon, where "29 people and 1 guest" read as the ready ones.
+  const both = fillText(textAt('pages.readiness.summaryWithGuests'), { ready: 4, total: 30, cohort: cohortWords(30, 1) })
+  assert.equal(both, '4 of 30 (29 people and 1 guest) are ready for phishing-resistant sign-in.')
+  const bm = both.match(RE.readinessSummary)!
+  assert.equal(Number(bm[2]) + Number(bm[3] ?? 0), 30, 'the walk reads the whole count')
   // A count of a thousand or more carries its separator (copy/statements.ts
   // figure), and the shape the walk reads must read it: "(\d+) of (\d+)" found
   // no summary on a tenant of 4,169 people, and the walk reported it missing.
