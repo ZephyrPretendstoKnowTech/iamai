@@ -302,7 +302,7 @@ export function ContentStep({
   const [copied, setCopied] = useState<string | null>(null)
   // A Direction step's draft (DirectionQuestions.tsx): its cards in the main
   // column change it, and Approve answers in the action column saves it.
-  const directionDraft = useDirectionDraft(step)
+  const directionDraft = useDirectionDraft(step, ctx.snapshot.tenantId)
   // The opened step's body, decided once (stepBody.ts stepBodyOf): the content
   // step, the contract under the lane engine's reading, the instructions, the
   // channels, the package's projection and readiness, the Readiness tiles, which

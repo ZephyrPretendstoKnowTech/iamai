@@ -8,7 +8,9 @@
 // in the step at once, through the step's own decision
 // (roadmap/directionAnswers.ts writes them where they have always been stored).
 // The opened step holds the draft both read (useDirectionDraft). Any answer can
-// be changed afterwards and approved again.
+// be changed afterwards and approved again, and a change stays on its card until
+// it is approved or changed back, across closing the step and moving between
+// pages (directionDrafts.ts, F-042).
 //
 // The controls are the ones the Plan's decisions already use: the dropdown the
 // decision options draw (`decision-select`) and the shared Picker over the
@@ -29,6 +31,7 @@ import type { PickerObject } from './pickerRows.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { QUESTION_STEP } from '../../roadmap/answers.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { draftSlot, heldEdits, holdEdits } from './directionDrafts.ts'
 
 const W = directionWords
 
@@ -123,17 +126,24 @@ export type DirectionDraft = {
  * column and Approve answers in its action column read one draft. Only the
  * person's changes are kept, under the key they were made against: once the
  * saved answers or a reopening change (directionDraftKey), every card starts
- * again from directionDraftOf.
+ * again from directionDraftOf. The changes are held for the session too
+ * (directionDrafts.ts), so the step opens on them again (F-042).
  */
-export function useDirectionDraft(step: Step): DirectionDraft {
+export function useDirectionDraft(step: Step, tenantId: string): DirectionDraft {
   const questions = step.directionQuestions ?? []
   const key = directionDraftKey(step)
-  const [edits, setEdits] = useState<{ key: string; answers: Readonly<Record<string, DirectionAnswer>> }>({ key, answers: {} })
-  const own = edits.key === key ? edits.answers : {}
+  const slot = draftSlot(tenantId, step.id)
+  const [edits, setEdits] = useState<{ key: string; answers: Readonly<Record<string, DirectionAnswer>> }>(() => ({ key, answers: heldEdits(slot, key) }))
+  const own = edits.key === key ? edits.answers : heldEdits(slot, key)
   return {
     questions,
     answerOf: (q) => own[q.key] ?? directionDraftOf(q),
-    setAnswer: (k, a) => setEdits((e) => ({ key, answers: { ...(e.key === key ? e.answers : {}), [k]: a } })),
+    setAnswer: (k, a) => {
+      // The held changes are the draft's own record, written on every change.
+      const next = { key, answers: { ...heldEdits(slot, key), [k]: a } }
+      holdEdits(slot, next)
+      setEdits(next)
+    },
   }
 }
 
