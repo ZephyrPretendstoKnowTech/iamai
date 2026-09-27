@@ -5415,3 +5415,26 @@ th .th-sort:focus-visible,
 .readiness-row.uncounted {
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 3.5fr);
 }
+
+/* Forget this tenant asks first (F-160): what goes, the plan file, Cancel and Forget. */
+.menu-list.menu-confirm {
+  width: 18rem;
+  padding: 12px;
+  gap: 10px;
+}
+.menu-confirm p {
+  margin: 0;
+}
+.menu-confirm .menu-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.menu-list.menu-confirm .btn {
+  width: auto;
+  justify-content: center;
+}
+.menu-confirm .forget-confirm {
+  color: var(--danger-text);
+  border-color: var(--danger);
+}

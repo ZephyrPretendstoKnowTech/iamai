@@ -127,7 +127,10 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //                    the Admin tag: the role's own NAME in the admin colour
   //   .readiness-tile li .ok
   //                    the check mark beside a completed check's own words
-  const CARRIES_A_WORD = /\.status|\.callout-|\.plan-row-number\.number-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.print-|\.plan-controls \.dot-|\.readiness-status-|\.state-dot\.s-|\.dev-word\.s-|\.readiness-bar \.s-|\.readiness-change b|\.surface\.readiness \.tag|\.readiness-tile li \.ok/
+  //   .menu-confirm .forget-confirm
+  //                    "Forget {tenant}", the one button that deletes, directly
+  //                    under the sentence that says what it deletes (F-160)
+  const CARRIES_A_WORD = /\.status|\.callout-|\.plan-row-number\.number-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.print-|\.plan-controls \.dot-|\.readiness-status-|\.state-dot\.s-|\.dev-word\.s-|\.readiness-bar \.s-|\.readiness-change b|\.surface\.readiness \.tag|\.readiness-tile li \.ok|\.menu-confirm \.forget-confirm/
   const hits = rules
     .filter((r) => STATE.test(r.body) && !CARRIES_A_WORD.test(r.selector))
     .map((r) => where(r, r.body.match(STATE)?.[0] ?? ''))

@@ -123,3 +123,24 @@ test('the app routes by hash: the folder the bundle is published under is one de
   // And it names the path the app actually sends, not merely some path.
   assert.match(readFileSync('docs/RELEASE-CHECKLIST.md', 'utf8'), new RegExp(`https://getiamai\\.com/${TOOL_PATH}/`), 'the release checklist must name the redirect URI the app sends')
 })
+
+// F-160: Forget this tenant deleted the scan and the whole plan (answers,
+// deferrals, dates) on one click, with no confirmation. The menu item now opens
+// a confirm in the menu that names the tenant and what goes, offers the plan
+// file first, focuses Cancel, and only its own Forget button deletes.
+test('Forget this tenant needs a second action, from a confirm that says what goes and focuses Cancel', async () => {
+  const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
+  const menu = shell.slice(shell.indexOf('function AccountMenu('), shell.indexOf('\n}\n', shell.indexOf('function AccountMenu(')))
+  assert.match(menu, /role="menuitem" title=\{SHELL\.forgetTooltip\} onClick=\{\(\) => setConfirming\(true\)\}>/, 'the menu item asks, it does not delete')
+  const calls = [...menu.matchAll(/run\(forgetTenant\(\)\)/g)]
+  assert.equal(calls.length, 1, 'one button deletes')
+  const confirm = menu.slice(menu.indexOf('{confirming ? ('), menu.indexOf(') : ('))
+  assert.ok(confirm.includes('run(forgetTenant())'), 'and it is the confirm\'s own')
+  assert.match(menu, /role=\{confirming \? 'alertdialog' : 'menu'\}/)
+  assert.match(confirm, /<Button variant="secondary" autoFocus onClick=\{\(\) => setConfirming\(false\)\}>\{SHELL\.forgetCancel\}<\/Button>/, 'Cancel is focused')
+  assert.match(confirm, /href="#\/export"[^>]*>\{SHELL\.forgetSaveFirst\}/, 'the plan file can be saved first')
+  const { app } = await import('../content/content.ts')
+  const { fillText } = await import('../content/render.ts')
+  assert.equal(fillText(app.shell.forgetConfirm, { tenant: 'Contoso' }), 'Forget Contoso? This deletes its scan, answers, deferrals and dates from this browser. Nothing in your tenant changes.')
+  assert.equal(fillText(app.shell.forgetYes, { tenant: 'Contoso' }), 'Forget Contoso')
+})

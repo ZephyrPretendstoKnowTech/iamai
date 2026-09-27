@@ -131,18 +131,29 @@ function Tab({ href, active, enabled, children }: { href: string; active: boolea
   )
 }
 
-/** The Account menu: Sign out and Forget this tenant (ui/actions.ts); an error renders in the menu, under the button that raised it. */
-function AccountMenu({ account }: { account: AccountInfo }) {
+/**
+ * The Account menu: Sign out and Forget this tenant (ui/actions.ts); an error
+ * renders in the menu, under the button that raised it. Forget deletes the scan
+ * and the whole plan on this browser, so it asks first, in the menu: what goes,
+ * a way to save the plan file, and Cancel, focused (F-160: one click deleted it all).
+ */
+function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName: string | null }) {
   const [open, setOpen] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { run, error } = useAction()
+  const tenant = tenantName ?? SHELL.forgetThisTenant
+  const close = (): void => {
+    setOpen(false)
+    setConfirming(false)
+  }
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) close()
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') close()
     }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
@@ -154,17 +165,30 @@ function AccountMenu({ account }: { account: AccountInfo }) {
   return (
     <div className="menu" ref={ref}>
       {/* Text, not a button face (docs/design/connect-mockup.html's header): the menu it opens keeps its buttons. */}
-      <button type="button" className="text-control" aria-haspopup="menu" aria-expanded={open} title={fillText(SHELL.accountTooltip, { username: account.username })} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="text-control" aria-haspopup="menu" aria-expanded={open} title={fillText(SHELL.accountTooltip, { username: account.username })} onClick={() => (open ? close() : setOpen(true))}>
         {SHELL.account}
       </button>
       {open && (
-        <div className="menu-list" role="menu">
-          <Button variant="tertiary" role="menuitem" onClick={() => run(signOut())}>
-            {SHELL.signOut}
-          </Button>
-          <Button variant="tertiary" role="menuitem" title={SHELL.forgetTooltip} onClick={() => run(forgetTenant())}>
-            {SHELL.forget}
-          </Button>
+        <div className={confirming ? 'menu-list menu-confirm' : 'menu-list'} role={confirming ? 'alertdialog' : 'menu'} aria-labelledby={confirming ? 'forget-confirm-text' : undefined}>
+          {confirming ? (
+            <>
+              <p id="forget-confirm-text">{fillText(SHELL.forgetConfirm, { tenant })}</p>
+              <a className="inline-link" href="#/export" onClick={close}>{SHELL.forgetSaveFirst}</a>
+              <div className="menu-confirm-actions">
+                <Button variant="secondary" autoFocus onClick={() => setConfirming(false)}>{SHELL.forgetCancel}</Button>
+                <Button variant="secondary" className="forget-confirm" onClick={() => run(forgetTenant())}>{fillText(SHELL.forgetYes, { tenant })}</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Button variant="tertiary" role="menuitem" onClick={() => run(signOut())}>
+                {SHELL.signOut}
+              </Button>
+              <Button variant="tertiary" role="menuitem" title={SHELL.forgetTooltip} onClick={() => setConfirming(true)}>
+                {SHELL.forget}
+              </Button>
+            </>
+          )}
           {error && <p className="quiet menu-error" role="status">{error}</p>}
         </div>
       )}
@@ -290,7 +314,7 @@ export function AppShell({
               real Microsoft sign-in cache and its Forget acts on a tenant that
               is a fixture, so neither is offered. The banner below carries the
               way out. */}
-          {signedIn && !isDemo() && <AccountMenu account={account} />}
+          {signedIn && !isDemo() && <AccountMenu account={account} tenantName={tenantName} />}
         </div>
       </header>
       {isDemo() && (
