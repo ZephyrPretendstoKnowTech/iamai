@@ -203,12 +203,12 @@ export type Rename = { id: string; from: string; to: string }
  * (generate.ts claimedPolicy), so the next scan would read it against the plan
  * and reopen a finished step: a rename that "changes no sign-in" must not.
  *
- * A difference in capitals only is none; a step skipped, set aside or not
+ * A difference in capitals or dashes only (a hyphen for an en dash) is none; a step skipped, set aside or not
  * applying renames nothing; and a name any tenant policy already has, or an
  * earlier rename takes, is none: two policies never share one.
  */
 export function renamesOf(steps: readonly Step[], tenantNames: readonly string[] = []): Rename[] {
-  const key = (n: string): string => n.trim().toLowerCase()
+  const key = (n: string): string => n.trim().replace(/[\u2010-\u2015\u2212]/g, '-').toLowerCase()
   const live = steps.filter((s) => s.status !== 'skipped' && !s.doesntApply && !s.state.setAside)
   const owned = live.flatMap((s) => {
     const updates = new Set((s.action.resolution?.policies ?? []).filter((o) => o.mode === 'update' && o.policyId).map((o) => String(o.policyId).toLowerCase()))
