@@ -24,7 +24,7 @@ import { forgetTenant, showDemoSnapshot, signOut, stopScan } from '../actions.ts
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { PausedNotice, scanLineText } from '../scan/ScanProgress.tsx'
-import { PLAN_HREF, READINESS_HREF, resolveHash } from './routes.ts'
+import { opensAtTop, PLAN_HREF, READINESS_HREF, resolveHash } from './routes.ts'
 import type { Route } from './routes.ts'
 
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
@@ -60,8 +60,14 @@ export function useHashRoute(): Route {
     return route
   }
   const [route, setRoute] = useState<Route>(read)
+  const shown = useRef<Route>(route)
   useEffect(() => {
-    const onChange = () => setRoute(read())
+    const onChange = () => {
+      const next = read()
+      if (opensAtTop(shown.current, next)) window.scrollTo(0, 0)
+      shown.current = next
+      setRoute(next)
+    }
     window.addEventListener('hashchange', onChange)
     return () => window.removeEventListener('hashchange', onChange)
   }, [])

@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { visitStep } from './routes.ts'
+import { opensAtTop, visitStep } from './routes.ts'
 
 test('opening or closing a step adds a history entry, so Back undoes it (F-051)', () => {
   const pushed: string[] = []
@@ -18,4 +18,16 @@ test('opening or closing a step adds a history entry, so Back undoes it (F-051)'
   const openStep = plan.slice(start, plan.indexOf('\n  }\n', start))
   assert.match(openStep, /visitStep\(window\.history, next\)/)
   assert.doesNotMatch(openStep, /replaceState/)
+})
+
+test('another page starts at its top; a change inside a page keeps the place (F-147)', () => {
+  assert.equal(opensAtTop('plan', 'readiness'), true)
+  assert.equal(opensAtTop('readiness', 'inventory'), true)
+  assert.equal(opensAtTop('export', 'plan'), true)
+  // A step opening or closing, and a Readiness filter, stay where the reader is.
+  assert.equal(opensAtTop('plan', 'plan'), false)
+  assert.equal(opensAtTop('readiness', 'readiness'), false)
+
+  const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
+  assert.match(shell, /if \(opensAtTop\(shown\.current, next\)\) window\.scrollTo\(0, 0\)/)
 })

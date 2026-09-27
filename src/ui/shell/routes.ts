@@ -119,6 +119,17 @@ export function visitStep(history: Pick<History, 'pushState'>, stepId: string | 
   history.pushState(null, '', stepId ? returnToStep(stepId) : PLAN_HREF)
 }
 
+/**
+ * Whether a hash change starts the page at its top (F-147): a move to another
+ * page does, so MFA Readiness opened from a scrolled Plan shows its heading
+ * instead of opening 2,000px down. A change inside a page (a step opening, a
+ * Readiness filter) keeps the reader's place; a page that moves to a place of
+ * its own (a step's row, How's package section) does so after this.
+ */
+export function opensAtTop(from: Route, to: Route): boolean {
+  return from !== to
+}
+
 /** The Show key an MFA Readiness hash carries (#/readiness/rung-3, and the old #/today/rung-3), or null for the whole table. */
 export function showFromReadinessHash(hash: string): string | null {
   const h = hash.replace(/^#\/?/, '')
