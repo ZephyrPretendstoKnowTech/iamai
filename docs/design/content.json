@@ -1703,6 +1703,8 @@
         "filtered": "Filtered to the {cohort} {step} is waiting on.",
         "$commentCovers": "A step that holds on nobody (Prepare Your Team for MFA) scopes the page to everyone it covers. \"Is waiting on\" said the step waited on all of them while it counted most of them ready.",
         "covers": "Filtered to the {cohort} {step} covers.",
+        "$commentNotReady": "F-018 (owner, 2026-09-27): Prepare Your Team for MFA says \"10 of 30 people not ready\" and links here; the page opened on all 30 against its own higher bar. Opened from it while it names people not ready, the page shows exactly those people.",
+        "notReady": "Filtered to the {cohort} {step} names as not ready.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
         "$commentUncounted": "It began \"{n} of them aren’t counted\", which a count of one left as \"1 of them aren’t\": pluralise bent no contraction then.",

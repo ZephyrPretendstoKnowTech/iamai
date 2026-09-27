@@ -533,3 +533,24 @@ test('a Ready person about to lapse counts in Needs action and is listed there, 
   assert.equal(groupWhy(target.state!, [{ ...target, lapsing: true }], 'why'), fillText(pages.readiness.seamlessLapsing, { n: 1 }))
   assert.match(page(), /open=\{isNext \|\| openAll \|\| \(quiet && show === 'needsAction'\) \|\| undefined\}/)
 })
+
+// F-018: Prepare Your Team for MFA says "10 of 30 people not ready" and its
+// "Open MFA Readiness" opened the page on all 30 ("Filtered to the 29 people
+// and 1 guest Prepare Your Team for MFA covers"), against this page's higher
+// bar. Opened from it while it names people not ready, the page shows exactly
+// those people; everyone it covers once nobody is left.
+test('opened from Prepare Your Team for MFA, the page shows the people the step names as not ready', () => {
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-verify-mfa')!
+  const missing = step.preparation?.missingIds ?? []
+  assert.ok(step.status !== 'done' && missing.length > 0 && missing.length < (step.preparation?.ids.length ?? 0), 'the premise: the step names some people not ready')
+  assert.equal(scopeWords({ title: 'Prepare Your Team for MFA', ids: missing, held: false, notReady: true }, cohortWords(missing.length, 0)), `Filtered to the ${missing.length} people Prepare Your Team for MFA names as not ready.`)
+  assert.equal(scopeWords({ title: 'Prepare Your Team for MFA', ids: step.preparation!.ids, held: false }, '30 people'), 'Filtered to the 30 people Prepare Your Team for MFA covers.', 'nobody left: everyone it covers')
+  const src = page()
+  assert.match(src, /const notReady = !hold && step && step\.status !== 'done' && \(step\.preparation\?\.missingIds\.length \?\? 0\) > 0 \? step\.preparation!\.missingIds : null/)
+  assert.match(src, /ids: hold \? hold\.ids : \(notReady \?\? cohort \?\? reached\(step\)\?\.ids \?\? null\)/)
+  // The people the page then lists are the step's own: every one of them is a row here.
+  const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+  assert.deepEqual(missing.filter((id) => !view.rows.some((row) => row.user.id === id)), [])
+})

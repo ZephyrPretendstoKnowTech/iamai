@@ -85,7 +85,7 @@ type Words = {
   rail: { shownAbove: string }
   evidence: { none: string; unreadMethods: string; unreadMethodsRefused: string; notCovered: string; individually: string }
   footer: { counted: string }
-  planContext: { filtered: string; covers: string; unknown: string }
+  planContext: { filtered: string; covers: string; notReady: string; unknown: string }
   guests: { trustOn: string; trustOff: string; trustUnknown: string; trustNotReported: string }
   counted: Record<Explained | Kind | 'dormantLink', string> & { one: Record<Kind, string> }
   admin: string
@@ -213,12 +213,13 @@ export function countedLine(counted: readonly ReadinessRow[], reads: { needP1: b
 
 /**
  * The scope line where the page was opened from a Plan step: the people it is
- * waiting on where it holds on them, the people it covers where it holds on
- * nobody (a campaign), or that this scan could not work out who.
+ * waiting on where it holds on them, the people it names as not ready (a
+ * campaign with people left, F-018), the people it covers where it holds on
+ * nobody and names nobody, or that this scan could not work out who.
  */
-export function scopeWords(context: { title: string; ids: readonly string[] | null; held: boolean }, cohort: string): string {
+export function scopeWords(context: { title: string; ids: readonly string[] | null; held: boolean; notReady?: boolean }, cohort: string): string {
   if (context.ids === null) return fillText(T.planContext.unknown, { step: context.title })
-  return fillText(context.held ? T.planContext.filtered : T.planContext.covers, { cohort, step: context.title })
+  return fillText(context.held ? T.planContext.filtered : context.notReady ? T.planContext.notReady : T.planContext.covers, { cohort, step: context.title })
 }
 
 /** A device's name with its version where the record gave one: Windows 10, iOS 17; otherwise the family's word. */
