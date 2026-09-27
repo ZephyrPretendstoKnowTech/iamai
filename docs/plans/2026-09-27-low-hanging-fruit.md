@@ -596,101 +596,151 @@ is in the -backlog.json (`judges`, `bucket`, `bucket_reason`).
 
 ## Prompt for the next chat
 
-Paste the block below into a new chat opened in `C:\Dev\IAMAI`. It runs one round;
-start a fresh chat for each round, with the same prompt.
+Paste the block below into a new chat opened in `C:\Dev\IAMAI`. It decides and
+runs one round; start a fresh chat for each round, with the same prompt, and keep
+this section current at the end of each round.
 
 ```text
-We're taking IAMAI Planner from about 84% ready to 90% or better across the board,
-ten fixes at a time. Read docs/plans/2026-09-27-low-hanging-fruit.md first: the Needs
-attention list, the round candidates and the Readiness scores. Then run one round.
-If a round's work is not on main yet, it is on its branch fix/low-hanging-N: work there.
+We're taking IAMAI Planner to 90%. This chat decides the next ten fixes, the ones
+that actually lift the tool, then plans, builds and audits them.
 
-1. Pick the ten.
-   - If the plan has a round that isn't done yet, use its list and the methods the
-     owner approved. Round 3 is not picked yet: start from its candidates.
-   - Otherwise take the top ten from "Needs attention" only:
-     - status present or partly, effort XS or S
-     - highest reward first, low risk before medium
-     - favour the surfaces with the lowest Readiness scores
-   - Never pick from "Not worth fixing / review later" unless an item's trigger has
-     fired. Then move it to Needs attention first and say why.
-   - Filter the -backlog.json with a small node script; don't load it whole.
-   - For full detail on an F-* item, use C:\Users\Owner\Downloads\IAMAI UX Audit.zip.
-     It has index.html with the findings JSON in <script id="data">. Extract it to
-     your scratchpad.
+Read docs/plans/2026-09-27-low-hanging-fruit.md first: Readiness scores, Rounds 1
+and 2 (done), Round 3 candidates, Needs attention, and "Not low-hanging". If a
+round's work is not on main yet, it is on its branch fix/low-hanging-N: work there.
+(As of 2026-09-27 the plan's latest update is on fix/low-hanging-3, not on main.)
 
-2. Verify each one before planning it.
-   - Code: read the files its fix sketch names, as they are at HEAD.
-   - Live, on your own:
-     - the demo: https://getiamai.com/planner/?demo=1 in the built-in browser
-     - or the owner's tenant in Claude in Chrome, read-only: never click Forget,
-       Sign out, Scan or any save without asking.
-   - If one no longer reproduces, mark it fixed in the plan and take the next item.
+WHAT 90% MEANS (owner, 2026-09-27)
+- 100%: the tool works perfectly, is 100% accurate, and every feature it has has
+  zero gap. Out of reach without community feedback.
+- 90%, the goal: 90% of the people who touch the tool have an experience they feel
+  is useful and has quality; 10% have feedback or complaints before they reach value.
+- Refinements proposed 2026-09-27. Ask the owner to confirm them before you rely on them:
+  - A safety floor outside the percentage. Nothing the tool tells someone to do
+    locks anyone out, loses their work or weakens protection.
+  - Each reader has a value moment:
+    - Evaluator: understands what it would do for their tenant, within minutes of the demo.
+    - Admin: an accurate plan for their tenant, and knows the next step, in the first session.
+    - Help desk: the people to chase and what each must do.
+    - Manager: a briefing they can act on.
+  - Someone their tenant blocks (no P1, no Global Administrator to consent) counts
+    as served only if the tool said exactly why and what to do next.
+  - Until real users exist, the score is a judgement from persona walks across
+    tenant shapes: fresh, security defaults on, half-built, no P1, large.
+Score every surface by it: would nine in ten of its readers come away feeling it
+was useful and well made?
 
-3. Plan the best way to fix each one, for the customer. Aim for the best fix, not
-   the quickest patch.
-   - Name the reader (evaluator, admin doing the work, help desk, manager) and what
-     they are trying to do at that moment.
-   - Before and after: what they see now, what they'll see, and why that is better
-     for them.
-   - Prefer deleting or shortening over adding text. Keep one place per fact. Take
-     words from docs/design/content.json.
-   - Where there is a real choice, lay out the options and recommend one.
-   - Show the exact new words for any wording change.
-   - Name the finished screens it touches, the effort and the risk.
-   - State the acceptance: the unit test, and the exact live check in Chrome that
-     will prove it.
+WHERE THINGS STAND (2026-09-27)
+- Live: 1265bb24. Rounds 1 and 2 shipped 22 fixes and two review-fix commits.
+- Table (surface average): 84. Home + demo 80, Connect 89, Plan + steps 88,
+  MFA Readiness 90, Inventory 78, Export 80, briefing 82, How 85.
+- Honest whole-tool rating: about 81.
+  - The truth and safety layer is strong (high 80s).
+  - The experience layer is mid-70s: how fast, light and confident the tool feels.
+  - Most of the table's rise was the rebuilt briefing's first score; Rounds 1–2 added about 4 points.
 
-4. Approve the methods with the owner.
-   - Present all ten plans together, and ask about each open choice.
-   - Build only what the owner approves, the way they approved it.
-   - Anything rejected or deferred goes back on the list with the owner's reason.
+WHAT ROUNDS 1 AND 2 TAUGHT
+- Picking small, safe, reward-ranked items mostly removed contradictions and added
+  safety nets. Worth having, but users rarely feel them.
+- The fixes users felt were on the main path:
+  - sign-in recovering after a cancelled consent
+  - MFA Readiness opening on the people the step named
+  - the Plan's Next line
+  - the demo explaining its follow-up scan
+  - rows naming the step they wait on
+- Nothing yet has touched what most limits how the tool feels:
+  - Steps send admins to edit existing, often enforced, policies in place. This is
+    the open policy-matching decision ("build new, retire old") in "Not low-hanging",
+    and the biggest lever on an expert's trust.
+  - Weight: a 36–38 step plan with long step pages. The owner deferred the polish
+    research to v1.5/v2, so ask before touching it.
+  - Time to first value: Global Administrator consent, the scan, then a long plan.
+    Only the Next line guides the first 15 minutes.
+  - Secondary surfaces feel secondary:
+    - Inventory is a raw dump.
+    - Export is a wall of formats.
+    - Home shows no product (OWN-B1 needs an approved-pack revision).
+  - The Plan's and steps' own "could not read / not established" sentences (OWN-B4).
 
-5. Build.
-   - One branch per round from origin/main: fix/low-hanging-N.
-   - One commit per fix, plain message. Name the content keys added, removed or
-     edited.
-   - Each fix gets a unit test that fails before the fix and passes after. Run
-     `npm run verify -- <the tests>` while working.
-   - If a fix turns out bigger or riskier than planned, stop and tell the owner.
-     Don't widen it.
-   - To close the build:
-     - Run `NODE_OPTIONS=--max-old-space-size=14000 npm test` once.
-     - Run `npm run verify -- --prepush <the round's tests>`.
-     - Run a review workflow over the round's diff (workflows review only; audits
-       stay solo) and fix what it confirms, in one "Review fixes for Round N"
-       commit. If those fixes change code, run the full suite once more.
-   - Ask the owner before pushing (`git push origin HEAD:main`; deploy-pages
-     publishes it). Wait for the deploy to finish.
+1. Decide the ten.
+   - Start from Round 3's candidates and Needs attention, and reshape freely: mix
+     low-hanging items with one to three changes a user will feel on the first-hour
+     path (Home, demo, Connect, sign-in, scan, Plan, first steps) or the daily path
+     (Plan + steps, MFA Readiness).
+   - An item from "Not low-hanging" or "Review later" may be picked when it is what
+     moves the felt experience. Say why, and move it to Needs attention first. A
+     decision-sized item (such as policy matching) comes as a design with options,
+     not a fix.
+   - For each: the reader, the moment, what they will feel is different, the
+     surface score it lifts, and its size and risk.
+   - Filter the -backlog.json with a small node script; don't load it whole. Full
+     F-* detail: C:\Users\Owner\Downloads\IAMAI UX Audit.zip (index.html, JSON in
+     <script id="data">); extract it to your scratchpad.
 
-6. Audit the live result in Claude in Chrome, on your own, one fix at a time.
-   - Did it land as intended? Check that the screen matches the approved plan
-     exactly: words, placement, behaviour, and the before/after you promised.
-     Quote the screen or take a screenshot.
-   - Is the customer genuinely better off? Judge it as the reader: clearer, fewer
-     steps, nothing new to misread, nothing nearby broken. Say so plainly when it
-     isn't.
-   - For anything that falls short: fix it with the owner's OK before the round
-     closes, or add it to Needs attention.
+2. Verify each before planning it: the code at HEAD, and live on your own.
+   - The demo: https://getiamai.com/planner/?demo=1 in the built-in browser.
+   - The owner's tenant: in Claude in Chrome. The owner lets you use the plan as a
+     user would (accept, write, save), but never Forget, Sign out or Scan without asking.
+   - If one no longer reproduces, mark it fixed and take the next.
 
-7. Re-score and close the round.
-   - Walk every surface live and re-score it in the plan's Readiness scores table,
-     using the baseline's lens: would its reader finish what they came to do,
-     trust what it says, and not regret the time? Base it on this walk, not
-     memory, and note what moved each score.
-   - Update the plan:
-     - mark the round done, with its commits and what the Chrome audit saw
-     - move items between the two lists, with reasons
-     - write the next round's candidates
-     - keep this prompt current
-     Commit the update with the round.
-   - Report to the owner: the ten fixes, what the customer sees now, the new scores,
-     and the proposed next ten.
+3. Plan each for the customer, and aim for the best fix:
+   - reader and moment
+   - before and after
+   - exact new words, from content.json keys
+   - options with a recommendation
+   - finished screens it touches
+   - effort, risk
+   - acceptance: the unit test and the exact live check.
+   Prefer deleting or shortening to adding, and keep one place per fact.
 
-Repeat rounds until the overall score is at least 90 and no surface is below 85.
-Then stop, and ask the owner whether to take the remaining surfaces to 90.
+4. Present all ten together. Ask about each open choice, and build only what the
+   owner approves, the way they approved it. Rejected or deferred items go back on
+   the list with the owner's reason.
 
-Standing rules:
+5. Build on the round's branch (fix/low-hanging-3 exists, carrying the plan update).
+   - One commit per fix, plain message, naming content keys added, removed or edited.
+   - Each fix gets a unit test that fails before it and passes after:
+     `npm run verify -- <tests>`.
+   - If a fix grows bigger or riskier than planned, stop and ask.
+   To close:
+   - `NODE_OPTIONS=--max-old-space-size=14000 npm test` once.
+   - A review workflow over the round's diff (workflows review only; audits stay solo).
+   - Fix what it confirms in one "Review fixes for Round N" commit, and rerun the
+     full suite if code changed.
+   - `npm run verify -- --prepush <the round's tests>`.
+   - Ask before `git push origin HEAD:main`, then wait for deploy-pages.
+
+6. Audit the live result on your own, one fix at a time. Did it land exactly as
+   approved? Is the reader genuinely better off? Quote the screen. Fix a shortfall
+   with the owner's OK, or add it to Needs attention.
+
+7. Re-score every surface from a live walk, using the 90% definition, and give the
+   honest whole-tool rating beside the table. Update the plan: round done, list
+   moves, next candidates, this prompt. Commit, and report: the ten, what the
+   customer feels, the scores, the proposed next ten.
+
+PRACTICAL LEARNINGS
+- A demo-fixture change ripples into ~150 test files and moves pinned counts:
+  run the full suite.
+- scripts/smoke.mjs (it runs in --prepush) and scripts/walk.mjs pin on-screen
+  words; update them when words change. Never run the walk.
+- Run `node scripts/step-snapshots.mjs` after each fix. A commit that moves
+  snapshots carries [snapshots] in its subject.
+- fillText bends counts across the whole sentence. Set a person's own words in with
+  fillTextVerbatim.
+- railOf drops a headline that contains a date; the deferral has its own rail field.
+- $comments under pages.readiness count toward that page's 25-word rule.
+- Heredocs lose backslashes and can write NUL bytes. Use the Edit tool for regexes,
+  and check files for NULs.
+- Don't fold fixes into earlier commits: app.css appends at the end and rebases
+  conflict. Use one review-fix commit.
+- Claude in Chrome's window is hidden and throttles timers: wait with MessageChannel
+  ticks. Read the briefing by stubbing window.print. Stage a cancelled sign-in by
+  starting a real one, then returning with its state and
+  #error=access_denied&error_subcode=cancel.
+- Never put the owner's tenant or people names in repo docs. The tenant guard does
+  not catch display names.
+
+STANDING RULES
 - The product stays read-only.
 - Never commit tenant data (UPNs, object ids, tenant GUIDs).
 - Never say "couldn't read".
@@ -699,6 +749,8 @@ Standing rules:
 - Finished screens change only with the owner's yes.
 - Don't run the walk.
 - Stop idle servers and agents.
-- Ring the chime (bash "$HOME/.claude/hooks/chime.sh" call "<reason>") whenever the
-  owner must look.
+- Ring the chime (bash "$HOME/.claude/hooks/chime.sh" call "<reason>") whenever
+  the owner must look.
+
+Repeat rounds until the owner judges the tool at 90% by the definition above.
 ```
