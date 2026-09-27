@@ -2281,7 +2281,6 @@
             "reasonFirst": "Add a reason first.",
             "caption": "Reopens if a new gap appears or a setting here changes.",
             "acceptedHead": "Difference Accepted",
-            "covers": "Covers {items}.",
             "remove": "Remove acceptance",
             "acceptedLabel": "Accepted Difference",
             "acceptedNote": "{policy} differs from the baseline's policy in {dimensions}. Accepted {date}: {reason}"

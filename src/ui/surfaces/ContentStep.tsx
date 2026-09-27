@@ -1581,13 +1581,12 @@ function AcceptDeviation({ step, ctx, onDecide }: { step: Step; ctx: StepVarCont
         <p className="accept-caption">{W.caption}</p>
       </>}
     </>}
+    {/* Accepted, the rail keeps the one control that undoes it: the policy, the
+        date and the reason are the Satisfied tile's (stepContract.ts
+        acceptedTiles), said once (owner, 2026-09-27, OWN-ACCEPT). */}
     {panel.accepted && <div className="accepted-deviation">
       <h5 className="dlabel">{W.acceptedHead}</h5>
-      <p className="accepted-date">{panel.accepted.date}</p>
-      <p className="accepted-reason">“{panel.accepted.reason}”</p>
-      {panel.accepted.covers && <p className="accepted-covers">{panel.accepted.covers}</p>}
       <Button variant="secondary" className="accept-button" onClick={() => onDecide(deviationDecision('', {}))}>{W.remove}</Button>
-      {panel.lines.length === 0 && <p className="accept-caption">{W.caption}</p>}
     </div>}
   </div>
 }

@@ -2524,13 +2524,6 @@ footer.app a {
   color: var(--secondary-text);
   font-size: var(--t-1);
 }
-.step-action-column .accept-deviation .accepted-deviation > p {
-  margin: 0 0 4px;
-}
-.step-action-column .accept-deviation .accepted-reason,
-.step-action-column .accept-deviation .accepted-covers {
-  color: var(--secondary-text);
-}
 .step-action-column .accept-deviation > .accepted-deviation:not(:first-child) {
   margin-top: 20px;
 }

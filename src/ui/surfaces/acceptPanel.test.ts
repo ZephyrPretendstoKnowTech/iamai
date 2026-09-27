@@ -37,7 +37,7 @@ test('the Accept panel lists each difference on its own line, marked, and says i
   assert.equal(panel.leaves, 'This leaves 45 admin roles without Modern MFA + TAP.')
   assert.equal(panel.required, null)
   assert.deepEqual(Object.keys(panel.acceptable).sort(), ['conditions.users', 'grantControls'])
-  assert.equal(panel.accepted, null)
+  assert.equal(panel.accepted, false)
 })
 
 test('a session control the tenant adds is a Stricter line with its value', () => {
@@ -61,7 +61,7 @@ test('the exclusions group missing is marked Required and is never offered for a
   assert.match(panel.leaves ?? '', /^This leaves 45 admin roles and anyone in Core - Break glass without Modern MFA \+ TAP\.$/)
 })
 
-test('once accepted, the panel says when, why and what the acceptance covers, and an accepted weaker difference is marked but stays under Satisfied', () => {
+test('once accepted, the panel only says so and offers Remove acceptance; the Satisfied tile holds the policy, date and reason, and an accepted weaker difference is marked there', () => {
   const f = fixture('demo-week2')
   const first = open(f, ADMINS)
   const acceptable = acceptPanelOf(first.step, first.ctx)!.acceptable
@@ -70,10 +70,17 @@ test('once accepted, the panel says when, why and what the acceptance covers, an
   assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [], 'nothing left to correct')
   const panel = acceptPanelOf(step, ctx)!
   assert.deepEqual(panel.lines, [])
-  assert.deepEqual(panel.accepted, { date: 'Sep 26, 2026', reason: 'Only Global Administrators sign in here', covers: 'Covers 45 admin roles not included and the grant.' })
+  assert.equal(panel.accepted, true)
   const readiness = stepBodyOf(step, ctx).readiness
   const tile = readiness.satisfied.find((t) => t.key.startsWith('accepted:'))
   assert.equal(tile?.caution, true, 'a weaker acceptance is marked')
+  // The date and the reason are said once, in the tile (owner, 2026-09-27, OWN-ACCEPT).
+  assert.match(tile?.note ?? '', /Accepted Sep 26, 2026: Only Global Administrators sign in here$/)
+  // The rail's accepted block draws the heading and Remove acceptance, and nothing that repeats the tile.
+  const source = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  const block = source.slice(source.indexOf('{panel.accepted && <div className="accepted-deviation">'), source.indexOf('</div>}', source.indexOf('{panel.accepted && <div className="accepted-deviation">')))
+  assert.ok(block.length > 0, 'the accepted block is drawn')
+  assert.deepEqual([...block.matchAll(/\{(W\.\w+|panel\.[\w.]+)\}/g)].map((m) => m[1]), ['W.acceptedHead', 'W.remove'])
   assert.equal(readiness.tiles.some((t) => t.key.startsWith('accepted:')), false, 'and is no task')
 })
 

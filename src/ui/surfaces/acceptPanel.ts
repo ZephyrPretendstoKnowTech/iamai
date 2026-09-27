@@ -1,8 +1,8 @@
 // The Accept panel in the step's action column (owner, 2026-09-26): each
 // concrete difference between the tenant's policy and the plan's on its own
 // line, marked Weaker, Stricter or Differs; what a weaker one leaves out, in
-// one amber sentence; and, once accepted, when, why and what the acceptance
-// covers. It replaced a lead that named only the settings ("who it applies to
+// one amber sentence; and, once accepted, the one control that undoes it (the
+// Satisfied tile states the policy, the date and the reason). It replaced a lead that named only the settings ("who it applies to
 // and session controls"), so accepting "who it applies to" signed off on two
 // admin roles left out while the reason said "stricter".
 //
@@ -15,7 +15,6 @@ import type { Step } from '../../roadmap/types.ts'
 import type { DifferencePiece } from '../../roadmap/differences.ts'
 import { dimensionWords } from '../../roadmap/observation.ts'
 import { PROCEDURE } from '../../roadmap/policyProcedure.ts'
-import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
 import { fillText } from '../../content/render.ts'
 import { roleNamesOf } from '../../roles.ts'
@@ -73,7 +72,6 @@ type PanelWords = {
   reasonFirst: string
   caption: string
   acceptedHead: string
-  covers: string
   remove: string
 }
 export const ACCEPT_WORDS = (): PanelWords => CONTRACT.acceptDeviation as unknown as PanelWords
@@ -90,8 +88,8 @@ export type AcceptPanel = {
   required: string | null
   /** What Accept saves for each setting it may accept (MemberTracking.differsFields, less a setting with a required piece). */
   acceptable: Record<string, string>
-  /** The acceptance already saved: when, why, and what it covers. */
-  accepted: { date: string; reason: string; covers: string } | null
+  /** An acceptance is saved: the panel says so and offers Remove acceptance. The policy, date and reason are the Satisfied tile's (stepContract.ts acceptedTiles). */
+  accepted: boolean
 }
 
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
@@ -139,7 +137,7 @@ function valueOf(control: string, value: string | undefined): string | null {
   return null
 }
 
-/** The short form ("2 admin roles not included", "sign-in frequency"): what the acceptance covers. */
+/** The short form ("2 admin roles not included", "sign-in frequency"). */
 function shortOf(p: DifferencePiece): string {
   const W = ACCEPT_WORDS()
   if (p.control === 'externalTenants') return W.externalTenantsShort
@@ -197,7 +195,6 @@ export function acceptPanelOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' |
   const members = step.tracking?.members ?? []
   const saved = step.acceptedDeviation ?? null
   const open: { p: DifferencePiece; grant: { theirs: string; ours: string } | null }[] = []
-  const covered: DifferencePiece[] = []
   const acceptable: Record<string, string> = {}
   const leftOut: string[] = []
   let leaves: { verb: 'blocks' | 'requires'; what: string } | null = null
@@ -226,7 +223,6 @@ export function acceptPanelOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' |
         if (p.part === 'include' || p.part === 'exclude' || p.part === 'allUsers') leaves ??= ours
       }
     }
-    for (const dimension of m.accepted ?? []) covered.push(...pieces.filter((p) => p.dimension === dimension))
   }
   if (open.length === 0 && saved === null) return null
   const lines = open.map(({ p, grant }): DifferenceLine => {
@@ -243,6 +239,6 @@ export function acceptPanelOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' |
     leaves: sentence === '' ? null : sentence,
     required: required.length > 0 ? fillText(W.required, { names: list([...new Set(required)]) }) : null,
     acceptable,
-    accepted: saved && saved.reason !== '' ? { date: absoluteDate(saved.at), reason: saved.reason, covers: covered.length > 0 ? fillText(W.covers, { items: list(covered.map(shortOf)) }) : '' } : null,
+    accepted: saved !== null && saved.reason !== '',
   }
 }
