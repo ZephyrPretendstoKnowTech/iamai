@@ -647,8 +647,7 @@ test('Implementation is the pack’s pill channels over a fixed preview, or one 
   for (const forbidden of ['JSON.stringify', 'conditions:', 'grantControls', 'displayName:']) {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the surface builds ${forbidden}; policy JSON is not composed in presentation`)
   }
-  // Repeated disclaimers are intentionally removed; copy disposition remains tested separately.
-  assert.equal(CONTENT_STEP.split("{tab === 'ai' && (").length - 1, 0, 'an unapproved repeated disclaimer was restored')
+  // The AI Info warning is back, owner-approved (F-061): exportGuard.test.ts states where it stands.
   assert.match(rule('.step .impl-preview .preview-text'), /overflow-wrap: anywhere;/, 'a long line widens the step')
 })
 

@@ -3154,16 +3154,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // (Step.objectTask) and asks the work countries itself: until at least one is
   // saved by a person it reads Needs decision, as the location step and the
   // Direction question it came from both did. The picker keeps saving under the
-  // location's old id (decisions.ts DECISION_STEPS.countries). An older plan
-  // that mixed work and travel countries asks for them again, as before.
+  // location's old id (decisions.ts DECISION_STEPS.countries).
   const geoStep = steps.find((s) => s.goalId === 'geo-restriction' && s.id === idFor('goal', 'geo-restriction')) ?? null
   if (geoStep && countriesTask) {
     geoStep.objectTask = countriesTask
     const workCountriesSaved = mapping.allowedCountries.length > 0 && (mapping.workCountriesConfirmed === true || (mapping.wizardAnswered.countries === true && mapping.assumed?.countries !== 'detected'))
     const open = geoStep.status !== 'done' && geoStep.status !== 'skipped' && !geoStep.state.satisfied && !geoStep.state.setAside && geoStep.state.lifecycle !== 'enforced'
-    const review = countriesTask.blockers.find((b) => b.label === 'work-countries-review')
-    if (open && (!workCountriesSaved || review)) {
-      geoStep.blockers.push(review ?? { kind: 'decision', label: 'work-countries', binding: BLOCKED_REASON.workCountries })
+    if (open && !workCountriesSaved) {
+      geoStep.blockers.push({ kind: 'decision', label: 'work-countries', binding: BLOCKED_REASON.workCountries })
       setState(geoStep, { condition: 'needs-decision' })
     }
   }

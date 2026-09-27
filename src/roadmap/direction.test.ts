@@ -400,4 +400,7 @@ test('each service card says what Yes keeps as well as what No takes off, and Sh
   const remote = applyStepDecisions(f.mapping, { [DIRECTION_STEP.devices]: { ...directionDecisionWith(devices, 'officeNetwork', { value: 'remote', picked: [] }), at: AT } })
   assert.equal(card(cards(remote), 'service:sharepoint').chosen?.yes, undefined)
   assert.equal(card(cards(remote), 'service:inforcer').chosen?.yes, 'Inforcer users confirm their sign-in with MFA.', 'a card the office does not decide keeps its line')
+  // A saved No as well as everyone remote: switching back to Yes still keeps the block off, so Yes says nothing (review, 2026-09-27).
+  const both = applyStepDecisions(no, { [DIRECTION_STEP.devices]: { ...directionDecisionWith(devices, 'officeNetwork', { value: 'remote', picked: [] }), at: AT } })
+  assert.equal(card(cards(both), 'service:sharepoint').chosen?.yes, undefined)
 })

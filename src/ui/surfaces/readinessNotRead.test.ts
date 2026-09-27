@@ -10,7 +10,7 @@ import { readinessView, shows } from '../../derive/mfaReadiness.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import type { SourceState, TenantSnapshot } from '../../graph/collect/types.ts'
 import { pages } from '../../content/content.ts'
-import { goalLine, needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor, summaryLine } from './readinessCells.ts'
+import { goalLine, needsActionWords, nextCell, noDevicesWord, rowCells, signInsUnavailableFor, summaryLine, whyLine } from './readinessCells.ts'
 import { fillText } from '../../content/render.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
 import { activityKnown, notActiveUsers } from '../../derive/sets.ts'
@@ -170,4 +170,19 @@ test('MFA Readiness never says "couldn\'t read", and the demo has nobody waiting
   // The group, the drawer and the all-unknown headline promise no rescan: a refused read is not retried.
   const R = pages.readiness as unknown as { groups: { unknown: { title: string; why: string } }; panel: { why: { unknown: string } }; summaryNotJudged: string }
   for (const w of [R.groups.unknown.title, R.groups.unknown.why, R.panel.why.unknown, R.summaryNotJudged]) assert.doesNotMatch(w, /next scan/i, w)
+})
+
+// Review, 2026-09-27 (OWN-B3's words): the all-unknown headline read "waits on
+// one more reads" for a cohort of one (pluralise bent the noun "read" as the
+// count's verb), and the drawer promised "one more read" to people only the
+// missing licence leaves unconfirmed, for whom no read is coming.
+test('the waiting words read right for one person, and promise no read the licence withholds', () => {
+  const R = pages.readiness as unknown as { summaryNotJudged: string; groupNoP1: { why: string } }
+  assert.equal(fillText(R.summaryNotJudged, { cohort: '1 person' }), 'Readiness for 1 person: waiting on one more read, and each row says which.')
+  assert.equal(fillText(R.summaryNotJudged, { cohort: '30 people' }), 'Readiness for 30 people: waiting on one more read, and each row says which.')
+  const f = fixture('demo')
+  const view = readinessView(withSignIns(source('disabled', 'not available on this licence (needs Entra ID P1)')), f.snapshot.asOf, f.mapping)
+  const held = view.rows.filter(signInsUnavailableFor)
+  assert.ok(held.length > 0, 'the premise: people only the licence leaves unconfirmed')
+  for (const r of held) assert.equal(whyLine(r), R.groupNoP1.why, r.user.id)
 })

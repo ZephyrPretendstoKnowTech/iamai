@@ -83,6 +83,10 @@ test('the renewal takes the place of "Nothing to do" only, and the Seamless and 
   assert.equal(nextCell(row({})), fillText(R.next.renewByOn, { method: R.methodsInline.windowsHello, device: deviceNoun('Windows'), date: monthDay('2026-10-01T10:00:00.000Z') }))
   assert.equal(nextCell(row({ recommended: { kind: 'replaceKey', model: 'Old key', aaguid: '00000000-0000-0000-0000-000000000001' } })), R.next.replaceKey, 'the key replacement comes first')
   assert.equal(nextCell(row({}, false)), R.next.none, 'not lapsing: nothing to do')
+  // Renewing is what counts a lapsing person in Needs action (OWN-R1): it comes before an optional upgrade (review, 2026-09-27).
+  const upgrade = { kind: 'seamless', os: 'Windows', option: 'windowsHello' }
+  assert.equal(nextCell(row({ recommended: upgrade })), fillText(R.next.renewByOn, { method: R.methodsInline.windowsHello, device: deviceNoun('Windows'), date: monthDay('2026-10-01T10:00:00.000Z') }))
+  assert.notEqual(nextCell(row({ recommended: upgrade }, false)), R.next.none, 'not lapsing: the upgrade still shows')
   assert.equal(groupWhy('seamless', [row({}), row({}, false)], 'Nothing to do'), fillText(R.seamlessLapsing, { n: 1 }))
   assert.equal(groupWhy('seamless', [row({}, false)], 'Nothing to do'), 'Nothing to do')
   // Ready counts who has to sign in again as Seamless does (OWN-R1); with nobody lapsing it keeps its own line.

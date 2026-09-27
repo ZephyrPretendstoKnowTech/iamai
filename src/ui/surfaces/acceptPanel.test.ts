@@ -37,7 +37,7 @@ test('the Accept panel lists each difference on its own line, marked, and says i
   assert.equal(panel.leaves, 'This leaves 45 admin roles without Modern MFA + TAP.')
   assert.equal(panel.required, null)
   assert.deepEqual(Object.keys(panel.acceptable).sort(), ['conditions.users', 'grantControls'])
-  assert.equal(panel.accepted, false)
+  assert.equal(panel.accepted, null)
 })
 
 test('a session control the tenant adds is a Stricter line with its value', () => {
@@ -70,7 +70,7 @@ test('once accepted, the panel only says so and offers Remove acceptance; the Sa
   assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [], 'nothing left to correct')
   const panel = acceptPanelOf(step, ctx)!
   assert.deepEqual(panel.lines, [])
-  assert.equal(panel.accepted, true)
+  assert.deepEqual(panel.accepted, { said: null }, 'the tile says when and why')
   const readiness = stepBodyOf(step, ctx).readiness
   const tile = readiness.satisfied.find((t) => t.key.startsWith('accepted:'))
   assert.equal(tile?.caution, true, 'a weaker acceptance is marked')
@@ -80,7 +80,13 @@ test('once accepted, the panel only says so and offers Remove acceptance; the Sa
   const source = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
   const block = source.slice(source.indexOf('{panel.accepted && <div className="accepted-deviation">'), source.indexOf('</div>}', source.indexOf('{panel.accepted && <div className="accepted-deviation">')))
   assert.ok(block.length > 0, 'the accepted block is drawn')
-  assert.deepEqual([...block.matchAll(/\{(W\.\w+|panel\.[\w.]+)\}/g)].map((m) => m[1]), ['W.acceptedHead', 'W.remove'])
+  assert.deepEqual([...block.matchAll(/\{(W\.\w+|panel\.[\w.]+)\}/g)].map((m) => m[1]), ['W.acceptedHead', 'panel.accepted.said.date', 'panel.accepted.said.reason', 'W.remove'])
+  assert.match(block, /\{panel\.accepted\.said && <>/, 'the date and reason only where no tile says them')
+  // Where the scan no longer sees the accepted difference (the policy was corrected, turned off or deleted), no tile
+  // stands, so the rail says when and why itself: said once, never nowhere (review, 2026-09-27).
+  const gone = { ...step, tracking: step.tracking ? { ...step.tracking, members: step.tracking.members.map((m) => ({ ...m, accepted: [] })) } : step.tracking } as typeof step
+  assert.equal(stepBodyOf(gone, ctx).readiness.satisfied.some((t) => t.key.startsWith('accepted:')), false, 'the premise: no tile')
+  assert.deepEqual(acceptPanelOf(gone, ctx)?.accepted, { said: { date: 'Sep 26, 2026', reason: 'Only Global Administrators sign in here' } })
   assert.equal(readiness.tiles.some((t) => t.key.startsWith('accepted:')), false, 'and is no task')
 })
 

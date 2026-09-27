@@ -254,7 +254,9 @@ test('each action from each location reaches the same function: the surfaces imp
     assert.equal(readFileSync(file, 'utf8').includes('runScan('), false, `${file} runs a scan of its own`)
   }
   // The header menu's two buttons, Connect's tile buttons and MFA Readiness's Scan again (its Evidence read tile) call the actions by name.
-  assert.match(readFileSync('src/ui/shell/AppShell.tsx', 'utf8'), /run\(signOut\(\)\)[\s\S]*run\(forgetTenant\(\)\)/)
+  // The Account menu's two actions; Forget runs from its confirm (F-160) and closes the menu once it worked.
+  assert.match(readFileSync('src/ui/shell/AppShell.tsx', 'utf8'), /run\(signOut\(\)\)/)
+  assert.match(readFileSync('src/ui/shell/AppShell.tsx', 'utf8'), /run\(forgetTenant\(\)\.then\(close\)\)/)
   assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /run\(signInAnother\(\)\)[\s\S]*run\(signOut\(\)\)/)
   assert.match(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /run\(scan\(readinessHref\(show\)\)\)/)
   for (const file of sources('src/ui')) {

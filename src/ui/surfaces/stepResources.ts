@@ -91,7 +91,6 @@ type EmailWords = {
   countries: string[]
   devicePlan: string[]
   notSelected: string
-  noneSelected: string
   required: string
   notRequired: string
   mfaPreparation: { heading: string | null; subject: string; paragraphs: string[] }[]

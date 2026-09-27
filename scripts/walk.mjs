@@ -1368,7 +1368,8 @@ async function walkFixture(fx) {
         if (plural) add('P0', `${slabel}: a count of one reads "${plural[0]}"`)
         // Answers apply (E1) and the device decision (E2), on the demo. Week two
         // carries the sample technician's stored answers (fixtures/index.ts
-        // decisions): New Zealand added to the allowed list, service providers
+        // decisions): the work countries confirmed (the travel question left in
+        // F-070, owner 2026-09-27), service providers
         // excluded on the guests and countries policies, the reception printer
         // in the service-accounts group; each question's effect line shows once
         // it is true, and never before. The device decision is made here, through
@@ -1381,14 +1382,10 @@ async function walkFixture(fx) {
               const r = document.querySelector('main.page .step-body .decision'); if (!r) return null
               const group = (label) => [...r.querySelectorAll('[role=group][aria-labelledby]')].find(e => document.getElementById(e.getAttribute('aria-labelledby'))?.textContent.trim() === label)
               const chips = label => [...(group(label)?.querySelectorAll('.chip-name') || [])].map(e => e.textContent.trim())
-              return { work: chips('Work Countries'), travel: chips('Recurring Travel Countries') }
+              return { work: chips('Work Countries') }
             })()`)
-            if (!choices) add('P0', `${slabel}: work and recurring-travel country controls are missing`)
-            else {
-              if (choices.work.includes('New Zealand')) add('P0', `${slabel}: recurring travel incorrectly widened normal-work countries`)
-              if (week2 && !choices.travel.includes('New Zealand')) add('P0', `${slabel}: the saved recurring destination New Zealand is missing`)
-              if (!week2 && choices.travel.length) add('P0', `${slabel}: recurring destinations are selected before an administrator answered`)
-            }
+            if (!choices) add('P0', `${slabel}: the work countries control is missing`)
+            else if (choices.work.includes('New Zealand')) add('P0', `${slabel}: a travel answer widened normal-work countries`)
           }
           if (/^Require MFA for Guests$/.test(title)) {
             const answer = await evaluate(`(() => { const s = [...document.querySelectorAll('main.page .step-body select')].find(e => [...e.options].some(o => /Exclude service providers/.test(o.textContent))); return s ? s.value : null })()`)

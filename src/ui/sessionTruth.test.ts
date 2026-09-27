@@ -131,13 +131,17 @@ test('the app routes by hash: the folder the bundle is published under is one de
 test('Forget this tenant needs a second action, from a confirm that says what goes and focuses Cancel', async () => {
   const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
   const menu = shell.slice(shell.indexOf('function AccountMenu('), shell.indexOf('\n}\n', shell.indexOf('function AccountMenu(')))
-  assert.match(menu, /role="menuitem" title=\{SHELL\.forgetTooltip\} onClick=\{\(\) => setConfirming\(true\)\}>/, 'the menu item asks, it does not delete')
-  const calls = [...menu.matchAll(/run\(forgetTenant\(\)\)/g)]
+  assert.match(menu, /role="menuitem" ref=\{forgetItem\} title=\{SHELL\.forgetTooltip\} onClick=\{\(\) => setConfirming\(true\)\}>/, 'the menu item asks, it does not delete')
+  const calls = [...menu.matchAll(/run\(forgetTenant\(\)/g)]
   assert.equal(calls.length, 1, 'one button deletes')
   const confirm = menu.slice(menu.indexOf('{confirming ? ('), menu.indexOf(') : ('))
-  assert.ok(confirm.includes('run(forgetTenant())'), 'and it is the confirm\'s own')
+  assert.ok(confirm.includes('run(forgetTenant()'), 'and it is the confirm\'s own')
   assert.match(menu, /role=\{confirming \? 'alertdialog' : 'menu'\}/)
-  assert.match(confirm, /<Button variant="secondary" autoFocus onClick=\{\(\) => setConfirming\(false\)\}>\{SHELL\.forgetCancel\}<\/Button>/, 'Cancel is focused')
+  assert.match(confirm, /<Button variant="secondary" autoFocus onClick=\{cancel\}>\{SHELL\.forgetCancel\}<\/Button>/, 'Cancel is focused')
+  // A Forget that worked closes the menu; Cancel hands focus back to the Forget item, Escape to the Account button (review, 2026-09-27).
+  assert.match(confirm, /run\(forgetTenant\(\)\.then\(close\)\)/)
+  assert.match(menu, /backToForget\.current = false\n\s+forgetItem\.current\?\.focus\(\)/)
+  assert.match(menu, /if \(e\.key === 'Escape'\) \{\n\s+close\(\)\n\s+accountButton\.current\?\.focus\(\)/)
   assert.match(confirm, /href="#\/export"[^>]*>\{SHELL\.forgetSaveFirst\}/, 'the plan file can be saved first')
   const { app } = await import('../content/content.ts')
   const { fillText } = await import('../content/render.ts')

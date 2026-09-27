@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import { Icon } from './Icon.tsx'
 import type { IconName } from './Icon.tsx'
 
@@ -17,6 +17,8 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   busy?: boolean
   icon?: IconName
   children?: ReactNode
+  /** The button element, for a control that hands focus back to it (React 19 passes it through as a prop). */
+  ref?: Ref<HTMLButtonElement>
 }
 
 export function Button({ variant = 'secondary', size = 'md', loading = false, busy = false, icon, children, className, disabled, ...rest }: ButtonProps) {

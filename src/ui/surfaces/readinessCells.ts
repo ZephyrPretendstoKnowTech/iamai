@@ -16,7 +16,7 @@ import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { registrationRefusal } from '../../derive/readinessContext.ts'
+import { methodListsUnread, registrationRefusal } from '../../derive/readinessContext.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { GuestMfaTrust } from '../../derive/guestReadiness.ts'
 
@@ -34,6 +34,7 @@ type Words = {
   summaryNoP1: string
   summaryUnmeasured: string
   summaryNotJudged: string
+  groupNoP1: { title: string; why: string }
   seamlessLine: string
   seamlessNone: string
   seamlessNotPossible: string
@@ -384,14 +385,17 @@ export function nextCell(r: ReadinessRow): string {
   // Records the tenant can't provide: nothing for this person to do, and the page says why once.
   if (signInsUnavailableFor(r)) return T.next.none
   if (rd.next.kind === 'none') {
-    if (rd.recommended && !r.guest) return nextWords(rd.recommended)
-    // Ready ends soon and nothing else is asked: sign in again with the method, on the
-    // device, whose proof sets the day (phishingResistant.ts renewWith).
+    // A key that stops working comes first.
+    if (rd.recommended?.kind === 'replaceKey' && !r.guest) return nextWords(rd.recommended)
+    // Ready ends soon: sign in again with the method, on the device, whose proof
+    // sets the day (phishingResistant.ts renewWith). It is what counts them in
+    // Needs action (OWN-R1), so it comes before an optional upgrade (review, 2026-09-27).
     if (r.lapsing && rd.readyUntil && rd.renewWith) {
       const method = T.methodsInline[rd.renewWith.cls]
       const date = monthDay(rd.readyUntil)
       return rd.renewWith.os ? fillText(T.next.renewByOn, { method, device: deviceNoun(rd.renewWith.os), date }) : fillText(T.next.renewBy, { method, date })
     }
+    if (rd.recommended && !r.guest) return nextWords(rd.recommended)
     return T.next.none
   }
   return nextWords(rd.next)
@@ -448,13 +452,16 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
 }
 
 /**
- * The evidence tile's line for the method lists that couldn't be read. Where the
- * registration report was refused, a rescan with the same sign-in reads no more:
- * the line names the refusal and what reads it, in the Plan's words for the same
- * source (roadmap/readiness.ts sourceReadFix), never "The next scan retries".
+ * The evidence tile's line for the method lists not read this scan. Where no
+ * list was read in this tenant and the registration report that stands in for
+ * one was refused (methodListsUnread), a rescan with the same sign-in reads no
+ * more: the line names the refusal and what reads it, in the Plan's words for
+ * the same source (roadmap/readiness.ts sourceReadFix). A list merely missed
+ * while others were read is retried, whatever the report, as its row says
+ * (review, 2026-09-27: the line blamed the refused report for a missed list).
  */
 export function unreadMethodsWords(snapshot: TenantSnapshot, n: number): string {
-  const refusal = registrationRefusal(snapshot)
+  const refusal = methodListsUnread(snapshot) ? registrationRefusal(snapshot) : null
   return refusal ? fillText(T.evidence.unreadMethodsRefused, { ...refusal, n }) : fillText(T.evidence.unreadMethods, { n })
 }
 
@@ -503,6 +510,8 @@ export function whyLine(r: ReadinessRow): string {
   if (rd.next.kind === 'replaceKey' || rd.recommended?.kind === 'replaceKey') return W.replaceKey
   if (rd.usedRecently) return fillText(W.usedRecently, { date: monthDay(rd.usedRecently) })
   if (rd.onLeave) return W.onLeave
+  // Unconfirmed only because the tenant has no Entra ID P1: no read is coming, and the group says so (review, 2026-09-27).
+  if (signInsUnavailableFor(r)) return T.groupNoP1.why
   // Needs a device names the device the gap is on (a device type with no proof), whatever the next action there is.
   const gap = rd.devices.find((d) => !d.covered)
   if (r.state === 'device' && gap) return fillText(W.device, { device: deviceNoun(gap.os) })

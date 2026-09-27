@@ -374,7 +374,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   }
   const summary = structuralWords.summary
   const licenceLine = conditionalAccessLicenceLine(scan.snapshot)
-  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({}); setOpen(null) }
+  // A tile closes the open step, and the address with it, as openStep does: a link to that step (the Next line) then opens it again.
+  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({}); setOpen(null); window.history.replaceState(null, '', '#/plan') }
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string; select?: () => void }[] = [
     { key: 'ready', label: summary.ready, value: counts.lanes.ready, select: () => { selectSummary(null); setTab('ready') } },
     { key: 'input', label: summary.input, value: inputIds.size, select: () => selectSummary('input') },

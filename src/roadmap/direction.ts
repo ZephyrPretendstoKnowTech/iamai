@@ -439,13 +439,16 @@ export function countDirectionImpact(steps: Step[], availableGoalIds: readonly s
  */
 export function noteServiceConsequences(steps: Step[]): void {
   const use = steps.find((s) => s.id === DIRECTION_STEP.use)
+  const remote = steps.find((s) => s.id === DIRECTION_STEP.devices)?.directionQuestions?.find((q) => q.key === 'officeNetwork')?.saved?.value === 'remote'
   for (const q of use?.directionQuestions ?? []) {
     if (!q.key.startsWith('service:')) continue
     const key = q.key as DirectionQuestionKey
     const dependents = steps.filter((s) => !isDirectionStep(s.id) && directionDependenciesOf(s).includes(key))
     const titles = [...new Set(dependents.map((s) => contentTitle(s)))]
     const byThisNo = answeredReasonOf(key, 'no')
-    const notices = [...new Set(dependents.filter((s) => s.doesntApply == null || s.doesntApply === byThisNo).map((s) => ((contentStepFor(s) as { brief?: { notice?: unknown } } | undefined)?.brief?.notice)).filter((n): n is string => typeof n === 'string' && n.trim() !== ''))]
+    // A saved No and everyone working remotely both take an office block off: only the No is this card's to undo.
+    const keptOff = (s: Step): boolean => remote && directionDependenciesOf(s).includes('officeNetwork')
+    const notices = [...new Set(dependents.filter((s) => (s.doesntApply == null || s.doesntApply === byThisNo) && !keptOff(s)).map((s) => ((contentStepFor(s) as { brief?: { notice?: unknown } } | undefined)?.brief?.notice)).filter((n): n is string => typeof n === 'string' && n.trim() !== ''))]
     const chosen: Record<string, string> = {
       ...(titles.length > 0 ? { no: fillText(Q.serviceConsequence, { steps: list(titles) }) } : {}),
       ...(notices.length > 0 ? { yes: notices.join(' ') } : {}),

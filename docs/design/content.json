@@ -1238,7 +1238,6 @@
         "readiness": "Readiness threshold",
         "registration-no-tap": "Temporary Access Pass",
         "registration-no-trusted-location": "Trusted network",
-        "work-countries-review": "Work countries",
         "passkey-settings-unread": "Passkey settings",
         "unverified-exclusion": "Excluded group",
         "workload-identity-support": "Sync identity",
@@ -1264,7 +1263,7 @@
       "summaryNoneNoP1": "Nobody can be counted: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have, so this scan read nobody’s activity.",
       "summaryUnmeasured": "Readiness not measured for {cohort}: this scan holds no sign-in proof.",
       "$commentSummaryNotJudged": "Everyone counted is Unknown, though the sign-in proof was read: their method lists were refused, say. \"0 of 30 are ready\" put an unread count in the shape of a measurement. Each row says what was missing.",
-      "summaryNotJudged": "Readiness for {cohort} waits on one more read: each row says which.",
+      "summaryNotJudged": "Readiness for {cohort}: waiting on one more read, and each row says which.",
       "summaryNoP1": "Readiness can’t be measured for {cohort}: sign-in records need Microsoft Entra ID P1, which this tenant doesn’t have.",
       "groupNoP1": {
         "$comment": "The Unknown group's words where everyone in it is unconfirmed only because the tenant has no Entra ID P1 (summaryNoP1 says why, once).",
@@ -1496,7 +1495,7 @@
           "notCovered": "Nothing to do: the next scan reads their sign-ins",
           "unavailable": "Nothing to do here: sign-in records aren’t available to IAMAI in this tenant",
           "$commentMethodsUnavailable": "Drawn only where no method list was read in this tenant and the registration report that stands in for one was refused (derive/readinessContext.ts methodListsUnread). The row states the fact; the evidence tile says what reads it. Where other lists were read, a missed one keeps \"methods\", because the next scan re-reads it.",
-          "methodsUnavailable": "Waiting on the fix under Evidence read"
+          "methodsUnavailable": "Waiting on registration details, which this tenant refused"
         }
       },
       "notes": {
@@ -2930,7 +2929,6 @@
                 "Computer Management: {computers}"
               ],
               "notSelected": "Not selected",
-              "noneSelected": "None selected",
               "required": "Required",
               "notRequired": "Not required",
               "$commentMfaPreparation": "Prepare Your Team for MFA's three messages (stepResources.ts mfaPreparationEmail; the first is also Tell your people, stepExport.ts commsFor). Filled as plain text: the passkey lines are the one Authenticator procedure (content/passkeySetup.ts) read as {passkeyOpen} … {passkeyProvider}, with {passkeyPhone} your phone and {passkeyAccount} from mfaAccounts, and {passkeySignIn} says how to pick the passkey at sign-in (owner, 2026-09-24: directions name the method; Windows Hello is not a passkey). {computerLead} and {computerLine} are mfaComputer's, by the Decide How and Where People Sign In computers answer and the joined Windows computers the scan read.",

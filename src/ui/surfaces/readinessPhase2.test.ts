@@ -237,6 +237,8 @@ test('a method list the tenant refused says so and is not retried; one merely mi
     assert.equal(view.context.methodsUnavailable, false, 'lists were read in this tenant')
     const missed = view.rows.filter((r) => r.state !== null && r.readiness?.unknown === 'methods' && s.authMethods[r.user.id] === 'unknown')
     assert.ok(missed.length > 0, 'the premise: the missed person is counted and unknown for their method list')
+    // And the evidence line says the same: a missed list is retried, never put down to the refused report (review, 2026-09-27).
+    assert.equal(unreadMethodsWords(s, 1), fillText(E.unreadMethods, { n: 1 }))
     for (const r of missed) {
       assert.deepEqual(r.readiness?.next, { kind: 'rescan', reason: 'methods' }, r.user.id)
       assert.equal(nextCell(r), N.rescan.methods, r.user.id)

@@ -952,6 +952,9 @@ try {
   check('Forget: the Account menu opens', await clickText('/^Account$/', 'header.app'))
   await sleep(200)
   check('Forget: the button is there', await clickText('/^Forget this tenant/', 'header.app'))
+  // It asks first (F-160): the confirm's own Forget button is the one that deletes.
+  await sleep(200)
+  check('Forget: the menu asks first, and its own button deletes', await evaluate(`(() => { const b = document.querySelector('header.app .menu-confirm .forget-confirm'); if (b) b.click(); return !!b })()`))
   await sleep(1500)
   const after = tenantId ? await countFor(tenantId) : 0
   check('Forget: every store is empty for the tenant afterwards', after === 0, `rows=${after}`)
@@ -1662,6 +1665,9 @@ try {
   // Forget this tenant: this tenant's records go, the other tenant's stay, and
   // the operator is still signed in — which is what makes it the other action.
   const forgetClick = await menuItem('Forget this tenant')
+  // It asks first (F-160): the confirm's own Forget button is the one that deletes.
+  const confirmed = (await waitFor(`!!document.querySelector('header.app .menu-confirm .forget-confirm')`, 4000)) && (await evaluate(`(() => { const b = document.querySelector('header.app .menu-confirm .forget-confirm'); if (b) b.click(); return !!b })()`))
+  check('Forget this tenant: it asks first, and its own button deletes', confirmed === true)
   const forgotUi = await waitFor(`location.hash === '#/connect'`)
   await sleep(800)
   const mockRowsAfter = await rowsFor(MOCK_TENANT)

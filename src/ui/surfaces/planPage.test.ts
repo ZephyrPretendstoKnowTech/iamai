@@ -153,4 +153,6 @@ test('the Plan names its next step: the first Ready row in All work order, by it
   assert.match(page, /const nextReady = nextReadyOf\(items, rowNumbers, sectionNumbers\)/)
   assert.match(page, /\{nextReady && \(\s*<p className="line no-print plan-next">\s*<a href=\{`#\/plan\/\$\{encodeURIComponent\(nextReady\.id\)\}`\}>/)
   assert.ok(page.indexOf('plan-next') > page.indexOf('plan-progress-tiles') && page.indexOf('plan-next') < page.indexOf('plan-links'), 'under the tiles, above Plan settings')
+  // A tile closes the open step and the address with it, so the link opens that step again (review, 2026-09-27).
+  assert.match(page, /const selectSummary = [^\n]*setOpen\(null\); window\.history\.replaceState\(null, '', '#\/plan'\) \}/)
 })

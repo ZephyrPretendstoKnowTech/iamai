@@ -141,19 +141,35 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  // Where focus goes back to: the Account button after Escape, the Forget item after Cancel.
+  const accountButton = useRef<HTMLButtonElement>(null)
+  const forgetItem = useRef<HTMLButtonElement>(null)
+  const backToForget = useRef(false)
   const { run, error } = useAction()
   const tenant = tenantName ?? SHELL.forgetThisTenant
   const close = (): void => {
     setOpen(false)
     setConfirming(false)
   }
+  const cancel = (): void => {
+    backToForget.current = true
+    setConfirming(false)
+  }
+  useEffect(() => {
+    if (confirming || !backToForget.current) return
+    backToForget.current = false
+    forgetItem.current?.focus()
+  }, [confirming])
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) close()
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
+      if (e.key === 'Escape') {
+        close()
+        accountButton.current?.focus()
+      }
     }
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
@@ -165,7 +181,7 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
   return (
     <div className="menu" ref={ref}>
       {/* Text, not a button face (docs/design/connect-mockup.html's header): the menu it opens keeps its buttons. */}
-      <button type="button" className="text-control" aria-haspopup="menu" aria-expanded={open} title={fillText(SHELL.accountTooltip, { username: account.username })} onClick={() => (open ? close() : setOpen(true))}>
+      <button type="button" ref={accountButton} className="text-control" aria-haspopup="menu" aria-expanded={open} title={fillText(SHELL.accountTooltip, { username: account.username })} onClick={() => (open ? close() : setOpen(true))}>
         {SHELL.account}
       </button>
       {open && (
@@ -175,8 +191,8 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
               <p id="forget-confirm-text">{fillText(SHELL.forgetConfirm, { tenant })}</p>
               <a className="inline-link" href="#/export" onClick={close}>{SHELL.forgetSaveFirst}</a>
               <div className="menu-confirm-actions">
-                <Button variant="secondary" autoFocus onClick={() => setConfirming(false)}>{SHELL.forgetCancel}</Button>
-                <Button variant="secondary" className="forget-confirm" onClick={() => run(forgetTenant())}>{fillText(SHELL.forgetYes, { tenant })}</Button>
+                <Button variant="secondary" autoFocus onClick={cancel}>{SHELL.forgetCancel}</Button>
+                <Button variant="secondary" className="forget-confirm" onClick={() => run(forgetTenant().then(close))}>{fillText(SHELL.forgetYes, { tenant })}</Button>
               </div>
             </>
           ) : (
@@ -184,7 +200,7 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
               <Button variant="tertiary" role="menuitem" onClick={() => run(signOut())}>
                 {SHELL.signOut}
               </Button>
-              <Button variant="tertiary" role="menuitem" title={SHELL.forgetTooltip} onClick={() => setConfirming(true)}>
+              <Button variant="tertiary" role="menuitem" ref={forgetItem} title={SHELL.forgetTooltip} onClick={() => setConfirming(true)}>
                 {SHELL.forget}
               </Button>
             </>

@@ -1588,9 +1588,14 @@ function AcceptDeviation({ step, ctx, onDecide }: { step: Step; ctx: StepVarCont
     </>}
     {/* Accepted, the rail keeps the one control that undoes it: the policy, the
         date and the reason are the Satisfied tile's (stepContract.ts
-        acceptedTiles), said once (owner, 2026-09-27, OWN-ACCEPT). */}
+        acceptedTiles), said once (owner, 2026-09-27, OWN-ACCEPT). Where no tile
+        stands (the difference is no longer seen), the rail says when and why. */}
     {panel.accepted && <div className="accepted-deviation">
       <h5 className="dlabel">{W.acceptedHead}</h5>
+      {panel.accepted.said && <>
+        <p className="accepted-date">{panel.accepted.said.date}</p>
+        <p className="accepted-reason">“{panel.accepted.said.reason}”</p>
+      </>}
       <Button variant="secondary" className="accept-button" onClick={() => onDecide(deviationDecision('', {}))}>{W.remove}</Button>
     </div>}
   </div>

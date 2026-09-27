@@ -5421,12 +5421,14 @@ th .th-sort:focus-visible,
   width: 18rem;
   padding: 12px;
   gap: 10px;
+  white-space: normal;
 }
 .menu-confirm p {
   margin: 0;
 }
 .menu-confirm .menu-confirm-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
 }
@@ -5434,7 +5436,22 @@ th .th-sort:focus-visible,
   width: auto;
   justify-content: center;
 }
-.menu-confirm .forget-confirm {
+/* Above the themes' .btn-secondary rules and their :hover (0,4,0, later in the file). */
+.menu-list.menu-confirm .forget-confirm.btn-secondary {
   color: var(--danger-text);
   border-color: var(--danger);
+}
+
+/* An acceptance no Satisfied tile states (acceptPanel.ts accepted.said): its date and reason under the heading. */
+.step-action-column .accept-deviation .accepted-deviation > p {
+  margin: 0 0 4px;
+}
+.step-action-column .accept-deviation .accepted-reason {
+  color: var(--secondary-text);
+}
+/* Narrow, a Not counted row takes the one-column layout every row does there. */
+@media (max-width: 760px) {
+  .readiness-row.uncounted {
+    grid-template-columns: 1fr;
+  }
 }

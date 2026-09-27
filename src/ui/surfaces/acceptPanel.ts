@@ -16,6 +16,7 @@ import type { DifferencePiece } from '../../roadmap/differences.ts'
 import { dimensionWords } from '../../roadmap/observation.ts'
 import { PROCEDURE } from '../../roadmap/policyProcedure.ts'
 import { list, plural } from '../../copy/statements.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { fillText } from '../../content/render.ts'
 import { roleNamesOf } from '../../roles.ts'
 import { UNNAMED } from '../../names.ts'
@@ -88,8 +89,15 @@ export type AcceptPanel = {
   required: string | null
   /** What Accept saves for each setting it may accept (MemberTracking.differsFields, less a setting with a required piece). */
   acceptable: Record<string, string>
-  /** An acceptance is saved: the panel says so and offers Remove acceptance. The policy, date and reason are the Satisfied tile's (stepContract.ts acceptedTiles). */
-  accepted: boolean
+  /**
+   * An acceptance is saved: the panel says so and offers Remove acceptance. The
+   * policy, date and reason are the Satisfied tile's (stepContract.ts
+   * acceptedTiles) where the scan still sees the accepted difference; where it
+   * does not (the policy was corrected, turned off or deleted, or a new gap
+   * reopened it), no tile stands, and the panel says when and why itself
+   * (`said`), so they are said once and never nowhere.
+   */
+  accepted: { said: { date: string; reason: string } | null } | null
 }
 
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
@@ -239,6 +247,6 @@ export function acceptPanelOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' |
     leaves: sentence === '' ? null : sentence,
     required: required.length > 0 ? fillText(W.required, { names: list([...new Set(required)]) }) : null,
     acceptable,
-    accepted: saved !== null && saved.reason !== '',
+    accepted: saved !== null && saved.reason !== '' ? { said: members.some((m) => (m.accepted?.length ?? 0) > 0 && !!m.policyName) ? null : { date: absoluteDate(saved.at), reason: saved.reason } } : null,
   }
 }
