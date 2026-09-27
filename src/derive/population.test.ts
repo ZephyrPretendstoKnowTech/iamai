@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../roadmap/fixtures/run.ts'
 import { activePeopleIds, campaignIdsFor, isActivePerson, namedAccounts, populationIndex, reached, stepPopulation } from './population.ts'
+import { operatorUserId } from './operator.ts'
 import { whoLine, populationLine, affectedIds } from './whoLine.ts'
 import { readinessView } from './mfaReadiness.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
@@ -162,7 +163,9 @@ test('the campaign names every admin it waits on outside its active people, by w
   const active = new Set(runFixture(fixture('mid')).input.viability.filter((v) => v.activity === 'active').map((v) => v.userId))
   const roles = fixture('mid').snapshot.roles
   const admins = new Set([...Object.keys(roles.active), ...Object.keys(roles.eligible ?? {})])
-  const [dormantId, unreadId] = base.step.preparation!.missingIds.filter((id) => admins.has(id) && active.has(id))
+  // Never the account that ran the scan: the scan is its sign-in, so it cannot read dormant (F-177).
+  const operator = operatorUserId(fixture('mid').snapshot)
+  const [dormantId, unreadId] = base.step.preparation!.missingIds.filter((id) => admins.has(id) && active.has(id) && id !== operator)
   assert.ok(dormantId && unreadId, 'the premise: mid has two active admins not yet ready')
 
   // One stops signing in (read: 200 days ago); the scan cannot read the other's activity at all.
