@@ -175,7 +175,8 @@ export const INVENTORY = {
     distinctUsersTip: {
       title: 'Distinct users',
       // The window is the one the line beside it dates: a read can stop short of the 30 days it asks for.
-      text: 'Users with at least one record inside the collected window. Readiness counts activity over 90 days, so Active users can be higher than this number.',
+      // F-138: it said Readiness could only be higher; on the demo it counts fewer (30 against 34), because it leaves the emergency, service and shared accounts out.
+      text: 'Every account with a sign-in record in this window, emergency, service and shared accounts included. MFA Readiness counts only people and guests, over 90 days, so its number can be lower or higher.',
     },
     byClientApp: 'By client app',
     byProtocol: 'By protocol',
