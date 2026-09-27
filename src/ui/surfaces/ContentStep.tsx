@@ -541,7 +541,7 @@ export function ContentStep({
             the action: IAMAI cannot choose, so nothing is offered to submit until
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
-          {decisionHead && !printing && <ApproveAnswers draft={directionDraft} onDecide={onDecide} saving={saveStatus === 'saving'} />}
+          {decisionHead && !printing && <ApproveAnswers draft={directionDraft} onDecide={onDecide} saving={saveStatus === 'saving'} ctx={ctx} />}
           {/* Define the Trusted Network answers the office network here too: which trusted location is the office, or that everyone works remotely (owner, 2026-09-24). */}
           {officeNetwork && !printing && step.doesntApply == null && <OfficeNetworkRail key={ctx.mapping.trustedLocationIds.join(',')} ctx={ctx} picked={ctx.mapping.trustedLocationIds} onAnswer={officeNetwork} />}
           {/* A question that moved to Define Your Rollout Scope is answered there, and this step draws nothing in its place: no Answered in block (walk list item 19; roadmap/direction.ts ANSWERED_IN). A step whose own picker saves under a key of its own still draws it: Create or Correct Service Accounts Group's group picker (decisions.ts decisionKeyOf). */}

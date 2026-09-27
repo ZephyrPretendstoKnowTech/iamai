@@ -23,7 +23,7 @@ import { answerTextOf } from '../../roadmap/direction.ts'
 import { directionWords, stepById } from '../../content/content.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { accountBadges, filterPickerObjects, pickerUniverse } from './pickerRows.ts'
+import { accountBadges, adminPickedLine, adminsOf, filterPickerObjects, pickerUniverse, withAccountMark } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { QUESTION_STEP } from '../../roadmap/answers.ts'
@@ -39,7 +39,9 @@ function universeOf(q: DirectionQuestion, ctx: StepVarContext): PickerObject[] {
     const why = accountBadges(q.key, pickerCtx)
     // The mail-sending card picks from its own list: no emergency access account or guest, and a sender says why (pickerRows.ts pickerUniverse).
     const stepId = q.key === 'mailDevices' ? QUESTION_STEP.mailDevices : PREREQ_STEP_ID.serviceAccountsGroup
-    return pickerUniverse(stepId, 'accounts', pickerCtx).map((o) => (why.has(o.id) ? { ...o, badge: why.get(o.id) } : o))
+    // An administrator, or the account signed in now, says so in the list and on its chip: picked here it becomes a service account (F-056).
+    const admins = adminsOf(ctx.snapshot)
+    return pickerUniverse(stepId, 'accounts', pickerCtx).map((o) => withAccountMark(why.has(o.id) ? { ...o, badge: why.get(o.id) } : o, admins, ctx.operatorId))
   }
   if (q.control === 'locations') return pickerUniverse(PREREQ_STEP_ID.trustedLocation, 'locations', pickerCtx)
   return []
@@ -163,7 +165,7 @@ export function DirectionQuestions({ draft, ctx, heading, printing = false }: { 
  * nobody has saved — every card not reading Approved. A list nobody has picked
  * from disables it and says why under it; `saving` disables it while a save runs.
  */
-export function ApproveAnswers({ draft, onDecide, saving = false }: { draft: DirectionDraft; onDecide?: (decision: StepDecisionInput) => void; saving?: boolean }) {
+export function ApproveAnswers({ draft, onDecide, saving = false, ctx }: { draft: DirectionDraft; onDecide?: (decision: StepDecisionInput) => void; saving?: boolean; ctx?: StepVarContext }) {
   const { questions, answerOf } = draft
   const empty = questions.filter((q) => !directionAnswerComplete(q, answerOf(q)))
   const pending = questions.some((q) => cardTagOf(q, answerOf(q)) !== 'approved')
@@ -174,10 +176,14 @@ export function ApproveAnswers({ draft, onDecide, saving = false }: { draft: Dir
     onDecide?.(directionDecisionOf(answers, basis))
   }
   const why = [...new Set(empty.map((q) => q.control === 'locations' ? W.pickLocation : W.pickAccount))]
+  // An administrator or the signed-in account picked as a service or shared-device account says so before it is approved (F-056).
+  const picked = questions.flatMap((q) => { const a = answerOf(q); return q.control === 'accounts' && q.pickedWith !== null && a.value === q.pickedWith ? a.picked : [] })
+  const adminLine = ctx ? adminPickedLine(picked, adminsOf(ctx.snapshot), ctx.operatorId, ctx.nameOf) : null
   return (
     <div className="direction-approve">
       <Button variant="primary" disabled={empty.length > 0 || !pending || saving || !onDecide} onClick={approve}>{W.approve}</Button>
       {why.map((line) => <p key={line} className="reason">{line}</p>)}
+      {adminLine && <p className="reason">{adminLine}</p>}
     </div>
   )
 }
