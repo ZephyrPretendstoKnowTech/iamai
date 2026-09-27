@@ -280,27 +280,46 @@ the owner approved each method.
 9. **F-184.** The briefing's cover reads "Prepared {date} by {by} · Scanned {scanned} · Measured against {baseline}", and prints the screen's "This scan is more than a week old. Scan again before acting on its findings." when it is.
 10. **F-003 + OWN-W3.** Two legend entries: "Create, Correct, Turn on, Decision, Review": "The kind of action a Ready step asks for: create a policy, correct one, turn it on, answer a question, or review what the scan found."; "Report-only, Enforced": "What the policy is set to in your tenant today. On Hold beside Enforced means the policy is on, but the step still has work." The tile "Observing" becomes "In report-only"; the "Legend" heading moves into content.
 
-## Round 3: candidates (verify live before presenting)
+## Round 3: as approved (2026-09-27, building on fix/low-hanging-3)
 
-The goal needs Inventory (78), Export (80), Home + demo (80) and the briefing (82)
-lifted, so this list favours them over higher-reward items on surfaces already
-near 90. Proposed ten: the first ten rows.
+Picked for felt value (owner, 2026-09-27): changes a user notices on the daily path, the
+safety floor, and the surfaces below 85. Every pick was re-checked live and in code first.
+The owner confirmed the four refinements to the 90% definition (safety floor, a value
+moment per reader, a blocked tenant served only when told why and what next, persona
+walks until real users exist).
 
-| ID | Fix | Surface | Effort | Risk | Frozen |
-|---|---|---|---|---|---|
-| OWN-B4 | The Plan's and steps' sentences that still say "could not read", "not established" or "could not work out" about the tenant (and the hard-coded "Named locations could not be fully read") | Plan + steps | S | medium | yes |
-| F-077 | The "summarise for a business owner" prompt is grounded on five cleanup items and no MFA step | Export | S | low | |
-| F-195 | The "masked" calendar and prompts file keep guest sign-in addresses in full | Export | XS | medium | |
-| F-023 | Loading a plan file silently replaces decisions and deferrals, with no summary of what came back | Export | S | medium | |
-| OWN-X1 | Export's "The JSON and the PowerShell for a policy are on that step" is not true of every policy step | Export | XS | low | |
-| F-138 | Inventory's "distinct users" note says Readiness can count more, while it counts fewer | Inventory | XS | low | |
-| F-137 | Inventory and MFA Readiness describe the same people's MFA state in different, undefined words | Inventory | S | low | |
-| F-078 | The demo, Connect and How never say how to remove the data kept in this browser | Home + demo | XS | low | |
-| F-044 | Readiness headline "4 of 30 are ready …: 29 people and 1 guest" reads as if they are the ready ones | MFA Readiness | XS | low | |
-| F-058 | "1 section was not read in full … check what is listed under Scan" leads to a row that explains nothing | Connect | S | low | |
-| F-168 | Plan, MFA Readiness and Export in the header look live before the first scan | Shell | XS | low | |
-| F-003b | The legend's action-words label wraps to four lines | Plan | XS | low | |
-| F-062 | 4.3's "Select (45)" role list reads as unticking Global Administrator | Plan + steps | XS | medium | yes |
+**What the owner changed while approving:**
+- The scroll box around a step's instructions stays (owner: it keeps long tasks from
+  making pages endless). Measured on the demo at 1280px: 24 of 33 boxes fit, three are cut
+  by one line (11–18px) and six scroll further, mostly role lists. Only the limit rises,
+  so the one-line clips and the admins step fit.
+- The prompt pack is for the implementer (owner): the business-owner prompt goes, since
+  the briefing serves that reader, and the implementer's whole-plan prompt stops cutting
+  steps mid-instruction.
+- F-056 joins as a safety-floor item.
+
+**Narrowed on a second look (the owner asked for one):**
+- F-051's demo half (the Follow-up scan surviving a reload) is dropped: evaluators rarely
+  reload, and it needs demo-state plumbing.
+- F-023 asks first only when this browser already holds recorded work; a fresh browser
+  loads straight away. Both end with the loaded file's date.
+
+| # | ID | Fix | Surface | Effort | Risk | Frozen |
+|---|---|---|---|---|---|---|
+| 1 | F-051, F-147 | Back closes the step it opened; a new page opens at its top | Plan + steps, shell | S | medium | |
+| 2 | F-100 (tweak) | The instructions box's limit rises so one-line clips fit | Plan + steps | XS | medium | yes (look only) |
+| 3 | F-161 | A tab another tab has saved over stops saving and says Reload | Shell | M | high | |
+| 4 | F-023 | Loading a plan file says what it replaces, and asks when something would be | Export | S | medium | |
+| 5 | F-177 | The account that ran the scan is never dormant | Plan + steps | S | high | yes (3.1, only when it fires) |
+| 6 | F-077, F-129 | The prompt pack is the implementer's: no business-owner prompt, no step cut mid-instruction | Export | S | low | |
+| 7 | F-195, OWN-X1 | "Masked" masks guest addresses; the JSON/PowerShell note is true | Export | XS | medium | |
+| 8 | F-049, F-138, F-137 | Inventory lists the plan's groups, its tip is true, its MFA words are defined | Inventory | S | low | |
+| 9 | OWN-P1 | The briefing's decisions name the questions they ask | Briefing | S | low | yes |
+| 10 | F-078 | Connect and How say how to delete what the browser keeps | Connect, How | XS | low | |
+| 11 | F-056 | Pickers mark administrators and your own account, and Approve says so | Decision | S | medium | yes |
+
+OWN-P1 is new (found in this round's walk): the briefing's "What we need from you" read
+"2.1 Confirm What You Use: A decision is needed." three times, which a manager cannot act on.
 
 ## Not low-hanging: decisions or larger work
 
