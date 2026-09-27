@@ -277,3 +277,11 @@ test('a decision under What we need from you lists the questions it still waits 
   assert.equal(decisionAsksOf({ directionQuestions: undefined }).length, 0, 'a decision with no questions of its own asks nothing')
   assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /<span className="brief-why">\{n\.why\}<\/span>\n\s+\{n\.asks && \(\n\s+<ul className="brief-asks">/)
 })
+
+test('a question a scan reopened is one the briefing asks about, and an answered one is not (Round 3 review)', () => {
+  const q = (label: string, saved: boolean, needsReview = false) => ({ label, saved: saved ? { value: 'yes', picked: [] } : null, needsReview }) as never
+  assert.deepEqual(decisionAsksOf({ directionQuestions: [q('Azure Virtual Desktop', true), q('Inforcer', true, true), q('Phones', true)] }), ['Inforcer'])
+  assert.deepEqual(decisionAsksOf({ directionQuestions: [q('Office network', false), q('Inforcer', true, true), q('Phones', true)] }), ['Office network', 'Inforcer'])
+  // Every answer approved and none reopened: nothing to ask, and briefOf keeps "A decision is needed."
+  assert.deepEqual(decisionAsksOf({ directionQuestions: [q('Phones', true)] }), [])
+})

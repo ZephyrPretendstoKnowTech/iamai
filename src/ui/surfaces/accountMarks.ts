@@ -35,11 +35,17 @@ export function withAccountMark(o: PickerObject, admins: ReadonlySet<string>, op
   return { ...o, badge: [mark, o.badge].filter(Boolean).join(' · '), why: [mark, o.why ?? o.secondary].filter(Boolean).join(' · ') }
 }
 
-/** The line under Approve answers when an account answer picks an administrator or the signed-in account (F-056); null when it picks neither. */
-export function adminPickedLine(picked: readonly string[], admins: ReadonlySet<string>, operatorId: string | null, nameOf: (id: string) => string): string | null {
+/**
+ * The line under Approve answers when an account answer picks an administrator
+ * or the signed-in account (F-056); null when it picks neither. Where everyone
+ * works remotely the service accounts group stays in the policies that ask
+ * everyone for MFA (deviations.ts serviceAccountsExclusionDue), and the line
+ * says no more than that the account is treated as a service account.
+ */
+export function adminPickedLine(picked: readonly string[], admins: ReadonlySet<string>, operatorId: string | null, nameOf: (id: string) => string, remote = false): string | null {
   const marked = [...new Set(picked)].flatMap((id) => {
     const mark = accountMarkOf(id, admins, operatorId)
     return mark === null ? [] : [`${nameOf(id)} (${mark.replaceAll(' · ', ', ').toLowerCase()})`]
   })
-  return marked.length === 0 ? null : fillText(directionWords.adminPicked, { names: marked })
+  return marked.length === 0 ? null : fillText(remote ? directionWords.adminPickedRemote : directionWords.adminPicked, { names: marked })
 }

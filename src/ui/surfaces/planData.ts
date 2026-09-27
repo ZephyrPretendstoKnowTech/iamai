@@ -42,7 +42,7 @@ import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
-import { announceSaved, isBehind, noteOwn } from '../planSync.ts'
+import { announceSaved, isBehind, LOADED, noteOwn } from '../planSync.ts'
 import { readGroup, readUserTransitiveGroupIds } from '../../graph/collect/onDemand.ts'
 import type { GroupRead } from '../../graph/collect/presence.ts'
 import { actionableExclusionsGroupId, directoryEvidenceOf, exclusionsGroupIdToVerify } from '../../mapping/safetyChoice.ts'
@@ -232,6 +232,8 @@ export function usePlanData(
       setMapping(m)
       // This tab's copy of the mapping, for telling whether another tab saves over it (planSync.ts).
       noteOwn(snapshot.tenantId, 'mapping', JSON.stringify(m))
+      // And of the plan record, until its first save says what it holds: any save another tab announces meanwhile is newer.
+      noteOwn(snapshot.tenantId, 'plan', LOADED)
       // Read the record once for its decisions, in whatever shape it was written;
       // a pre-50.1 blob is reduced to its skips here and rewritten on the next save.
       // A plan never started is locked here, as it is first computed: its start
@@ -487,7 +489,6 @@ export function usePlanData(
   // migration of a pre-50.1 record: its blob was dropped on load, and this
   // rewrites the record in the decisions-only shape (prompt 50.1 items 1-2).
   const lastPersist = useRef('')
-  const savedOnce = useRef(false)
   useEffect(() => {
     if (readOnly || !computed || !snapshot || !saved) return
     const decisions: PlanDecisions = {
@@ -525,16 +526,11 @@ export function usePlanData(
     if (isBehind(snapshot.tenantId)) return
     lastPersist.current = key
     setPersistence('saving')
-    // This hook's first save writes back the plan it loaded: nobody changed
-    // anything, so no other tab is told. Every later one follows a change (an
-    // answer, a deferral, a scan) and is announced (planSync.ts, F-161).
-    const loadedOnly = !savedOnce.current
-    savedOnce.current = true
     persistQueue.current = persistQueue.current.catch(() => {}).then(async () => {
       if (isBehind(snapshot.tenantId)) return
       await savePlanRecord(snapshot.tenantId, decisions)
-      if (loadedOnly) noteOwn(snapshot.tenantId, 'plan', key)
-      else announceSaved(snapshot.tenantId, 'plan', key)
+      // Every save is announced; a tab holding these same words is not behind (planSync.ts, F-161).
+      announceSaved(snapshot.tenantId, 'plan', key)
     }).then(() => {
       if (lastPersist.current === key) setPersistence('saved')
     }).catch(() => {

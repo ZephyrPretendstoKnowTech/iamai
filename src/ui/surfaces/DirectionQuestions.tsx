@@ -17,7 +17,7 @@ import { useId, useMemo, useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { DirectionQuestion } from '../../roadmap/types.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
-import { directionAnswerComplete, directionDecisionOf, directionDraftOf, trustedIpLocations } from '../../roadmap/directionAnswers.ts'
+import { directionAnswerComplete, directionDecisionOf, directionDraftOf, savedAnswerOf, trustedIpLocations } from '../../roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { answerTextOf } from '../../roadmap/direction.ts'
 import { directionWords, stepById } from '../../content/content.ts'
@@ -179,7 +179,7 @@ export function ApproveAnswers({ draft, onDecide, saving = false, ctx }: { draft
   const why = [...new Set(empty.map((q) => q.control === 'locations' ? W.pickLocation : W.pickAccount))]
   // An administrator or the signed-in account picked as a service or shared-device account says so before it is approved (F-056).
   const picked = questions.flatMap((q) => { const a = answerOf(q); return q.control === 'accounts' && q.pickedWith !== null && a.value === q.pickedWith ? a.picked : [] })
-  const adminLine = ctx ? adminPickedLine(picked, adminsOf(ctx.snapshot), ctx.operatorId, ctx.nameOf) : null
+  const adminLine = ctx ? adminPickedLine(picked, adminsOf(ctx.snapshot), ctx.operatorId, ctx.nameOf, savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote') : null
   return (
     <div className="direction-approve">
       <Button variant="primary" disabled={empty.length > 0 || !pending || saving || !onDecide} onClick={approve}>{W.approve}</Button>

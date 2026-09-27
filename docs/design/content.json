@@ -3313,10 +3313,11 @@
           "notSure": "Not sure? Keep the suggestion. You can change it any time.",
           "approve": "Approve answers",
           "pickAccount": "Pick at least one account, or choose None.",
-          "$commentAdminPicked": "F-056: the service, shared-device and mail-sending pickers offered an administrator, even the account signed in now, with nothing to say so, and approving made it a service account, left out of every policy that asks everyone for MFA. Each such option and chip carries adminMark, operatorMark or both (pickerRows.ts accountMarkOf), and Approve answers says who was picked (adminPicked; each name followed by its marks in lower case).",
+          "$commentAdminPicked": "F-056: the service, shared-device and mail-sending pickers offered an administrator, even the account signed in now, with nothing to say so, and approving made it a service account, left out of every policy that asks everyone for MFA. Each such option and chip carries adminMark, operatorMark or both (ui/surfaces/accountMarks.ts accountMarkOf), and Approve answers says who was picked (adminPicked; each name followed by its marks in lower case). Where the office-network answer is Everyone works remotely, the service accounts group is not kept out of those policies (roadmap/deviations.ts serviceAccountsExclusionDue), so the line is adminPickedRemote.",
           "adminMark": "Administrator",
           "operatorMark": "Your account",
           "adminPicked": "Picked here: {list:names}. A picked account is treated as a service account and kept out of the policies that ask everyone for MFA.",
+          "adminPickedRemote": "Picked here: {list:names}. A picked account is treated as a service account.",
           "pickLocation": "Pick at least one location, or choose another answer.",
           "notApproved": "Not approved yet",
           "done": "Every answer is approved.",
@@ -3513,6 +3514,7 @@
         "promptWholePlan": "About the whole plan",
         "importBaselineMismatch": "This plan file was saved with a different baseline from the one this plan uses, so it was not loaded. Your current plan has not been changed.",
         "importSaveFailed": "The plan could not be saved. Your previous saved plan has not been replaced. Keep the backup file and try again.",
+        "planSaveFailed": "The plan could not be saved. Try again.",
         "$commentLoadConfirm": "F-023: a plan file that passed its checks, loaded where this browser already holds answers, deferrals or Cleanup items marked done for the tenant, asks before replacing them (ui/surfaces/planFileLoad.ts). {holds} is the file's own counts from loadHolds, or loadHoldsNone. The buttons reuse pages.app.shell.forgetSaveFirst and forgetCancel. A browser holding nothing loads straight away. Either way the Plan then opens on loaded.",
         "loadConfirm": "This plan file was saved {date}. It holds {holds}. Loading it replaces what this browser holds for {tenant}.",
         "loadHolds": {
@@ -3522,7 +3524,10 @@
         },
         "loadHoldsNone": "no answers, deferrals or Cleanup items marked done",
         "loadReplace": "Replace with this file",
-        "loaded": "Loaded the plan file saved {date}."
+        "loaded": "Loaded the plan file saved {date}.",
+        "$commentUndated": "The oldest plan files (schema 0) carry no saved day; they load, and the confirm and the Plan say so without one.",
+        "loadConfirmUndated": "This plan file holds {holds}. Loading it replaces what this browser holds for {tenant}.",
+        "loadedUndated": "Loaded the plan file."
       },
       "print": {
         "brief": {

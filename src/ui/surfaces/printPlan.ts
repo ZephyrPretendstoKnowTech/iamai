@@ -183,11 +183,14 @@ export function readinessNeed(step: Step, ex: Record<string, unknown>): string {
   return fillText(words, { value: gate.value, threshold: gate.threshold })
 }
 
-/** A decision step's questions still waiting on an answer, by the labels the step shows; every question where none is saved yet. None for a decision that asks no questions of its own. */
+/**
+ * A decision step's questions still waiting on an answer, by the labels the
+ * step shows: one nobody has saved, and one a scan reopened (needsReview), the
+ * two the step's own cards read as open (DirectionQuestions.tsx cardTagOf).
+ * None for a decision that asks no questions of its own.
+ */
 export function decisionAsksOf(step: Pick<Step, 'directionQuestions'> | null | undefined): string[] {
-  const questions = step?.directionQuestions ?? []
-  const open = questions.filter((q) => q.saved === null)
-  return (open.length > 0 ? open : questions).map((q) => q.label)
+  return (step?.directionQuestions ?? []).filter((q) => q.saved === null || q.needsReview).map((q) => q.label)
 }
 
 /**

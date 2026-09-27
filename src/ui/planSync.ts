@@ -8,11 +8,23 @@
 // what was saved. A tab whose own copy differs is behind: it stops saving, and
 // the shell asks for a reload before anything changes there.
 //
-// Opening a second tab is not a change: it saves what it loaded, the same words
-// as the first tab's copy, and nobody is behind. A tab only compares once it has
-// saved or loaded a store itself; before that it has no copy to be behind.
+// Every save is announced, and compared with the receiver's own last save:
+// opening a second tab is not a change, since its first save writes the same
+// words as the first tab's copy, and nobody is behind. A scan's save carries the
+// new scan's facts and is a change. A tab that has loaded a store but not yet
+// saved it holds LOADED for it, so any save announced meanwhile leaves it behind.
+//
+// The sample tenant is left out: it re-dates itself on every load, so two sample
+// tabs never hold the same words, and nothing real can be lost there.
+
+import { DEMO_TENANT_ID } from './demoMode.ts'
 
 const CHANNEL = 'iamai-plan'
+
+/** A store this tab has loaded and not yet saved: no announced save matches it. */
+export const LOADED = 'loaded'
+
+const sample = (tenantId: string): boolean => tenantId === DEMO_TENANT_ID
 
 /** What a tab saved: the plan record, the mapping, or everything (a plan file loaded, the tenant forgotten). */
 export type SavedStore = 'plan' | 'mapping' | 'replaced'
@@ -57,6 +69,7 @@ function open(): BroadcastChannel | null {
 
 /** This tab now holds this content for a tenant's store: it loaded it, or saved it. */
 export function noteOwn(tenantId: string, store: 'plan' | 'mapping', key: string): void {
+  if (sample(tenantId)) return
   open()
   own.set(tenantId, { ...(own.get(tenantId) ?? { plan: null, mapping: null }), [store]: key })
 }
@@ -67,6 +80,7 @@ export function noteOwn(tenantId: string, store: 'plan' | 'mapping', key: string
  * the tenant forgotten) holds the latest one, so it is no longer behind.
  */
 export function announceSaved(tenantId: string, store: SavedStore, key = ''): void {
+  if (sample(tenantId)) return
   if (store !== 'replaced') noteOwn(tenantId, store, key)
   else {
     own.delete(tenantId)

@@ -153,8 +153,11 @@ test('the Plan names its next step: the first Ready row in All work order, by it
   assert.match(page, /const nextReady = nextReadyOf\(items, rowNumbers, sectionNumbers\)/)
   assert.match(page, /\{nextReady && \(\s*<p className="line no-print plan-next">\s*<a href=\{`#\/plan\/\$\{encodeURIComponent\(nextReady\.id\)\}`\}>/)
   assert.ok(page.indexOf('plan-next') > page.indexOf('plan-progress-tiles') && page.indexOf('plan-next') < page.indexOf('plan-links'), 'under the tiles, above Plan settings')
-  // A tile closes the open step and the address with it, so the link opens that step again (review, 2026-09-27).
-  assert.match(page, /const selectSummary = [^\n]*setOpen\(null\); window\.history\.replaceState\(null, '', '#\/plan'\) \}/)
+  // A tile closes the open step and the address with it, so the link opens that step again (review, 2026-09-27),
+  // as a history entry of its own when a step was open, so Back reopens it (F-051, Round 3 review).
+  assert.match(page, /const selectSummary = [^\n]*if \(open !== null\) visitStep\(window\.history, null\); else if \(stepFromPlanHash\(window\.location\.hash\) !== null\) window\.history\.replaceState\(null, '', '#\/plan'\); setOpen\(null\) \}/)
+  // Back to the bare Plan keeps the tile the person was looking through; a link to a step clears it.
+  assert.match(page, /const onHash = \(\) => \{ setChangeLine\(null\);[^\n]*const id = stepFromPlanHash\(window\.location\.hash\); if \(id !== null\) setSummaryFilter\(null\); setOpen\(id\) \}/)
 })
 
 // F-003, OWN-W3: the legend defined only the five lane words, while rows also

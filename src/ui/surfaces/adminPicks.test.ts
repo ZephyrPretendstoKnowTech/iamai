@@ -38,3 +38,11 @@ test('the Direction pickers mark their accounts, and Approve answers carries the
   assert.match(page, /\{adminLine && <p className="reason">\{adminLine\}<\/p>\}/)
   assert.match(readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8'), /<ApproveAnswers draft=\{directionDraft\} onDecide=\{onDecide\} saving=\{saveStatus === 'saving'\} ctx=\{ctx\} \/>/)
 })
+
+test('where everyone works remotely the line claims no MFA exclusion, since the service accounts group stays in (Round 3 review)', () => {
+  const admins = new Set(['a'])
+  const nameOf = (id: string): string => (id === 'a' ? 'Casey Kim' : id)
+  assert.equal(adminPickedLine(['a'], admins, null, nameOf, true), 'Picked here: Casey Kim (administrator). A picked account is treated as a service account.')
+  assert.match(adminPickedLine(['a'], admins, null, nameOf, false)!, /kept out of the policies that ask everyone for MFA\.$/)
+  assert.match(readFileSync('src/ui/surfaces/DirectionQuestions.tsx', 'utf8'), /adminPickedLine\(picked, adminsOf\(ctx\.snapshot\), ctx\.operatorId, ctx\.nameOf, savedAnswerOf\('officeNetwork', ctx\.mapping\)\?\.value === 'remote'\)/)
+})

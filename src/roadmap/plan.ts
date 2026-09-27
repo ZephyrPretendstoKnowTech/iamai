@@ -305,6 +305,9 @@ function validatePlanShape(plan: PlanFile): string | null {
       for (const group of Object.values(decisions.confirmations)) if (!object(group) || Object.values(group).some((v) => !object(v) || typeof v.basis !== 'string' || typeof v.at !== 'string' || !Number.isFinite(Date.parse(v.at)))) return 'not a plan file (invalid confirmation)'
     }
   }
+  // The day the file was saved, which the load confirm and the Plan name it by (F-023): one that is there and is not a day is damage, refused before
+  // anything is written. The oldest files carry none and load, told without a day (ui/surfaces/planFileLoad.ts).
+  if (plan.createdAt !== undefined && (typeof plan.createdAt !== 'string' || !Number.isFinite(Date.parse(plan.createdAt)))) return 'not a plan file (invalid saved date)'
   const source = plan.baseline?.source
   if (!object(source) || !(source.kind === 'github' ? (['owner', 'repo', 'commit'] as const).every((k) => typeof source[k] === 'string' && source[k]) : source.kind === 'upload' && typeof source.fileName === 'string')) return 'not a plan file (invalid baseline)'
   return null

@@ -143,7 +143,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // already open changes nothing, so the effect that clears it does not run.
   const linked = useRef<boolean>(stepFromPlanHash(window.location.hash) !== null)
   useEffect(() => {
-    const onHash = () => { setChangeLine(null); noticeLeft.current = null; linked.current = true; setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
+    // A link to a step clears a tile filter that may hide it; Back to the bare Plan keeps the view the person came from (F-051).
+    const onHash = () => { setChangeLine(null); noticeLeft.current = null; linked.current = true; const id = stepFromPlanHash(window.location.hash); if (id !== null) setSummaryFilter(null); setOpen(id) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -380,7 +381,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const summary = structuralWords.summary
   const licenceLine = conditionalAccessLicenceLine(scan.snapshot)
   // A tile closes the open step, and the address with it, as openStep does: a link to that step (the Next line) then opens it again.
-  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({}); setOpen(null); window.history.replaceState(null, '', '#/plan') }
+  // A tile closes the open step as a place of its own, so Back reopens it (F-051), and the address with it, so the Next link opens that step again.
+  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({}); if (open !== null) visitStep(window.history, null); else if (stepFromPlanHash(window.location.hash) !== null) window.history.replaceState(null, '', '#/plan'); setOpen(null) }
   const deferredCount = items.filter((i) => i.lane === 'Deferred').length
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string; select?: () => void }[] = [
     { key: 'ready', label: summary.ready, value: counts.lanes.ready, select: () => { selectSummary(null); setTab('ready') } },

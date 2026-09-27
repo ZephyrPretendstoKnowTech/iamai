@@ -3,7 +3,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { announceSaved, isBehind, leavesBehind, noteOwn, subscribeBehind } from './planSync.ts'
+import { announceSaved, isBehind, leavesBehind, LOADED, noteOwn, subscribeBehind } from './planSync.ts'
+import { DEMO_TENANT_ID } from './demoMode.ts'
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 20))
 
@@ -45,14 +46,31 @@ test('a save announced in another tab stops this tab saving that tenant, and the
 test('both of the plan\'s writers check first and announce after, and the shell says to reload', () => {
   const data = readFileSync('src/ui/surfaces/planData.ts', 'utf8')
   assert.match(data, /if \(isBehind\(next\.tenantId\)\) return\n\s+await saveMappingState\(next\)\n\s+announceSaved\(next\.tenantId, 'mapping', JSON\.stringify\(next\)\)/)
-  assert.match(data, /if \(isBehind\(snapshot\.tenantId\)\) return\n\s+await savePlanRecord\(snapshot\.tenantId, decisions\)\n\s+if \(loadedOnly\) noteOwn\(snapshot\.tenantId, 'plan', key\)\n\s+else announceSaved\(snapshot\.tenantId, 'plan', key\)/)
-  // Only the hook's first save is the plan it loaded, written back: a second tab opening tells nobody.
-  assert.match(data, /const loadedOnly = !savedOnce\.current\n\s+savedOnce\.current = true/)
+  // Every save is announced, a scan's first save included (Round 3 review); a tab holding the same words is not behind.
+  assert.match(data, /if \(isBehind\(snapshot\.tenantId\)\) return\n\s+await savePlanRecord\(snapshot\.tenantId, decisions\)\n[^\n]*\n\s+announceSaved\(snapshot\.tenantId, 'plan', key\)/)
+  assert.equal(data.includes('loadedOnly'), false)
   assert.match(data, /noteOwn\(snapshot\.tenantId, 'mapping', JSON\.stringify\(m\)\)/)
+  // A tab that has loaded the plan and not yet saved it holds LOADED: a save announced meanwhile leaves it behind (Round 3 review).
+  assert.match(data, /noteOwn\(snapshot\.tenantId, 'plan', LOADED\)/)
   assert.match(readFileSync('src/ui/surfaces/Export.tsx', 'utf8'), /announceSaved\(snapshot\.tenantId, 'replaced'\)/)
   assert.match(readFileSync('src/ui/actions.ts', 'utf8'), /await storeLib\.forgetTenant\(account\.tenantId\)\n[^\n]*\n\s+announceSaved\(account\.tenantId, 'replaced'\)/)
   const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
   assert.match(shell, /\{behind && <p role="alert" className="callout plan-behind">\{SHELL\.planChangedElsewhere\} <Button variant="secondary" onClick=\{\(\) => window\.location\.reload\(\)\}>\{app\.error\.reload\}<\/Button><\/p>\}/)
   const content = JSON.parse(readFileSync('docs/design/content.json', 'utf8'))
   assert.equal(content.pages.app.shell.planChangedElsewhere, 'This plan changed in another tab. Reload before changing anything here.')
+})
+
+test('a tab that has loaded but not yet saved is behind any save announced meanwhile, and the sample tenant is never guarded (Round 3 review)', async () => {
+  noteOwn('tenant-3', 'plan', LOADED)
+  noteOwn(DEMO_TENANT_ID, 'plan', 'sample-A')
+  const other = new BroadcastChannel('iamai-plan')
+  try {
+    other.postMessage({ tab: 'other-tab', tenantId: 'tenant-3', store: 'plan', key: 'plan-new' })
+    other.postMessage({ tab: 'other-tab', tenantId: DEMO_TENANT_ID, store: 'plan', key: 'sample-B' })
+    await tick()
+    assert.equal(isBehind('tenant-3'), true, 'the save landed while this tab was still loading')
+    assert.equal(isBehind(DEMO_TENANT_ID), false, 'the sample re-dates itself on every load; two sample tabs never agree')
+  } finally {
+    other.close()
+  }
 })

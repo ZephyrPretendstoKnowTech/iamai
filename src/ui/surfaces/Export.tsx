@@ -183,6 +183,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const loadPlan = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return
     setExportError(null)
+    // A new choice drops a file still waiting on Replace: Replace only ever loads the file on screen.
+    setPendingLoad(null)
     try { await loadPlanInner(files) } catch { setExportError(planFileRefusal(null)) } finally { if (fileInput.current) fileInput.current.value = '' }
   }
   const loadPlanInner = async (files: FileList): Promise<void> => {
@@ -293,7 +295,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.planFile[0]}>
           <p className="reason">{P.cards.planFile[1]}</p>
           <p className="actions no-print">
-            <Button variant="secondary" onClick={() => { setExportError(null); void savePlan().catch(() => setExportError("The plan could not be saved. Try again.")) }}>
+            <Button variant="secondary" onClick={() => { setExportError(null); void savePlan().catch(() => setExportError(A.planSaveFailed)) }}>
               {buttons('planFile')[0]}
             </Button>
             <Button variant="tertiary" onClick={() => fileInput.current?.click()}>
@@ -306,7 +308,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
             <div className="load-confirm no-print" role="group" aria-label={A.loadReplace}>
               <p>{loadConfirmText({ savedAt: pendingLoad.savedAt, holds: holdsOf(pendingLoad.record), tenant: tenantName })}</p>
               <p className="actions">
-                <Button variant="secondary" onClick={() => { setExportError(null); void savePlan().catch(() => setExportError("The plan could not be saved. Try again.")) }}>{app.shell.forgetSaveFirst}</Button>
+                <Button variant="secondary" onClick={() => { setExportError(null); void savePlan().catch(() => setExportError(A.planSaveFailed)) }}>{app.shell.forgetSaveFirst}</Button>
                 <Button variant="secondary" autoFocus onClick={() => setPendingLoad(null)}>{app.shell.forgetCancel}</Button>
                 <Button variant="secondary" className="load-replace" onClick={() => { const load = pendingLoad; setPendingLoad(null); void replaceWith(load) }}>{A.loadReplace}</Button>
               </p>
