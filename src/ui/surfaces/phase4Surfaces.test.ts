@@ -33,6 +33,8 @@ import type { StepVarContext } from './stepVars.ts'
 const DAY = 86_400_000
 const R = pages.readiness as unknown as { next: Record<string, string>; methodsInline: Record<string, string>; panel: { why: Record<string, string> }; seamlessLapsing: string }
 const text = JSON.stringify(content)
+/** A deliveredBy entry's policy name: "name (state)" without its state. */
+const policyName = (d: string): string => d.replace(/ \([^)]*\)$/, '')
 
 function ctxOf(f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext {
   return { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming, planSteps: r.steps, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
@@ -158,7 +160,8 @@ test('the print says nothing about what IAMAI does not read (7.4, 5.5, 5.7)', ()
 })
 
 test('the coverage line never names the policy the step itself corrects, nor a Cleanup row that may not list it', () => {
-  assert.equal(String(content.shared.existingCoverage), '{tenant} already covers this with {list:existingPolicies}.')
+  assert.match(String(content.shared.existingCoverage), /Review Overlapping Policies \(Cleanup\)/)
+  assert.doesNotMatch(String(content.shared.existingCoverage), /Consolidate/)
   // 4.3 on the demo's week two: its tasks correct the policy its goal is delivered by.
   const f = curatedFixture('demo-week2')
   const r = runFixture(f)
@@ -166,6 +169,10 @@ test('the coverage line never names the policy the step itself corrects, nor a C
   const own = (step.tracking?.members ?? []).map((m) => m.policyName ?? '').filter(Boolean)
   assert.ok(step.deliveredBy.some((d) => own.some((n) => d.startsWith(`${n} (`))), `the premise: its own policy delivers the goal: ${step.deliveredBy} / ${own}`)
   assert.deepEqual(stepVars(step, ctxOf(f, r)).existingPolicies, [])
+  // Only the step's own policy goes: one whose name merely begins with it stays.
+  const [mine] = step.deliveredBy
+  const pilot = `${policyName(mine)} (Pilot) (On)`
+  assert.deepEqual(stepVars({ ...step, deliveredBy: [mine, pilot] } as Step, ctxOf(f, r)).existingPolicies, [pilot])
   // A policy beside the step's own still says so.
   let beside = 0
   for (const g of allFixtures()) {
@@ -173,7 +180,12 @@ test('the coverage line never names the policy the step itself corrects, nor a C
     for (const s of rg.steps) {
       const existing = (stepVars(s, ctxOf(g, rg)).existingPolicies ?? []) as string[]
       const mine = (s.tracking?.members ?? []).map((m) => m.policyName ?? '').filter(Boolean)
-      for (const d of existing) assert.ok(!mine.some((n) => d === n || d.startsWith(`${n} (`)), `${g.name}/${s.id}: ${d} is its own`)
+      for (const d of existing) assert.ok(!mine.includes(policyName(d)),`${g.name}/${s.id}: ${d} is its own`)
+      // The line points to Review Overlapping Policies: the row is there, and lists them.
+      if (existing.length > 0) {
+        const overlaps = rg.schedule.cleanup?.rows.find((x) => x.kind === 'consolidation')?.lists?.overlaps ?? []
+        for (const d of existing) assert.ok(overlaps.some((o) => o.includes(policyName(d))), `${g.name}/${s.id}: Review Overlapping Policies does not list ${d}: ${JSON.stringify(overlaps)}`)
+      }
       beside += existing.length
     }
   }

@@ -434,7 +434,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   const rows = (ctx.snapshot.config.caPolicies?.rows ?? []) as { id?: string; displayName?: string }[]
   const corrected = (step.action.resolution?.policies ?? []).flatMap((o) => (o.mode === 'update' ? [rows.find((p) => p.id === o.policyId)?.displayName ?? ''] : []))
   const ownPolicies = [...(step.tracking?.members ?? []).map((m) => m.policyName ?? ''), ...corrected].filter((n) => n !== '')
-  const beside = step.deliveredBy.filter((d) => !ownPolicies.some((n) => d === n || d.startsWith(`${n} (`)))
+  // Each entry is "name (state)" (generate.ts deliveredBy): the name alone is compared, so "X (Pilot)" is never taken for X.
+  const beside = step.deliveredBy.filter((d) => !ownPolicies.includes(d.replace(/ \([^)]*\)$/, '')))
   v.existingPolicies = step.status !== 'done' && beside.length > 0 && !watchedArrive(step) ? beside : []
   // In place: the step asks nobody to do anything, so its email does not render (stepExport.ts commsFor).
   if (step.status === 'done') v.stepDone = true
