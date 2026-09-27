@@ -1093,6 +1093,14 @@ footer.app a {
   color: var(--brand-soft-text);
   cursor: default;
 }
+/* Forced colours replace the fill: the selected scan keeps the system's selected colours. */
+@media (forced-colors: active) {
+  .demo-banner .demo-snapshots button[aria-pressed='true'] {
+    forced-color-adjust: none;
+    background: SelectedItem;
+    color: SelectedItemText;
+  }
+}
 /* The scan in flight, on every page but Connect (ui/actions.ts): one line under the header. */
 .scan-line {
   margin: 0;

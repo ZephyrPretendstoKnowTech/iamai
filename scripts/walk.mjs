@@ -829,12 +829,13 @@ async function walkFixture(fx) {
           if (!/^Sign in /.test(t1.h2) || t1.state !== want1.state) add('P0', `${label}: tile 1 reads "${t1.h2}"; Sign in · ${want1.state}`)
           if (want1.cls && !new RegExp('\\b' + want1.cls + '\\b').test(t1.cls)) add('P0', `${label}: tile 1's badge does not carry the ${want1.cls} colour (${t1.cls})`)
           if (!want1.cls && /\b(done|wait|stop)\b/.test(t1.cls)) add('P0', `${label}: tile 1 carries a state colour (${t1.cls}) in the ${fx.mock} state`)
-          if (fx.mock === 'signedOut') {
+          // Signed out and cancelled carry the Global Reader line with the consent sentence (F-057, owner 2026-09-27: a sign-in usually stops on the consent screen).
+          if (fx.mock === 'signedOut' || fx.mock === 'cancelled') {
             if (!READER.test(t1.text) || !CONSENT.test(t1.text)) add('P0', `${label}: the sign-in tile lacks the Global Reader line with the consent sentence`)
           } else if (want1.lead) {
             if (!t1.paragraphs.some((p) => want1.lead.test(p))) add('P0', `${label}: the ${fx.mock} state's paragraph reads ${JSON.stringify(t1.paragraphs)}`)
             if (READER.test(t1.text)) add('P0', `${label}: the ${fx.mock} state keeps the Global Reader paragraph; the error paragraph replaces it`)
-          } else if (t1.paragraphs.some((p) => p.length > 0)) add('P0', `${label}: the cancelled state carries a paragraph: ${JSON.stringify(t1.paragraphs)}; the state line only`)
+          }
           expectBtn(t1, new RegExp('^' + want1.primary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), 'primary', 'tile 1')
           expectBtn(t1, /^Try it with sample data$/, 'secondary', 'tile 1')
           if (t1.buttons.length !== 2) add('P0', `${label}: tile 1 has ${t1.buttons.length} buttons; two`)

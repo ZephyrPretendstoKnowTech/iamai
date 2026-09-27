@@ -140,7 +140,7 @@ export type SignInTile = {
   title: string
   state: string
   tone: Tone
-  /** The error state's paragraph; it replaces the Global Reader line. */
+  /** The error state's paragraph: it replaces the Global Reader line on consent and personal, and sits above it on failed (F-057). */
   lead: string | null
   note: string | null
   actions: Action[]

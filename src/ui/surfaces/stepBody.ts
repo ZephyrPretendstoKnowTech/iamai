@@ -28,7 +28,7 @@ import { existingObjectProcedureOf } from './prepareProcedures.ts'
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { fillText, whatToDoFor, whole } from '../../content/render.ts'
+import { fillText, fillTextVerbatim, whatToDoFor, whole } from '../../content/render.ts'
 import { app, directionWords, stepById } from '../../content/content.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { deferralOf } from './deferral.ts'
@@ -781,7 +781,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // A deferred step's milestone is its deferral, when and why (F-013): it read the
   // create it was deferred from, and the required reason was never shown again.
   const deferral = deferralOf(step)
-  const deferredWords = deferral ? fillText(app.plan.deferredWhy, { date: absoluteDate(deferral.at), reason: deferral.reason }) : null
+  const deferredWords = deferral ? fillTextVerbatim(app.plan.deferredWhy, { date: absoluteDate(deferral.at) }, { reason: deferral.reason }) : null
   const railWords = (exclusions && emergencyAccountTasks && 'milestone' in emergencyAccountTasks ? emergencyAccountTasks.milestone : null) ?? ownRailWords
   const rail = railOf(contract, { words: railWords, deferred: deferredWords, task: nextTask, instruction: railInstruction, leadDrawn })
   const W = CONTRACT.implementation

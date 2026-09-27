@@ -251,7 +251,11 @@ test('a deferral says why: on the step\'s Next milestone, under the Completed ti
   const line = brief.aside.find((a) => a.id === id)
   assert.equal(line?.reason, 'Not needed for this tenant')
   assert.equal(fillText(BRIEF.asideWhy, { title: line!.title, reason: line!.reason! }), `${line!.title}: Not needed for this tenant`)
-  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /\{a\.reason \? fillText\(BRIEF\.asideWhy, \{ title: a\.title, reason: a\.reason \}\) : a\.title\}/)
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /\{a\.reason \? fillTextVerbatim\(BRIEF\.asideWhy, \{ title: a\.title \}, \{ reason: a\.reason \}\) : a\.title\}/)
+  // The person's words come through as they typed them (review, 2026-09-27): the count
+  // bending that fills the sentence read "Ring 1 users are" as "Ring 1 user is".
+  step.skipReason = 'Ring 1 users are not licensed yet'
+  assert.equal(stepBodyOf(step, ctx(step), { lane: board.laneOf(id) }).rail.headline, `Deferred ${absoluteDate(f.snapshot.asOf)}: Ring 1 users are not licensed yet`)
   // The Completed tile's line says how many are deferred.
   const S = (structuralWords as unknown as { summary: { deferred: string } }).summary
   assert.equal(fillText(S.deferred, { n: 1 }), '1 deferred')

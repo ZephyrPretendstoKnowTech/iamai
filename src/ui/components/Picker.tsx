@@ -91,8 +91,10 @@ export function Picker({
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(0)
-  // The chip whose removal is being asked about (confirmRemoval).
+  // The chip whose removal is being asked about (confirmRemoval), and where focus
+  // goes when the question closes: the chip kept, or the next chip or the search.
   const [pending, setPending] = useState<PickerOption | null>(null)
+  const focusAfter = useRef<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const base = useId()
   const listId = `${base}-list`
@@ -162,6 +164,24 @@ export function Picker({
     onChange(next)
     save(next)
   }
+  const removeId = (id: string): string => `${base}-remove-${id}`
+  const keep = (): void => {
+    if (pending) focusAfter.current = removeId(pending.id)
+    setPending(null)
+  }
+  const takeOff = (): void => {
+    if (!pending) return
+    const at = selected.findIndex((s) => s.id === pending.id)
+    const after = selected[at + 1] ?? selected[at - 1] ?? null
+    focusAfter.current = after ? removeId(after.id) : `${base}-search`
+    setPending(null)
+    remove(pending.id)
+  }
+  useEffect(() => {
+    if (pending !== null || focusAfter.current === null) return
+    document.getElementById(focusAfter.current)?.focus()
+    focusAfter.current = null
+  }, [pending, selected])
 
   return (
     <div className="picker" ref={ref} role="group" aria-labelledby={labelledBy}>
@@ -171,7 +191,7 @@ export function Picker({
             <span key={s.id} className="chip-select">
               <span className="chip-name">{s.name}</span>
               {s.badge && <span className="chip-badge">{s.badge}</span>}
-              {!readOnly && <button type="button" className="chip-remove" aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => (confirmRemoval ? setPending(s) : remove(s.id))}>
+              {!readOnly && <button type="button" className="chip-remove" id={removeId(s.id)} aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => (confirmRemoval ? setPending(s) : remove(s.id))}>
                 <Icon name="close" size={12} />
               </button>}
             </span>
@@ -179,13 +199,13 @@ export function Picker({
         </div>
       )}
       {pending && confirmRemoval && (
-        <div className="picker-confirm" role="alertdialog" aria-labelledby={`${base}-confirm`}>
+        <div className="picker-confirm" role="alertdialog" aria-labelledby={`${base}-confirm`} key={pending.id} onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); keep() } }}>
           <p id={`${base}-confirm`}>{confirmRemoval(pending)}</p>
           <div className="picker-confirm-actions">
-            <Button size="sm" variant="secondary" autoFocus onClick={() => setPending(null)}>
+            <Button size="sm" variant="secondary" autoFocus onClick={keep}>
               {T.keep}
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => { const id = pending.id; setPending(null); remove(id) }}>
+            <Button size="sm" variant="secondary" onClick={takeOff}>
               {T.takeOff}
             </Button>
           </div>
@@ -195,6 +215,7 @@ export function Picker({
         <Icon name="search" className="picker-search-icon" />
         <input
           type="search"
+          id={`${base}-search`}
           placeholder={placeholder}
           value={query}
           aria-label={labelledBy ? undefined : placeholder}

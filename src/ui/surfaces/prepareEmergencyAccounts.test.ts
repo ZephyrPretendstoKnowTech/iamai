@@ -252,13 +252,26 @@ test('taking an emergency access account off asks first, and only there', async 
   const { fillText } = await import('../../content/render.ts')
   const picker = read('src/ui/components/Picker.tsx')
   assert.match(picker, /onClick=\{\(\) => \(confirmRemoval \? setPending\(s\) : remove\(s\.id\)\)\}/, '× asks where the caller asks for it, and removes at once elsewhere')
-  assert.match(picker, /<Button size="sm" variant="secondary" autoFocus onClick=\{\(\) => setPending\(null\)\}>\n\s+\{T\.keep\}/, 'Keep is focused and changes nothing')
-  assert.match(picker, /onClick=\{\(\) => \{ const id = pending\.id; setPending\(null\); remove\(id\) \}\}>\n\s+\{T\.takeOff\}/, 'Take it off removes and saves')
+  assert.match(picker, /<Button size="sm" variant="secondary" autoFocus onClick=\{keep\}>\n\s+\{T\.keep\}/, 'Keep is focused and changes nothing')
+  assert.match(picker, /<Button size="sm" variant="secondary" onClick=\{takeOff\}>\n\s+\{T\.takeOff\}/, 'Take it off removes and saves')
+  // Focus goes back where it was (review, 2026-09-27): Keep to the chip's ×, Take it off to the next chip's × or the
+  // search; Escape keeps; a second question remounts, so Keep takes focus again.
+  assert.match(picker, /if \(pending\) focusAfter\.current = removeId\(pending\.id\)/)
+  assert.match(picker, /focusAfter\.current = after \? removeId\(after\.id\) : `\$\{base\}-search`/)
+  assert.match(picker, /key=\{pending\.id\} onKeyDown=\{\(e\) => \{ if \(e\.key === 'Escape'\) \{ e\.preventDefault\(\); keep\(\) \} \}\}/)
   const step = read('src/ui/surfaces/ContentStep.tsx')
-  assert.match(step, /const removalQuestion = stepId === BREAK_GLASS_STEP_ID/)
+  assert.match(step, /const removalQuestion = stepId === BREAK_GLASS_STEP_ID \? emergencyRemovalQuestion\(ctx\) : undefined/)
   assert.equal((step.match(/confirmRemoval=\{removalQuestion\}/g) ?? []).length, 1, 'only the decision picker passes it')
+  // On the demo, with its exclusions group saved and read, the question names the step and the group (review:
+  // 1.1's own vars never carry the group, so it had always asked the short question).
+  const { emergencyRemovalQuestion } = await import('./emergencyRemoval.ts')
+  const { runFixture } = await import('../../roadmap/fixtures/run.ts')
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const ask = emergencyRemovalQuestion({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: r.input.directory, nameOf: (id: string) => r.input.names?.label(id) ?? id })
+  assert.equal(ask({ name: 'Break-glass 2' }), 'Take Break-glass 2 off your emergency access accounts? Configure Emergency Exclusions will then tell you to remove it from Core - Exclusions.')
   const ET = (app.plan as unknown as { emergencyTasks: Record<string, string> }).emergencyTasks
-  assert.equal(fillText(ET.removeConfirm, { name: 'Break-glass 2', step: 'Configure Emergency Exclusions', group: 'Core - Exclusions' }), 'Take Break-glass 2 off your emergency access accounts? Configure Emergency Exclusions will then tell you to remove it from Core - Exclusions.')
+  assert.equal(fillText(ET.removeConfirmNoGroup, { name: 'Break-glass 2' }), 'Take Break-glass 2 off your emergency access accounts?')
   assert.equal(app.picker.keep, 'Keep')
   assert.equal(app.picker.takeOff, 'Take it off')
 })

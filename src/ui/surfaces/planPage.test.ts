@@ -204,3 +204,14 @@ test('a row waiting on answers names the decision step, and only the row does', 
   assert.ok(waiting.some((row) => row.lane.waitingIn === 'Waiting on your answers in Confirm What You Use'))
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /waitingFor=\{lane\.waitingIn \?\? lane\.waitingFor\}/)
 })
+
+// Review, 2026-09-27 (F-003): the tile says "In report-only", the row chip's word,
+// so it counts what the chip says: a policy held in report-only, its week over
+// (Ready · Turn on) or not. It counted only the week still running.
+test('the In report-only tile counts every step whose chip reads Report-only', async () => {
+  const { CONTRACT, factOf } = await import('./stepContract.ts')
+  for (const lifecycle of ['report-only', 'ready-to-enforce'] as const) assert.equal(factOf({ state: { lifecycle } } as never), CONTRACT.lifecycle['report-only'], lifecycle)
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /const observingIds = new Set\(c\.steps\.filter\(\(s\) => !s\.doesntApply && s\.status !== 'skipped' && factOf\(s\) === CONTRACT\.lifecycle\['report-only'\]\)/)
+  const legend = (pages.plan as unknown as { howTo: { legend: { label: string; description: string }[] } }).howTo.legend
+  assert.match(legend.find((e) => e.label.startsWith('Create'))?.description ?? '', /create something new \(a policy, group, location, account or alert\), correct something that already exists/)
+})

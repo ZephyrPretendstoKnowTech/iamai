@@ -35,7 +35,7 @@ import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { cleanupRowWho, rowWho } from './rowWho.ts'
 import { ContentStep } from './ContentStep.tsx'
-import { cleanupTitleOf, factOf } from './stepContract.ts'
+import { CONTRACT, cleanupTitleOf, factOf } from './stepContract.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
 import { PlanRow } from './StepSections.tsx'
 import { planDates } from './stepVars.ts'
@@ -287,7 +287,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // A lane tab's panel draws its own lane; the Completed and Deferred groups
   // the toggles reveal are drawn after it, never inside a tab.
   const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
-  const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && s.state.lifecycle === 'report-only').map((s) => s.id))
+  // The In report-only tile counts what the row chip says (factOf): a policy held in report-only, its week over or not (F-003 review).
+  const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && factOf(s) === CONTRACT.lifecycle['report-only']).map((s) => s.id))
   const summaryItems = summaryFilter === 'input' ? items.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? items.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? items.filter((i) => i.lane === 'Completed') : items
   const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(items, tab, focus)
   // Sections never move (owner, roadmap flow V2): nothing is lifted above the

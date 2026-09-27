@@ -67,11 +67,12 @@ test('a policy to correct is one card: the policy, "Correct {fields}", and the c
   // The card counts a role list; the task holds the names (owner, 2026-09-26).
   assert.ok((open[0].detail ?? '').startsWith('Under Users → Include, Directory roles: Select (45).'), open[0].detail ?? '')
   assert.doesNotMatch(open[0].detail ?? '', /\*\*/)
-  // Two sections, named together.
+  // The demo's 4.4 corrects its resources alone: adding Core - Exclusions to it is
+  // Configure Emergency Exclusions' edit, which lists it since F-002 (it said so twice).
   const demo = run('demo')
   const mfa = demo.r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
   const b = stepBodyOf(mfa, demo.ctx)
-  assert.deepEqual(policySubjectsOf(b.contract, b.readiness, b.emergencyAccountTasks).filter((c) => c.key.startsWith('correct:')).map((c) => c.title), ['Correct users and target resources'])
+  assert.deepEqual(policySubjectsOf(b.contract, b.readiness, b.emergencyAccountTasks).filter((c) => c.key.startsWith('correct:')).map((c) => c.title), ['Correct target resources'])
 })
 
 test('7.1 to 7.3 set only how long a sign-in lasts, so Completion Criteria claim no report-only period that stopped nobody', () => {

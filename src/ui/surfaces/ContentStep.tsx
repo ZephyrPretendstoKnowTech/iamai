@@ -50,8 +50,8 @@ import { answerParts, answerText, optionsOf, questionFor, valueSource } from './
 import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey, decisionKeyOf, deviationDecision } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
-import { BREAK_GLASS_STEP_ID, CAMPAIGN_STEP_ID, EXCLUSION_GROUP_STEP_ID } from '../../roadmap/stepIds.ts'
-import { contentTitle } from '../../content/stepTitle.ts'
+import { BREAK_GLASS_STEP_ID, CAMPAIGN_STEP_ID } from '../../roadmap/stepIds.ts'
+import { emergencyRemovalQuestion } from './emergencyRemoval.ts'
 import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -1181,13 +1181,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
   const shownChips = prefilled ? chips : chips.map((c) => (c.badge === app.picker.matched ? { ...c, badge: undefined } : c))
   // Taking an emergency access account off asks first (F-007): it takes a step off
   // the plan and turns Configure Emergency Exclusions' advice against the account.
-  const ET = (app.plan as unknown as { emergencyTasks: Record<string, string> }).emergencyTasks
-  const exclusionsGroup = typeof ex.exclusionsGroup === 'string' ? ex.exclusionsGroup : null
-  const removalQuestion = stepId === BREAK_GLASS_STEP_ID
-    ? (chip: PickerOption): string => exclusionsGroup !== null
-      ? fillText(ET.removeConfirm, { name: chip.name, step: contentTitle({ id: EXCLUSION_GROUP_STEP_ID, goalId: '', title: '' }), group: exclusionsGroup })
-      : fillText(ET.removeConfirmNoGroup, { name: chip.name })
-    : undefined
+  const removalQuestion = stepId === BREAK_GLASS_STEP_ID ? emergencyRemovalQuestion(ctx) : undefined
   const save = (picked: PickerOption[] = chips): void => {
     if (!canSaveWith(picked)) return
     onDecide?.({

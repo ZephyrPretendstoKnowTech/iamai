@@ -16,7 +16,7 @@ import { BrandMark } from '../components/Mark.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { app } from '../../content/content.ts'
 import { stepFacts } from '../../derive/facts.ts'
-import { fillText } from '../../content/render.ts'
+import { fillText, fillTextVerbatim } from '../../content/render.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
 import { boardOf } from './planBoard.ts'
@@ -247,7 +247,7 @@ export function PrintPlan({
               <ul>
                 {brief.aside.map((a) => (
                   <li key={a.id}>
-                    <span className="print-number">{a.number}</span> {a.reason ? fillText(BRIEF.asideWhy, { title: a.title, reason: a.reason }) : a.title}
+                    <span className="print-number">{a.number}</span> {a.reason ? fillTextVerbatim(BRIEF.asideWhy, { title: a.title }, { reason: a.reason }) : a.title}
                   </li>
                 ))}
               </ul>

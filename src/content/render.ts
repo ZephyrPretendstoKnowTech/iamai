@@ -79,6 +79,18 @@ function truthy(v: unknown): boolean {
 // <var>, lists as <ol>, and example fallbacks); the app never wants those. A
 // variable the tenant does not supply renders empty, so the caller's gating drops
 // the line rather than showing a placeholder or sample datum.
+/**
+ * fillText, with some values set in exactly as given, after the count bending
+ * (pluralise) has run: a person's own words, such as the reason they recorded
+ * for a deferral, are never rewritten ("Ring 1 users are not licensed yet" read
+ * "Ring 1 user is not licensed yet"; review, 2026-09-27).
+ */
+export function fillTextVerbatim(text: unknown, ex: Ex, verbatim: Readonly<Record<string, string>>): string {
+  let out = fillText(text, { ...ex, ...Object.fromEntries(Object.keys(verbatim).map((k) => [k, `\u0000${k}\u0000`])) })
+  for (const [k, v] of Object.entries(verbatim)) out = out.split(`\u0000${k}\u0000`).join(v)
+  return out
+}
+
 export function fillText(text: unknown, ex: Ex, depth = 0): string {
   if (text === null || text === undefined) return ''
   if (depth > 4) return String(text)
