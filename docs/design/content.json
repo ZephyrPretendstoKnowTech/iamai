@@ -3721,6 +3721,8 @@
           "exclusions": "The plan's exclusions group",
           "serviceAccounts": "The plan's service accounts group"
         },
+        "$commentMfaStatesLead": "F-137: the Accounts tab's MFA state column used five words (Verified, Looks healthy, Never prompted, Possibly broken, No method) that the page defined nowhere. This line leads an ⓘ whose text is each state's existing definition (src/copy/definitions.ts MFA_STATE).",
+        "mfaStatesLead": "What each MFA state means",
         "caps": {
           "entraP1": "Entra ID P1",
           "entraP2": "Entra ID P2",

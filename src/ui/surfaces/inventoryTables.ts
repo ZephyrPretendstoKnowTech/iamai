@@ -536,6 +536,11 @@ export function groupEntriesOf(groups: GroupMembers): GroupEntry[] {
   return [...groups].map(([groupId, g]) => ({ groupId, displayName: g.displayName ?? null, memberCount: g.memberCount, sampled: g.sampled, membershipRule: g.membershipRule ?? null, read: true }))
 }
 
+/** The five MFA states the Accounts tab uses, each with its definition (F-137): the words the column shows, said once. */
+export function mfaStatesText(): string {
+  return Object.values(MFA_STATE).map((d) => `${d.title}: ${d.text}`).join(' ')
+}
+
 /** The groups the plan itself names, by the role it gives them: the exclusions group the operator chose, and the service accounts group. */
 export type PlanGroupRole = 'exclusions' | 'serviceAccounts'
 export function planGroupRolesOf(mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId'> | null | undefined): Map<string, PlanGroupRole> {

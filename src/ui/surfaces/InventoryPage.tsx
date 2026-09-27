@@ -19,6 +19,7 @@ import { coversAdminSet, roleLabel } from '../../roles.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import type { ReadinessRow } from '../../derive/mfaReadiness.ts'
 import { INVENTORY as C, migrationName } from '../../copy/inventory.ts'
+import { app } from '../../content/content.ts'
 import { TILE } from '../../copy/definitions.ts'
 import { absoluteDate, relative } from '../format.ts'
 import { figure } from '../../copy/statements.ts'
@@ -35,6 +36,7 @@ import {
   includedGuestsWords,
   groupsModel,
   listedGroupsOf,
+  mfaStatesText,
   planGroupRolesOf,
   methodTargetGroupsOf,
   objectLabels,
@@ -291,6 +293,8 @@ function PeopleTab({ snapshot, names, viability, readiness }: { snapshot: Tenant
   return (
     <div>
       <Heading text={C.tabs.people} source="people" />
+      {/* The MFA state column's five words, defined once (F-137). */}
+      <p className="reason">{app.inventory.mfaStatesLead} <InfoTip title={P.columns.mfa} text={mfaStatesText()} /></p>
       <ModelTable
         model={peopleModel(snapshot, names, viability, readiness)}
         render={{

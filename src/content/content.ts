@@ -159,6 +159,8 @@ export type AppWords = {
     blockedNone: string
     /** Referenced by, for a group the plan itself names (F-049). */
     planGroups: { exclusions: string; serviceAccounts: string }
+    /** The lead of the Accounts tab's MFA state definitions (F-137). */
+    mfaStatesLead: string
   }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; keep: string; takeOff: string; matched: string; choose: string }
 }
