@@ -220,7 +220,7 @@ test('F5: the Cleanup rows keep their shape — Why, the instructions, Done when
   }
 })
 
-test('K1: every Cleanup row reaches the prompt pack whole, not clipped at the block cap', () => {
+test('K1: every Cleanup row reaches the implementer\'s whole-plan prompt whole, not clipped at the block cap', () => {
   setDisplayTimeZone('UTC')
   try {
     const f = fixture('demo')
@@ -229,8 +229,9 @@ test('K1: every Cleanup row reaches the prompt pack whole, not clipped at the bl
     assert.ok(rows.length >= 3, 'the demo draws fewer Cleanup rows than this checks')
     const ctx = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[s.id] ?? null, naming: r.coverage.organisation.naming })
     const pack = promptPack({ view: (s: Step) => stepExportView(s, ctx(s)), tenant: 'Contoso', steps: r.steps, schedule: r.schedule, changeRecord: '', announcement: null, cleanup: rows })
-    const summarise = pack.find((p) => /Summarise/i.test(p.title))
-    assert.ok(summarise, 'the pack has no summarise prompt')
+    // The pack is the implementer's (owner, 2026-09-27): Explain this plan carries every row.
+    const summarise = pack.find((p) => /^Explain this plan/.test(p.title))
+    assert.ok(summarise, 'the pack has no whole-plan prompt')
     for (const row of rows) {
       assert.ok(summarise.prompt.includes(row.title), `the pack drops ${row.kind}`)
       for (const line of [row.why, ...row.whatToDo, ...row.doneWhen]) {

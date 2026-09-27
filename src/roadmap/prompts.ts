@@ -48,6 +48,20 @@ function fenceFor(body: string): string {
 export const PROMPT_BLOCK_MAX = 4000
 
 /**
+ * A body cut to the cap at the last whole instruction or line before it
+ * (F-129). A step's instructions run together as "1. … | 2. …", and the cut
+ * fell mid-instruction on three of the demo's steps, so an assistant read half
+ * a portal path as the whole of it. A body with no break in the second half of
+ * the cap is cut at the cap; either way the text says where it stopped.
+ */
+export function clipWhole(body: string, max: number = PROMPT_BLOCK_MAX): string {
+  if (body.length <= max) return body
+  const head = body.slice(0, max)
+  const at = Math.max(head.lastIndexOf('\n'), head.lastIndexOf(' | '))
+  return (at >= max / 2 ? head.slice(0, at) : head).trimEnd() + PROMPTS.truncated
+}
+
+/**
  * One block of untrusted text, fenced and labelled as data.
  *
  * Everything IAMAI puts in a prompt below the instruction line came from a
@@ -56,7 +70,7 @@ export const PROMPT_BLOCK_MAX = 4000
  * instructions and…" read to a model exactly like IAMAI's own words.
  */
 export function dataBlock(label: string, body: string): string {
-  const clipped = body.length > PROMPT_BLOCK_MAX ? body.slice(0, PROMPT_BLOCK_MAX).trimEnd() + PROMPTS.truncated : body
+  const clipped = clipWhole(body)
   const fence = fenceFor(clipped)
   return `${label} ${PROMPTS.dataNote}\n${fence}\n${clipped}\n${fence}`
 }
@@ -182,13 +196,11 @@ export function promptPack(args: { view: StepView; tenant: string; steps: Step[]
     return n === null ? label : `${n} ${label}`
   }
   const cleanupBlocks = inExportOrder(cleanup.map((c) => ({ id: `cleanup-${c.kind}`, block: [numbered(`cleanup-${c.kind}`, PROMPTS.cleanup), cleanupText([c])] as [string, string] })), args.order)
-  const planBlocks: [string, string][] = cleanupBlocks.map((b) => b.block)
   // Each step is independently bounded, so a long plan cannot silently lose its later steps.
   const stepBlocks = args.steps.map((step) => ({ id: step.id, block: [numbered(step.id, args.view(step).title), stepContext(step, args.view)] as [string, string] }))
   const blocks: [string, string][] = inExportOrder([...stepBlocks, ...cleanupBlocks], args.order).map((b) => b.block)
   const items: PackItem[] = [
     { title: SHARED.planPromptTitle, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.plan, planSummary, blocks), scope: null },
-    { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, planSummary, planBlocks), scope: null },
   ]
   // The email belongs to one step, and the two prompts say which.
   const announcement = args.announcement !== null && args.announcement.text.trim() !== '' ? args.announcement : null
