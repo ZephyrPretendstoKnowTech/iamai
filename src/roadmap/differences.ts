@@ -220,11 +220,16 @@ export function differencePieces(dimension: string, intended: Row, deployed: Row
 /** Whether a policy sets a condition at all: a list with something in it, a filter with a rule; client apps "all" is none. */
 function conditionSet(key: string, value: unknown): boolean {
   if (value === null || value === undefined) return false
-  if (Array.isArray(value)) return key === 'clientAppTypes' ? value.some((v) => String(v).toLowerCase() !== 'all') : value.length > 0
+  // "All" on its own narrows nothing (coverage/classify.ts reads it the same way).
+  const narrows = (v: unknown): boolean => String(v).trim() !== '' && !['all', 'none', 'any'].includes(String(v).trim().toLowerCase())
+  if (Array.isArray(value)) return value.some(narrows)
+  // A condition held as text: authentication flows' transfer methods, insider risk levels.
+  if (typeof value === 'string') return value.split(',').some(narrows)
   if (typeof value !== 'object') return false
   const v = value as Row
   if (typeof (v.deviceFilter as Row | undefined)?.rule === 'string' && ((v.deviceFilter as Row).rule as string).trim() !== '') return true
-  return Object.values(v).some((x) => Array.isArray(x) ? x.length > 0 : x !== null && typeof x === 'object' ? conditionSet(key, x) : false)
+  if (typeof v.rule === 'string' && v.rule.trim() !== '') return true
+  return Object.entries(v).some(([, x]) => (Array.isArray(x) || typeof x === 'string' ? conditionSet(key, x) : x !== null && typeof x === 'object' ? conditionSet(key, x) : false))
 }
 
 /** FNV-1a over a text: short, stable, and carries no tenant value into the plan record. */
@@ -246,7 +251,8 @@ function gapsOf(pieces: readonly DifferencePiece[]): string[] {
   const widens = (p: DifferencePiece): boolean => p.direction === 'stricter' && (p.part === 'include' || p.part === 'exclude' || p.part === 'allUsers') && p.control === undefined && p.required !== true
   const out = new Set<string>()
   for (const p of pieces.filter((x) => !widens(x))) {
-    const head = [p.part, p.kind ?? '', p.control ?? '', p.change].join(':')
+    // A whole setting's gap is its value, whichever way it leans: keys saved before conditions leaned stay valid.
+    const head = [p.part, p.kind ?? '', p.control ?? '', p.part === 'whole' ? 'changed' : p.change].join(':')
     if (p.ids.length > 0) for (const id of p.ids) out.add(hash(`${head}:${id}`))
     else out.add(hash(`${head}:${p.value ?? ''}`))
   }

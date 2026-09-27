@@ -265,7 +265,7 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
         // The create names the baseline's own policy (owner, 2026-09-26: every
         // new policy takes the baseline's name), never the tenant's one it
         // corrects: Align Policy Names renames that one.
-        createName: (ops.length === 1 ? step.createName : undefined) ?? (op.sourceName || undefined),
+        createName: op.sourceName ? (step.createName?.startsWith(op.sourceName) ? step.createName : op.sourceName) : step.createName,
         create: whole ? { body: whole, baseline: null } : null,
         exists: true,
         on: found?.state === 'enabled',
@@ -340,13 +340,17 @@ function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string;
     const key = MOVES_OFF.has(step.id) ? 'blocked' : GETS_A_METHOD.has(step.id) ? 'blockedMethod' : 'blockedAny'
     // Who report-only would have stopped, by name (review, 2026-09-26: a pitfall
     // names who): the first five, and how many more.
-    const ids = (step.tracking?.failuresByUser ?? []).map((f) => f.userId)
+    // The accounts the mail wait already names are named once (review, 2026-09-26).
+    const mail = new Set((step.mailAccountsToMove ?? []).map((id) => id.toLowerCase()))
+    const failed = (step.tracking?.failuresByUser ?? []).map((f) => f.userId)
+    const ids = failed.filter((id) => !mail.has(id.toLowerCase()))
     if (ids.length > 0) {
       const shown = ids.slice(0, NAMES_INLINE).map(input.nameOf)
       const names = list(ids.length > NAMES_INLINE ? [...shown, fillText(WAITS.more, { n: ids.length - NAMES_INLINE })] : shown)
       const one = ids.length === 1
       out.push({ wait: fillText(WAITS[`${key}Named`], { names }), after: fillText(WAITS[`${key}NamedAfter${one ? 'One' : 'Many'}`], { names }) })
-    } else out.push({ wait: WAITS[key], after: WAITS[`${key}After`] })
+    } else if (failed.length === 0) out.push({ wait: WAITS[key], after: WAITS[`${key}After`] })
+    // Otherwise every account report-only stopped is one the mail wait already names.
   }
   if (gateHolds) {
     const admins = readinessFamilyOf(gate) === 'admin'

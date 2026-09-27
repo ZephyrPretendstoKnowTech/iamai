@@ -9,8 +9,9 @@ import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { createdOn } from '../../roadmap/evidenceStrategy.ts'
+import { operationsOf } from '../../roadmap/operations.ts'
 import { REPORT_ONLY_STEP_ID } from '../../roadmap/reportOnlyBatch.ts'
-import { differencePieces } from '../../roadmap/differences.ts'
+import { acceptanceKeyOf, differencePieces } from '../../roadmap/differences.ts'
 import { sameDimension } from '../../roadmap/observation.ts'
 import { createLines } from '../../roadmap/policyProcedure.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -68,7 +69,7 @@ test('a report-only wait names who report-only would have stopped', () => {
   const step = { ...base, state: { ...base.state, lifecycle: 'report-only' }, tracking: { ...base.tracking!, failures: 1, failuresByUser: [{ userId: person.id, count: 1 }] } } as Step
   const tasks = stepBodyOf(step, ctx).emergencyAccountTasks?.tasks ?? []
   const text = tasks.flatMap((t) => [t.readinessTitle ?? '', ...t.steps]).join(' | ')
-  assert.ok(text.includes(`it would have blocked ${ctx.nameOf(person.id)}`), text)
+  assert.ok(text.includes(`(it would have blocked ${ctx.nameOf(person.id)})`), text)
 })
 
 test('the Accept panel says which setting the step’s own correction writes, beside the difference it can accept', () => {
@@ -100,4 +101,57 @@ test('every guest type is named, all six included, and Require risk remediation 
   const f = fixture('demo')
   const words = actionWordsOf({ grantControls: { operator: 'AND', builtInControls: ['riskRemediation', 'mfa'] } }, { snapshot: f.snapshot, mapping: f.mapping })
   assert.match(words?.what ?? '', /risk remediation/)
+})
+
+test('a user-action policy being corrected stays off Create the Policies in Report-only: its patch leaves out the user action, its whole target does not', () => {
+  // The owner's tenant (2026-09-26): Protect Sign-in Method Registration existed in Report-only with another grant, so its step corrects it.
+  const f = structuredClone(fixture('mid'))
+  const plan = runFixture(f).steps.find((s) => s.id === 's-goal-register-info-protected')!
+  const body = structuredClone(plan.action.resolution!.policies[0].body) as Row
+  const rows = f.snapshot.config.caPolicies.rows as Row[]
+  rows.push({ ...body, id: '00000000-0000-4000-8000-00000000a51a', state: 'enabledForReportingButNotEnforced', grantControls: { operator: 'OR', builtInControls: ['mfa'] }, createdDateTime: f.snapshot.asOf })
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  const ops = operationsOf(step)
+  assert.ok(ops.some((o) => o.mode === 'update' && !createdOn(o.body)), 'the premise: an update whose patch carries no user action')
+  const batch = r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)?.reportOnlyBatch
+  assert.equal([...(batch?.create ?? []), ...(batch?.created ?? [])].includes(step.id), false)
+})
+
+test('review fixes: a pair member’s create keeps its own name; named waits never run into the next; mail accounts are named once', () => {
+  {
+    // Demo-week2 credits Mixed-Guests and writes B2B-Guest; once B2B-Guest exists in Report-only, its correction's create names B2B-Guest.
+    const f = structuredClone(fixture('demo-week2'))
+    const plan = runFixture(f).steps.find((s) => s.id === 's-goal-guests-mfa')!
+    const op = plan.action.resolution!.policies.find((o) => o.sourceName === 'IAC - GLOBAL - GRANT - MFA - B2B-Guest')
+    assert.ok(op, 'the premise: the step writes B2B-Guest')
+    ;(f.snapshot.config.caPolicies.rows as Row[]).push({ ...(structuredClone(op!.body) as Row), id: '00000000-0000-4000-8000-00000000b2b1', displayName: 'IAC - GLOBAL - GRANT - MFA - B2B-Guest', state: 'enabledForReportingButNotEnforced', grantControls: { operator: 'OR', builtInControls: ['mfa'] }, createdDateTime: f.snapshot.asOf })
+    const r = runFixture(f)
+    const step = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
+    const create = stepBodyOf(step, ctxOf(f, r)).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
+    const names = (create?.steps ?? []).filter((l) => l.startsWith('Name:'))
+    assert.ok(names.length > 0 && names.every((l) => l.includes('B2B-Guest')), names.join(' | '))
+  }
+  {
+    const f = fixture('demo-week2')
+    const r = runFixture(f)
+    const ctx = ctxOf(f, r)
+    const people = (f.snapshot.users ?? []).filter((u) => u.accountEnabled !== false).slice(0, 2)
+    const base = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+    const withFailures = (extra: Partial<Step>) => ({ ...base, ...extra, state: { ...base.state, lifecycle: 'report-only' }, tracking: { ...base.tracking!, failures: 2, failuresByUser: people.map((p) => ({ userId: p.id, count: 1 })) } }) as Step
+    const lines = (s: Step) => (stepBodyOf(s, ctx).emergencyAccountTasks?.tasks ?? []).flatMap((t) => [t.readinessTitle ?? '', ...t.steps])
+    const both = lines(withFailures({ mailAccountsToMove: people.map((p) => p.id) }))
+    const name = ctx.nameOf(people[0].id)
+    assert.ok(both.some((l) => l.includes(name)), `the premise: the mail wait names them: ${both.join(' | ')}`)
+    for (const l of both) assert.ok(l.split(name).length - 1 <= 1, `named twice in one line: ${l}`)
+  }
+})
+
+test('review fixes: "All" alone is no condition, a condition held as text is one, and acceptance keys saved before conditions leaned still hold', () => {
+  const lean = (key: string, plan: unknown, tenant: unknown) => differencePieces(`conditions.${key}`, { conditions: plan === undefined ? {} : { [key]: plan } }, { conditions: tenant === undefined ? {} : { [key]: tenant } }, { exclusionsGroupId: null, same: sameDimension }).map((p) => p.direction)
+  assert.deepEqual(lean('platforms', undefined, { includePlatforms: ['all'], excludePlatforms: [] }), ['differs'], '"all" with no exclusions narrows nothing')
+  assert.deepEqual(lean('authenticationFlows', undefined, { transferMethods: 'deviceCodeFlow' }), ['weaker'])
+  assert.deepEqual(lean('insiderRiskLevels', 'elevated', undefined), ['stricter'])
+  const piece = { dimension: 'conditions.locations', part: 'whole' as const, ids: [], value: 'v1' }
+  assert.equal(acceptanceKeyOf([{ ...piece, change: 'extra', direction: 'weaker' }]), acceptanceKeyOf([{ ...piece, change: 'changed', direction: 'differs' }]))
 })
