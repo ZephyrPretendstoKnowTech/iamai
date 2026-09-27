@@ -8,7 +8,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { QUESTION_STEP } from '../../roadmap/answers.ts'
-import { accountMarkOf, adminPickedLine, adminsOf, pickerUniverse, withAccountMark } from './pickerRows.ts'
+import { pickerUniverse } from './pickerRows.ts'
+import { accountMarkOf, adminPickedLine, adminsOf, withAccountMark } from './accountMarks.ts'
 
 test('an administrator and the signed-in account are marked, in the list and on the chip, and nobody else is', () => {
   const admins = new Set(['a', 'op'])
