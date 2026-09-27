@@ -20,6 +20,7 @@ import { runFixture } from '../roadmap/fixtures/run.ts'
 import { statusOf } from './surfaces/statusWord.ts'
 import { CONTRACT } from './surfaces/stepContract.ts'
 import { DARK, LIGHT, contrastRatio, resolveColourVar } from './tokens.ts'
+import { TIP_CLOSED, tipNext } from './components/tipState.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 const css = read('src/ui/app.css')
@@ -590,12 +591,15 @@ test('the one Plan row says it is a control and whether the step under it is ope
 })
 
 test('an info tip opens on a tap as well as a hover, and its text is announced', () => {
-  // A tap fires focus and click in one gesture; deciding from the state before
-  // the gesture is what stops the click closing what the focus just opened.
-  assert.match(infoTip, /openBeforePress\.current = open/)
-  assert.match(infoTip, /e\.detail === 0.*setOpen\(\(o\) => !o\).*\n.*setOpen\(!openBeforePress\.current\)/s)
+  // A tap fires focus and click in one gesture: focus shows the tip and the
+  // click keeps it (ui/components/tipState.ts), so the click never closes what
+  // the focus just opened.
+  const tapped = tipNext(tipNext(TIP_CLOSED, 'focus'), 'press')
+  assert.deepEqual(tapped, { open: true, pinned: true })
+  assert.match(infoTip, /onFocus=\{\(\) => showNow\('focus'\)\}/)
+  assert.match(infoTip, /onClick=\{\(e\) => \{\n\s+e\.stopPropagation\(\)\n\s+showNow\('press'\)/)
   assert.match(infoTip, /aria-describedby=\{open \? id : undefined\}/)
-  assert.match(infoTip, /if \(e\.key === 'Escape'\) setOpen\(false\)/)
+  assert.match(infoTip, /if \(e\.key === 'Escape'\) send\('escape'\)/)
 })
 
 test("an action's failure is text where the action was, and is announced", () => {

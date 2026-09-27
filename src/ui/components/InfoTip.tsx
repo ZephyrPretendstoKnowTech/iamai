@@ -1,20 +1,20 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { COMPONENTS } from '../../copy/components.ts'
+import { TIP_CLOSED, tipNext } from './tipState.ts'
+import type { TipEvent } from './tipState.ts'
 
 // An outlined "i" with a 24px target; the tip on hover or focus with a
 // hairline (prompt 47 Part 1). Text is at most 25 words, which the contract
-// measures. Keyboard: focus + Enter/Space toggles, Esc closes. The tip renders
-// in a portal at the top layer, positioned from the button's rectangle, and
-// flips or shifts so it is never clipped.
+// measures. The tip renders in a portal at the top layer, positioned from the
+// button's rectangle, and flips or shifts so it is never clipped.
 //
-// Touch (task 017): a tap fires focus *and* click, and a click that toggled
-// whatever focus had just done closed the tip in the same gesture that opened
-// it — the tip was mouse-and-keyboard only. So a press decides from the state
-// the tip was in before the gesture began, which a pointerdown records; a
-// keyboard activation has no pointerdown before it (`detail === 0`) and keeps
-// toggling. And while it is open the button is described by it, so the text is
-// announced rather than only drawn.
+// Hover and focus show it while they last; a press (click, tap, Enter or Space)
+// keeps it open until the next press, Esc or a press elsewhere (tipState.ts,
+// F-091). Hover used to open it, so the click that followed closed it, and
+// Enter closed a tip focus had just opened. A tap fires focus and then click:
+// focus shows it and the click keeps it (task 017). While it is open the button
+// is described by it, so the text is announced rather than only drawn.
 const GAP = 6
 const MARGIN = 8
 
@@ -35,35 +35,36 @@ function place(anchor: DOMRect, pop: { width: number; height: number }): Placeme
 }
 
 export function InfoTip({ title, text, link }: { title: string; text: string; link?: { href: string; label: string } }) {
-  const [open, setOpen] = useState(false)
+  const [tip, setTip] = useState(TIP_CLOSED)
+  const open = tip.open
+  const send = (e: TipEvent): void => setTip((s) => tipNext(s, e))
   const [pos, setPos] = useState<Placement | null>(null)
   const ref = useRef<HTMLSpanElement>(null)
   const popRef = useRef<HTMLSpanElement>(null)
   const closeTimer = useRef<number | null>(null)
-  /** Whether the tip was open when the current pointer gesture began. */
-  const openBeforePress = useRef(false)
   const id = useId()
   const cancelClose = () => {
     if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
     closeTimer.current = null
   }
-  const closeSoon = () => {
+  // The pointer crossing from the button to the tip leaves one and enters the other: a moment's grace.
+  const leaveSoon = (e: TipEvent) => {
     cancelClose()
-    closeTimer.current = window.setTimeout(() => setOpen(false), 150)
+    closeTimer.current = window.setTimeout(() => send(e), 150)
   }
-  const openNow = () => {
+  const showNow = (e: TipEvent) => {
     cancelClose()
-    setOpen(true)
+    send(e)
   }
 
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => {
       const t = e.target as Node
-      if (ref.current && !ref.current.contains(t) && popRef.current && !popRef.current.contains(t)) setOpen(false)
+      if (ref.current && !ref.current.contains(t) && popRef.current && !popRef.current.contains(t)) send('outside')
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') send('escape')
     }
     const onMove = () => {
       if (!ref.current || !popRef.current) return
@@ -98,8 +99,8 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
           id={id}
           ref={popRef}
           style={pos ? { top: pos.top, left: pos.left, maxWidth: pos.maxWidth, visibility: 'visible' } : { top: 0, left: 0, visibility: 'hidden' }}
-          onMouseEnter={openNow}
-          onMouseLeave={closeSoon}
+          onMouseEnter={() => showNow('hover')}
+          onMouseLeave={() => leaveSoon('leave')}
         >
           <strong>{title}</strong>
           {text}
@@ -115,7 +116,7 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
     : null
 
   return (
-    <span className="infotip" ref={ref} onMouseEnter={openNow} onMouseLeave={closeSoon}>
+    <span className="infotip" ref={ref} onMouseEnter={() => showNow('hover')} onMouseLeave={() => leaveSoon('leave')}>
       <button
         type="button"
         className="infotip-btn"
@@ -123,15 +124,11 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
         aria-expanded={open}
         aria-controls={id}
         aria-describedby={open ? id : undefined}
-        onFocus={openNow}
-        onBlur={closeSoon}
-        onPointerDown={() => {
-          openBeforePress.current = open
-        }}
+        onFocus={() => showNow('focus')}
+        onBlur={() => leaveSoon('blur')}
         onClick={(e) => {
           e.stopPropagation()
-          if (e.detail === 0) setOpen((o) => !o)
-          else setOpen(!openBeforePress.current)
+          showNow('press')
         }}
       >
         <span aria-hidden="true">i</span>
