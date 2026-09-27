@@ -541,6 +541,7 @@ start a fresh chat for each round, with the same prompt.
 We're taking IAMAI Planner from about 74% ready to 90% or better across the board,
 ten fixes at a time. Read docs/plans/2026-09-27-low-hanging-fruit.md first: the Needs
 attention list, the round candidates and the Readiness scores. Then run one round.
+If the plan is not on main yet, it is on branch fix/low-hanging-1: work on that branch.
 
 1. Pick the ten.
    - If the plan has a round that isn't done yet, use its list. Round 1 is already
