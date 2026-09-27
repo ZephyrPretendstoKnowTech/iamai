@@ -133,12 +133,13 @@ test('held, a created-On create keeps its whole procedure: the user action, the 
   assert.ok(text.includes('Set **Enable policy** to **On** and select **Create**.'), text)
 })
 
-test('a created-On step is dated as it runs: its Dates line announces it and creates it On, and its card says both days', () => {
+test('a created-On step is dated as it runs: its Dates line creates it On (no email, so no Announce), and its card says both days where it announces', () => {
   const run = runFixture(mid())
   const held = run.steps.find((s) => s.id === DEVICE)!
   assert.equal(datesLineFor(held, contentStepFor(held) as Record<string, unknown>), null, 'held, it has no Dates line')
   const step = released(held)
-  assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesCreateOn}')
+  // Require MFA to Register a Device sends no email (Phase 4: 5.2): the day alone.
+  assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesCreateOnDay}')
   const proposed = { exclusionsGroup: 'Core - Exclusions', serviceAccountsGroup: 'Core - Service Accounts', trustedLocation: 'Office', allowedCountries: 'Allowed countries' }
   const dated = { ...step, events: { ...step.events, announce: { at: '2026-10-06T12:00:00.000Z' } } } as Step
   // The contract's two readings the card uses: the lifecycle, and the milestone's day.

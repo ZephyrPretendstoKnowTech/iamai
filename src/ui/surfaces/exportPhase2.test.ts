@@ -624,7 +624,8 @@ test('the pack\'s announcement prompts carry the email the opened step shows, na
     const announcement = exportAnnouncementOf(p.r.steps, p.held, p.ctxOf)
     const pack = promptPack({ view: p.view, tenant: 'Tenant', steps: p.r.steps, schedule: p.r.schedule, changeRecord: '', announcement, cleanup: p.cleanup })
     const items = pack.filter((item) => item.prompt.includes('No announcement needed') || item.title === PROMPTS.pack.rewrite)
-    const source = p.r.steps.find((s) => !p.held(s) && copyBoxes(s, p.ctxOf(s)).some((b) => b.kind === 'comms'))
+    // Never a step that doesn't apply, is skipped or set aside (Phase 4: the pack announced Inforcer).
+    const source = p.r.steps.find((s) => !p.held(s) && !s.doesntApply && s.status !== 'skipped' && !s.state.setAside && copyBoxes(s, p.ctxOf(s)).some((b) => b.kind === 'comms'))
     if (source === undefined) {
       assert.equal(announcement, null, `${f.name}: an announcement where no step shows an email`)
       assert.equal(items.length, 0, `${f.name}: an announcement prompt with no email behind it`)

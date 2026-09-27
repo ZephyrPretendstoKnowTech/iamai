@@ -249,7 +249,7 @@ export const ACCEPTANCE = [
   // request; the reading this step has is the sign-in record's and not Identity
   // Protection's; an unregistered person is blocked rather than prompted.
   { item: '35', step: 'sign-in-risk', path: 'why', must: "A high-risk sign-in was probably not made by the account's owner.", mustNot: 'flags a sign-in as suspicious' },
-  { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: "Identity Protection's own risk reports are a separate surface this plan does not read" },
+  { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: 'That rating is read from the sign-in records; a record without one counts as unknown, never as no risk.' },
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'blocked, not prompted' },
   { item: '35', step: 'sign-in-risk', path: 'more.helpDesk', must: 'AADSTS53004', mustNot: 'then dismiss the risk in Identity Protection.' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
