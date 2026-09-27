@@ -50,7 +50,8 @@ import { answerParts, answerText, optionsOf, questionFor, valueSource } from './
 import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey, decisionKeyOf, deviationDecision } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
-import { CAMPAIGN_STEP_ID } from '../../roadmap/stepIds.ts'
+import { BREAK_GLASS_STEP_ID, CAMPAIGN_STEP_ID, EXCLUSION_GROUP_STEP_ID } from '../../roadmap/stepIds.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
 import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -1176,6 +1177,15 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
   const prefilled = initial.matched.length > 0
   const savesAlone = hasPicker && pickerSavesAlone(d, stepId) && !prefilled
   const shownChips = prefilled ? chips : chips.map((c) => (c.badge === app.picker.matched ? { ...c, badge: undefined } : c))
+  // Taking an emergency access account off asks first (F-007): it takes a step off
+  // the plan and turns Configure Emergency Exclusions' advice against the account.
+  const ET = (app.plan as unknown as { emergencyTasks: Record<string, string> }).emergencyTasks
+  const exclusionsGroup = typeof ex.exclusionsGroup === 'string' ? ex.exclusionsGroup : null
+  const removalQuestion = stepId === BREAK_GLASS_STEP_ID
+    ? (chip: PickerOption): string => exclusionsGroup !== null
+      ? fillText(ET.removeConfirm, { name: chip.name, step: contentTitle({ id: EXCLUSION_GROUP_STEP_ID, goalId: '', title: '' }), group: exclusionsGroup })
+      : fillText(ET.removeConfirmNoGroup, { name: chip.name })
+    : undefined
   const save = (picked: PickerOption[] = chips): void => {
     if (!canSaveWith(picked)) return
     onDecide?.({
@@ -1214,7 +1224,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
             the heading over nothing. */}
         {(hasPicker || isNetwork) && !remote && (printing && initial.defaulted && !isExclusionsGroup
           ? <p className="reason">{printedDefaultLine(chips.map((c) => c.name))}</p>
-          : <Picker labelledBy={`${base}-decision`} selected={shownChips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} onCommit={saves ? (picked) => save(picked) : undefined} />)}
+          : <Picker labelledBy={`${base}-decision`} selected={shownChips} options={results} suggestions={isNetwork ? nominated.slice(0, 3) : nominated} onChange={setChips} onSearch={setQuery} single={single} onCommit={saves ? (picked) => save(picked) : undefined} confirmRemoval={removalQuestion} />)}
         {isNetwork && !remote && chips.length === 0 && <div className="decision-fields">
           {universe.length === 0 && <p className="reason">{ctx.snapshot.config.namedLocations?.status === 'ok' ? 'No IP named locations were found in this scan.' : 'Named locations could not be fully read. Scan again to load existing office networks.'}</p>}
           <div className="decision-field"><label htmlFor={`${base}-network-name`}><strong>Office Network Name</strong></label><input type="text" id={`${base}-network-name`} value={networkName} onChange={e => setNetworkName(e.target.value)} /></div>

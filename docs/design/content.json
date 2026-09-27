@@ -1885,6 +1885,9 @@
         "suggestions": "Suggestions",
         "results": "{n} results",
         "done": "Done",
+        "$commentKeep": "F-007 (owner, 2026-09-27): a picker that asks before a chip comes off (the emergency access accounts) offers Keep, focused, and Take it off.",
+        "keep": "Keep",
+        "takeOff": "Take it off",
         "matched": "✓ Matched by IAMAI",
         "choose": "Choose…"
       },
@@ -2047,6 +2050,9 @@
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
         "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
         "emergencyTasks": {
+          "$commentRemoveConfirm": "F-007 (owner, 2026-09-27): the × beside an emergency access account asks first. Removing one takes a step off the plan and turns Configure Emergency Exclusions' advice against the account, which, followed, puts it under every policy.",
+          "removeConfirm": "Take {name} off your emergency access accounts? {step} will then tell you to remove it from {group}.",
+          "removeConfirmNoGroup": "Take {name} off your emergency access accounts?",
           "$commentTitles": "The Establish Emergency Access tasks' titles, one source for the tasks and for the Readiness card whose check this scan did not settle: that card states the work, in the task's words (roadmap/emergencyTaskTitles.ts; owner 2026-09-24, net-new 1 and 2: an unread check reads as the work not done, never as could-not-verify).",
           "titles": {
             "createAccount": "Create an emergency account",

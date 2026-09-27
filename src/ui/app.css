@@ -5471,3 +5471,19 @@ header.app .right .menu-confirm a {
     grid-template-columns: 1fr;
   }
 }
+
+/* A picker that asks before a chip comes off (F-007): the question and Keep / Take it off, under the chips. */
+.picker-confirm {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--strong-line);
+  border-radius: var(--radius-control);
+}
+.picker-confirm p {
+  margin: 0 0 8px;
+}
+.picker-confirm .picker-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

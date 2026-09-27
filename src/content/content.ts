@@ -158,7 +158,7 @@ export type AppWords = {
     licencesNone: string
     blockedNone: string
   }
-  picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; matched: string; choose: string }
+  picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; keep: string; takeOff: string; matched: string; choose: string }
 }
 export const app = content.pages.app as unknown as AppWords
 

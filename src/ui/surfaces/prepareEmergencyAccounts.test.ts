@@ -241,3 +241,24 @@ test('#14 the picker list fits the rail and wraps its text', () => {
   assert.match(rule('.picker-list'), /overflow-x: hidden;/)
   assert.match(rule('.picker-option-name,\n.picker-option-secondary'), /overflow-wrap: anywhere;/)
 })
+
+// F-007: one click on the × beside an emergency access account saved at once,
+// took a step off the plan and turned Configure Emergency Exclusions' advice
+// against the account. On that picker only, × asks first; Keep is focused and
+// Take it off removes and saves as any removal does. Every other picker still
+// saves a removal at once (#15).
+test('taking an emergency access account off asks first, and only there', async () => {
+  const { app } = await import('../../content/content.ts')
+  const { fillText } = await import('../../content/render.ts')
+  const picker = read('src/ui/components/Picker.tsx')
+  assert.match(picker, /onClick=\{\(\) => \(confirmRemoval \? setPending\(s\) : remove\(s\.id\)\)\}/, '× asks where the caller asks for it, and removes at once elsewhere')
+  assert.match(picker, /<Button size="sm" variant="secondary" autoFocus onClick=\{\(\) => setPending\(null\)\}>\n\s+\{T\.keep\}/, 'Keep is focused and changes nothing')
+  assert.match(picker, /onClick=\{\(\) => \{ const id = pending\.id; setPending\(null\); remove\(id\) \}\}>\n\s+\{T\.takeOff\}/, 'Take it off removes and saves')
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  assert.match(step, /const removalQuestion = stepId === BREAK_GLASS_STEP_ID/)
+  assert.equal((step.match(/confirmRemoval=\{removalQuestion\}/g) ?? []).length, 1, 'only the decision picker passes it')
+  const ET = (app.plan as unknown as { emergencyTasks: Record<string, string> }).emergencyTasks
+  assert.equal(fillText(ET.removeConfirm, { name: 'Break-glass 2', step: 'Configure Emergency Exclusions', group: 'Core - Exclusions' }), 'Take Break-glass 2 off your emergency access accounts? Configure Emergency Exclusions will then tell you to remove it from Core - Exclusions.')
+  assert.equal(app.picker.keep, 'Keep')
+  assert.equal(app.picker.takeOff, 'Take it off')
+})

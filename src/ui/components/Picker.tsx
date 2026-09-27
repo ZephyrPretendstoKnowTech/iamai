@@ -47,6 +47,7 @@ export function Picker({
   readOnly = false,
   onCommit,
   listAll = false,
+  confirmRemoval,
 }: {
   selected: PickerOption[]
   options: PickerOption[] // results for the current query (caller filters/searches)
@@ -78,10 +79,20 @@ export function Picker({
    * because no fact suggests any.
    */
   listAll?: boolean
+  /**
+   * Taking a chip off asks first, with this question for the chip (F-007: one
+   * click on the × beside an emergency access account saved at once, removed a
+   * plan step and turned the exclusions advice against the account). Keep is
+   * focused; Take it off removes and saves as any removal does. Pickers without
+   * it save a removal at once (owner, 2026-09-23, #15).
+   */
+  confirmRemoval?: (chip: PickerOption) => string
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(0)
+  // The chip whose removal is being asked about (confirmRemoval).
+  const [pending, setPending] = useState<PickerOption | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const base = useId()
   const listId = `${base}-list`
@@ -160,11 +171,24 @@ export function Picker({
             <span key={s.id} className="chip-select">
               <span className="chip-name">{s.name}</span>
               {s.badge && <span className="chip-badge">{s.badge}</span>}
-              {!readOnly && <button type="button" className="chip-remove" aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => remove(s.id)}>
+              {!readOnly && <button type="button" className="chip-remove" aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => (confirmRemoval ? setPending(s) : remove(s.id))}>
                 <Icon name="close" size={12} />
               </button>}
             </span>
           ))}
+        </div>
+      )}
+      {pending && confirmRemoval && (
+        <div className="picker-confirm" role="alertdialog" aria-labelledby={`${base}-confirm`}>
+          <p id={`${base}-confirm`}>{confirmRemoval(pending)}</p>
+          <div className="picker-confirm-actions">
+            <Button size="sm" variant="secondary" autoFocus onClick={() => setPending(null)}>
+              {T.keep}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => { const id = pending.id; setPending(null); remove(id) }}>
+              {T.takeOff}
+            </Button>
+          </div>
         </div>
       )}
       {!readOnly && <div className="picker-search">
