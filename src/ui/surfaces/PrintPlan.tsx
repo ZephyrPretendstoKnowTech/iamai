@@ -24,7 +24,7 @@ import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.
 import { completedRows, deferredRows, phaseRows, planPhases, stepListOf } from './planRows.ts'
 import { boardHolds, boardOf } from './planBoard.ts'
 import type { ReadinessTile } from './stepContract.ts'
-import { cleanupDatesOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, finishedRowsOf, holdsOf, noPlanLine, phaseDatesOf, postureOf, printSectionsOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
+import { cleanupDatesOf, cleanupHeadsOf, completedLinesOf, constraintOf, coverDatesOf, doesntApplyLinesOf, finishedRowsOf, holdsOf, noPlanLine, phaseDatesOf, phasesByFirstDay, postureOf, printSectionsOf, verificationDatesOf, verificationNoteOf } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { PrintBoard, PrintRow } from './printPlan.ts'
 
@@ -191,7 +191,7 @@ export function PrintPlan({
   // prerequisites" (R4-21).
   const boardHeld = (s: Step): boolean => boardHolds(s, laneOf(s.id))
   const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w, boardHeld).filter(notListed)
-  const waves = phaseList.filter((w) => phaseSteps(w).length > 0)
+  const waves = phasesByFirstDay(phaseList.filter((w) => phaseSteps(w).length > 0), phaseSteps)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
   // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
   const waveTitle = (w: Schedule['waves'][number]) => waveLabelByNumber.get(w.wave) ?? ''

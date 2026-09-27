@@ -86,10 +86,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.createOnLine',
   '.shared.enableLine',
   '.shared.syncRoleNote',
-  // What a claim leaves behind when the tenant's values cannot complete it (R4,
-  // stepExport.ts WHO_UNRESOLVED). Every example fills its own step's
-  // variables, so no example line is ever left unfinished here.
-  '.shared.whoUnresolved',
   // The two gates with today's numbers render only on a step whose policy the
   // scan found in report-only (doneWhen.ts); the review's example steps are all new.
   '.shared.policyDoneWhenTracked[0]',

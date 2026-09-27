@@ -94,8 +94,9 @@ export function datesLineFor(step: Step, cs: Record<string, unknown>): string | 
   // creation day (roadmap/stepSchedule.ts scheduledEventOf), enforcement undated.
   if (isHeld(step) && !heldForReview(step)) return scheduledEventOf(step)?.transition === 'createReportOnly' ? '{datesDeploy}' : null
   // Created On (a User Action policy): no report-only day to state, so the line
-  // says the announcement and the day it is created On (owner, 2026-09-25).
-  if (stepCreatedOn(step) && (awaitingDeployment(step) || createsNewPolicy(step))) return '{datesCreateOn}'
+  // says the announcement and the day it is created On (owner, 2026-09-25); a
+  // step with no email to send says the day alone (Phase 4: 5.2, 5.8).
+  if (stepCreatedOn(step) && (awaitingDeployment(step) || createsNewPolicy(step))) return cs.comms ? '{datesCreateOn}' : '{datesCreateOnDay}'
   if (awaitingDeployment(step)) return '{datesDeploy}'
   // Held only on a difference IAMAI does not write, the policy is held like any
   // other and has no Dates line: {datesReview} says "Held until the change
@@ -677,13 +678,6 @@ const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}
 const readsTenant = (line: string): boolean => [...line.matchAll(/\{(?:list:)?([a-zA-Z0-9_]+)\}/g)].some((m) => !SHARED_REF_KEYS.has(m[1]))
 
 /**
- * The sentence a claim leaves behind when it cannot be filled (R4). An unfilled
- * claim says so; it never empties its slot and lets the opposite claim stand
- * there instead.
- */
-export const WHO_UNRESOLVED: string = String((content.shared as Record<string, unknown>).whoUnresolved)
-
-/**
  * The Who lead's template, whole: the step's own, or — where the only hole in it
  * is a date the plan does not hold — its undated form. Who a step reaches is not
  * a date, and the campaign's lead ("… the plan waits for 90% until {enrollBy}")
@@ -701,7 +695,7 @@ export function whoLeadTemplate(who: Record<string, unknown>, ex: Record<string,
   const when = who.leadWhen as Record<string, string> | undefined
   if (when) {
     for (const [fact, line] of Object.entries(when)) if (truthy(ex[fact]) && whole(line, ex)) return line
-    return WHO_UNRESOLVED
+    return null
   }
   for (const line of [who.lead, who.leadUndated]) if (typeof line === 'string' && whole(line, ex)) return line
   return null
@@ -715,13 +709,14 @@ export function whoLeadTemplate(who: Record<string, unknown>, ex: Record<string,
  * people; a line with {n} and no list not at zero; the none branch only when no
  * reading of this tenant rendered.
  *
- * R4, the rule this enforces: **a claim that cannot be filled says so, and never
- * falls through to its own negation.** A claim whose evidence is present but
+ * R4, the rule this enforces: **a claim that cannot be filled never falls
+ * through to its own negation.** A claim whose evidence is present but
  * whose sentence has a hole used to be dropped by the callers' own `whole`
  * gate — which emptied the slot and let the step's none branch print the
  * opposite: "Nobody used a legacy protocol since Jul 29, 2026" two steps after
  * the product named the three accounts that did. Here such a claim keeps its
- * slot with WHO_UNRESOLVED, and an unresolved claim holds the none branch back.
+ * slot empty, and an unresolved claim holds the none branch back: the step says
+ * nothing there rather than a line about what IAMAI could not finish (Phase 4).
  * The negation stands only where this tenant was read and found clean.
  */
 export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string, unknown>): string[] {
@@ -780,13 +775,13 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
   // The slot the negation would have taken. It gets the negation only where this
   // tenant was read and nothing was found; where a claim about the same subject
   // could not be completed, or where the negation itself cannot be stated, the
-  // slot says so instead. This is the whole of R4: the step still has one
-  // sentence here, and it is never the opposite of what was read.
+  // slot stays empty. This is the whole of R4: the slot never holds the
+  // opposite of what was read.
   // `evidenceNotRead` is the seventh instance of the same fault (R4): a negation
   // is a claim about what a section holds, and a section the scan never read
   // holds nothing IAMAI can speak for. Where the step declares its own evidence
-  // unread, the slot says so rather than stating the negative.
-  if (none !== null && !read) out.push(unresolved || truthy(ex.evidenceNotRead) || !whole(none, listCountVars(none, ex) as Record<string, unknown>) ? WHO_UNRESOLVED : none)
+  // unread, the slot stays empty rather than stating the negative.
+  if (none !== null && !read && !unresolved && !truthy(ex.evidenceNotRead) && whole(none, listCountVars(none, ex) as Record<string, unknown>)) out.push(none)
   return out
 }
 
@@ -928,7 +923,7 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
  */
 export function exportAnnouncementOf(steps: readonly Step[], held: (s: Step) => boolean, ctxOf: (s: Step) => StepVarContext): { step: string; text: string } | null {
   for (const step of steps) {
-    if (held(step)) continue
+    if (held(step) || step.doesntApply || step.status === 'skipped' || step.state.setAside) continue
     const email = copyBoxes(step, ctxOf(step)).find((b) => b.kind === 'comms')
     if (email) return { step: contentTitle(step), text: email.text }
   }

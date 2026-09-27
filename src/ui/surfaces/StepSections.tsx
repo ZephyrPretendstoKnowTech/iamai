@@ -372,7 +372,6 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
             {MARK.good}
           </span>
           <strong>{W.tiles.clear}</strong>
-          <span>{W.tiles.clearNote}</span>
         </p>
       )}
       {showClosedCount && closedBlocking > 0 && <p className="readiness-more">{fillText(W.tiles.moreBlocking, { n: closedBlocking })}</p>}

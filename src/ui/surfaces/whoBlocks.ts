@@ -79,7 +79,7 @@ export function whoBlocks(who: Record<string, unknown>, ex: Ex): { inline: WhoBl
   // earned, each one whole; a second `whole` filter here is what dropped a claim
   // whose only hole was a date and left the step's none branch alone in the
   // slot, saying nobody did the thing three named accounts had just been shown
-  // doing (R4). An unfillable claim now arrives as WHO_UNRESOLVED and is drawn.
+  // doing (R4). An unfillable claim now leaves its slot empty.
   whoEvidenceLines(who, ex)
     .forEach((line, i) => {
       const nl = nameListOf(line, ex)

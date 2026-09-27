@@ -63,6 +63,7 @@
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
     "$commentDatesCreateOn": "A User Action policy is created On (owner decision 3): no report-only day, so the Dates line states the announcement and the day it is created On (owner, 2026-09-25; it was dropped as {datesDeploy} with no report-only day to fill).",
     "datesCreateOn": "Announce {announce} · Create On {enforce}",
+    "datesCreateOnDay": "Create On {enforce}",
     "datesChange": "Announce {announce} · Change {enforce}",
     "datesDeploy": "Report-only from {reportOnly}",
     "datesObserve": "Report-only since {reportOnly}, until {readyOn}",
@@ -249,8 +250,7 @@
     "reportOnlyLine": "Enable policy: Report-only → Create.",
     "$commentCreateOnLine": "reportOnlyLine for a User Action policy, which is created On (Phase 2e; roadmap/evidenceStrategy.ts createdOn).",
     "createOnLine": "Enable policy: On → Create.",
-    "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Consolidate Overlapping Policies (Cleanup) reviews whether the older ones can be retired once it is enforced.",
-    "whoUnresolved": "IAMAI could not finish this line from what it read, so it is not saying either way. Check this one in Entra yourself.",
+    "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Review Overlapping Policies (Cleanup) reviews whether the older ones can be retired once it is enforced.",
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
     "certificatePrompt": "In report-only, a policy that requires a compliant device can prompt people on Mac, iOS and Android devices to pick a certificate, again and again, until the device is compliant.",
     "strengthName": "Modern MFA + TAP",
@@ -2558,8 +2558,7 @@
               "check": "Check",
               "review": "Review",
               "mapping": "Baseline mapping",
-              "clear": "Clear",
-              "clearNote": "No unresolved checks.",
+              "clear": "No tasks remaining",
               "moreBlocking": "Blocking items still closed: {n}",
               "satisfied": "{n} satisfied",
               "detail": "Why",
@@ -3476,7 +3475,7 @@
           "baseline": "Baseline",
           "dates": "Plan dates",
           "prepared": "Prepared with IAMAI by {by}",
-          "readOnly": "IAMAI reads the tenant and never writes to it. A person carries out the changes using the instructions provided. Impact is estimated from the scan; validate it with policy results and the workflow tests each step requires."
+          "readOnly": "IAMAI reads the tenant and never writes to it. A person carries out the changes using the instructions provided. Impact is estimated from the scan."
         },
         "posture": {
           "$comment": "The cover's posture lines (A1c): the finished goals under the Completed lane's own word, never In place.",
@@ -3496,7 +3495,7 @@
         },
         "verificationWindow": "Registration and verification window · {days} days",
         "observation": "Observation window · {days} days",
-        "observationText": "Policies that support report-only can collect evidence at the same time. User-action policies also need direct workflow tests.",
+        "observationText": "Policies that support report-only can collect evidence at the same time.",
         "$commentVerificationNote": "The verification window row’s third column: the people the window is sized for (roadmap/generate.ts registrationWindow, five a working day), which are the campaign step’s people not yet shown to have a usable registered MFA method (its preparation.missingIds), of everyone that step prepares. It used to count derive/facts.ts notReady, readiness to the phishing-resistant standard: a different population beside a window sized for this one (messy: one working day beside 104 of 106 people). Those people include the ones whose registration could not be read (preparation.unknownIds), so it says they are not shown to have a method, never that they have none: \"have no usable registered MFA method yet\" printed 34 of 34 on a tenant whose registration details were refused, in the document whose Completed section says readiness was not measured. The row prints only while someone is still to set up, so there is no everyone-ready variant.",
         "verificationNote": "{n} of {total} people in {step} are not yet shown to have a usable registered MFA method.",
         "$commentPickerSuggested": "A printed decision picker where nothing is saved (ui/surfaces/pickerRows.ts initialPicked `defaulted`, printedDefaultLine): the chips the screen opens with are IAMAI's suggestion, which Save would write, and nobody has saved them. The print had listed them under the decision's heading as if they were the answer (all eleven suggested people under People Needing Help while the saved list held one), and then, with them dropped, printed the heading over nothing.",
@@ -6205,10 +6204,6 @@
           {
             "text": "Windows Home cannot be hybrid joined, Intune marks only the Ubuntu and Red Hat builds it supports as compliant, and Microsoft Edge in InPrivate counts as neither compliant nor hybrid joined.",
             "applies": "always"
-          },
-          {
-            "text": "Nothing here is read from Intune: IAMAI has no permission to see a compliance policy, so whether a device can become compliant at all is yours to confirm.",
-            "applies": "always"
           }
         ],
         "helpDesk": [
@@ -7022,7 +7017,7 @@
         "evidence": [
           "The baseline requires {strengthName} on a high-risk sign-in; it accepts the methods that strength lists, including a Temporary Access Pass where it allows one. Your saved first-enforcement choice decides the grant used now.",
           "{n} sign-ins were rated high risk since {from}: {list:riskyUsers}",
-          "That rating is read from the sign-in records; a record without one counts as unknown, never as no risk. Identity Protection's own risk reports are a separate surface this plan does not read.",
+          "That rating is read from the sign-in records; a record without one counts as unknown, never as no risk.",
           "{n} people with only Authenticator approval would be stopped by a risky sign-in: {list:pushOnlyUsers}",
           "{pushOnlyCount} people with only Authenticator approval would be stopped by a risky sign-in.",
           "Somebody with no registered method that meets the requirement is stopped rather than prompted, and cannot register one during the risky sign-in; the error is AADSTS53004.",
@@ -7124,7 +7119,6 @@
         "lead": "{active} active people",
         "evidence": [
           "{n} people had a sign-in rated high risk since {from}: {list:riskyUsers}",
-          "Identity Protection's risky users report is a separate surface this plan does not read, so the people it holds may not be the people named here.",
           "The baseline asks for risk remediation with {strengthName}, which lets Microsoft pick the remediation each person's registered methods allow.",
           "A person has to be registered for multifactor authentication before this policy reaches them; without it they are blocked and somebody has to reset the account by hand.",
           "Check how the policy treats guests rated high risk: they cannot remediate in this tenant, because their risk is held in their home directory.",

@@ -44,7 +44,7 @@ import { engine, shared, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
-import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
+import { SERVICE_ACCOUNTS_TRUSTED_GOAL, supersededBy } from '../../roadmap/generate.ts'
 import { PER_USER_MFA_STEP_ID, PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
@@ -427,7 +427,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // coverage that predates the plan, and What IAMAI found says of the same
   // policy, on the same step, that IAMAI watched it get there. One of the two is
   // always wrong; this is the one that is.
-  v.existingPolicies = step.status !== 'done' && step.deliveredBy.length > 0 && !watchedArrive(step) ? step.deliveredBy : []
+  v.existingPolicies = !watchedArrive(step) ? [...supersededBy(step)] : []
   // In place: the step asks nobody to do anything, so its email does not render (stepExport.ts commsFor).
   if (step.status === 'done') v.stepDone = true
 

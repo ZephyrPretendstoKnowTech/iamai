@@ -7,7 +7,6 @@ import { approvedPasskeyModels, emergencyValidationIssueKey } from '../../roadma
 import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { emergencyAccountPreparationOf } from '../../roadmap/emergencyAccountPreparation.ts'
 import { GLOBAL_ADMIN_ROLE, initialDomain } from '../../validation/rules.ts'
-import { SHARED_DEVICE_READING } from '../../copy/validation.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -179,7 +178,7 @@ function dedicatedAccountNotes(step: Step): ReadonlyMap<string, { label: string;
     if (!rule) continue
     const id = item.accountId.toLowerCase()
     const sentence = `${item.value.charAt(0).toUpperCase()}${item.value.slice(1)}`
-    const value = rule === 'bg.separateDevices' ? sentence.replace(`: ${SHARED_DEVICE_READING}`, '').replace(/\.?$/, '.') : item.value
+    const value = rule === 'bg.separateDevices' ? sentence.replace(/\.?$/, '.') : item.value
     if ((notes.get(id) ?? []).some((n) => n.value === value)) continue
     // The shared-device note names the finding, never the rule's requirement
     // ("No two emergency accounts share an Authenticator device", over the line

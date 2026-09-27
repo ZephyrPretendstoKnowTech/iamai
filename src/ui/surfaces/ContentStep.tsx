@@ -469,11 +469,12 @@ export function ContentStep({
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           {decisionHead ? <DirectionQuestions draft={directionDraft} ctx={ctx} heading={decisionHead.questions} printing={printing} />
           : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? '' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
-          : isTaskStep && emergencyAccountTasks && !printing ? <EmergencySubjectReadiness
+          : isTaskStep && emergencyAccountTasks && (!printing || isOwnTaskStep) ? <EmergencySubjectReadiness
             subjects={taskSubjects}
             printing={printing}
             barMain={isOwnTaskStep ? policyBarOf(taskSubjects) : displayedReadiness.bar.main}
-            onWhy={hasEvidence ? () => setDialog('readiness') : null}
+            onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
+            scanNote={!printing}
             note={contract.batchNote}
           /> : <ReadinessSection
             readiness={displayedReadiness}

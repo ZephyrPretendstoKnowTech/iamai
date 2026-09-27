@@ -34,7 +34,7 @@ import { BOARD, boardHolds, boardReadingsOf, boardWhenOf, laneViewFor, prerequis
 import { phaseRows, planPhases, undatedRows } from './planRows.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepContract } from './stepContract.ts'
-import { WHO_UNRESOLVED, commsFor, copyBoxes, exportAnnouncementOf, exportViewsOf, stepExportView, whoEvidenceLines } from './stepExport.ts'
+import { commsFor, copyBoxes, exportAnnouncementOf, exportViewsOf, stepExportView, whoEvidenceLines } from './stepExport.ts'
 import { aiGroundingText } from './aiGrounding.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, devicePlanOf } from '../../roadmap/answers.ts'
@@ -287,7 +287,6 @@ test('a held policy keeps the people its who-line names, without the day and wit
     assert.ok(boardHolds(token, lane) && (people?.length ?? 0) > 0, `${name}: the premise, a held step whose line has people`)
     const who = ((contentStepFor(token) ?? {}) as { who: Record<string, unknown> }).who
     const lines = whoEvidenceLines(who, ex).map((l) => fillText(l, listCountVars(l, ex) as Record<string, unknown>))
-    assert.ok(!lines.includes(WHO_UNRESOLVED), `${name}: "${WHO_UNRESOLVED}"`)
     const line = lines.find((l) => people!.every((p) => l.includes(p)))
     assert.ok(line, `${name}: the people are gone from the Who section: ${lines.join(' | ')}`)
     assert.doesNotMatch(line!, DATE, `${name}: a day in "${line}"`)
@@ -322,7 +321,8 @@ test('a day a held step carries is never another step\'s date, nor the prompt pa
   // The announcement: the first step whose opened page shows an email
   // (stepExport.ts exportAnnouncementOf), unless the board holds it.
   const ctxOf = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...open, reportOnlyAt: s.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
-  const withEmail = r.steps.filter((s) => copyBoxes(s, ctxOf(s)).some((b) => b.kind === 'comms'))
+  // A step that doesn't apply, is skipped or set aside is never announced (Phase 4: the pack announced Inforcer).
+  const withEmail = r.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && !s.state.setAside && copyBoxes(s, ctxOf(s)).some((b) => b.kind === 'comms'))
   assert.ok(withEmail.length >= 2, 'the premise: two steps with an email')
   assert.equal(exportAnnouncementOf(r.steps, () => false, ctxOf)?.step, contentTitle(withEmail[0]!), 'the premise: the first one is the draft')
   const draft = exportAnnouncementOf(r.steps, (s) => s.id === withEmail[0]!.id, ctxOf)

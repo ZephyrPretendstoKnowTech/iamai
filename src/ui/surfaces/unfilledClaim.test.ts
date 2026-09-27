@@ -19,7 +19,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { WHO_UNRESOLVED, whoEvidenceLines, whoLeadTemplate } from './stepExport.ts'
+import { whoEvidenceLines, whoLeadTemplate } from './stepExport.ts'
 import { boardReadingsOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { whoBlocks } from './whoBlocks.ts'
@@ -106,13 +106,11 @@ test('a who-line never renders its negation because a claim could not be filled'
           !out.includes(none),
           `${id} who.${key}: the claim "${line.slice(0, 60)}…" could not be filled and the step answered with its own negation, "${none}"`,
         )
-        // The slot says so - or holds the claim itself, in the undated form the
-        // content writes for a line whose one hole was the day it names
-        // (who.<key>Undated, stepExport.ts whoEvidenceLines): the people are
-        // what was read, and the day is not.
-        const forms = (who[`${key}Undated`] ?? {}) as Record<string, unknown>
-        const undated: unknown = forms[String(lines.indexOf(line))]
-        assert.ok(out.includes(WHO_UNRESOLVED) || (typeof undated === 'string' && out.includes(undated)), `${id} who.${key}: the slot the claim would have taken says nothing at all`)
+        // The slot is empty (Phase 4: no line about what IAMAI could not finish) -
+        // or holds the claim itself, in the undated form the content writes for a
+        // line whose one hole was the day it names (who.<key>Undated,
+        // stepExport.ts whoEvidenceLines): the people are what was read, and the day is not.
+        assert.ok(!out.includes(line), `${id} who.${key}: the unfinished claim "${line.slice(0, 60)}…" was drawn`)
       }
     }
   }
@@ -170,7 +168,6 @@ test('the legacy-authentication step does not say nobody while it holds three ac
     // IAMAI could not finish the line, though it had read every account in it.
     assert.ok(lines.some((l) => /signed in with legacy authentication in the last 30 days/.test(l) && !/before/.test(l)), `${name}: the slot names the accounts, without a day: ${JSON.stringify(lines)}`)
     for (const who of ex.legacyUsers as string[]) assert.ok(names.includes(who), `${name}: ${who} is not named`)
-    assert.ok(!lines.includes(WHO_UNRESOLVED), `${name}: the slot says IAMAI could not finish a line it read`)
   }
 })
 
@@ -264,5 +261,5 @@ test('the authentication-strength step does not say none matches when it never r
   assert.ok(read.some((l) => /None matches the baseline/.test(l)), `read and nothing matched: the negation stands — ${JSON.stringify(read)}`)
   const unread = whoEvidenceLines(who, { ...ex, evidenceNotRead: true })
   assert.ok(!unread.some((l) => /None matches the baseline/.test(l)), JSON.stringify(unread))
-  assert.ok(unread.includes(WHO_UNRESOLVED), JSON.stringify(unread))
+  assert.deepEqual(unread, read.filter((l) => !/None matches the baseline/.test(l)), 'the slot stays empty')
 })

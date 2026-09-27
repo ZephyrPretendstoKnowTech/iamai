@@ -251,6 +251,19 @@ export function phaseDatesOf(rows: readonly Step[]): string | null {
 }
 
 /**
+ * The printed phases in the order their rows fall: Preparation first, then each
+ * phase by the first day its rows state (phaseDatesOf's days), so a later
+ * phase never prints above an earlier one: the timeline printed Phase 2 starting
+ * before Phase 1 (Phase 4 audit, 2026-09-26). A phase whose rows state no day
+ * keeps its place after the dated ones.
+ */
+export function phasesByFirstDay<W extends { phase: number }>(waves: readonly W[], rowsOf: (w: W) => readonly Step[]): W[] {
+  const first = (w: W): number => (w.phase === 0 ? -Infinity : Math.min(...rowsOf(w).map(scheduledEventOf).flatMap((e) => (e === null ? [] : [Date.parse(e.start)]))))
+  const at = new Map(waves.map((w) => [w, first(w)]))
+  return [...waves].sort((a, b) => (at.get(a)! === at.get(b)! ? 0 : at.get(a)! < at.get(b)! ? -1 : 1))
+}
+
+/**
  * The registration and verification window's note: the people the window is
  * sized for (roadmap/generate.ts registrationWindow, from the campaign step's
  * preparation.missingIds), of everyone that step prepares. It used to state
