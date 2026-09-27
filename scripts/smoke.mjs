@@ -1233,12 +1233,19 @@ try {
     typeof demoPlanJson === 'string' &&
     (await evaluate(`(() => { const input = document.querySelector('main.page input[type=file]'); if (!input) return false; const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(demoPlanJson)}], 'plan.json', { type: 'application/json' })); input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true })()`))
   check('Demo: hidden admin-portals step is absent from the exported plan', typeof demoPlanJson === 'string' && !/\"id\":\s*\"s-goal-admin-portals-protected\"/.test(demoPlanJson))
+  // Over the sample's recorded work the file asks first, saying what it holds, and Replace loads it (F-023).
+  const confirmShown = loaded && (await waitFor(`!!document.querySelector('main.page .load-confirm')`, 6000))
+  const confirmText = confirmShown ? String(await evaluate(`document.querySelector('main.page .load-confirm').textContent`)) : ''
+  check('Demo: Load a plan file over recorded work says what the file holds and asks first', confirmShown && /^This plan file was saved [A-Z][a-z]{2} \d{1,2}, \d{4}\. It holds .+\. Loading it replaces what this browser holds for /.test(confirmText), confirmText.slice(0, 160))
+  if (confirmShown) await clickExact('Replace with this file')
   check(
     'Demo: Load a plan file takes the saved file back, with no tenant refusal',
     loaded && (await waitFor(`location.hash === '#/plan'`, 6000)) && (await evaluate(`window.__alerts.length`)) === alertsBefore,
     String(await evaluate(`window.__alerts.slice(-1)[0] || ''`)).slice(0, 120),
   )
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  const loadedLine = /Loaded the plan file saved [A-Z][a-z]{2} \d{1,2}, \d{4}\./
+  check('Demo: the Plan says which plan file it loaded', await waitFor(`${loadedLine}.test(document.querySelector('main.page').textContent)`, 6000))
   // The load saves the record, then the mappings, and the plan regenerates on
   // each (ui/actions.ts tenantTurn): the rows are read once the header's counts
   // are back to what they were, not on the first render after the first save.
@@ -1248,10 +1255,12 @@ try {
   await showLane(LANES[0])
   await revealAll()
   await sleep(150)
-  const planTextAfter = await mainText()
+  // The same rows, read past the one line the load added above them.
+  const flatRows = (x) => String(x ?? '').split(/\s+/).join(' ').trim()
+  const planTextAfter = flatRows((await mainText()).replace(loadedLine, ''))
   const firstDiff = (a, b) => { const i = [...a].findIndex((ch, k) => ch !== b[k]); return i < 0 ? '' : `at ${i}: "${a.slice(Math.max(0, i - 40), i + 60).replace(/\s+/g, ' ')}" vs "${b.slice(Math.max(0, i - 40), i + 60).replace(/\s+/g, ' ')}"` }
   check('Demo: the loaded plan re-renders with the same decisions, start date and skips', recordAfter === recordBefore, recordAfter === recordBefore ? '' : firstDiff(String(recordBefore), String(recordAfter)))
-  check('Demo: the loaded plan renders the same rows as before the save', planTextAfter === planTextBefore, planTextAfter === planTextBefore ? '' : firstDiff(planTextBefore, planTextAfter))
+  check('Demo: the loaded plan renders the same rows as before the save', planTextAfter === flatRows(planTextBefore), planTextAfter === flatRows(planTextBefore) ? '' : firstDiff(flatRows(planTextBefore), planTextAfter))
 
   // MFA Readiness renders over the sample people.
   await demoGo('readiness')
