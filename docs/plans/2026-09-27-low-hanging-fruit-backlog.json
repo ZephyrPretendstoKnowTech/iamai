@@ -9,7 +9,7 @@
    "severity": "Major",
    "surface": "Step",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "medium",
    "reward": 4,
@@ -27,7 +27,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "Export promises masked prompts while the step's AI Info copy carries client addresses and IDs with no warning, a disclosure risk with an XS fix."
+   "bucket_reason": "Export promises masked prompts while the step's AI Info copy carries client addresses and IDs with no warning, a disclosure risk with an XS fix.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "F-068",
@@ -35,7 +36,7 @@
    "severity": "Major",
    "surface": "Decision",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "medium",
    "reward": 4,
@@ -54,7 +55,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "Answering Yes keeps a policy that blocks SharePoint and OneDrive from home, the opposite of what the label suggests, so staff get blocked."
+   "bucket_reason": "Answering Yes keeps a policy that blocks SharePoint and OneDrive from home, the opposite of what the label suggests, so staff get blocked.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "F-070",
@@ -62,7 +64,7 @@
    "severity": "Major",
    "surface": "Decision",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "medium",
    "reward": 4,
@@ -80,7 +82,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "The field looks like a travel allowlist but does nothing, so travellers are blocked at turn-on; stating that before the pick is wording, not a reversal of the decision."
+   "bucket_reason": "The field looks like a travel allowlist but does nothing, so travellers are blocked at turn-on; stating that before the pick is wording, not a reversal of the decision.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "F-004",
@@ -88,7 +91,7 @@
    "severity": "Major",
    "surface": "Plan",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "low",
    "reward": 4,
@@ -108,7 +111,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "Connect says 9 weeks and the Plan says 5 for the same sample, the first number an evaluator quotes and the first contradiction they catch."
+   "bucket_reason": "Connect says 9 weeks and the Plan says 5 for the same sample, the first number an evaluator quotes and the first contradiction they catch.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "F-071",
@@ -116,7 +120,7 @@
    "severity": "Major",
    "surface": "Readiness",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "low",
    "reward": 4,
@@ -135,7 +139,8 @@
     "cost": "attention"
    },
    "bucket_category": "main-path-confusion",
-   "bucket_reason": "Every 'Not counted' link opens an empty list, so nobody can check who was left out of the percentage."
+   "bucket_reason": "Every 'Not counted' link opens an empty list, so nobody can check who was left out of the percentage.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "F-160",
@@ -143,7 +148,7 @@
    "severity": "Major",
    "surface": "Shell",
    "origin": "dev-mock",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "low",
    "reward": 4,
@@ -165,7 +170,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "One click on Forget erases every answer, deferral and date with no confirm or message afterwards; a confirm prevents lost work."
+   "bucket_reason": "One click on Forget erases every answer, deferral and date with no confirm or message afterwards; a confirm prevents lost work.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "OWN-B3",
@@ -173,7 +179,7 @@
    "severity": "own",
    "surface": "Readiness",
    "origin": "own",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "low",
    "reward": 4,
@@ -193,7 +199,8 @@
     "cost": "attention"
    },
    "bucket_category": "main-path-confusion",
-   "bucket_reason": "The demo shows the banned 'couldn't read' wording, against the owner's standing rule to state what is known and the next step."
+   "bucket_reason": "The demo shows the banned 'couldn't read' wording, against the owner's standing rule to state what is known and the next step.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "OWN-W1",
@@ -201,7 +208,7 @@
    "severity": "own",
    "surface": "Plan",
    "origin": "own",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "low",
    "reward": 4,
@@ -220,7 +227,8 @@
     "cost": "attention"
    },
    "bucket_category": "main-path-friction",
-   "bucket_reason": "A 'Next:' line naming the first Ready step is what makes the Plan read in doing order, and it also answers F-094."
+   "bucket_reason": "A 'Next:' line naming the first Ready step is what makes the Plan read in doing order, and it also answers F-094.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "F-007",
@@ -233,7 +241,7 @@
    "risk": "medium",
    "reward": 4,
    "frozen": true,
-   "round": null,
+   "round": 2,
    "fix": "Give Picker a holdRemovals (or confirmRemove) prop, used only by the emergency-accounts picker. With it, × updates the chips and shows Done, and nothing saves until Done, or a confirm names the effect ('changes the exclusions advice'). Word the rail by state ('Search for an account, select it, then select Done'). Test that a removal does not save until Done.",
    "files": [
     "src/ui/components/Picker.tsx",
@@ -261,7 +269,7 @@
    "risk": "medium",
    "reward": 4,
    "frozen": true,
-   "round": null,
+   "round": 2,
    "fix": "Drop 'candidate-treated-as-decision' and 'report-only-confusion'. Rewrite 'object-state-passes-drill-fails' in the user's voice and regenerate the registry. Put TAP first ([tap, ...scenarios]). Change the three 'Minimize' close labels to 'Close'. Test the scenario order and the wording.",
    "files": [
     "docs/implementation-content/s-prereq-break-glass/s-prereq-break-glass/CONTENT.md",
@@ -289,7 +297,7 @@
    "risk": "medium",
    "reward": 4,
    "frozen": false,
-   "round": null,
+   "round": 2,
    "fix": "Make authReady = Promise.all([initAuth().catch(() => null), warmAuthority()]) so an error return still readies the button; App.tsx:306 keeps classifying the error. Add a .catch at Connect.tsx:352. Keep note: W.account.note on the cancelled and failed states. Test in msal.test.ts and connectSignedOut.test.ts.",
    "files": [
     "src/graph/msal.ts",
@@ -313,7 +321,7 @@
    "severity": "own",
    "surface": "Readiness",
    "origin": "own",
-   "status": "present",
+   "status": "fixed",
    "effort": "S",
    "risk": "medium",
    "reward": 4,
@@ -333,7 +341,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "'Nobody needs action' sits under '1 lapse in the next 7 days', a direct contradiction on MFA Readiness."
+   "bucket_reason": "'Nobody needs action' sits under '1 lapse in the next 7 days', a direct contradiction on MFA Readiness.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "OWN-W2",
@@ -346,7 +355,7 @@
    "risk": "medium",
    "reward": 4,
    "frozen": false,
-   "round": null,
+   "round": 2,
    "fix": "Add directionWords.waitingIn, 'Waiting on your answers in {step}', and return it with titleOf(r.reason.id) in holdLabelOf. On Hold then groups by the question's step, which is truer.",
    "files": [
     "src/ui/surfaces/planBoard.ts",
@@ -433,7 +442,7 @@
    "risk": "low",
    "reward": 3,
    "frozen": false,
-   "round": null,
+   "round": 2,
    "fix": "Content only: add legend entries for Create, Correct, Decision, Review, Turn on and for the chips ('Enforced' / 'Report-only' = what the policy is set to today). Rename summary.observing to 'In report-only' so it matches the chip, and add a tip on Needs your input: 'questions you can answer now; rows marked Waiting on your answers open once they are saved'. Naming the Direction step on the row ('Waiting on your answers in {step}', holdLabelOf via titleOf(r.reason.id)) also changes step Readiness tiles, so it needs a yes and is a separate item.",
    "files": [
     "docs/design/content.json",
@@ -506,7 +515,7 @@
    "severity": "Minor",
    "surface": "Plan",
    "origin": "demo",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "low",
    "reward": 3,
@@ -525,7 +534,8 @@
    },
    "bucket_category": "merged",
    "bucket_reason": "Same defect as OWN-W1; tracked there.",
-   "merged_into": "OWN-W1"
+   "merged_into": "OWN-W1",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "F-143",
@@ -566,7 +576,7 @@
    "risk": "low",
    "reward": 3,
    "frozen": false,
-   "round": null,
+   "round": 2,
    "fix": "Restyle .demo-snapshots as a two-segment control: a border, the selected segment filled brand-soft, the unselected one clearly a button. Add one visible phrase from a new key, e.g. 'Two scans of the same sample tenant, weeks apart'. The aria-pressed semantics are already right. CSS and content only.",
    "files": [
     "src/ui/app.css",
@@ -618,7 +628,7 @@
    "risk": "low",
    "reward": 3,
    "frozen": false,
-   "round": null,
+   "round": 2,
    "fix": "In the brief cover, add the scan date (reuse app.print.cover.scanned + absoluteDate(scanAt)), and when scanAgeDays(scanAt) >= STALE_SCAN_DAYS print SHELL.staleEvidence under the status line. Optionally add a scan-date line to each ICS description.",
    "files": [
     "src/ui/surfaces/PrintPlan.tsx",
@@ -639,7 +649,7 @@
    "severity": "own",
    "surface": "Connect",
    "origin": "own",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "low",
    "reward": 3,
@@ -660,7 +670,8 @@
    },
    "bucket_category": "merged",
    "bucket_reason": "Same defect as F-004; tracked there.",
-   "merged_into": "F-004"
+   "merged_into": "F-004",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "OWN-W3",
@@ -673,7 +684,7 @@
    "risk": "low",
    "reward": 3,
    "frozen": false,
-   "round": null,
+   "round": 2,
    "fix": "Add two legend items. 'Ready · Create / Correct / Turn on / Decision / Review': the kind of next action. 'Report-only / Enforced': the policy's state in the tenant today, so On Hold beside Enforced means the policy is on but the step still has work. Move 'Legend' into content.",
    "files": [
     "docs/design/content.json",
@@ -802,7 +813,7 @@
    "severity": "own",
    "surface": "Step",
    "origin": "own",
-   "status": "present",
+   "status": "fixed",
    "effort": "XS",
    "risk": "medium",
    "reward": 3,
@@ -823,7 +834,8 @@
     "cost": "attention"
    },
    "bucket_category": "other",
-   "bucket_reason": "The owner asked for the repeated 'Covers ...' text to be removed from the Difference Accepted panel, and the fix is a deletion."
+   "bucket_reason": "The owner asked for the repeated 'Covers ...' text to be removed from the Difference Accepted panel, and the fix is a deletion.",
+   "fixed_in": "de1695c2 (Round 1, 2026-09-27)"
   },
   {
    "id": "OWN-W6",
@@ -1244,7 +1256,7 @@
    "severity": "Minor",
    "surface": "Decision",
    "origin": "demo",
-   "status": "present",
+   "status": "partly",
    "effort": "S",
    "risk": "medium",
    "reward": 3,
@@ -1263,7 +1275,8 @@
     "cost": "attention"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "Only one answer's effect is shown, so answering No for partner technicians silently puts them under guest MFA and the country block."
+   "bucket_reason": "Only one answer's effect is shown, so answering No for partner technicians silently puts them under guest MFA and the country block.",
+   "note": "Round 1 (F-068) gave every service card its Yes line; the partner and mail-sending cards still explain one direction."
   },
   {
    "id": "F-073",
@@ -1290,7 +1303,8 @@
     "cost": "not-worth"
    },
    "bucket_category": "truth-or-safety",
-   "bucket_reason": "Readiness says 'Nothing to do' for a person the Plan tells to set up a passkey, under the banned 'couldn't read' wording."
+   "bucket_reason": "Readiness says 'Nothing to do' for a person the Plan tells to set up a passkey, under the banned 'couldn't read' wording.",
+   "note": "Round 1 (OWN-B3) removed the couldn't-read words; a real unread list still offers only a rescan."
   },
   {
    "id": "F-095",
@@ -3911,7 +3925,7 @@
    "risk": "low",
    "reward": 4,
    "frozen": false,
-   "round": null,
+   "round": 2,
    "fix": "When scan() switches the demo, set a session flag and show one demo-only line in the banner from a new shell key: 'In the sample, Scan shows a follow-up scan: the work and answers in it are the sample's, not yours.' Clear it when Initial scan is chosen. Add a unit test.",
    "files": [
     "src/ui/actions.ts",
@@ -3939,7 +3953,7 @@
    "risk": "medium",
    "reward": 4,
    "frozen": true,
-   "round": null,
+   "round": 2,
    "fix": "Add excludeGroups: [] to the demo day-one MFA row (Graph always returns the array). The exclusions step then lists and counts 5, and the MFA step's add becomes that step's edit. Reword cleanup 'why' so it does not say the group is already in place. Re-run the demo and exclusionsStep tests and the step snapshots.",
    "files": [
     "src/roadmap/fixtures/index.ts",
@@ -3966,7 +3980,7 @@
    "risk": "medium",
    "reward": 4,
    "frozen": true,
-   "round": null,
+   "round": 2,
    "fix": "Show 'Deferred {date}: {reason}' on the deferred card from milestone.gatedBy and the skipped history date. Add the reason to BriefLine for aside rows and print it in 'Not in this plan'. Optionally add a sub-line to the Completed tile ('1 deferred'). Test the print and the card.",
    "files": [
     "src/ui/surfaces/ContentStep.tsx",
@@ -3995,7 +4009,7 @@
    "risk": "medium",
    "reward": 4,
    "frozen": false,
-   "round": null,
+   "round": 2,
    "fix": "When the page is opened from s-verify-mfa and the step is not complete, scope to preparation.missingIds instead of preparation.ids. Add a new planContext.notReady key: 'Filtered to the {cohort} {step} names as not ready.' The headline then reads 'x of 10'. When scoped, show footer.plan under the headline. The step screen and its link stay unchanged.",
    "files": [
     "src/ui/surfaces/MfaReadiness.tsx",
@@ -5903,6 +5917,48 @@
    },
    "bucket_category": "superseded-or-fixed",
    "bucket_reason": "The 102-page print was replaced by the short leadership briefing."
+  },
+  {
+   "severity": "own",
+   "origin": "own",
+   "round": null,
+   "bucket": "attention",
+   "judges": [],
+   "bucket_category": "truth-or-safety",
+   "id": "OWN-B4",
+   "title": "Beyond MFA Readiness, sentences still say IAMAI could not read, could not be judged, cannot prove, could not work out or Not established about the tenant",
+   "surface": "Plan",
+   "status": "present",
+   "effort": "S",
+   "risk": "medium",
+   "reward": 4,
+   "frozen": true,
+   "fix": "Reword each to what is known and the next step, or solve the read (owner rule: never say couldn't read): shared.engine.readiness.blind, noneJudged, noneJudgedOne, detectionGap.policies, tracking.evidenceSourceUnread, app.plan.emergencyUnproven, pages.plan.impact.notEstablished, pages.readiness.planContext.unknown, stepContract.implementation.workloadIdentity.unknown. File-parse errors (plan file damaged) are not tenant evidence and stay.",
+   "files": [
+    "docs/design/content.json"
+   ],
+   "bucket_reason": "Found in the Round 1 walk: the same banned phrasing Round 1 removed from MFA Readiness remains on the Plan and steps."
+  },
+  {
+   "severity": "own",
+   "origin": "own",
+   "round": null,
+   "bucket": "attention",
+   "judges": [],
+   "bucket_category": "main-path-friction",
+   "id": "F-160b",
+   "title": "The Forget confirm's \"Save a plan file first\" takes the header's plain text style, so it does not look like a link",
+   "surface": "Shell",
+   "status": "present",
+   "effort": "XS",
+   "risk": "low",
+   "reward": 2,
+   "frozen": false,
+   "fix": "Style .menu-confirm a as a link (the page link colour and underline) in app.css.",
+   "files": [
+    "src/ui/app.css"
+   ],
+   "bucket_reason": "Found in the Round 1 live audit of F-160."
   }
  ],
  "worth_review": {

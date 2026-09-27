@@ -52,19 +52,47 @@ The goal: an overall score of **90 or better, with no surface below 85**. Each s
 
 The baseline comes from the audience-framed audit on 2026-09-26 (live 55017e45), which gave an overall of about 74. Every round re-scores every surface from a live walk and adds a column.
 
-| Surface | Reader | Baseline 2026-09-26 | Notes |
-|---|---|---|---|
-| Home + demo | Evaluator deciding whether to try it | 72 | |
-| Connect | First-time admin deciding whether to trust it | 82 | Beta notice removed since (cdf79d82), which the audit put at about 86 |
-| Plan + steps | Admin doing the work | 82 | |
-| MFA Readiness | Admin and help desk running the campaign | 85 | |
-| Inventory | Admin checking what the scan saw | 78 | |
-| Export page | Other tools and records | 80 | |
-| Printed plan | Manager, director, owner | 25 | Rebuilt as the leadership briefing since (c623ff0d..d9516a22); not re-scored |
-| How | Security-minded evaluator | 85 | |
-| **Overall** | | **about 74** | |
+| Surface | Reader | Baseline 2026-09-26 | After Round 1 (2026-09-27) | What moved it |
+|---|---|---|---|---|
+| Home + demo | Evaluator deciding whether to try it | 72 | 76 | The sample's length now agrees (Connect and the Plan both say 5 weeks), the sample's MFA Readiness no longer shows banned wording and its Not counted lists work, and the Plan names where to start. Still: Scan in the demo jumps to the follow-up scan unexplained (Round 2), no product image (OWN-B1). |
+| Connect | First-time admin deciding whether to trust it | 82 | 86 | The beta notice went (cdf79d82), the sample tile is true, and Forget asks first. Still: a cancelled sign-in leaves the button stuck until a reload (F-057, Round 2). |
+| Plan + steps | Admin doing the work | 82 | 85 | Next: names the first Ready step; an accepted difference is said once; AI Info warns before it is copied; service cards say what Yes keeps; Work countries says travellers are blocked. Still: rows waiting on answers don't say where (Round 2), the legend covers half the words (Round 2), a deferral's reason is never shown (Round 2). |
+| MFA Readiness | Admin and help desk running the campaign | 85 | 88 | Not counted links list their accounts, someone about to lapse needs action, and nothing says "couldn't read". Still: opened from Prepare Your Team it shows 30 people where the step named 10 (F-018, Round 2). |
+| Inventory | Admin checking what the scan saw | 78 | 78 | Unchanged. |
+| Export page | Other tools and records | 80 | 80 | Unchanged. |
+| Printed plan | Manager, director, owner | 25 | 78 | First score of the leadership briefing (c623ff0d..d9516a22), walked live on the owner's tenant: status, what it needs from the reader, the journey and each change in manager terms. Still: no scan date, so an old briefing reads as current (F-184, Round 2); set-aside steps carry no reason (F-013, Round 2). |
+| How | Security-minded evaluator | 85 | 85 | Unchanged. |
+| **Overall** | | **about 74** | **82** | The mean of the eight. The briefing's first score is most of the rise; Round 1 added about 2. |
 
-## Round 1: the top 10 (each verified live on 2026-09-27)
+## Round 1: done (live at de1695c2, 2026-09-27)
+
+**Commits:** a5b31f9a (OWN-ACCEPT), fcefbe79 (F-004), a76fda99 (F-071),
+38568ce4 (OWN-R1), 8ce16280 (OWN-B3), 402118a4 (F-061), 24da5d20 (F-068),
+76fe578b (F-070), d716bf17 (F-160), 814055fe (OWN-W1), and de1695c2 (review
+fixes: an adversarial review confirmed 17 findings, all fixed).
+
+**What the owner chose:**
+- OWN-ACCEPT: the rail keeps only the heading and Remove acceptance; where no Satisfied tile states the acceptance, it says the date and reason itself.
+- F-068: every service card says what Yes keeps, in the kept step's own words.
+- F-070: the travel picker is removed; Work countries says every other country is blocked; the lane engine reads travel exceptions as not-applicable (a saved "No Recurring Destinations" did that before); Save Countries stays.
+- F-061: the warning, not masking. F-160: the confirm, nothing afterwards.
+- OWN-B3: four of the approved phrases were corrected before the build, so they stay true where the tenant refused the read.
+
+**The live audit (Claude in Chrome, owner's tenant and the demo):** every fix landed as approved.
+- 4.3 reads "Difference Accepted / Remove acceptance"; the Satisfied tile says "Accepted Sep 27, 2026: …".
+- Signed-out Connect says 5 weeks, and the demo Plan's ⓘ says "The plan is 5 weeks".
+- The demo's Not counted views list their accounts (svc-mailer-1 and svc-mailer-2 under Service accounts).
+- The owner's MFA Readiness reads "Needs action · 1", with the lapsing person under Ready, open.
+- The demo's MFA Readiness has no "couldn't read" and no Unknown group.
+- AI Info shows "Contains tenant context. Review before sharing with an external AI service."
+- 2.1: "Limit SharePoint and OneDrive to the office network", with its Yes line; AVD's Yes line shows when Yes is picked.
+- 6.3: the new help line, no travel picker, Save Countries kept.
+- Forget: the confirm names the tenant and what goes, Cancel is focused, Cancel returns focus to the menu item and Escape to Account; nothing deleted.
+- The Plan reads "Next: 3.6 Create the Policies in Report-only →" and opens it.
+
+**Fell short:** the Forget confirm's "Save a plan file first" link takes the header's plain text style, so it doesn't look like a link. It's on Needs attention as F-160b.
+
+### The ten, as planned
 
 | # | ID | Fix | Effort | Risk |
 |---|---|---|---|---|
@@ -194,32 +222,56 @@ The baseline comes from the audience-framed audit on 2026-09-26 (live 55017e45),
       This is a single link, not a status; owner's call.
     - **Acceptance:** a test on the demo (the line names the first Ready row).
 
-## Round 2: candidates (verify live before presenting)
+## Round 2: the ten (approved 2026-09-27)
 
-Ranked by the same rubric, all from Needs attention. The next round re-verifies
-these against main and live, then picks ten. F-143, OWN-W6 and OWN-I1 moved to
-Review later.
+Picked by the rubric: the eight reward-4 items, then the two lowest-scored
+surfaces (the briefing, the demo). F-144 folds into F-017, so the Plan legend
+takes the tenth place. Each was re-verified live or in code on 2026-09-27, and
+the owner approved each method.
+
+| # | ID | Fix | Effort | Risk | Frozen |
+|---|---|---|---|---|---|
+| 1 | F-017, F-144 | The demo's scan switch says what it is | XS | low | |
+| 2 | F-057 | A cancelled or failed sign-in never leaves Sign in stuck | S | low | |
+| 3 | F-018 | "Open MFA Readiness" shows the people the step named | S | medium | |
+| 4 | OWN-W2 | Rows say where the answers are | S | medium | |
+| 5 | F-002 | Configure Emergency Exclusions lists and counts the same five policies | S | medium | yes (demo data) |
+| 6 | F-013 | A deferral says why, wherever it's seen | S | medium | yes |
+| 7 | F-007 | Taking an emergency account off asks first | S | medium | yes |
+| 8 | F-016 | Troubleshooting on 1.1 opens on what the step sends you there for | S | medium | yes |
+| 9 | F-184 | The printed briefing says how old its scan is | XS | low | yes (briefing) |
+| 10 | F-003, OWN-W3 | The legend explains every word on the board | XS | low | |
+
+1. **F-017 + F-144.** The banner's two snapshots become a bordered two-segment control, the selected one filled like the Plan's tabs. On the follow-up scan the banner's announced sentence reads "Sample data · a follow-up scan weeks later, after the sample's own technician did some of the work" (new `pages.app.shell.demoBannerFollowUp`). The demo's Scan buttons keep their words (owner's pick).
+2. **F-057.** `authReady` treats a failed redirect as ready (App.tsx still reports the error); the cancelled and failed states keep `account.note`, the Global Administrator consent paragraph. Live check: start a sign-in, then return with its real `state` and `#error=access_denied&error_subcode=cancel`.
+3. **F-018.** Opened from Prepare Your Team for MFA while it still names people not ready, MFA Readiness scopes to them: "Filtered to the {cohort} {step} names as not ready." (new `pages.readiness.planContext.notReady`). Everyone it covers once nobody is left (owner's pick).
+4. **OWN-W2.** A row held on a decision step reads "Waiting on your answers in {step}" (new `…direction.waitingIn`; owner's pick over "After {step}"). Only the board row: the opened step's Readiness tile already names the decision step.
+5. **F-002.** The demo's day-one MFA row gets `excludeGroups: []` (real Graph always returns it), so 1.2 lists and counts five. Remove Emergency Accounts Excluded by Name drops "as well as through the exclusions group", false on day one. `[snapshots]`.
+6. **F-013.** A deferred step's Next milestone reads "Deferred {date}: {reason}" (new `app.plan.deferredWhy`); the Completed tile adds "{n} deferred" (new `pages.plan.summary.deferred`; owner's pick over changing the count); the briefing's Set aside list reads "{title}: {reason}" (new `print.brief.asideWhy`).
+7. **F-007.** On the emergency accounts picker only, × asks first: "Take {name} off your emergency access accounts? Configure Emergency Exclusions will then tell you to remove it from {group}." Keep (focused) and Take it off (owner's pick over Done or Undo).
+8. **F-016.** Temporary Access Pass first; the two entries about IAMAI's own internals (candidate-treated-as-decision, report-only-confusion) removed; the drill entry rewritten: symptom "Every check passes, but an emergency account can't sign in.", check "Try the account's own credential in a clean browser, and look for an enforced policy that still reaches it.", fix "Don't turn on any more policies until it signs in; fix what stopped it.", then "Run the emergency access check again before turning anything on." All three dialog close labels read "Close" (owner's pick).
+9. **F-184.** The briefing's cover reads "Prepared {date} by {by} · Scanned {scanned} · Measured against {baseline}", and prints the screen's "This scan is more than a week old. Scan again before acting on its findings." when it is.
+10. **F-003 + OWN-W3.** Two legend entries: "Create, Correct, Turn on, Decision, Review": "The kind of action a Ready step asks for: create a policy, correct one, turn it on, answer a question, or review what the scan found."; "Report-only, Enforced": "What the policy is set to in your tenant today. On Hold beside Enforced means the policy is on, but the step still has work." The tile "Observing" becomes "In report-only"; the "Legend" heading moves into content.
+
+## Round 3: candidates (verify live before presenting)
+
+The next by the rubric, from Needs attention, after Round 2:
 
 | ID | Fix | Effort | Risk | Frozen |
 |---|---|---|---|---|
-| F-017 | In the demo, Scan switches to the follow-up scan: say so in the banner | XS | low | |
-| F-002 | Configure Emergency Exclusions: 4 policies vs 5. Fixture row lacks `excludeGroups: []`; fix it and the cleanup "why" | S | medium | yes |
-| F-003, OWN-W3 | Legend gets the second words (Create, Correct, Decision, Review, Turn on) and the Report-only/Enforced chips; the Observing tile's word matches its row | XS | low | |
-| OWN-W2 | "Waiting on your answers in {step}": name the question (planBoard.ts holdLabelOf) | S | medium | |
-| F-044 | Readiness headline "4 of 30 (29 people and 1 guest) are ready…" | XS | low | |
-| F-007 | × on an emergency account saves at once: hold removals until Done | S | medium | yes |
-| F-010 | The exclusions step's AI brief says no group exists while one is chosen | S | medium | yes |
-| F-013 | A deferral's reason is shown again, on its card and in the print's Set aside list | S | medium | yes |
-| F-057 | A cancelled or failed sign-in leaves Sign in spinning: clear the busy state and keep the consent text | S | medium | |
-| OWN-X1 | Export: "a policy's JSON and PowerShell are on its step while it is still to create or correct" | XS | low | |
-| OWN-W5 | 5.9: say how a medium-risk flag clears (the person changes their password, or the risk is dismissed) | S | medium | |
-| OWN-W7 | Completed steps drop "After making changes, select Scan…" | XS | medium | yes |
-| F-012 | Report-only's "blocked no one" states its numbers and days | S | medium | yes |
-| F-016 | Troubleshooting speaks to the user; TAP first; "Close", not "Minimize" | S | medium | yes |
-| F-018 | The Plan says 10 of 30 aren't ready, the linked Readiness page 21–26: scope the link to the step's people and name the bar | S | medium | |
-| F-184 | A briefing from an old scan carries the screen's "Scan again before acting" warning | XS | low | |
-| F-062 | 4.3's "Select (45)" role list reads as unticking Global Administrator: reword | XS | medium | yes |
-| F-144 | The demo's Initial / Follow-up switch looks like a switch and says what it is | XS | low | |
+| OWN-B4 | The Plan and step sentences that still say "could not read", "not established" or "could not work out" about the tenant | S | medium | yes |
+| F-160b | The Forget confirm's "Save a plan file first" looks like a link | XS | low | |
+| F-044 | Readiness headline "4 of 30 are ready …: 29 people and 1 guest" reads as if they are the ready ones | XS | low | |
+| F-168 | Plan, MFA Readiness and Export in the header look live before the first scan and during a rescan | XS | low | |
+| F-078 | The demo, Connect and How never say how to remove the data kept in this browser | XS | low | |
+| F-147 | Switching from a scrolled Plan to MFA Readiness opens mid-list | XS | low | |
+| F-058 | "1 section was not read in full … check what is listed under Scan" leads to a row that explains nothing | S | low | |
+| F-075 | A row says to use a passkey the drawer says will stop working | S | low | |
+| F-077 | The "summarise for a business owner" prompt is grounded on five cleanup items | S | low | |
+| F-116 | Readiness search hides matches in collapsed groups | S | low | |
+| F-062 | 4.3's "Select (45)" role list reads as unticking Global Administrator | XS | medium | yes |
+| F-041 | Exempting partner technicians is suggested Yes with no baseline version beside it | XS | medium | yes |
+| OWN-X1 | Export's "The JSON and the PowerShell for a policy are on that step" is not true of every policy step | XS | low | |
 
 ## Not low-hanging: decisions or larger work
 
@@ -278,7 +330,7 @@ every policy step.
 - **F-004, part two:** the finish tip names the step that actually finishes
   last (M).
 
-## Needs attention (89)
+## Needs attention (81)
 
 Everything here is worth fixing: a real user is misled, put at risk, blocked or
 meaningfully slowed on a path they actually take. Each round picks its ten from
@@ -287,26 +339,19 @@ item are in the -backlog.json.
 
 | ID | Round | Status | Effort | Risk | Reward | Frozen | Surface | Finding |
 |---|---|---|---|---|---|---|---|---|
-| F-017 |  | partly | XS | low | 4 |  | Step | In the demo, 'Scan to update the plan' quietly switches to a pretend follow-up scan that completes work, and decisions, the user never did |
-| F-061 | 1 | present | XS | medium | 4 | yes | Step | The step 'AI Info' copy carries sign-in addresses, object IDs and the tenant name with no purpose line, warning or redaction, though Export says every copied prompt is masked |
-| F-068 | 1 | present | XS | medium | 4 | yes | Decision | 'SharePoint and OneDrive from outside the office: Yes' keeps a policy that blocks SharePoint outside the office |
-| F-070 | 1 | present | XS | medium | 4 | yes | Decision | 'Recurring travel countries' looks like an allowlist but does nothing, so travellers will be blocked |
-| F-002 |  | partly | S | medium | 4 | yes | Step | Four places give four answers to 'are both emergency accounts outside the enforced MFA policy?', and 'Configure Emergency Exclusions' says 5 policies in one place and 4 in another |
-| F-004 | 1 | present | S | low | 4 |  | Plan | Estimated rollout is '9 weeks' on Connect and '5 weeks / Est. Oct 29' on the Plan, and the finish tip credits a step dated Oct 5 |
-| F-007 |  | present | S | medium | 4 | yes | Step | One click on the × beside an emergency account saves at once, survives reload, removes a plan step and turns the exclusions advice into 'remove Break-glass 2', with no Done, confirmation or undo |
-| F-013 |  | partly | S | medium | 4 | yes | Step | A deferral's required reason is never shown again (not on the step, the plan or the print), and deferring shrinks the progress total |
-| F-016 |  | present | S | medium | 4 | yes | Step | Troubleshooting opens with 'IAMAI is about to configure…' in internal runbook language, and the section the step points to is last of eight |
-| F-018 |  | partly | S | medium | 4 |  | Readiness | The Plan says 10 of 30 people are not ready; the linked MFA Readiness page, its CSV and the print say 21, 25 or 26, and no count names its bar |
-| F-057 |  | present | S | medium | 4 |  | Connect | After a cancelled or failed Microsoft sign-in, the Sign in button spins forever, ignores clicks, and the admin-consent guidance disappears |
-| F-071 | 1 | present | S | low | 4 |  | Readiness | Every 'Not counted' link on MFA Readiness opens an empty list |
-| F-160 | 1 | present | S | low | 4 |  | Shell (mock) | Forget this tenant deletes the whole plan on one click: no confirmation, no list of what goes, no offer to save the plan file, no undo and no message afterwards |
-| OWN-B3 | 1 | present | S | low | 4 |  | Readiness | Demo MFA Readiness shows banned 'couldn't read' phrasing |
-| OWN-R1 | 1 | present | S | medium | 4 |  | Readiness | MFA Readiness 'Nobody needs action' while a person lapses in 7 days |
-| OWN-W1 | 1 | present | S | low | 4 |  | Plan | Plan board names no next action (no 'Next up') |
-| OWN-W2 |  | present | S | medium | 4 |  | Plan | Rows say 'Waiting on your answers' without naming the question |
+| OWN-B4 |  | present | S | medium | 4 | yes | Plan | Beyond MFA Readiness, a dozen sentences still say IAMAI "could not read", "could not be judged", "cannot prove", "could not work out" or "Not established" about the tenant (shared.engine.readiness.blind, noneJudged, detectionGap.policies, tracking.evidenceSourceUnread, app.plan.emergencyUnproven, impact.notEstablished, readiness planContext.unknown, workloadIdentity.unknown). Found in the Round 1 walk. |
+| F-160b |  | present | XS | low | 2 |  | Shell | The Forget confirm's "Save a plan file first" takes the header's plain text style, so it does not look like a link. Found in the Round 1 audit. |
+| F-017 | 2 | partly | XS | low | 4 |  | Step | In the demo, 'Scan to update the plan' quietly switches to a pretend follow-up scan that completes work, and decisions, the user never did |
+| F-002 | 2 | partly | S | medium | 4 | yes | Step | Four places give four answers to 'are both emergency accounts outside the enforced MFA policy?', and 'Configure Emergency Exclusions' says 5 policies in one place and 4 in another |
+| F-007 | 2 | present | S | medium | 4 | yes | Step | One click on the × beside an emergency account saves at once, survives reload, removes a plan step and turns the exclusions advice into 'remove Break-glass 2', with no Done, confirmation or undo |
+| F-013 | 2 | partly | S | medium | 4 | yes | Step | A deferral's required reason is never shown again (not on the step, the plan or the print), and deferring shrinks the progress total |
+| F-016 | 2 | present | S | medium | 4 | yes | Step | Troubleshooting opens with 'IAMAI is about to configure…' in internal runbook language, and the section the step points to is last of eight |
+| F-018 | 2 | partly | S | medium | 4 |  | Readiness | The Plan says 10 of 30 people are not ready; the linked MFA Readiness page, its CSV and the print say 21, 25 or 26, and no count names its bar |
+| F-057 | 2 | present | S | medium | 4 |  | Connect | After a cancelled or failed Microsoft sign-in, the Sign in button spins forever, ignores clicks, and the admin-consent guidance disappears |
+| OWN-W2 | 2 | present | S | medium | 4 |  | Plan | Rows say 'Waiting on your answers' without naming the question |
 | F-161 |  | present | M | high | 4 |  | Shell | Two open tabs silently overwrite each other: the tab that saves last replaces the whole plan, even undoing a plan file the other tab just loaded |
 | F-006 |  | present | L | high | 4 | yes | Plan | A saved change freeze has no visible effect on the plan rows, the finish tip, the PDF or the calendar |
-| F-003 |  | present | XS | low | 3 |  | Plan | Tile counts and state words don't match the rows, and the legend defines only half of them: 'Needs your input 6' against 11 'Waiting on your answers' rows, an 'Observing' tile whose row says 'On Hold · Report-only', and undefined 'Correct' and 'Enforced' |
+| F-003 | 2 | present | XS | low | 3 |  | Plan | Tile counts and state words don't match the rows, and the legend defines only half of them: 'Needs your input 6' against 11 'Waiting on your answers' rows, an 'Observing' tile whose row says 'On Hold · Report-only', and undefined 'Correct' and 'Enforced' |
 | F-035 |  | partly | XS | medium | 3 | yes | Step | Completion criteria and the AI briefing contain contradictions and stray text: 'except Core - Exclusions and Break-glass 1', 'for guests except Core - Exclusions and guests', and a stray 'strong:' line |
 | F-041 |  | present | XS | medium | 3 | yes | Decision | Exempting partner and MSP technicians is suggested 'Yes', and the baseline's version is not shown at the decision |
 | F-044 |  | present | XS | low | 3 |  | Readiness | The MFA Readiness headline reads as if 29 people and a guest are ready |
@@ -314,12 +359,11 @@ item are in the -backlog.json.
 | F-063 |  | present | XS | medium | 3 | yes | Step | 'Set up Windows Hello for Business' rows have no how-to in the Plan step they link to |
 | F-078 |  | partly | XS | low | 3 |  | Shell | The demo, Connect and How never say how to remove the tenant data kept in this browser |
 | F-092 |  | present | XS | high | 3 | yes | Plan | A 'Ready' step is dated a month out and sits at the very bottom of the plan |
-| F-144 |  | present | XS | low | 3 |  | Shell | The demo's 'Initial scan / Follow-up scan' switch is unexplained, and its styling is backwards: the selected option looks like a link and the other barely looks clickable |
+| F-144 | 2 | present | XS | low | 3 |  | Shell | The demo's 'Initial scan / Follow-up scan' switch is unexplained, and its styling is backwards: the selected option looks like a link and the other barely looks clickable |
 | F-147 |  | partly | XS | low | 3 |  | Shell | Switching from a scrolled Plan to MFA Readiness keeps the old scroll offset, and Readiness has no sticky header, so the page opens mid-list with no heading or navigation |
 | F-168 |  | present | XS | low | 3 |  | Shell (mock) | Plan, MFA Readiness and Export in the header stop working before the first scan and during every rescan, look the same as live links, and say 'after the first scan' even when a plan exists |
-| F-184 |  | present | XS | low | 3 |  | Export | A printed plan made from an old scan drops the screen's 'Scan again before acting' warning |
+| F-184 | 2 | present | XS | low | 3 |  | Export | A printed plan made from an old scan drops the screen's 'Scan again before acting' warning |
 | F-195 |  | present | XS | medium | 3 |  | Export (mock) | The 'masked' calendar and prompts file keep guest sign-in addresses in full (43 in the calendar at 5,000 seats) |
-| OWN-ACCEPT | 1 | present | XS | medium | 3 | yes | Step | Owner ask: the Completed 'Difference Accepted' panel repeats fluff |
 | F-001 |  | partly | S | medium | 3 | yes | Step | 'Up Next' steps give go-live and exclusion-removal instructions, plus a script that writes to the tenant, and never say 'not yet' |
 | F-010 |  | present | S | medium | 3 | yes | Step | The AI Info brief for 'Configure Emergency Exclusions' says no exclusions group exists, while the same card shows the group as selected and verified |
 | F-012 |  | partly | S | medium | 3 | yes | Step | Report-only evidence is one unquantified sentence, so 'nothing was evaluated' reads the same as 'safe to enforce' |
@@ -331,9 +375,9 @@ item are in the -backlog.json.
 | F-056 |  | present | S | medium | 3 | yes | Decision | You can mark your own admin account as a printer: it is the first search result, nothing warns, and approving takes it out of admin MFA |
 | F-058 |  | present | S | low | 3 |  | Connect | '1 section was not read in full … check what is listed under Scan' leads to a row that explains nothing |
 | F-064 |  | partly | S | medium | 3 | yes | Step | Inventory shows two accounts using legacy authentication; the Block Legacy Authentication step names only one |
-| F-067 |  | present | S | medium | 3 | yes | Decision | Confirm What You Use explains only one direction of each choice, so the other answer's effect is invisible, including an MSP lockout risk |
+| F-067 |  | present | S | medium | 3 | yes | Decision | Confirm What You Use explains only one direction of each choice, so the other answer's effect is invisible, including an MSP lockout risk (Round 1 gave every service card its Yes line; the partner and mail-sending cards still explain one direction) |
 | F-072 |  | partly | S | medium | 3 | yes | Readiness | The same person is given different next steps on MFA Readiness, Prepare Your Team for MFA and Require MFA to Register a Device |
-| F-073 |  | present | S | medium | 3 |  | Readiness | 'Couldn't read' has no usable next step: 'Nothing to do' stays after a rescan |
+| F-073 |  | present | S | medium | 3 |  | Readiness | 'Couldn't read' has no usable next step: 'Nothing to do' stays after a rescan (Round 1 removed the "couldn't read" words; the row's next step for a real unread list is still only a rescan) |
 | F-075 |  | present | S | low | 3 |  | Readiness | Jamie Brown's row says to use a passkey that the drawer says will stop working |
 | F-077 |  | present | S | low | 3 |  | Export | 'Summarise this plan for a non-technical business owner' prompt is grounded only on five cleanup items, with no MFA step in it |
 | F-095 |  | present | S | medium | 3 |  | Plan | The demo's Follow-up scan gives different results on repeat visits and shows the Initial scan's timestamp |
@@ -538,14 +582,14 @@ Paste the block below into a new chat opened in `C:\Dev\IAMAI`. It runs one roun
 start a fresh chat for each round, with the same prompt.
 
 ```text
-We're taking IAMAI Planner from about 74% ready to 90% or better across the board,
+We're taking IAMAI Planner from about 82% ready to 90% or better across the board,
 ten fixes at a time. Read docs/plans/2026-09-27-low-hanging-fruit.md first: the Needs
 attention list, the round candidates and the Readiness scores. Then run one round.
-If the plan is not on main yet, it is on branch fix/low-hanging-1: work on that branch.
+If a round's work is not on main yet, it is on its branch fix/low-hanging-N: work there.
 
 1. Pick the ten.
-   - If the plan has a round that isn't done yet, use its list. Round 1 is already
-     picked and verified.
+   - If the plan has a round that isn't done yet, use its list and the methods the
+     owner approved. Round 2 is picked, verified and approved: go straight to step 5.
    - Otherwise take the top ten from "Needs attention" only:
      - status present or partly, effort XS or S
      - highest reward first, low risk before medium
@@ -596,7 +640,8 @@ If the plan is not on main yet, it is on branch fix/low-hanging-1: work on that 
      - Run `NODE_OPTIONS=--max-old-space-size=14000 npm test` once.
      - Run `npm run verify -- --prepush <the round's tests>`.
      - Run a review workflow over the round's diff (workflows review only; audits
-       stay solo) and fix what it confirms.
+       stay solo) and fix what it confirms, in one "Review fixes for Round N"
+       commit. If those fixes change code, run the full suite once more.
    - Ask the owner before pushing (`git push origin HEAD:main`; deploy-pages
      publishes it). Wait for the deploy to finish.
 
