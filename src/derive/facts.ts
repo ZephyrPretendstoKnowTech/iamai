@@ -75,9 +75,7 @@ export function stepFacts(steps: readonly Step[], cleanup: CleanupPhase | null |
  * The active people who are not Ready yet: Needs proof, Needs setup and
  * Unknown. A count over the one readiness derivation, never a second score.
  * It is not the population the registration window is sized for (the campaign
- * step's people with no usable method, roadmap/generate.ts registrationWindow),
- * so the printed plan no longer states it beside that window
- * (ui/surfaces/printPlan.ts verificationNoteOf).
+ * step's people with no usable method, roadmap/generate.ts registrationWindow).
  */
 export function notReady(f: Facts): number {
   return f.active - f.states.ready - f.states.seamless

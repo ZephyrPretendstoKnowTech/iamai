@@ -813,13 +813,13 @@ try {
   const printed = await clickExact('Print or save as PDF')
   await sleep(200)
   check('Export: Print or save as PDF prints the document', printed && (await evaluate(`window.__printed >= 1`)))
-  check('Export: the print document renders its cover', /Conditional Access rollout plan/.test(await evaluate(`(document.querySelector('.print-plan .print-cover h1') || {}).textContent || ''`)))
+  check('Export: the print document renders its cover', /Identity security plan for/.test(await evaluate(`(document.querySelector('.print-plan .brief-cover h1') || {}).textContent || ''`)))
   // Read while the print DOM is up: Load a plan file (below) lands on the plan and unmounts it.
   const printText = await evaluate(`(document.querySelector('.print-plan') || {}).textContent || ''`)
   const printHits = PRINT_FORBID.filter((f) => printText.includes(f))
   check('Export: the print document carries no forbidden placeholder or step vocabulary', printHits.length === 0, printHits.join('; '))
-  // The rebuilt print shows the step content, not the old pre-48 body (item 3).
-  check('Export: the print renders the step body, not the old fields', /Who this touches/.test(printText) && !/Proposed name:|What the last 30 days say/.test(printText), `${(printText.match(/Proposed name:|What the last 30 days say/) ?? ['no old field'])[0]}; ${printText.replace(/\s+/g, ' ').slice(0, 220)}`)
+  // The print is the leadership briefing (owner, 2026-09-26): each step's three lines, never its procedure.
+  check('Export: the print is the briefing, not the procedure', /What it does for you/.test(printText) && /Why it matters/.test(printText) && !/Open Microsoft Entra admin center|Implementation Tasks|Proposed name:|What the last 30 days say/.test(printText), `${(printText.match(/Open Microsoft Entra admin center|Implementation Tasks|Proposed name:|What the last 30 days say/) ?? ['no procedure'])[0]}; ${printText.replace(/\s+/g, ' ').slice(0, 220)}`)
   // Item 4: the print DOM lives only while printing; afterprint tears it down.
   await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
   await sleep(200)
@@ -1254,15 +1254,16 @@ try {
   await demoGo('readiness')
   check('Demo: MFA Readiness renders over the sample people', await waitFor(`document.querySelectorAll('main.page .readiness-row:not(.head)').length >= 4`))
 
-  // Export: print page 1 is the posture summary (item 8).
+  // Export: print page 1 is the briefing's summary: status, the three counts and the journey.
   await demoGo('export')
   await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
   const demoPrinted = await clickExact('Print or save as PDF')
   await sleep(300)
-  const demoCover = await evaluate(`(document.querySelector('.print-plan .print-cover') || {}).textContent || ''`)
+  const demoCover = await evaluate(`(document.querySelector('.print-plan .brief-cover') || {}).textContent || ''`)
   check(
-    'Demo: print page 1 renders the posture summary',
-    demoPrinted && /Conditional Access rollout plan/.test(demoCover) && /Tenant/.test(demoCover) && /Scanned/.test(demoCover) && /Baseline/.test(demoCover) && /Completed \(/.test(demoCover) && /To do \(/.test(demoCover) && /Doesn't apply \(/.test(demoCover),
+    'Demo: print page 1 renders the briefing summary',
+    demoPrinted && /Identity security plan for/.test(demoCover) && /steps are done/.test(demoCover) && /Still to do/.test(demoCover) && /The journey/.test(demoCover),
+    demoCover.replace(/\s+/g, ' ').slice(0, 220),
   )
   await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
   await sleep(200)

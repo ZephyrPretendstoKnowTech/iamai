@@ -13,9 +13,7 @@ import type { MethodClass, Platform } from '../../scoring/phishingResistant.ts'
 import { FACET_APPS } from '../../coverage/facetApps.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
-import { operationsOf } from '../../roadmap/operations.ts'
 import { renamesOf } from '../../roadmap/cleanupPhase.ts'
-import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { FINDING } from '../../copy/validation.ts'
 import { monthDay } from '../../copy/dates.ts'
@@ -25,7 +23,6 @@ import { fillText } from '../../content/render.ts'
 import { completedChecks, deviceNoun, groupWhy, nextCell, whyLine } from './readinessCells.ts'
 import { appsModel, workloadsModel } from './inventoryTables.ts'
 import { copyBoxes, datesLineFor, exportAnnouncementOf, whoEvidenceLines } from './stepExport.ts'
-import { phasesByFirstDay } from './printPlan.ts'
 import { createsNewPolicy } from './stepJson.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -194,17 +191,6 @@ test('the coverage line never names the policy the step itself corrects, nor a C
 
 test('no step asks for workflow tests any more', () => {
   assert.doesNotMatch(text, /workflow tests/)
-})
-
-test('the printed phases run in the order of their days: Phase 2 never starts before Phase 1', () => {
-  const r = runFixture(withFoundationSettled(curatedFixture('demo-week2')))
-  const dated = r.steps.filter((s) => scheduledEventOf(s) !== null).sort((a, b) => Date.parse(scheduledEventOf(a)!.start) - Date.parse(scheduledEventOf(b)!.start))
-  const early = dated[0]!
-  const late = dated.at(-1)!
-  assert.ok(Date.parse(scheduledEventOf(early)!.start) < Date.parse(scheduledEventOf(late)!.start), 'the premise: two different days')
-  const rows = new Map<number, Step[]>([[0, []], [1, [late]], [2, [early]], [3, []]])
-  const waves = [{ phase: 0, wave: 0 }, { phase: 1, wave: 1 }, { phase: 2, wave: 2 }, { phase: 3, wave: 3 }]
-  assert.deepEqual(phasesByFirstDay(waves, (w) => rows.get(w.wave)!).map((w) => w.wave), [0, 2, 1, 3])
 })
 
 test('a step created On with no email says the day alone on its Dates line', () => {

@@ -389,6 +389,10 @@ const p = (text: unknown, ex: Ex, cls = ''): string => (text === null || text ==
 const ol = (items: unknown[] | null | undefined, ex: Ex): string => (!items || items.length === 0 ? '' : '<ol>' + items.map((i) => `<li>${fill(i, ex).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</li>`).join('') + '</ol>')
 const ul = (items: unknown[] | null | undefined, ex: Ex): string => (!items || items.length === 0 ? '' : '<ul>' + items.map((i) => `<li>${fill(i, ex)}</li>`).join('') + '</ul>')
 const h = (label: string): string => `<h4>${esc(label)}</h4>`
+// The leadership lines the printed plan carries (ui/surfaces/printPlan.ts briefOf), under the labels it prints them with.
+const BRIEF_LABELS = C.pages.app.print.brief.labels as Record<string, string>
+const briefLines = (b: Record<string, unknown> | undefined, ex: Ex): string =>
+  b ? (['does', 'matters', 'notice'] as const).filter((k) => typeof b[k] === 'string').map((k) => h(BRIEF_LABELS[k]) + p(b[k], ex)).join('') : ''
 const chip = (t: string): string => `<span class="chip">${esc(t)}</span>`
 const btn = (t: string, primary = false): string => `<span class="btn${primary ? ' primary' : ''}">${esc(t)}</span>`
 
@@ -736,6 +740,7 @@ export function renderStep(st: Record<string, any>, title?: string): string {
     const clause = none && typeof none.text === 'string' && (typeof none.applies !== 'string' || truthy(ex[none.applies])) ? ` ${none.text}` : ''
     parts.push(p(`${m.manager}${clause}`, ex))
   }
+  parts.push(briefLines(st.brief, ex))
   const mb = [btn('Copy as prompt')]
   if (st.skip) mb.push(btn('Skip this step'))
   parts.push('<div class="controls">' + mb.join(' ') + '</div></details>')
@@ -1078,6 +1083,7 @@ export function renderCleanup(c: Record<string, any>): string {
       }),
   )
   parts.push(h(HEAD.doneWhen) + ul(c.doneWhen, { convention: 'Core - Verb - Subject' }))
+  parts.push(briefLines(c.brief, {}))
   parts.push('<div class="controls">' + btn(S.scanControl, true) + '</div></div>')
   return '<section class="step">' + parts.join('') + '</section>'
 }

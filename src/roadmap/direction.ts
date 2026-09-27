@@ -254,7 +254,7 @@ function officeNetworkQuestion(ctx: Context): DirectionQuestion {
 
 // ---- the steps ----
 
-const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string }>> = {
+const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string; brief?: { does?: string; matters?: string; notice?: string } }>> = {
   [DIRECTION_STEP.use]: W.steps.use,
   [DIRECTION_STEP.accounts]: W.steps.accounts,
   [DIRECTION_STEP.devices]: W.steps.devices,
@@ -267,7 +267,7 @@ function directionStep(id: DirectionStepId, questions: DirectionQuestion[], save
   const words = STEP_WORDS[id]
   const step = checkStep(id, words.title, words.why)
   step.directionQuestions = questions
-  step.guidance = { id, kind: 'decision', title: words.title, why: words.why, whatToDo: { steps: [W.notSure] }, doneWhen: [W.done] }
+  step.guidance = { id, kind: 'decision', title: words.title, why: words.why, whatToDo: { steps: [W.notSure] }, doneWhen: [W.done], ...(words.brief ? { brief: words.brief } : {}) }
   if (directionComplete(questions)) {
     setState(step, { satisfied: true, inPlace: true, condition: 'healthy' })
     if (savedAt !== null && Date.parse(savedAt) <= Date.now()) step.history = [{ at: savedAt, from: 'blocked', to: 'done', note: W.done }]

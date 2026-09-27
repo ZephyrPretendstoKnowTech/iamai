@@ -108,10 +108,6 @@ export type AppWords = {
   export: Record<string, string>
   print: Record<string, string> & {
     cover: Record<string, string>
-    posture: Record<string, string>
-    timelineColumns: Record<string, string>
-    /** The undated group the document prints after the phases, as the Plan draws it (planRows.ts). */
-    held: { heading: string; lead: string }
   }
   how: Record<string, string> & {
     limitsList: string[]

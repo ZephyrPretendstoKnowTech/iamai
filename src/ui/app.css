@@ -3455,7 +3455,33 @@ footer.app a {
   body.has-print-plan > .print-plan { display: block; }
   .print-plan { color: var(--primary-text); font-size: var(--t-2); line-height: 1.45; }
   .print-plan a { color: inherit; text-decoration: none; }
-  .print-running { position: fixed; top: -12mm; left: 0; right: 0; font-size: var(--t-2); color: var(--secondary-text); border-bottom: 1px solid var(--line); padding-bottom: 2mm; }
+  /* The leadership briefing (PrintPlan.tsx, owner 2026-09-26): a summary page, then each open step's three lines. No running header: it printed over the last lines of a page. */
+  .brief h1 { font-size: var(--t-6); margin: 4mm 0 2mm; }
+  .brief h2 { font-size: var(--t-5); margin: 8mm 0 3mm; padding-bottom: 1.5mm; border-bottom: 2px solid var(--brand-primary); break-after: avoid-page; }
+  .brief h3 { font-size: var(--t-4); margin: 7mm 0 2mm; break-after: avoid-page; }
+  .brief h4 { font-size: var(--t-3); margin: 0; }
+  .brief-cover .brand-mark { color: var(--brand-primary); }
+  .brief-meta { color: var(--secondary-text); margin: 0 0 6mm; }
+  .brief-status { font-size: var(--t-4); margin: 0 0 5mm; }
+  .brief-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin: 0 0 2mm; }
+  .brief-cards p { margin: 0; border: 1px solid var(--line); padding: 3mm 4mm; }
+  .brief-cards strong { display: block; font-size: var(--t-6); }
+  .brief-needs ul, .brief-risk ul, .brief-not ul { margin: 0; padding-left: 5mm; }
+  .brief-needs li, .brief-risk li, .brief-not li { margin: 0 0 1.5mm; }
+  .brief-needs li { break-inside: avoid-page; }
+  .brief-why { display: block; color: var(--secondary-text); }
+  .brief-journey ol { list-style: none; margin: 0; padding: 0; }
+  .brief-journey li { margin: 0 0 2mm; break-inside: avoid-page; }
+  .brief-journey p { margin: 0; }
+  .brief-purpose, .brief-progress, .brief-when { color: var(--secondary-text); }
+  .brief-step { break-inside: avoid-page; border-top: 1px solid var(--line); padding: 3mm 0 2mm; }
+  .brief-step header { display: flex; justify-content: space-between; gap: 6mm; align-items: baseline; }
+  .brief-step .brief-when { margin: 0; white-space: nowrap; }
+  .brief-step dl { display: grid; grid-template-columns: 38mm 1fr; gap: 1mm 4mm; margin: 2mm 0 0; }
+  .brief-step dt { color: var(--secondary-text); }
+  .brief-step dd { margin: 0; }
+  .brief-done ul { columns: 2; column-gap: 8mm; list-style: none; padding: 0; margin: 0; }
+  .brief-done li { break-inside: avoid; margin: 0 0 1mm; }
   .print-cover { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; break-after: page; }
   .print-cover h1 { font-size: var(--t-6); margin: 0 0 12mm; }
   .print-cover dl { display: grid; grid-template-columns: 8rem 1fr; gap: 3mm 6mm; }

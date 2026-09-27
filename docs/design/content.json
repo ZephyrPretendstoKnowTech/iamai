@@ -3296,16 +3296,31 @@
           "none": "None",
           "steps": {
             "use": {
+              "brief": {
+                "does": "Records which services the business uses, so the plan includes only the rules that apply.",
+                "matters": "Rules for services you don't use are wasted effort, and a missed one leaves a gap.",
+                "notice": "No one notices a change: this is a decision."
+              },
               "title": "Confirm What You Use",
               "why": "Approve these answers or correct any that are wrong: a service you don't use takes its policies off your plan, and the accounts and partners you name are kept out of the policies that would stop them.",
               "milestoneAction": "Approving these answers decides which policies your plan contains."
             },
             "accounts": {
+              "brief": {
+                "does": "Separates the accounts that scripts and shared devices use from people's accounts.",
+                "matters": "An account a scanner or script uses stops working if it is asked for MFA, and an unmanaged one is an easy way in.",
+                "notice": "No one notices a change: this is a decision."
+              },
               "title": "Identify Service and Shared Accounts",
               "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Approve or correct them: the MFA campaign stops counting them as people, and they join the service-accounts group, which is kept to your office network instead of being asked for MFA.",
               "milestoneAction": "Approving these answers sets which accounts count as people and which join the service-accounts group."
             },
             "devices": {
+              "brief": {
+                "does": "Records how company devices are managed and whether people work from an office.",
+                "matters": "The device and location rules follow these answers, so they fit how the business works.",
+                "notice": "No one notices a change: this is a decision."
+              },
               "$comment": "Stage 3 (roadmap-flow V1 decision 3): today's devices step plus the office network question from Decide Where People Sign In From, which is no longer drawn. Its title is the V1 outline's name for the merged step. why and milestoneAction are the owner's section 2 walk words (walk list 62, 63).",
               "title": "Decide How and Where People Sign In",
               "why": "Choose how company computers and phones are managed, and whether people work from an office. Your plan's device and location policies follow these answers.",
@@ -3461,40 +3476,68 @@
         "importSaveFailed": "The plan could not be saved. Your previous saved plan has not been replaced. Keep the backup file and try again."
       },
       "print": {
-        "runningHeader": "IAMAI plan · {tenant} · {date}",
-        "title": "Microsoft Entra Conditional Access rollout plan. {tenant}",
-        "$commentNoPlan": "The printed document's running header and title where the tenant has no Entra ID P1 (ui/surfaces/printPlan.ts noPlanLine): the Plan renders one licence sentence and no plan, and the document is that sentence under the tenant's identity. It was titled \"Microsoft Entra Conditional Access rollout plan\" and \"IAMAI plan\" over \"IAMAI has no plan to offer\".",
-        "runningHeaderNoPlan": "IAMAI · {tenant} · {date}",
+        "brief": {
+          "$comment": "The printed plan as a leadership briefing (owner, 2026-09-26): the journey for a manager, director or business owner. Each step says what it does for the business, why it matters and what people will notice (steps[].brief, with the step's manager line as What it does for you). No procedures: those stay on screen in each step.",
+          "title": "Identity security plan for {tenant}",
+          "meta": "Prepared {date} by {by} · Measured against {baseline}",
+          "status": "{done} of {total} steps are done.",
+          "finishOn": "The rest are planned to finish around {date}.",
+          "finishOpen": "The finish date depends on the steps that are waiting.",
+          "cards": {
+            "done": "Done",
+            "ahead": "Still to do",
+            "needs": "Need a decision or action"
+          },
+          "headings": {
+            "needs": "What we need from you",
+            "journey": "The journey",
+            "ahead": "The changes ahead",
+            "risk": "How the risk is managed",
+            "done": "Done so far",
+            "notInPlan": "Not in this plan"
+          },
+          "labels": {
+            "does": "What it does for you",
+            "matters": "Why it matters",
+            "notice": "Impact",
+            "reaches": "Reaches {who}."
+          },
+          "lanes": {
+            "Ready": "Ready to start",
+            "Up Next": "Next",
+            "On Hold": "Waiting",
+            "Completed": "Done",
+            "Deferred": "Set aside"
+          },
+          "needDecision": "A decision is needed.",
+          "chapterDone": "Done",
+          "chapterLeft": "{remaining} of {total} still to do",
+          "journey": {
+            "emergency-access": "A tested way back in, set up before any rule is switched on.",
+            "direction": "The plan learns what the business uses and how people work, so it includes only what applies.",
+            "prepare": "Accounts, people and settings are made ready, so the new rules don't lock anyone out.",
+            "core": "Every sign-in needs more than a password.",
+            "extend-mfa": "MFA reaches the places it doesn't cover yet: new sign-in methods, new devices, guests, admin roles and risky sign-ins.",
+            "remaining-doors": "Sign-in routes nobody at the business needs, and attackers use, are closed.",
+            "devices-sessions": "Sign-ins last only as long as they should, on devices the business manages.",
+            "ongoing": "It stays working: alerts on the emergency accounts, clear rule names and regular checks."
+          },
+          "risk": [
+            "Most new rules run in report-only first: for about a week they record what they would do without stopping anyone, and they are switched on once that shows who they would affect.",
+            "Emergency access accounts are kept out of every rule, so there is always a way back in.",
+            "Any rule can be switched back to report-only straight away, and nothing else in the tenant changes when it is.",
+            "Where a change reaches people, the plan includes a message telling them what to expect before it does.",
+            "IAMAI only reads the tenant. Your administrator makes every change, one step at a time."
+          ]
+        },
+        "$commentNoPlan": "The printed document's title where the tenant has no Entra ID P1 (ui/surfaces/printPlan.ts noPlanLine): the Plan renders one licence sentence and no plan, and the document is that sentence under the tenant's identity. It was titled \"Microsoft Entra Conditional Access rollout plan\" over \"IAMAI has no plan to offer\".",
         "titleNoPlan": "Microsoft Entra Conditional Access. {tenant}",
         "cover": {
           "tenant": "Tenant",
           "scanned": "Scanned",
           "baseline": "Baseline",
-          "dates": "Plan dates",
-          "prepared": "Prepared with IAMAI by {by}",
-          "readOnly": "IAMAI reads the tenant and never writes to it. A person carries out the changes using the instructions provided. Impact is estimated from the scan."
+          "prepared": "Prepared with IAMAI by {by}"
         },
-        "posture": {
-          "$comment": "The cover's posture lines (A1c): the finished goals under the Completed lane's own word, never In place.",
-          "inPlace": "Completed ({n}):",
-          "toDo": "To do ({n}):",
-          "doesntApply": "Doesn't apply ({n}):",
-          "noneYet": "none yet",
-          "none": "none"
-        },
-        "contents": "Contents",
-        "summary": "Summary",
-        "timeline": "Timeline",
-        "timelineColumns": {
-          "wave": "Wave",
-          "dates": "Dates",
-          "steps": "Steps"
-        },
-        "verificationWindow": "Registration and verification window · {days} days",
-        "observation": "Observation window · {days} days",
-        "observationText": "Policies that support report-only can collect evidence at the same time.",
-        "$commentVerificationNote": "The verification window row’s third column: the people the window is sized for (roadmap/generate.ts registrationWindow, five a working day), which are the campaign step’s people not yet shown to have a usable registered MFA method (its preparation.missingIds), of everyone that step prepares. It used to count derive/facts.ts notReady, readiness to the phishing-resistant standard: a different population beside a window sized for this one (messy: one working day beside 104 of 106 people). Those people include the ones whose registration could not be read (preparation.unknownIds), so it says they are not shown to have a method, never that they have none: \"have no usable registered MFA method yet\" printed 34 of 34 on a tenant whose registration details were refused, in the document whose Completed section says readiness was not measured. The row prints only while someone is still to set up, so there is no everyone-ready variant.",
-        "verificationNote": "{n} of {total} people in {step} are not yet shown to have a usable registered MFA method.",
         "$commentPickerSuggested": "A printed decision picker where nothing is saved (ui/surfaces/pickerRows.ts initialPicked `defaulted`, printedDefaultLine): the chips the screen opens with are IAMAI's suggestion, which Save would write, and nobody has saved them. The print had listed them under the decision's heading as if they were the answer (all eleven suggested people under People Needing Help while the saved list held one), and then, with them dropped, printed the heading over nothing.",
         "pickerSuggested": "Suggested by IAMAI, not saved yet: {list:names}",
         "$commentPickerNotSaved": "The same printed picker where IAMAI suggests nobody and nothing is saved, so the decision's heading is never printed over nothing.",
@@ -3674,6 +3717,11 @@
   },
   "cleanup": {
     "alerting": {
+      "brief": {
+        "does": "Sends an alert whenever an emergency account signs in.",
+        "matters": "Nobody watches these accounts day to day, so an alert is how you learn one was used.",
+        "notice": "No one notices a change: the alert goes to the admins who respond."
+      },
       "$comment": "Alert on Emergency Account Sign-ins, Ongoing Checks and Cleanup's first step (owner, 2026-09-25 and 2026-09-26): drawn on the step template, completed by one Mark as done in the rail, since IAMAI cannot read Azure Monitor alert rules. The procedure is Microsoft Learn's (security-emergency-access#monitor-sign-in-and-audit-logs) with the tenant's values: {alertQuery} is the SigninLogs query over the saved emergency accounts' object IDs, {firstAccountUpn} the first of them (ui/surfaces/alertingTasks.ts).",
       "title": "Alert on Emergency Account Sign-ins",
       "learn": {
@@ -3701,6 +3749,11 @@
       "aiInfo": "Help me set up an Azure Monitor alert on sign-ins by these emergency access accounts. Their object IDs are below, then the steps with the search query. Explain each step, and do not change the query, the threshold or the severity."
     },
     "hardening": {
+      "brief": {
+        "does": "Finishes the extra protections for the emergency accounts that were put off until the basics passed.",
+        "matters": "The emergency accounts hold the most power in the tenant, so they get the strongest protection.",
+        "notice": "No one notices a change."
+      },
       "title": "Harden Emergency Access",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
@@ -3715,6 +3768,11 @@
       ]
     },
     "namedExclusions": {
+      "brief": {
+        "does": "Removes emergency accounts listed by name in individual rules, leaving the one group that covers them.",
+        "matters": "Exceptions listed by name are easy to miss and hard to review.",
+        "notice": "No one notices a change."
+      },
       "title": "Remove Emergency Accounts Excluded by Name",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
@@ -3729,6 +3787,11 @@
       ]
     },
     "naming": {
+      "brief": {
+        "does": "Renames the sign-in rules to the baseline's names.",
+        "matters": "Anyone who looks after the tenant next can tell what each rule does without opening it.",
+        "notice": "No one notices a change: renaming changes no sign-in."
+      },
       "$comment": "Align Policy Names (owner, 2026-09-26: Jon's names): the tenant's policies the plan tracks under a name other than the pinned baseline's, each with its ID (roadmap/cleanupPhase.ts renamesOf; a difference in capitals only is none). Drawn on the step template with no fields and no Save (ui/surfaces/namingTasks.ts): the scan that finds the last baseline name completes it, and the row leaves the plan. {from}, {to} and {id} fill renameStep once per policy.",
       "title": "Align Policy Names",
       "learn": {
@@ -3746,6 +3809,11 @@
       "aiInfo": "Help me rename these Conditional Access policies to the names below. Change only each policy's name: keep its ID and every setting."
     },
     "consolidation": {
+      "brief": {
+        "does": "Reviews rules that overlap and retires the older ones once the new ones are on.",
+        "matters": "Overlapping rules make the next change harder to get right.",
+        "notice": "No one notices, provided the review happens before anything is retired."
+      },
       "title": "Review Overlapping Policies",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
@@ -3762,6 +3830,11 @@
       ]
     },
     "drill": {
+      "brief": {
+        "does": "Signs in once with each emergency account to prove the way back in works.",
+        "matters": "An emergency account nobody has tested can fail on the day it is needed.",
+        "notice": "No one notices a change."
+      },
       "title": "Verify Emergency Access",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs",
@@ -3781,6 +3854,11 @@
   "steps": [
     {
       "id": "s-prereq-break-glass",
+      "brief": {
+        "does": "Sets up two emergency accounts, each with its own passkey, for the day normal admin sign-in fails.",
+        "matters": "If a rule or an outage locks every admin out, these accounts are the way back in.",
+        "notice": "No one notices a change: the accounts are used only in an emergency."
+      },
       "kind": "blocker",
       "title": "Prepare Emergency Access Accounts",
       "changeLine": null,
@@ -3917,6 +3995,11 @@
     },
     {
       "id": "s-prereq-exclusion-group",
+      "brief": {
+        "does": "Keeps the emergency accounts out of every sign-in rule, so no rule can lock them out.",
+        "matters": "A way back in only works if the new rules can't block it too.",
+        "notice": "No one notices a change."
+      },
       "kind": "blocker",
       "title": "Configure Emergency Exclusions",
       "changeLine": null,
@@ -4028,6 +4111,11 @@
     },
     {
       "id": "s-check-dormant-accounts",
+      "brief": {
+        "does": "Disables accounts nobody uses any more.",
+        "matters": "An unused account can be taken over without anyone noticing.",
+        "notice": "Only the owner of an account that was still needed; it can be switched back on."
+      },
       "kind": "check",
       "title": "Disable or Confirm Dormant Accounts",
       "changeLine": null,
@@ -4119,6 +4207,11 @@
     },
     {
       "id": "s-prereq-allowed-countries",
+      "brief": {
+        "does": "Records the countries people work from.",
+        "matters": "The countries rule needs this list before it can block sign-ins from anywhere else.",
+        "notice": "No one notices a change."
+      },
       "kind": "object",
       "title": "Create or Correct Allowed Countries Location",
       "changeLine": null,
@@ -4230,6 +4323,11 @@
     },
     {
       "id": "s-prereq-trusted-location",
+      "brief": {
+        "does": "Tells the rules which network is your office.",
+        "matters": "Rules that treat the office differently need to know where it is.",
+        "notice": "No one notices a change."
+      },
       "kind": "object",
       "title": "Define the Trusted Network",
       "changeLine": null,
@@ -4338,6 +4436,11 @@
     },
     {
       "id": "s-prereq-service-accounts-group",
+      "brief": {
+        "does": "Puts the accounts that scripts and devices use into one group, so they can be kept to the office network.",
+        "matters": "These accounts can't use MFA, so limiting where they sign in is how they are protected.",
+        "notice": "No one notices a change."
+      },
       "kind": "object",
       "title": "Create or Correct Service Accounts Group",
       "changeLine": null,
@@ -4434,6 +4537,11 @@
     },
     {
       "id": "s-prereq-security-defaults",
+      "brief": {
+        "does": "Turns off Microsoft's basic built-in protection so the plan's own rules can take over.",
+        "matters": "Microsoft's built-in protection and custom rules can't run together.",
+        "notice": "No one notices a change: the plan's rules take over the same protection."
+      },
       "kind": "object",
       "title": "Turn Off Security Defaults",
       "changeLine": null,
@@ -4515,6 +4623,11 @@
     },
     {
       "id": "s-prereq-per-user-mfa",
+      "brief": {
+        "does": "Moves the last accounts off Microsoft's old per-person MFA setting.",
+        "matters": "The old setting asks for MFA at every sign-in and works around the new rules.",
+        "notice": "Those people are asked for MFA when the rules say so, not at every sign-in."
+      },
       "kind": "object",
       "title": "Finish Moving Off Per-User MFA",
       "changeLine": null,
@@ -4602,6 +4715,11 @@
     },
     {
       "id": "s-prereq-passkey-settings",
+      "brief": {
+        "does": "Switches on passkeys and allows only approved models.",
+        "matters": "Passkeys can't be phished, and the admin and emergency accounts rely on them.",
+        "notice": "People can add a passkey; nothing is required of them yet."
+      },
       "preparation": [
         "Open Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2).",
         "Enable the method and self-service registration for the intended users. Keep the existing target groups and exclusions.",
@@ -4680,6 +4798,11 @@
     },
     {
       "id": "s-prereq-auth-strength",
+      "brief": {
+        "does": "Defines which sign-in methods count as strong: passkeys, Windows Hello, certificates, and a one-time pass for setting one up.",
+        "matters": "Several rules later in the plan require this definition, so it has to exist first.",
+        "notice": "No one notices a change."
+      },
       "kind": "object",
       "title": "Create the Baseline's Authentication Strength",
       "changeLine": null,
@@ -4740,6 +4863,11 @@
     },
     {
       "id": "s-ladder-operator-passkey",
+      "brief": {
+        "does": "Gives the admin running this plan a passkey before the admin rules switch on.",
+        "matters": "The person making the changes must not be locked out by them.",
+        "notice": "Only the admin running the plan."
+      },
       "kind": "check",
       "title": "Register Your Own Passkey",
       "changeLine": null,
@@ -4810,6 +4938,10 @@
     },
     {
       "id": "s-prereq-device-plan",
+      "brief": {
+        "matters": "The device rules later in the plan follow this choice.",
+        "notice": "No one notices a change: this is a decision."
+      },
       "kind": "check",
       "title": "Decide How Devices Are Managed",
       "changeLine": null,
@@ -4891,6 +5023,11 @@
     },
     {
       "id": "s-verify-mfa",
+      "brief": {
+        "does": "Helps everyone set up a sign-in method before MFA is required.",
+        "matters": "A rule that requires MFA stops anyone who hasn't set one up.",
+        "notice": "Everyone gets an email and sets up a passkey or the Microsoft Authenticator app, once."
+      },
       "kind": "campaign",
       "title": "Prepare Your Team for MFA",
       "changeLine": null,
@@ -5047,6 +5184,10 @@
     },
     {
       "id": "mfa-all-users",
+      "brief": {
+        "matters": "Most account takeovers start with a stolen or guessed password.",
+        "notice": "People confirm their sign-in with the method they set up."
+      },
       "pitfalls": {
         "$comment": "The card Require MFA for Everyone draws while it is not On (ui/surfaces/pitfalls.ts, round 1, owner 2026-09-24): the people who hold a method this policy accepts and have no MFA sign-in in the last 30 days (derive/contentLists.ts unproven), each with MFA Readiness's next step. The policy's first prompt is otherwise the first time they use it. It informs; it never holds the turn-on.",
         "unprovenLabel": "People Who Haven't Used MFA",
@@ -5153,6 +5294,10 @@
     },
     {
       "id": "admins-phishing-resistant",
+      "brief": {
+        "matters": "An admin account can change everything in the business's Microsoft 365.",
+        "notice": "Admins sign in with a passkey, a security key or Windows Hello."
+      },
       "kind": "policy",
       "title": "Require Phishing-Resistant MFA for Admins",
       "changeLine": null,
@@ -5265,6 +5410,10 @@
     },
     {
       "id": "admin-portals-protected",
+      "brief": {
+        "matters": "Staff accounts have no need for Microsoft's admin portals, so closing them removes a route an attacker could use.",
+        "notice": "Standard accounts can't open Microsoft's admin portals."
+      },
       "kind": "policy",
       "title": "Block the Admin Portals for Non-Admins",
       "changeLine": null,
@@ -5359,6 +5508,10 @@
     },
     {
       "id": "guests-mfa",
+      "brief": {
+        "matters": "Guests use accounts another organisation manages, so their protection is outside your control.",
+        "notice": "Guests confirm their sign-in with MFA when they open your files or apps."
+      },
       "preparation": [
         "Read the Tasks Remaining cards above to see which guest-policy settings or prerequisites need attention.",
         "Check that the guest types this policy includes match your answer about partner or MSP technicians: that answer decides whether the service-provider external-user type is included, and it does not configure partner MFA trust.",
@@ -5492,6 +5645,10 @@
     },
     {
       "id": "register-info-protected",
+      "brief": {
+        "matters": "An attacker with a stolen password adds a sign-in method of their own to keep access.",
+        "notice": "People already set up see no change until they add a new method."
+      },
       "kind": "policy",
       "title": "Protect Sign-in Method Registration",
       "changeLine": null,
@@ -5569,6 +5726,10 @@
     },
     {
       "id": "block-legacy-auth",
+      "brief": {
+        "matters": "Old sign-in methods skip MFA completely, and password-guessing attacks target them.",
+        "notice": "No one notices, unless an old device or app still signs in the old way; it is updated first."
+      },
       "kind": "policy",
       "title": "Block Legacy Authentication",
       "changeLine": null,
@@ -5663,6 +5824,10 @@
     },
     {
       "id": "block-device-code",
+      "brief": {
+        "matters": "Attackers send a code that signs them in as whoever enters it.",
+        "notice": "No one notices, unless a tool relies on this shortcut; it gets a tested alternative first."
+      },
       "kind": "policy",
       "title": "Block Device Code Sign-in",
       "changeLine": null,
@@ -5743,6 +5908,10 @@
     },
     {
       "id": "block-auth-transfer",
+      "brief": {
+        "matters": "A session passed to another device is one an attacker can capture.",
+        "notice": "People sign in directly on the device they are using."
+      },
       "kind": "policy",
       "title": "Block Authentication Transfer",
       "changeLine": null,
@@ -5818,6 +5987,10 @@
     },
     {
       "id": "geo-restriction",
+      "brief": {
+        "matters": "Sign-ins from countries the business never works in are very rarely staff.",
+        "notice": "Someone travelling needs their destination added before they go."
+      },
       "kind": "policy",
       "title": "Block Sign-ins From Countries Not Allowed",
       "changeLine": null,
@@ -5921,6 +6094,10 @@
     },
     {
       "id": "admin-session",
+      "brief": {
+        "matters": "An admin session left open is a way in for anyone who reaches that computer or copies its session.",
+        "notice": "Admins sign in a little more often in admin portals."
+      },
       "kind": "policy",
       "title": "Shorten Admin Sessions",
       "changeLine": null,
@@ -6034,6 +6211,10 @@
     },
     {
       "id": "unmanaged-browser",
+      "brief": {
+        "matters": "Files downloaded to a personal device leave the business's control.",
+        "notice": "On personal devices, people can view files in the browser but not download or sync them, where the service allows it."
+      },
       "kind": "policy",
       "mergesGoals": [
         "byod-session-controls",
@@ -6139,6 +6320,10 @@
     },
     {
       "id": "require-managed-device",
+      "brief": {
+        "matters": "A company-managed device can be kept up to date, locked and wiped; a personal one can't.",
+        "notice": "People on personal devices can't reach work apps from outside the office until their device is enrolled."
+      },
       "kind": "policy",
       "title": "Require a Managed Device Outside the Office",
       "changeLine": null,
@@ -6249,6 +6434,10 @@
     },
     {
       "id": "block-unsupported-platforms",
+      "brief": {
+        "matters": "Unusual or unidentified devices are more often automated attacks than staff.",
+        "notice": "No one notices, unless someone works from Linux or an unusual device."
+      },
       "kind": "policy",
       "title": "Block Unsupported Device Platforms",
       "changeLine": null,
@@ -6332,6 +6521,10 @@
     },
     {
       "id": "mobile-app-protection",
+      "brief": {
+        "matters": "Work data on personal phones can leak through copying, pasting and personal apps.",
+        "notice": "People open work data in approved apps on their phones."
+      },
       "kind": "policy",
       "licence": "Intune Plan 1",
       "title": "Require App Protection on Phones",
@@ -6413,6 +6606,10 @@
     },
     {
       "id": "azure-management-mfa",
+      "brief": {
+        "matters": "Azure management can change or delete the business's cloud resources.",
+        "notice": "People who manage Azure confirm their sign-in with MFA."
+      },
       "kind": "policy",
       "title": "Require MFA for Azure Management",
       "changeLine": null,
@@ -6488,6 +6685,10 @@
     },
     {
       "id": "device-registration-mfa",
+      "brief": {
+        "matters": "Once added, an attacker's device is treated as one of yours by later checks.",
+        "notice": "Setting up a new computer asks for MFA once; devices already set up don't change."
+      },
       "kind": "policy",
       "title": "Require MFA to Register a Device",
       "changeLine": null,
@@ -6569,6 +6770,10 @@
     },
     {
       "id": "token-protection",
+      "brief": {
+        "matters": "Attackers increasingly steal the signed-in session itself, which gets past MFA.",
+        "notice": "Nothing in supported Windows apps; a few older apps and add-ins stop working and need replacing."
+      },
       "kind": "policy",
       "title": "Require Token Protection on Windows",
       "changeLine": null,
@@ -6662,6 +6867,10 @@
     },
     {
       "id": "workload-identity-block",
+      "brief": {
+        "matters": "The sync connection has wide access to the directory, so limiting where it signs in protects it.",
+        "notice": "No one notices a change."
+      },
       "kind": "policy",
       "licence": "Microsoft Entra Workload ID Premium",
       "title": "Restrict the Directory Sync Service Principal to Its Address",
@@ -6737,6 +6946,10 @@
     },
     {
       "id": "session-lifetime",
+      "brief": {
+        "matters": "A browser left signed in on a shared or lost computer stays open to whoever finds it.",
+        "notice": "People sign in again after closing the browser, and once the interval passes."
+      },
       "kind": "policy",
       "title": "Limit How Long Sessions Last",
       "changeLine": null,
@@ -6842,6 +7055,10 @@
     },
     {
       "id": "pim-activation-reauth",
+      "brief": {
+        "matters": "Switching on an admin role is the moment an attacker most wants to hijack.",
+        "notice": "Admins confirm with a passkey or Windows Hello each time they switch on a role."
+      },
       "kind": "policy",
       "licence": "Microsoft Entra ID P2 or Microsoft Entra ID Governance",
       "title": "Require MFA at Every Role Activation",
@@ -6929,6 +7146,10 @@
     },
     {
       "id": "intune-enrollment-reauth",
+      "brief": {
+        "matters": "An attacker's device enrolled through someone's open session would be trusted as a company device.",
+        "notice": "People enrolling a device sign in once more."
+      },
       "kind": "policy",
       "title": "Require a Fresh Sign-in for Intune Enrollment",
       "changeLine": null,
@@ -7001,6 +7222,10 @@
     },
     {
       "id": "sign-in-risk",
+      "brief": {
+        "matters": "A high-risk sign-in was probably not made by the account's owner.",
+        "notice": "Only people whose sign-in looks risky; they confirm and carry on."
+      },
       "kind": "policy",
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge High-Risk Sign-ins",
@@ -7104,6 +7329,10 @@
     },
     {
       "id": "user-risk",
+      "brief": {
+        "matters": "A high-risk account has probably been taken over.",
+        "notice": "Only people Microsoft flags as high risk; they confirm and clear the flag at their next sign-in."
+      },
       "kind": "policy",
       "licence": "Microsoft Entra ID P2",
       "title": "Remediate High-Risk Users",
@@ -7186,6 +7415,10 @@
     },
     {
       "id": "sign-in-risk-medium",
+      "brief": {
+        "matters": "A medium-risk sign-in shows signs it may not be the account's owner.",
+        "notice": "Occasional extra MFA prompts, mostly when travelling or on a new device."
+      },
       "kind": "policy",
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge Medium-Risk Sign-ins",
@@ -7257,6 +7490,10 @@
     },
     {
       "id": "user-risk-medium",
+      "brief": {
+        "matters": "A medium-risk account's password may be known to someone else.",
+        "notice": "Only people Microsoft flags; they confirm and change their password at their next sign-in."
+      },
       "kind": "policy",
       "licence": "Microsoft Entra ID P2",
       "title": "Reset Passwords for Medium-Risk Users",
@@ -7331,6 +7568,10 @@
     },
     {
       "id": "s-check-separate-admin-accounts",
+      "brief": {
+        "matters": "Email is the most common way in, so an inbox that also holds admin rights puts every setting at risk.",
+        "notice": "Admins use a separate account for admin work."
+      },
       "kind": "check",
       "title": "Use Separate Accounts for Admin Work",
       "changeLine": null,
@@ -7427,6 +7668,10 @@
     },
     {
       "id": "service-accounts-trusted-network",
+      "brief": {
+        "matters": "Service accounts can't use MFA, so a leaked password is enough to use one.",
+        "notice": "No one notices, unless a service account signs in from outside the office; it is moved first."
+      },
       "kind": "policy",
       "title": "Restrict Service Accounts to the Trusted Network",
       "changeLine": null,
@@ -7761,6 +8006,10 @@
     },
     {
       "id": "inforcer-mfa",
+      "brief": {
+        "matters": "Inforcer can change settings across the business's Microsoft 365, so its sign-ins need the same protection as an admin's.",
+        "notice": "Inforcer users confirm their sign-in with MFA."
+      },
       "kind": "policy",
       "title": "Require MFA for Inforcer Access",
       "changeLine": null,
@@ -7828,6 +8077,11 @@
     },
     {
       "id": "s-create-report-only",
+      "brief": {
+        "does": "Creates the new rules in report-only mode, where they record what they would do without stopping anyone.",
+        "matters": "A week of real sign-ins shows who each rule would affect before it is switched on.",
+        "notice": "No one notices a change: report-only never blocks a sign-in."
+      },
       "kind": "object",
       "title": "Create the Policies in Report-only",
       "$comment": "3.8, owner 2026-09-24 (docs/plans/roadmap-flow/v1-plan.md 1f): every policy the plan can create now, created in Report-only at once, so each starts its report-only week today. Its list is roadmap/reportOnlyBatch.ts; its cards and its tasks are ui/surfaces/reportOnlyStep.ts, each task the policy's own create procedure.",
@@ -7882,6 +8136,10 @@
     },
     {
       "id": "avd-trusted-network",
+      "brief": {
+        "matters": "A virtual desktop is a full work computer, so opening one from anywhere widens the door.",
+        "notice": "Virtual desktops can't be opened from outside the office."
+      },
       "kind": "policy",
       "$comment": "Phase 2b (owner, 2026-09-24): the baseline's review row became a policy step. Its Direction service answer puts it on the plan; with everyone working remotely it does not apply (Phase 2d).",
       "title": "Restrict Azure Virtual Desktop to the Trusted Network",
@@ -7936,6 +8194,10 @@
     },
     {
       "id": "sharepoint-trusted-network",
+      "brief": {
+        "matters": "Company files are what attackers are usually after.",
+        "notice": "People can't open SharePoint or OneDrive files from outside the office."
+      },
       "kind": "policy",
       "$comment": "Phase 2b (owner, 2026-09-24): the baseline's review row became a policy step. Its Direction service answer puts it on the plan; with everyone working remotely it does not apply (Phase 2d).",
       "title": "Restrict SharePoint and OneDrive to the Trusted Network",
@@ -7990,6 +8252,10 @@
     },
     {
       "id": "risky-users-register-block",
+      "brief": {
+        "matters": "An attacker who takes over an account adds a sign-in method of their own to keep access.",
+        "notice": "Only people flagged as risky; the flag is cleared before they add a method."
+      },
       "kind": "policy",
       "$comment": "Phase 2c (owner, 2026-09-24): Jon's RiskyUsers-RegisterSecurityInfo, a P2 control the plan had no step for, after Remediate High-Risk Users.",
       "title": "Block Risky Users From Registering Sign-in Methods",
