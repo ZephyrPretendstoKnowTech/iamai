@@ -42,6 +42,7 @@ type Words = {
   states: Record<ReadinessState, { title: string }>
   show: Record<string, string>
   groups: Record<ReadinessState, { title: string; why: string; body?: string | ByComputers }>
+  seamlessLapsing: string
   chip: Record<'seamless' | 'confirmed' | 'covered' | 'notConfirmed' | 'notSetUp' | 'noPasskey' | 'blocked' | 'unread' | 'noPhone', string>
   sub: { noDevices: string; noDevicesUnread: string }
   notReadCount: string
@@ -53,7 +54,7 @@ type Words = {
   unusedKey: { never: string; stale: string }
   options: Record<SignInOption, string>
   next: {
-    none: string; renewBy: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; guestHasAuthenticator: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
+    none: string; renewBy: string; renewByOn: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; guestHasAuthenticator: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
     waitSetup: Record<string, string>; rescan: Record<string, string>
   }
   notes: { automated: string; onLeave: string }
@@ -381,10 +382,24 @@ export function nextCell(r: ReadinessRow): string {
   if (r.guest && GUEST_SETUP.has(rd.next.kind)) return (r.methods ?? []).includes('authenticator') ? T.next.guestHasAuthenticator : T.next.guest
   // Records the tenant can't provide: nothing for this person to do, and the page says why once.
   if (signInsUnavailableFor(r)) return T.next.none
-  // Ready ends soon: the one thing to do is sign in again with the method that last proved it.
-  if (r.lapsing && rd.next.kind === 'none' && rd.readyUntil && rd.lastConfirmed) return fillText(T.next.renewBy, { method: T.methodsInline[rd.lastConfirmed.cls], date: monthDay(rd.readyUntil) })
-  if (rd.next.kind === 'none') return rd.recommended && !r.guest ? nextWords(rd.recommended) : T.next.none
+  if (rd.next.kind === 'none') {
+    if (rd.recommended && !r.guest) return nextWords(rd.recommended)
+    // Ready ends soon and nothing else is asked: sign in again with the method, on the
+    // device, whose proof sets the day (phishingResistant.ts renewWith).
+    if (r.lapsing && rd.readyUntil && rd.renewWith) {
+      const method = T.methodsInline[rd.renewWith.cls]
+      const date = monthDay(rd.readyUntil)
+      return rd.renewWith.os ? fillText(T.next.renewByOn, { method, device: deviceNoun(rd.renewWith.os), date }) : fillText(T.next.renewBy, { method, date })
+    }
+    return T.next.none
+  }
   return nextWords(rd.next)
+}
+
+/** A group's line under its title: Seamless says "Nothing to do" unless some of its people have to sign in again soon. */
+export function groupWhy(state: ReadinessState, rows: readonly ReadinessRow[], why: string): string {
+  const n = rows.filter((r) => r.lapsing).length
+  return state === 'seamless' && n > 0 ? fillText(T.seamlessLapsing, { n }) : why
 }
 
 /** The rail's completed checks: the checks passed, not the notes listed with them. */

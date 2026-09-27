@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, completedChecks, deviceChips, methodsCell, needsActionWords, nextCell, noDevicesWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords, subDevicesTitle } from './readinessCells.ts'
+import { checkWords, completedChecks, deviceChips, groupWhy, methodsCell, needsActionWords, nextCell, noDevicesWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords, subDevicesTitle } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -424,7 +424,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
             <span>
               {isNext && <span className="next-label">{T.nextLabel}</span>}
               <span className="group-title">{G.title}</span>
-              <span className="group-why">{G.why}</span>
+              <span className="group-why">{groupWhy(state, rows, G.why)}</span>
             </span>
             <span className="group-count">{rows.length}</span>
             <Icon k="chev" />

@@ -379,6 +379,8 @@ export type PersonReadiness = {
   onLeave: boolean
   /** The day readiness lapses unless the person signs in again: the oldest required proof leaving the window. */
   readyUntil: string | null
+  /** The sign-in that sets readyUntil: its method, and its platform where the record named one. */
+  renewWith?: { cls: MethodClass; os: Platform | null }
   /** The latest phishing-resistant sign-in IAMAI knows, in the window or kept from earlier scans. */
   lastConfirmed: ProofLine | null
   /** Qualifying methods an earlier scan saw that no current method of the same class replaces. */
@@ -888,8 +890,8 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   if (devices.length === 0 && windowProofs.some((p) => qualifying.includes(p.cls))) {
     // A phishing-resistant sign-in in the window whose record named no platform:
     // confirmed, though IAMAI cannot say on which device (never "on leave").
-    const latest = windowProofs.filter((p) => qualifying.includes(p.cls)).map((p) => p.at).sort().pop() as string
-    return { ...base, ...common, devices, readyUntil: new Date(Date.parse(latest) + READINESS_WINDOW_DAYS * DAY).toISOString(), state: 'ready', next: { kind: 'none' } }
+    const proof = windowProofs.filter((p) => qualifying.includes(p.cls)).sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)).pop()!
+    return { ...base, ...common, devices, readyUntil: new Date(Date.parse(proof.at) + READINESS_WINDOW_DAYS * DAY).toISOString(), renewWith: { cls: proof.cls, os: null }, state: 'ready', next: { kind: 'none' } }
   }
   if (devices.length === 0) {
     // No interactive sign-in inside the window. Where the records read began
@@ -935,13 +937,17 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   // Ready until the oldest device type's latest phishing-resistant sign-in leaves the window
   // (its latest, not its seamless one: a later key sign-in keeps the device Ready).
   const typeOf = new Map(devices.map((d) => [d.os, d.type]))
-  const latestOn = (t: DeviceType): string => windowProofs.filter((x) => x.os !== null && typeOf.get(x.os) === t && qualifying.includes(x.cls)).map((x) => x.at).sort().pop() as string
+  const latestProofOn = (t: DeviceType) => windowProofs.filter((x) => x.os !== null && typeOf.get(x.os) === t && qualifying.includes(x.cls)).sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)).pop()!
+  const latestOn = (t: DeviceType): string => latestProofOn(t).at
   const readyUntil = [...provenTypes].map((t) => new Date(Date.parse(latestOn(t)) + READINESS_WINDOW_DAYS * DAY).toISOString()).sort()[0] ?? null
+  // The device type whose latest proof leaves the window first sets readyUntil: signing in there is what renews it.
+  const lapsesFirst = [...provenTypes].sort((a, b) => (latestOn(a) < latestOn(b) ? -1 : latestOn(a) > latestOn(b) ? 1 : 0))[0]
+  const renewWith = lapsesFirst ? { cls: latestProofOn(lapsesFirst).cls, os: latestProofOn(lapsesFirst).os } : undefined
   // Recommend only what the device can have: a built-in option that is not ruled out, now or by Step 3.
   const upgrade = devices.find((d) => !d.seamless && d.builtIn && d.possible !== 'no' && d.offer === d.best)
   const seamless = devices.length > 0 && devices.every((d) => d.seamless)
   // The only usable key stopping under Step 3 comes first: an upgrade is a convenience, and the
   // replacement is what keeps them Ready once the plan's own step lands.
   const recommended: NextAction | null = onlyKey ? { kind: 'replaceKey', model: onlyKey.model, aaguid: onlyKey.aaguid } : upgrade ? { kind: 'seamless', os: upgrade.os, option: upgrade.best } : null
-  return { ...base, ...common, devices, readyUntil, state: seamless ? 'seamless' : 'ready', next: { kind: 'none' }, recommended }
+  return { ...base, ...common, devices, readyUntil, ...(renewWith ? { renewWith } : {}), state: seamless ? 'seamless' : 'ready', next: { kind: 'none' }, recommended }
 }

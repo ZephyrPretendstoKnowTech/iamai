@@ -1383,6 +1383,7 @@
           "why": "Nothing to do"
         }
       },
+      "seamlessLapsing": "To sign in again before Ready ends: {n}",
       "groupAction": "Open the setup steps in the Plan",
       "sub": {
         "admins": "Admins",
@@ -1473,6 +1474,7 @@
       "next": {
         "none": "Nothing to do",
         "renewBy": "Sign in with {method} before {date}",
+        "renewByOn": "Sign in with {method} on {device} before {date}",
         "seamless": "Add {option} on {device}",
         "setUp": "Set up {option}",
         "$commentRestore": "It said \"Restore the passkey\". A removed method can't be restored in Entra, and the row never said one was seen before. It is set up again.",
