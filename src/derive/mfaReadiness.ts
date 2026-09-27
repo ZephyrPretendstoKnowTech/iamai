@@ -69,6 +69,8 @@ export type ReadinessRow = {
   methods: MethodClass[] | null
   /** The scored row, for the people; the kinds are not scored. */
   viability: MfaViability | null
+  /** Ready, and no longer Ready within seven days: the page's lapsing list and the row's next step. */
+  lapsing?: boolean
 }
 
 /** The states a group can be, in the worklist's order: the actionable ones, then the done. */
@@ -119,8 +121,10 @@ export function readinessView(snapshot: TenantSnapshot, now: string, mapping: La
   const admins = adminUserIdsWithEligible(snapshot.roles ?? { active: {} })
   const byId = new Map(snapshot.users.map((u) => [u.id, u]))
   const rows: ReadinessRow[] = []
+  const soon = new Date(Date.parse(now) + 7 * DAY).toISOString()
   const person = (u: UserRow, v: MfaViability, active: boolean): ReadinessRow => {
-    return { user: u, kind: 'person', active, state: active ? v.readiness.state : null, explained: active ? null : explainedOf(u, v, now), admin: admins.has(u.id), guest: u.userType === 'guest', readiness: v.readiness, methods: v.readiness.methods, viability: v }
+    const lapsing = active && isReady(v.readiness.state) && v.readiness.readyUntil != null && v.readiness.readyUntil <= soon
+    return { user: u, kind: 'person', active, state: active ? v.readiness.state : null, explained: active ? null : explainedOf(u, v, now), admin: admins.has(u.id), guest: u.userType === 'guest', readiness: v.readiness, methods: v.readiness.methods, viability: v, ...(lapsing ? { lapsing } : {}) }
   }
   for (const s of READINESS_STATES) {
     for (const p of l.states[s]) {
@@ -143,8 +147,7 @@ export function readinessView(snapshot: TenantSnapshot, now: string, mapping: La
   // Counted from the rows, which are the ladder's states: one set with the Plan's facts.
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, rows.filter((r) => r.state === s).length])) as Record<ReadinessState, number>
   const explained = Object.fromEntries(EXPLAINED.map((e) => [e, rows.filter((r) => r.explained === e).length])) as Record<Explained, number>
-  const soon = new Date(Date.parse(now) + 7 * DAY).toISOString()
-  const lapsing = rows.filter((r) => r.state !== null && isReady(r.state) && r.readiness?.readyUntil != null && r.readiness.readyUntil <= soon).map((r) => r.user.id)
+  const lapsing = rows.filter((r) => r.lapsing).map((r) => r.user.id)
   const counted = rows.filter((r) => r.state !== null)
   // The facts are the partition's (one function for every surface), and the
   // page's counts are its rows over the same partition: counts sum to facts.active.

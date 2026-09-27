@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, deviceChips, methodsCell, needsActionWords, nextCell, noDevicesWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords, subDevicesTitle } from './readinessCells.ts'
+import { checkWords, completedChecks, deviceChips, methodsCell, needsActionWords, nextCell, noDevicesWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords, subDevicesTitle } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -607,7 +607,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
               </Fragment>
             ))}
             <details open={remaining.length === 0 || undefined}>
-              <summary>{fillText(T.rail.completed, { n: done.length })}</summary>
+              <summary>{fillText(T.rail.completed, { n: completedChecks(done) })}</summary>
               <ul>
                 {done.map((c) => (
                   <li key={c.key} className={c.outcome === 'note' ? 'note' : undefined}>

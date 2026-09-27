@@ -53,7 +53,7 @@ type Words = {
   unusedKey: { never: string; stale: string }
   options: Record<SignInOption, string>
   next: {
-    none: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; guestHasAuthenticator: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
+    none: string; renewBy: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; guestHasAuthenticator: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
     waitSetup: Record<string, string>; rescan: Record<string, string>
   }
   notes: { automated: string; onLeave: string }
@@ -381,8 +381,15 @@ export function nextCell(r: ReadinessRow): string {
   if (r.guest && GUEST_SETUP.has(rd.next.kind)) return (r.methods ?? []).includes('authenticator') ? T.next.guestHasAuthenticator : T.next.guest
   // Records the tenant can't provide: nothing for this person to do, and the page says why once.
   if (signInsUnavailableFor(r)) return T.next.none
+  // Ready ends soon: the one thing to do is sign in again with the method that last proved it.
+  if (r.lapsing && rd.next.kind === 'none' && rd.readyUntil && rd.lastConfirmed) return fillText(T.next.renewBy, { method: T.methodsInline[rd.lastConfirmed.cls], date: monthDay(rd.readyUntil) })
   if (rd.next.kind === 'none') return rd.recommended && !r.guest ? nextWords(rd.recommended) : T.next.none
   return nextWords(rd.next)
+}
+
+/** The rail's completed checks: the checks passed, not the notes listed with them. */
+export function completedChecks(done: readonly SetupCheck[]): number {
+  return done.filter((c) => c.outcome !== 'note').length
 }
 
 /** A note beside the next step: an account that looks automated. */

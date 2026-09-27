@@ -1472,6 +1472,7 @@
       },
       "next": {
         "none": "Nothing to do",
+        "renewBy": "Sign in with {method} before {date}",
         "seamless": "Add {option} on {device}",
         "setUp": "Set up {option}",
         "$commentRestore": "It said \"Restore the passkey\". A removed method can't be restored in Entra, and the row never said one was seen before. It is set up again.",
@@ -1558,7 +1559,7 @@
         "twin": "{model}, {aaguid}; the approved one is {approved}",
         "why": {
           "seamless": "Every device they use signs them in on its own.",
-          "ready": "Phishing-resistant sign-in is confirmed on every kind of device they use (computer, phone) in the last 30 days.",
+          "ready": "Phishing-resistant sign-in is confirmed on every kind of device they use in the last 30 days.",
           "confirm": "They hold a phishing-resistant method, but no sign-in with it in the last 30 days: it may no longer exist.",
           "$commentConfirmNew": "A method registered last week and not used yet read \"it may no longer exist\", right after a registration campaign. Where every usable method is new, the row says when it was registered.",
           "confirmNew": "Registered {date} and not used to sign in yet.",
@@ -1568,7 +1569,7 @@
           "blocked": "A tenant setting stops them from setting one up.",
           "unknown": "IAMAI couldn’t read what the answer depends on.",
           "usedRecently": "Microsoft reports their passkey used {date}, but no sign-in with it shows in 30 days. A last-used date alone never makes someone Ready.",
-          "replaceKey": "The key works today, but its model isn’t on Emergency Access Step 3’s approved list, so it stops working when you apply those settings."
+          "replaceKey": "The key works today, but its model isn’t on Configure Passkey Authentication’s approved list, so it stops working when you apply those settings."
         }
       },
       "rail": {
@@ -1578,7 +1579,7 @@
         "completed": "Completed checks · {n}",
         "shownAbove": "Shown above as the next check.",
         "models": "Approved passkey models",
-        "modelsFrom": "From Establish Emergency Access Step 3. Keys outside this list are flagged before they stop working.",
+        "modelsFrom": "From Configure Passkey Authentication. Keys outside this list are flagged before they stop working.",
         "counted": "Not counted",
         "evidence": "Evidence read"
       },
@@ -1593,7 +1594,7 @@
         "phonePasskey": {
           "pass": "Phones can hold a passkey (both Authenticator models allowed)",
           "fail": "Phones can’t hold a passkey",
-          "failText": "Add the two Microsoft Authenticator models to the approved list in Passkey (FIDO2) settings, or in Establish Emergency Access Step 3.",
+          "failText": "Add the two Microsoft Authenticator models to the approved list in Passkey (FIDO2) settings, or in Configure Passkey Authentication.",
           "unknown": "Passkey models weren’t read. Scan again."
         },
         "registration": {
@@ -1627,8 +1628,8 @@
           "unknown": "Authentication methods weren’t read. Scan again."
         },
         "step3": {
-          "pass": "Passkey models checked against Emergency Access Step 3",
-          "note": "Configure your passkey settings in Establish Emergency Access Step 3 so IAMAI can check keys against the models you intend to allow."
+          "pass": "Passkey models checked against Configure Passkey Authentication",
+          "note": "Set your passkey settings in Configure Passkey Authentication so IAMAI can check keys against the models you intend to allow."
         },
         "attestation": {
           "pass": "Attestation is off: synced and Windows Hello passkeys can register",
