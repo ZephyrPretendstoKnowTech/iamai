@@ -17,7 +17,7 @@
 // only role IAMAI names, and the consent rows are generated from GRAPH_SCOPES.
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
+import { absoluteDate, monthDay, relative, scanAgeDays, STALE_SCAN_DAYS } from '../../copy/dates.ts'
 import { list, lowerFirst } from '../../copy/statements.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
 import { MIN_COVERAGE_HOURS } from '../../graph/collect/constants.ts'
@@ -117,9 +117,10 @@ export function stages(done: readonly boolean[]): Stage[] {
  * says that stage's title and state line alone, the tile's own words.
  */
 export type ConnectStatus = { tone: Tone; title: string; text: string }
-export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone; caveat?: string; actions?: readonly unknown[] }[]): ConnectStatus {
+export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone; caveat?: string; stale?: boolean; actions?: readonly unknown[] }[]): ConnectStatus {
   const current = done.indexOf(false)
-  if (current === -1) return { tone: 'done', title: W.status.ready, text: stagesOf.find((s) => s.caveat)?.caveat ?? W.status.readyText }
+  // A scan a week old or more is a wait, not done (F-186): every other page says to scan again.
+  if (current === -1) return { tone: stagesOf.some((s) => s.stale) ? 'wait' : 'done', title: W.status.ready, text: stagesOf.find((s) => s.caveat)?.caveat ?? W.status.readyText }
   const s = stagesOf[current]
   if (s?.actions?.length === 0) return { tone: s.tone, title: s.title, text: s.state }
   return { tone: s?.tone ?? null, title: fillText(W.status.next, { stage: s?.title ?? '' }), text: s?.state ?? '' }
@@ -417,6 +418,8 @@ export type ScanTile = {
   note?: string
   /** A complete scan's own shortfall, its unread lead and its degraded note, for the status strip (connectStatus). */
   caveat?: string
+  /** The scan is a week old or more (copy/dates.ts STALE_SCAN_DAYS): the strip waits on it (F-186). */
+  stale?: boolean
   actions: ScanAction[]
 }
 
@@ -467,8 +470,13 @@ export function scanTile(input: ScanInput): ScanTile {
       // was built without is listed under it rather than left unsaid (S4-7, S4-8).
       const unread = input.unread ?? []
       const lead = unread.length > 0 ? fillText(S.complete.unread, { n: unread.length }) : null
-      const note = input.degraded ? S.complete.degraded : null
-      const caveat = [lead, note].filter((x): x is string => x !== null).join(' ')
+      const degraded = input.degraded ? S.complete.degraded : null
+      // A scan a week old or more says so here, in the header's own sentence, as
+      // every other page does (F-186): Connect read Ready to plan over a scan 40
+      // days old.
+      const stale = scanAgeDays(input.at, input.now) >= STALE_SCAN_DAYS ? app.shell.staleEvidence : null
+      const note = [degraded, stale].filter((x): x is string => x !== null).join(' ') || null
+      const caveat = [stale, lead, degraded].filter((x): x is string => x !== null).join(' ')
       return {
         ...base,
         kind: 'complete',
@@ -480,6 +488,7 @@ export function scanTile(input: ScanInput): ScanTile {
         ...(note ? { note } : {}),
         // The strip's line when every stage is done: the scan's own words, never "ready" over them.
         ...(caveat ? { caveat } : {}),
+        ...(stale ? { stale: true } : {}),
         actions: [again],
       }
     }

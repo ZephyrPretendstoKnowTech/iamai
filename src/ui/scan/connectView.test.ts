@@ -668,3 +668,27 @@ test("the strip reads the stages: the complete scan's own caveat, and the same l
     assert.match(tile, /busy, setBusy/)
   }
 })
+
+test('a scan a week old or more says so on Connect, in the header’s own sentence, and the strip waits on it (F-186)', () => {
+  const at = '2026-08-01T09:00:00.000Z'
+  const day = 86_400_000
+  const old = scanTile({ kind: 'complete', at, now: Date.parse(at) + 8 * day })
+  const stale = app.shell.staleEvidence as string
+  assert.equal(stale, 'This scan is more than a week old. Scan again before acting on its findings.')
+  assert.equal(old.caveat, stale)
+  assert.equal(old.note, stale, 'the scan tile says it too')
+  assert.equal(old.stale, true)
+  const strip = connectStatus([true, true, true, true], [
+    { title: 'Sign in', state: '', tone: 'done' },
+    { title: 'Baseline', state: '', tone: 'done' },
+    old,
+    { title: 'Plan', state: '', tone: 'done' },
+  ])
+  assert.equal(strip.tone, 'wait')
+  assert.equal(strip.text, stale)
+  // Six days: nothing to say, and the strip reads done.
+  const fresh = scanTile({ kind: 'complete', at, now: Date.parse(at) + 6 * day })
+  assert.equal(fresh.caveat, undefined)
+  assert.equal(fresh.stale, undefined)
+  assert.equal(connectStatus([true, true, true, true], [{ title: 'Sign in', state: '', tone: 'done' }, { title: 'Baseline', state: '', tone: 'done' }, fresh, { title: 'Plan', state: '', tone: 'done' }]).tone, 'done')
+})
