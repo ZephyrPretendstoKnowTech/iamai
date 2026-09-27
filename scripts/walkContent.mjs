@@ -68,8 +68,8 @@ export const ACCEPTANCE = [
   { item: 'C2', cleanup: 'consolidation', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' },
   // C4: a manager line never asserts "nobody here used it" unconditionally; the
   // clause returns under the engine's `applies` when the evidence count is zero.
-  { item: 'C4', step: 'block-device-code', path: 'more.manager', must: 'A sign-in flow often abused in phishing is turned off.', mustNot: /nobody here/i },
-  { item: 'C4', step: 'block-auth-transfer', path: 'more.manager', must: 'Signing in by transferring a session from another device is turned off', mustNot: /nobody here/i },
+  { item: 'C4', step: 'block-device-code', path: 'more.manager', must: 'A sign-in shortcut that phishing attacks abuse is switched off.', mustNot: /nobody here/i },
+  { item: 'C4', step: 'block-auth-transfer', path: 'more.manager', must: 'Moving a signed-in session from one device to another', mustNot: /nobody here/i },
   { item: 'C4', step: 'geo-restriction', path: 'more.manager', must: 'Sign-ins from countries outside the approved list are blocked', mustNot: /nobody signed in/i },
   // C7: the security-defaults switch is dated to the day Require MFA for Everyone
   // enforces, with the other three replacement policies the same day.
@@ -240,7 +240,7 @@ export const ACCEPTANCE = [
   { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'when you activate an eligible admin role', mustNot: 'confirm with MFA each time' },
   { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them are not yet Ready for phishing-resistant MFA: {list:eligibleWithout}' },
   { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'This policy asks for a fresh strong sign-in every time someone activates a role.' },
-  { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'User-driven enrollment asks for a fresh authentication', mustNot: 'one extra prompt' },
+  { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'Enrolling a device asks the person to sign in again', mustNot: 'one extra prompt' },
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'a person with only Authenticator approval cannot satisfy it until they register an accepted method' },
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: '{list:pushOnlyUsers}' },
   { item: '35', step: 'sign-in-risk', path: 'doneWhen', mustNot: 'were reviewed' },

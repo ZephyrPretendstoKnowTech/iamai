@@ -5118,7 +5118,7 @@
           "Check whether an intentional emergency or approved service-account exclusion applies before changing group membership.",
           "A policy of this name you cannot rename or delete is Microsoft's own managed one; change its excluded identities rather than the policy."
         ],
-        "manager": "Work sign-ins need a second factor, which makes a stolen password much less useful on its own. People confirm with a method they set up during the campaign.",
+        "manager": "Work sign-ins need a second factor, which makes a stolen password much less useful on its own.",
         "waits": null
       },
       "example": {
@@ -5442,7 +5442,7 @@
           "Review inbound MFA trust only for the specific partner and approved collaboration requirement. A trust change is a security decision, not a general sign-in workaround.",
           "Delegated administration (GDAP) and ordinary guest (B2B) access are separate sign-in paths. Review inbound MFA trust for ordinary B2B collaboration on its own merits; do not turn it on as a fix for delegated administration."
         ],
-        "manager": "Outside people you share with prove who they are, the same as staff. Without this, a partner's stolen password is a way into your files.",
+        "manager": "Outside people you share with prove who they are, the same as staff.",
         "waits": null
       },
       "example": {
@@ -5536,7 +5536,7 @@
           "A person with no method registers with a Temporary Access Pass: it is the one credential that satisfies a multifactor requirement before they have anything else.",
           "A phishing-resistant requirement does not accept a Temporary Access Pass, so it locks out the new starter it was meant to protect. Keep this policy's grant as IAMAI resolved it."
         ],
-        "manager": "Adding a sign-in method needs a passkey, Windows Hello or a one-time pass, so a stolen password alone cannot add one. People already set up see no change until they register a new one.",
+        "manager": "Adding a sign-in method needs a passkey, Windows Hello or a one-time pass, so a stolen password alone cannot add one.",
         "waits": null
       },
       "example": {
@@ -5630,7 +5630,7 @@
           "A device moved from a password to a certificate is still on legacy authentication, and this policy still blocks it. Move it to a client that uses modern authentication.",
           "Scan-to-email stopped: move the device to an Exchange Online connector."
         ],
-        "manager": "Older sign-in paths that cannot complete MFA are turned off. Without this, a password alone can still work through them.",
+        "manager": "Older sign-in paths that cannot complete MFA are turned off.",
         "waits": null
       },
       "example": {
@@ -5708,7 +5708,7 @@
           "For interactive CLI use, test the tool's supported browser-based sign-in on a suitable device. A browser sign-in does not transfer a session to an unrelated remote tool.",
           "In the sign-in log, filter by Authentication Protocol for device code, then read Original transfer method in Activity details: a blocked request can belong to a session that used the flow earlier."
         ],
-        "manager": "A sign-in flow often abused in phishing is turned off. Tools that legitimately use it need a tested alternative first.",
+        "manager": "A sign-in shortcut that phishing attacks abuse is switched off.",
         "waits": null,
         "managerNone": {
           "text": "No use appears in the records since {from}.",
@@ -5783,7 +5783,7 @@
         "helpDesk": [
           "Sign in on the phone directly; the QR shortcut is off on purpose."
         ],
-        "manager": "Signing in by transferring a session from another device is turned off; people sign in directly on the destination device where supported.",
+        "manager": "Moving a signed-in session from one device to another, for example by scanning a QR code, is switched off.",
         "waits": null,
         "managerNone": {
           "text": "No use appears in the records since {from}.",
@@ -5977,7 +5977,7 @@
           "Stay signed in? stops working for these admins: the policy's browser setting overrides that prompt.",
           "Unexpected repeated prompts: check the sign-in result, policies applied, client support and browser session settings before changing the device or policy."
         ],
-        "manager": "Admin browser sessions reauthenticate every {wanted} and do not persist, which limits how long a signed-in browser stays useful. Sign-in frequency is not a hard lifetime for every token.",
+        "manager": "Admins sign in again at a set interval in the browser, and closing the browser signs them out.",
         "waits": null
       },
       "example": {
@@ -6208,7 +6208,7 @@
           "Entra registration alone does not meet this grant. Use a compliant device or Microsoft Entra hybrid joined device within the saved platform scope.",
           "A sign-in that used device code flow cannot meet this grant at all: Microsoft does not support the managed-device controls on that flow."
         ],
-        "manager": "Outside the trusted network, work access needs a device that meets the selected requirements. {n} people on devices that do not yet meet them need to enroll or use another approved path.",
+        "manager": "Away from the office, work apps open only on devices the business manages. {n} people on devices that do not meet this yet need to enrol them.",
         "waits": null
       },
       "example": {
@@ -6297,7 +6297,7 @@
         "helpDesk": [
           "Compare the sign-in's platform with the policy's included and excluded platforms. Test the supported client/device path before proposing an intentional scope change."
         ],
-        "manager": "Sign-ins from platforms outside the approved set, including unidentified ones, are blocked. A platform label is not device compliance.",
+        "manager": "Sign-ins from anything other than Windows, Mac, iPhone, iPad and Android are blocked, including devices that don't say what they are.",
         "waits": null,
         "managerNone": {
           "text": "No sign-ins from unidentified platforms appear in the records since {from}.",
@@ -6538,7 +6538,7 @@
           "Setting up a new computer asks for MFA once at the join step; that is expected.",
           "Cannot finish the join with a passkey on that device: use another registered method, or a Temporary Access Pass, because the device is not registered yet."
         ],
-        "manager": "Registering or joining a device asks for MFA, which makes a stolen password alone less useful for adding a device. Registration alone does not make a device compliant.",
+        "manager": "Adding a new device to the business needs MFA, so a stolen password alone can't add one.",
         "waits": null
       },
       "example": {
@@ -6626,7 +6626,7 @@
           "For a failing script or client, test a supported authentication path and review the actual target resources and conditions. Do not add a service-account exclusion solely to clear the error.",
           "An external person reporting an unexplained failure: their device has to meet the registration requirement in their own directory, and the error they see does not say so."
         ],
-        "manager": "Supported client/device paths bind sign-in tokens to the device, making a copied token harder to reuse elsewhere. Compatibility must be checked for the applications this policy targets.",
+        "manager": "On Windows, sign-ins to email, Teams, SharePoint and virtual desktops are tied to the device, so a stolen sign-in can't be reused on another machine.",
         "waits": null
       },
       "example": {
@@ -6801,7 +6801,7 @@
           "Prompted on one computer and not another: unlocking a joined device refreshes its sign-in in the background and a registered device's does not, so the two reach the interval at different times.",
           "Unexpected repeated prompts: check the sign-in result, policies applied, client support and browser session settings before changing the device or policy."
         ],
-        "manager": "The policy controls sign-in frequency and browser session persistence for the clients and resources in its scope. The frequency is checked when the session is evaluated, so it is not a hard expiry on every token.",
+        "manager": "Browser sign-ins end when the browser closes, and people sign in again at a set interval.",
         "waits": null
       },
       "example": {
@@ -6890,7 +6890,7 @@
           "Inspect the selected role's activation settings, authentication-context ID, matching Conditional Access policy and the sign-in result. Confirm the account has a method accepted by that policy's actual strength.",
           "The context is checked at activation only; Require Phishing-Resistant MFA for Admins is what covers the role once it is active."
         ],
-        "manager": "Activating a selected role requires the approved authentication method through an authentication context. A check just made can be reused for another activation within ten minutes, across Entra roles, Azure resource roles and groups.",
+        "manager": "Every time someone switches on an admin role, they confirm it with a strong sign-in.",
         "waits": null
       },
       "example": {
@@ -6974,7 +6974,7 @@
           "A corporate-owned device enrolled through Apple automated device enrollment, or an Android Enterprise fully managed device, needs a second device or a Temporary Access Pass to answer the challenge.",
           "Two prompts in five minutes: it will not happen. Microsoft allows five minutes of clock skew on Every time, so nobody is asked more often than that."
         ],
-        "manager": "User-driven enrollment asks for a fresh authentication, so an older session is not reused for it. This session setting does not add MFA or make the device compliant.",
+        "manager": "Enrolling a device asks the person to sign in again, so an open session can't quietly enrol one.",
         "waits": null
       },
       "example": {
@@ -7066,7 +7066,7 @@
           "A person prompted again straight afterwards: some detections are no longer cleared by answering the prompt, and the person has to complete a secure password change instead. Read the detection before dismissing anything.",
           "A sign-in blocked with AADSTS53004: the person has no registered method that meets the requirement, and cannot register one while the sign-in is risky."
         ],
-        "manager": "Sign-ins Microsoft rates high risk need the selected stronger verification before they continue. The rating is about one request, not about the account.",
+        "manager": "When Microsoft rates a sign-in as high risk, the person must prove it's them with a strong method before it goes through.",
         "waits": null
       },
       "example": {
@@ -7371,7 +7371,7 @@
         "helpDesk": [
           "An admin refused by a portal on the everyday account: the role moved; sign in with the admin account."
         ],
-        "manager": "Admin work moves to accounts that do nothing else, so a phished mailbox is not a phished tenant. Without this, every admin inbox is a way in to every setting.",
+        "manager": "Admin work moves to accounts that do nothing else, so a phished mailbox is not a phished tenant.",
         "waits": null
       },
       "example": {
@@ -7467,7 +7467,7 @@
         "helpDesk": [
           "Inspect the failed job's account, sign-in result and public egress address. Confirm whether the job belongs on an already approved network; adding a new trusted network changes every policy that relies on that trust."
         ],
-        "manager": "Service accounts in the group can sign in only from the approved trusted network, which limits where their passwords are useful. A call made by a service principal is not blocked by a policy scoped to users; covering one takes Conditional Access for workload identities, which Restrict the Directory Sync Service Principal to Its Address builds.",
+        "manager": "Service accounts can sign in only from the office network, so their passwords are useless anywhere else.",
         "waits": null
       },
       "example": {
@@ -7804,7 +7804,7 @@
         "helpDesk": [
           "Inspect the affected Inforcer sign-in and its Conditional Access result. Check the target application ID, user scope, exclusions and accepted MFA claim."
         ],
-        "manager": "Inforcer user sign-ins require MFA through the app-specific policy.",
+        "manager": "People signing in to Inforcer confirm it with MFA.",
         "waits": null
       },
       "example": {
