@@ -29,7 +29,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, pressKeyOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, pressKeyOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -63,7 +63,7 @@ type PlanPage = {
   settingsLink: string
   settings: { h3: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
   blocked: { after: string }
-  progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string }
+  progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string; next: string }
   howTo: { link: string; intro: string; legend?: { label: string; description: string }[] }
 }
 const PP = pages.plan as unknown as PlanPage
@@ -261,6 +261,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // plan heads the section with and the exports number its steps under
   // (`<section>.<row>`), the same on every tab and while a focus filters rows.
   const sectionNumbers = sectionNumbersOf(items)
+  const nextReady = nextReadyOf(items, rowNumbers, sectionNumbers)
   const renderById = new Map<string, () => ReactNode>()
   for (const { step, reading, lane: laneView } of board.rows) {
     if (step === null) continue
@@ -418,6 +419,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
           ))}
         </dl>
       </div>
+      {/* The next step, by name, under the tiles that count (OWN-W1, owner
+          2026-09-27): one link, the first Ready row in All work order, and
+          nothing where nothing is Ready. Not a status: the rows say that. */}
+      {nextReady && (
+        <p className="line no-print plan-next">
+          <a href={`#/plan/${encodeURIComponent(nextReady.id)}`}>{fillText(PP.progress.next, { step: nextReady.number ? `${nextReady.number} ${nextReady.title}` : nextReady.title })}</a>
+        </p>
+      )}
       {/* Nothing sits between the header line and the board. The MFA readiness
           ladder was a tenant-wide diagnostic on a page whose job is the rollout,
           and it answered a question no step on this page asks; it stays on Today,

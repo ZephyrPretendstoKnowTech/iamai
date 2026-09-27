@@ -1236,6 +1236,23 @@ export function groupNumberOf(g: BoardGroup, numbers: ReadonlyMap<string, number
   return key === null ? null : numbers.get(key) ?? null
 }
 
+/**
+ * The step the Plan names as next (OWN-W1): the first Ready row in All work
+ * order, with the `<section>.<row>` number the board shows beside it (the
+ * section's number, sectionNumbersOf; the row's, rowNumbersOf). Null where
+ * nothing is Ready. The tiles counted "Ready now 10" and nothing named one.
+ */
+export function nextReadyOf(board: readonly BoardItem[], rowNumbers: ReadonlyMap<string, number>, sectionNumbers: ReadonlyMap<string, number>, groups: readonly StepGroup[] = STEP_GROUPS): { id: string; number: string | null; title: string } | null {
+  for (const g of allWorkGroups(board, board, groups)) {
+    const item = g.items.find((i) => i.lane === 'Ready')
+    if (!item) continue
+    const section = groupNumberOf(g, sectionNumbers, groups)
+    const row = rowNumbers.get(item.id)
+    return { id: item.id, number: section !== null && row !== undefined ? `${section}.${row}` : null, title: item.title }
+  }
+  return null
+}
+
 /** One section of the board as All work draws it whole: the drawn group, its registry key and number, and whether the board reads it finished. */
 export type BoardSection = { key: string | null; number: number | null; group: BoardGroup; finished: boolean }
 

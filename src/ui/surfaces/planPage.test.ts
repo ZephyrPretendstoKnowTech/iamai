@@ -129,3 +129,28 @@ test('completing a step produces one line naming it', () => {
   assert.match(page, /\{changeLine !== null && <p className="reason no-print" role="status">\{changeLine\}<\/p>\}/)
   assert.match(page, /const onHash = \(\) => \{ setChangeLine\(null\);/)
 })
+
+// OWN-W1: the tiles counted "Ready now 10, Needs your input 6…" and nothing
+// named a step to start on. One link under them names the first Ready row in
+// All work order, by the number and title the board shows, and opens it.
+test('the Plan names its next step: the first Ready row in All work order, by its number, and nothing where nothing is Ready', async () => {
+  const { nextReadyOf, rowNumbersOf, sectionNumbersOf, allWorkGroups } = await import('./planBoard.ts')
+  const { customerPlanSteps } = await import('./customerPlanSteps.ts')
+  const { fillText } = await import('../../content/render.ts')
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const items = boardOf(customerPlanSteps(r.steps), r.schedule.cleanup ?? null, f.mapping.breakGlassAnswers ?? null).rows.map((row) => row.item)
+  const next = nextReadyOf(items, rowNumbersOf(items), sectionNumbersOf(items))
+  const first = allWorkGroups(items, items).flatMap((g) => g.items).find((i) => i.lane === 'Ready')
+  assert.ok(first && next, 'the premise: the demo has a Ready row')
+  assert.equal(next.id, first.id)
+  assert.deepEqual({ number: next.number, title: next.title }, { number: '1.1', title: 'Prepare Emergency Access Accounts' })
+  assert.equal(fillText((pages.plan.progress as { next: string }).next, { step: `${next.number} ${next.title}` }), 'Next: 1.1 Prepare Emergency Access Accounts →')
+  // Nothing Ready: no line.
+  assert.equal(nextReadyOf(items.map((i) => (i.lane === 'Ready' ? { ...i, lane: 'Up Next' as const } : i)), rowNumbersOf(items), sectionNumbersOf(items)), null)
+  // The page draws it under the tiles, as a link to the step, only when there is one.
+  const page = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(page, /const nextReady = nextReadyOf\(items, rowNumbers, sectionNumbers\)/)
+  assert.match(page, /\{nextReady && \(\s*<p className="line no-print plan-next">\s*<a href=\{`#\/plan\/\$\{encodeURIComponent\(nextReady\.id\)\}`\}>/)
+  assert.ok(page.indexOf('plan-next') > page.indexOf('plan-progress-tiles') && page.indexOf('plan-next') < page.indexOf('plan-links'), 'under the tiles, above Plan settings')
+})

@@ -1057,7 +1057,9 @@
         "atPace": "at pace",
         "committed": "committed {date}",
         "started": "Started",
-        "none": "—"
+        "none": "—",
+        "$commentNext": "OWN-W1 (owner, 2026-09-27): under the tiles, the first Ready row in All work order by its number and title, a link that opens it (planBoard.ts nextReadyOf). Hidden where nothing is Ready. One link, not the status sentence the owner removed on 2026-09-11.",
+        "next": "Next: {step} →"
       },
       "howTo": {
         "link": "How to use this plan",
