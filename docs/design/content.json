@@ -1718,7 +1718,8 @@
         "$comment": "Export groups its artifacts by the job each one does, not by its format. A note under a heading says what is not on this page for that job.",
         "plan": "The plan",
         "implementation": "Doing the work",
-        "implementationNote": "The JSON and the PowerShell for a policy are on that step in the Plan. They belong to one step, so they are not offered here for the whole plan.",
+        "$commentImplementationNote": "OWN-X1: only some policy steps carry JSON and PowerShell tabs (9 of 20 on the demo; not 4.4 or 4.3), so the note no longer says every policy has them.",
+        "implementationNote": "Where a policy step offers JSON or PowerShell, they're in its tabs in the Plan. They belong to one step, so they are not offered here for the whole plan.",
         "schedule": "Timing",
         "technical": "For another tool"
       },
