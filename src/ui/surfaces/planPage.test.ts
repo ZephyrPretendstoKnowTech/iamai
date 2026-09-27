@@ -156,3 +156,23 @@ test('the Plan names its next step: the first Ready row in All work order, by it
   // A tile closes the open step and the address with it, so the link opens that step again (review, 2026-09-27).
   assert.match(page, /const selectSummary = [^\n]*setOpen\(null\); window\.history\.replaceState\(null, '', '#\/plan'\) \}/)
 })
+
+// F-003, OWN-W3: the legend defined only the five lane words, while rows also
+// read Ready · Correct, Create, Decision, Review and Turn on and carry the
+// tenant fact Report-only or Enforced; and the "Observing" tile named a state
+// no row shows. Every word a row carries is in the legend, and the tile says
+// it in the chip's own word.
+test('the legend explains every word a row carries, and the report-only tile uses the chip\'s word', async () => {
+  const { SUBSTATUS_WORD, BOARD } = await import('./planBoard.ts')
+  const { CONTRACT } = await import('./stepContract.ts')
+  const { structuralWords } = await import('../../content/content.ts')
+  const how = (pages.plan as unknown as { howTo: { legend: { label: string }[]; legendHeading: string } }).howTo
+  const labels = how.legend.flatMap((e) => e.label.split(', '))
+  for (const w of [...Object.values(BOARD.lanes).filter((w) => ['Ready', 'Up Next', 'On Hold', 'Completed', 'Deferred'].includes(w)), ...new Set(Object.values(SUBSTATUS_WORD)), CONTRACT.lifecycle['report-only'], CONTRACT.lifecycle.enforced]) {
+    assert.ok(labels.includes(w), `the legend has no entry for "${w}"`)
+  }
+  const observing = (structuralWords as unknown as { summary: { observing: string } }).summary.observing
+  assert.equal(observing, 'In report-only')
+  assert.ok(observing.toLowerCase().includes(CONTRACT.lifecycle['report-only'].toLowerCase()), 'the tile says the chip\'s word')
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /<h3>\{PP\.howTo\.legendHeading\}<\/h3>/)
+})

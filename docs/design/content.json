@@ -1085,8 +1085,18 @@
           {
             "label": "Deferred",
             "description": "You set the work aside. It does not satisfy another step’s prerequisite."
+          },
+          {
+            "label": "Create, Correct, Turn on, Decision, Review",
+            "description": "The kind of action a Ready step asks for: create a policy, correct one, turn it on, answer a question, or review what the scan found."
+          },
+          {
+            "label": "Report-only, Enforced",
+            "description": "What the policy is set to in your tenant today. On Hold beside Enforced means the policy is on, but the step still has work."
           }
-        ]
+        ],
+        "$commentLegend": "F-003, OWN-W3 (owner, 2026-09-27): the legend covers every word a row carries, the lanes, the Ready lane's action words and the tenant fact beside the lane, so no word on the board goes unexplained.",
+        "legendHeading": "Legend"
       },
       "changes": {
         "$comment": "The one line above the board after a Save or a scan changes the plan (owner, 2026-09-23): what reached Completed, what left it, what was added and what was removed, each by the title its row shows, at most three names then how many more. The next change or a navigation replaces it.",
@@ -3212,7 +3222,8 @@
         "summary": {
           "ready": "Ready now",
           "input": "Needs your input",
-          "observing": "Observing",
+          "$commentObserving": "F-003 (owner, 2026-09-27): the tile counts the steps whose policy is in report-only, and says it in the chip's own word; \"Observing\" named a state no row showed.",
+          "observing": "In report-only",
           "completed": "Completed",
           "finish": "Estimated finish",
           "all": "Show the full plan",

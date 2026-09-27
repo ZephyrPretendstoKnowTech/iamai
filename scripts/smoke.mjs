@@ -538,7 +538,7 @@ try {
   const progressOf = () => evaluate(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => [...(t.querySelector('dt')?.childNodes ?? [])].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ')`)
   const planProgress = await progressOf()
   // Approved structural update: actionable counts, completed fraction, and an honest finish estimate.
-  check('Plan: the header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, Observing=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(planProgress), planProgress)
+  check('Plan: the header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, In report-only=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(planProgress), planProgress)
   // The shell provides scan context; the old generated summary remains absent.
   check('Plan: no obsolete generated summary above the board', !/Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on|from the scan/.test(pt))
   // Task 011: the Plan is the rollout board and nothing above it. The readiness
@@ -624,7 +624,7 @@ try {
   // heading is drawn once (the tiles used to draw the list lane by lane, one
   // heading per lane a section had rows in).
   const tileHeads = []
-  for (const tile of ['Needs your input', 'Observing', 'Completed']) {
+  for (const tile of ['Needs your input', 'In report-only', 'Completed']) {
     const pressed = await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-tile-control')].find((x) => (x.getAttribute('aria-label') || '').startsWith(${JSON.stringify(tile + ':')})); if (b) b.click(); return !!b })()`)
     await sleep(200)
     const heads = pressed ? await evaluate(`[...document.querySelectorAll('main.page .plan-group h2')].map((h) => (h.textContent || '').trim())`) : []
@@ -1080,7 +1080,7 @@ try {
   // Three branches, and the held one has to name what holds it: a plan whose
   // policies wait on a safety object nobody has chosen is the ordinary first
   // visit, and 'cannot finish until' with nothing after it is a hole.
-  check('Demo: the plan header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, Observing=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(demoDay1Header), demoDay1Header)
+  check('Demo: the plan header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, In report-only=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(demoDay1Header), demoDay1Header)
   check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => ${DEMO_CHUNK}.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // RUN-CONTEXT-B decision 10 said a row draws no reason line, because "the
@@ -1290,7 +1290,7 @@ try {
     return evaluate(`(document.querySelector('main.page') || document.body).innerText`)
   }
   // Read the completed numerator from the five-card header; a changing denominator is not progress.
-  const headerOf = (body) => (body.match(/Ready now\s*\d+\s*Needs your input\s*\d+\s*Observing\s*\d+\s*Completed\s*\d+\s*\/\s*\d+\s*Estimated finish[^\n]*/) ?? [''])[0].replace(/\s+/g, ' ').trim()
+  const headerOf = (body) => (body.match(/Ready now\s*\d+\s*Needs your input\s*\d+\s*In report-only\s*\d+\s*Completed\s*\d+\s*\/\s*\d+\s*Estimated finish[^\n]*/) ?? [''])[0].replace(/\s+/g, ' ').trim()
   const inPlaceOf = (body) => Number((body.match(/Completed\s*(\d+)\s*\/\s*\d+/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)
