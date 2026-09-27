@@ -10,7 +10,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
-import { absoluteDate } from '../../copy/dates.ts'
+import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays } from '../../copy/dates.ts'
 import { planFinish, statedEstimate } from '../../derive/finish.ts'
 import { BrandMark } from '../components/Mark.tsx'
 import type { StepVarContext } from './stepVars.ts'
@@ -145,7 +145,10 @@ export function PrintPlan({
       <section className="brief-cover">
         <BrandMark size={40} />
         <h1>{fillText(BRIEF.title, { tenant: tenantName })}</h1>
-        <p className="brief-meta">{fillText(BRIEF.meta, { date: today, by: operator, baseline: baselineLabel })}</p>
+        {/* The scan it was made from, and, over a week old, the screen's own warning: a
+            briefing printed weeks later read as current (F-184). */}
+        <p className="brief-meta">{fillText(BRIEF.meta, { date: today, by: operator, scanned: absoluteDate(scanAt), baseline: baselineLabel })}</p>
+        {scanAgeDays(scanAt) >= STALE_SCAN_DAYS && <p className="brief-stale">{app.shell.staleEvidence}</p>}
         <p className="brief-status">
           {fillText(BRIEF.status, { done: doneCount, total })}
           {/* The finish only while work is left: statedEstimate is always a date, and a finished plan has no rest to finish. */}

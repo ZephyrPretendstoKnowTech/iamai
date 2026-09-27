@@ -213,3 +213,20 @@ test('a wait on a share says whose move it is: people setting up MFA, guests, or
   assert.equal(at('guest MFA readiness'), fillText(BRIEF.need.guestsShare, { value: '12%', threshold: '80%' }))
   assert.equal(at('something else'), fillText(BRIEF.need.peopleShare, { value: '12%', threshold: '80%' }))
 })
+
+// F-184: a briefing printed weeks after its scan read as current: the cover
+// named the day it was prepared and never the scan, and dropped the screen's
+// "Scan again before acting" warning. The cover names the scan, and past a
+// week prints the screen's own warning.
+test('the briefing says which scan it was made from, and warns when that scan is over a week old', async () => {
+  const { app } = await import('../../content/content.ts')
+  const { STALE_SCAN_DAYS, scanAgeDays } = await import('../../copy/dates.ts')
+  assert.equal(fillText(BRIEF.meta, { date: 'Nov 6, 2026', by: 'Alex', scanned: 'Sep 27, 2026', baseline: 'Defense in Depth' }), 'Prepared Nov 6, 2026 by Alex · Scanned Sep 27, 2026 · Measured against Defense in Depth')
+  const page = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  assert.match(page, /fillText\(BRIEF\.meta, \{ date: today, by: operator, scanned: absoluteDate\(scanAt\), baseline: baselineLabel \}\)/)
+  assert.match(page, /\{scanAgeDays\(scanAt\) >= STALE_SCAN_DAYS && <p className="brief-stale">\{app\.shell\.staleEvidence\}<\/p>\}/)
+  assert.equal(app.shell.staleEvidence, 'This scan is more than a week old. Scan again before acting on its findings.')
+  const daysAgo = (n: number): string => new Date(Date.now() - n * 86_400_000).toISOString()
+  assert.equal(scanAgeDays(daysAgo(8)) >= STALE_SCAN_DAYS, true, 'eight days: warned')
+  assert.equal(scanAgeDays(daysAgo(6)) >= STALE_SCAN_DAYS, false, 'six days: not')
+})

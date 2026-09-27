@@ -3484,7 +3484,7 @@
         "brief": {
           "$comment": "The printed plan as a leadership briefing (owner, 2026-09-26): the journey for a manager, director or business owner. Each step says what it does for the business, why it matters and what people will notice (steps[].brief, with the step's manager line as What it does for you). No procedures: those stay on screen in each step.",
           "title": "Identity security plan for {tenant}",
-          "meta": "Prepared {date} by {by} · Measured against {baseline}",
+          "meta": "Prepared {date} by {by} · Scanned {scanned} · Measured against {baseline}",
           "status": "{done} of {total} steps are done.",
           "finishOn": "The rest are planned to finish around {date}.",
           "cards": {

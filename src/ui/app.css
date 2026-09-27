@@ -3455,6 +3455,7 @@ footer.app a {
   .brief h4 { font-size: var(--t-3); margin: 0; }
   .brief-cover .brand-mark { color: var(--brand-primary); }
   .brief-meta { color: var(--secondary-text); margin: 0 0 6mm; }
+  .brief-stale { font-weight: var(--weight-strong); margin: -4mm 0 6mm; }
   .brief-status { font-size: var(--t-4); margin: 0 0 5mm; }
   .brief-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin: 0 0 2mm; }
   .brief-cards p { margin: 0; border: 1px solid var(--line); padding: 3mm 4mm; }
