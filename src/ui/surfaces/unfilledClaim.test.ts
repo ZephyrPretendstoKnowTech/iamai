@@ -110,7 +110,13 @@ test('a who-line never renders its negation because a claim could not be filled'
         // or holds the claim itself, in the undated form the content writes for a
         // line whose one hole was the day it names (who.<key>Undated,
         // stepExport.ts whoEvidenceLines): the people are what was read, and the day is not.
+        // Every line drawn is one the step writes: nothing stands in for the claim.
+        const values: unknown[] = Object.values(who).flatMap((v): unknown[] => (Array.isArray(v) ? v : typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v as Record<string, unknown>) : []))
+        const written = new Set<string>(values.filter((v): v is string => typeof v === 'string'))
+        for (const l of out) assert.ok(written.has(l), `${id} who.${key}: "${l.slice(0, 60)}…" is not a line the step writes`)
         assert.ok(!out.includes(line), `${id} who.${key}: the unfinished claim "${line.slice(0, 60)}…" was drawn`)
+        const undated: unknown = ((who[`${key}Undated`] ?? {}) as Record<string, unknown>)[String(lines.indexOf(line))]
+        if (typeof undated === 'string' && whole(undated, listCountVars(undated, ex) as Ex)) assert.ok(out.includes(undated), `${id} who.${key}: the undated form stands in`)
       }
     }
   }

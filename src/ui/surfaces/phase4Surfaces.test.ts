@@ -7,12 +7,13 @@ import { readFileSync } from 'node:fs'
 import { allFixtures, curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
-import { isReady } from '../../scoring/phishingResistant.ts'
+import type { ReadinessRow } from '../../derive/mfaReadiness.ts'
+import { emptyReadinessContext, isReady, personReadiness } from '../../scoring/phishingResistant.ts'
+import type { MethodClass, Platform } from '../../scoring/phishingResistant.ts'
 import { FACET_APPS } from '../../coverage/facetApps.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import { stepCreatedOn } from '../../roadmap/evidenceStrategy.ts'
 import { operationsOf } from '../../roadmap/operations.ts'
-import { supersededBy, supersededPolicies } from '../../roadmap/generate.ts'
 import { renamesOf } from '../../roadmap/cleanupPhase.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -21,7 +22,7 @@ import { monthDay } from '../../copy/dates.ts'
 import { app, content, pages, stepById } from '../../content/content.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
-import { completedChecks, nextCell, whyLine } from './readinessCells.ts'
+import { completedChecks, deviceNoun, groupWhy, nextCell, whyLine } from './readinessCells.ts'
 import { appsModel, workloadsModel } from './inventoryTables.ts'
 import { copyBoxes, datesLineFor, exportAnnouncementOf, whoEvidenceLines } from './stepExport.ts'
 import { phasesByFirstDay } from './printPlan.ts'
@@ -30,32 +31,62 @@ import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const DAY = 86_400_000
-const R = pages.readiness as unknown as { next: Record<string, string>; methodsInline: Record<string, string>; panel: { why: Record<string, string> }; setup: Record<string, unknown> }
+const R = pages.readiness as unknown as { next: Record<string, string>; methodsInline: Record<string, string>; panel: { why: Record<string, string> }; seamlessLapsing: string }
 const text = JSON.stringify(content)
 
 function ctxOf(f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext {
   return { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming, planSteps: r.steps, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
 }
 
-test('a Ready person whose Ready ends within seven days is asked to sign in again before it does, on the row and in the details', () => {
+test('a Ready person whose Ready ends within seven days is asked to sign in again, on the row and in the details', () => {
   let seen = 0
   for (const f of allFixtures()) {
     const today = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    for (const ready of today.rows.filter((r) => r.state !== null && isReady(r.state) && !r.guest && r.readiness?.readyUntil && r.readiness.lastConfirmed && r.readiness.next.kind === 'none').slice(0, 3)) {
+    for (const ready of today.rows.filter((r) => r.state !== null && isReady(r.state) && !r.guest && r.readiness?.readyUntil && r.readiness.next.kind === 'none' && !r.readiness.recommended).slice(0, 3)) {
       // Three days before this person's Ready ends.
       const view = readinessView(f.snapshot, new Date(Date.parse(ready.readiness!.readyUntil!) - 3 * DAY).toISOString(), f.mapping)
       const row = view.rows.find((r) => r.user.id === ready.user.id)!
-      if (!row.lapsing || row.readiness?.next.kind !== 'none') continue
+      if (!row.lapsing || row.readiness?.next.kind !== 'none' || row.readiness.recommended) continue
       seen++
       assert.ok(view.lapsing.includes(row.user.id), `${f.name}/${row.user.id}: the lapsing list is the rows' own`)
       const rd = row.readiness
-      assert.equal(nextCell(row), fillText(R.next.renewBy, { method: R.methodsInline[rd.lastConfirmed!.cls], date: monthDay(rd.readyUntil!) }), `${f.name}/${row.user.id}`)
-      assert.notEqual(nextCell(row), R.next.none)
+      assert.ok(rd.renewWith, `${f.name}/${row.user.id}: the sign-in that sets the day`)
+      const method = R.methodsInline[rd.renewWith.cls]
+      const date = monthDay(rd.readyUntil!)
+      assert.equal(nextCell(row), rd.renewWith.os ? fillText(R.next.renewByOn, { method, device: deviceNoun(rd.renewWith.os), date }) : fillText(R.next.renewBy, { method, date }), `${f.name}/${row.user.id}`)
     }
-    // Nobody else is lapsing: the list and the flag are one reading.
+    // The list and the flag are one reading.
     assert.deepEqual(today.lapsing, today.rows.filter((r) => r.lapsing).map((r) => r.user.id), f.name)
   }
   assert.ok(seen > 0, 'the premise: a Ready person three days before Ready ends')
+})
+
+test('the renewal is the sign-in on the device whose proof runs out first, not the latest one', () => {
+  const NOW = '2026-09-10T10:00:00.000Z'
+  const at = (d: string) => `2026-${d}T10:00:00.000Z`
+  const proof = (cls: MethodClass, os: Platform, day: string) => ({ cls, os, at: at(day), method: cls === 'windowsHello' ? 'Windows Hello for Business' : 'Passkey (device-bound)' })
+  const rd = personReadiness({
+    methods: [{ kind: 'windowsHelloForBusiness' }, { kind: 'passkey' }] as never,
+    registered: null,
+    // Windows Hello on the computer on Sep 1, a passkey on the phone on Sep 5: the computer's proof ends Ready first.
+    signIns: { read: true, proofs: [proof('windowsHello', 'Windows', '09-01'), proof('passkey', 'iOS', '09-05')], platforms: [{ os: 'Windows', at: at('09-01') }, { os: 'iOS', at: at('09-05') }] },
+    history: null,
+    context: emptyReadinessContext(NOW),
+  } as never)
+  assert.ok(isReady(rd.state), rd.state)
+  assert.equal(rd.readyUntil, at('10-01'), 'thirty days after the computer’s proof')
+  assert.equal(rd.lastConfirmed?.cls, 'passkey', 'the premise: the latest proof is the phone’s')
+  assert.deepEqual(rd.renewWith, { cls: 'windowsHello', os: 'Windows' })
+})
+
+test('the renewal takes the place of "Nothing to do" only, and the Seamless header counts who has to sign in again', () => {
+  const row = (over: Record<string, unknown>, lapsing = true): ReadinessRow => ({ user: { id: 'u1' }, kind: 'person', active: true, state: 'seamless', explained: null, admin: false, guest: false, methods: [], viability: null, ...(lapsing ? { lapsing } : {}), readiness: { next: { kind: 'none' }, recommended: null, readyUntil: '2026-10-01T10:00:00.000Z', lastConfirmed: { cls: 'passkey', os: 'iOS', at: '2026-09-05T10:00:00.000Z', retained: false }, renewWith: { cls: 'windowsHello', os: 'Windows' }, signInsRead: true, devices: [], credentials: [], unknown: null, ...over } }) as unknown as ReadinessRow
+  assert.equal(nextCell(row({})), fillText(R.next.renewByOn, { method: R.methodsInline.windowsHello, device: deviceNoun('Windows'), date: monthDay('2026-10-01T10:00:00.000Z') }))
+  assert.equal(nextCell(row({ recommended: { kind: 'replaceKey', model: 'Old key', aaguid: '00000000-0000-0000-0000-000000000001' } })), R.next.replaceKey, 'the key replacement comes first')
+  assert.equal(nextCell(row({}, false)), R.next.none, 'not lapsing: nothing to do')
+  assert.equal(groupWhy('seamless', [row({}), row({}, false)], 'Nothing to do'), fillText(R.seamlessLapsing, { n: 1 }))
+  assert.equal(groupWhy('seamless', [row({}, false)], 'Nothing to do'), 'Nothing to do')
+  assert.equal(groupWhy('ready', [row({})], 'Confirmed'), 'Confirmed')
 })
 
 test('Ready’s reason names no kind of device the person was not seen on', () => {
@@ -100,7 +131,8 @@ test('net-new 12: no app is an agent identity by its name, and Inventory has no 
 test('a printed policy step draws the task cards its screen draws, with no Scan line', () => {
   const src = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
   const branch = src.slice(src.indexOf('isTaskStep && emergencyAccountTasks'), src.indexOf('<ReadinessSection', src.indexOf('isTaskStep && emergencyAccountTasks')))
-  assert.match(branch, /^isTaskStep && emergencyAccountTasks && \(!printing \|\| isOwnTaskStep\) \? <EmergencySubjectReadiness/, 'printing a policy step takes the screen’s cards')
+  assert.match(branch, /^isTaskStep && emergencyAccountTasks && \(!printing \|\| \(isOwnTaskStep && POLICY_KINDS\.has\(step\.kind\)\)\) \? <EmergencySubjectReadiness/, 'printing a policy step takes the screen’s cards; Prepare and Ongoing print as before')
+  assert.match(src, /const POLICY_KINDS: ReadonlySet<Step\['kind'\]> = new Set\(\['create', 'adjust', 'enforce'\]\)/)
   assert.match(branch, /scanNote=\{!printing\}/)
   assert.match(branch, /onWhy=\{hasEvidence && !printing \?/)
 })
@@ -125,27 +157,27 @@ test('the print says nothing about what IAMAI does not read (7.4, 5.5, 5.7)', ()
   assert.doesNotMatch(text, /risky users report is a separate surface/)
 })
 
-test('the coverage line and the overlap review are a create’s: a step correcting a policy never says it creates the baseline’s version', () => {
-  assert.doesNotMatch(String(content.shared.existingCoverage), /Consolidate Overlapping Policies/)
+test('the coverage line never names the policy the step itself corrects, nor a Cleanup row that may not list it', () => {
+  assert.equal(String(content.shared.existingCoverage), '{tenant} already covers this with {list:existingPolicies}.')
+  // 4.3 on the demo's week two: its tasks correct the policy its goal is delivered by.
   const f = curatedFixture('demo-week2')
   const r = runFixture(f)
-  const ctx = ctxOf(f, r)
-  // A create beside the tenant's own policy keeps the line.
-  const create = r.steps.find((s) => s.deliveredBy.length > 0 && s.status !== 'done' && !operationsOf(s).some((o) => o.mode === 'update'))
-  assert.ok(create && supersededBy(create).length > 0, 'the premise: a create beside a policy delivering its goal')
-  // 4.3's case: the step edits the tenant's policy that delivers its goal.
-  const corrects = r.steps.find((s) => s.status !== 'done' && (s.kind === 'create' || s.kind === 'adjust') && operationsOf(s).some((o) => o.mode === 'update'))
-  assert.ok(corrects, 'the premise: a step that corrects a tenant policy')
-  const correction = { ...corrects, deliveredBy: ['Core - Allow - MFA for Admins'] } as Step
-  assert.deepEqual(stepVars(correction, ctx).existingPolicies, [], 'no line saying the step creates the baseline’s version')
-  assert.deepEqual(supersededPolicies([correction]), [], 'the policy it corrects is not one to retire')
+  const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
+  const own = (step.tracking?.members ?? []).map((m) => m.policyName ?? '').filter(Boolean)
+  assert.ok(step.deliveredBy.some((d) => own.some((n) => d.startsWith(`${n} (`))), `the premise: its own policy delivers the goal: ${step.deliveredBy} / ${own}`)
+  assert.deepEqual(stepVars(step, ctxOf(f, r)).existingPolicies, [])
+  // A policy beside the step's own still says so.
+  let beside = 0
   for (const g of allFixtures()) {
     const rg = runFixture(g)
-    const cg = ctxOf(g, rg)
-    for (const step of rg.steps) {
-      if (((stepVars(step, cg).existingPolicies ?? []) as string[]).length > 0) assert.ok(!operationsOf(step).some((o) => o.mode === 'update'), `${g.name}/${step.id}`)
+    for (const s of rg.steps) {
+      const existing = (stepVars(s, ctxOf(g, rg)).existingPolicies ?? []) as string[]
+      const mine = (s.tracking?.members ?? []).map((m) => m.policyName ?? '').filter(Boolean)
+      for (const d of existing) assert.ok(!mine.some((n) => d === n || d.startsWith(`${n} (`)), `${g.name}/${s.id}: ${d} is its own`)
+      beside += existing.length
     }
   }
+  assert.ok(beside > 0, 'the premise: a step with coverage beside it')
 })
 
 test('no step asks for workflow tests any more', () => {
