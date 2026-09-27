@@ -387,24 +387,255 @@ they take, and is fixing it worth the time? Approved as proposed:
 - Put aside as decisions, in "Not low-hanging": F-006 (make the change freeze work, or take the
   setting out) and F-183 (the plan re-dates weeks later).
 
-## Round 4: candidates (verify live before presenting)
+## Round 4: approved (2026-09-27), building
 
-For felt value and the two surfaces under 85, and the safety floor the owner confirmed.
-Proposed ten, for the next chat to re-check with the owner's lens (who hits it, and is the fix
-the quality one):
+Branch `fix/low-hanging-4`, cut from main at 82274f1 (Round 3 and F-177 are on main).
+Picked with the owner's lens (who hits it on a path they take, and is the fix the quality one),
+for the three things the scores say hold the tool back: the experience layer (78), the safety
+floor, and the two surfaces under 85 (Home + demo 82, Inventory 83). Every pick was re-checked
+at HEAD and live: the demo in the built-in browser at 1280px, the owner's tenant in Claude in
+Chrome (read only: no scan, no save).
 
-| ID | Fix | Surface | Effort | Risk | Frozen |
-|---|---|---|---|---|---|
-| F-180 | A tenant with no policies and security defaults off is told nobody is asked for MFA today | Plan, briefing | S | low | |
-| F-001 | Up Next steps say "not yet" before go-live and exclusion-removal instructions | Plan + steps | S | medium | yes |
-| F-042, F-104 | An edited answer or passkey model is never lost without a second click | Decision, step | S | medium | yes |
-| F-041, F-067 | The partner/MSP choice shows the baseline's version and both answers' effects | Decision | S | medium | yes |
-| F-066, F-069 | Emergency accounts can't be picked as service accounts; "Everyone works remotely" says what it does to them | Decision | S | medium | yes |
-| F-091 | The (i) opens on a click and stays open | Shared | S | medium | |
-| F-028 | After a scan the open step stays in view, and "what changed" can be read whole | Plan | S | low | |
-| F-116 | MFA Readiness search opens the groups it matches in | MFA Readiness | S | low | |
-| F-140 | The sample's data holds up to an expert (iOS devices, the printer, the mail accounts) | Home + demo, Inventory | M | medium | |
-| OWN-B1 | A product image on Home (a design for the owner: needs an approved-pack revision) | Home | M | low | |
+**The owner approved all ten as recommended (2026-09-27):** item 1 puts the line at the top of the step the page moved to; item 3 shows the after lines only; item 5 states the partner No fact only; item 6 keeps a changed answer until it is approved; item 8 fixes the sample only; item 10 drafts one Plan image for the owner to approve before it ships. On policy matching the owner chose **B, build new and retire old**; the pilot on 4.3 is Round 5.
+
+**Changed from the Round 4 candidates:**
+- F-028 and F-040 are one fix: both move the page to a step and leave the line saying what
+  changed out of sight.
+- F-012 joins (Major in the external audit, safety floor): the card at turn-on says "Report-only
+  blocked no one." with no numbers. The owner's tenant reaches it Sep 28 and Oct 2.
+- F-064 joins F-140 (Major; the demo names two legacy-auth accounts in Inventory, one on the
+  step). On a real tenant the two readings fold the same sign-in rows with near-identical client
+  lists, so they agree; the sample's hand-written list is what disagrees.
+- F-168 and F-186 join (the returning and daily path).
+- F-066 leaves: an emergency account picked as a service account still sits in the exclusions
+  group every policy excludes, so nothing locks it out. Nobody is harmed on a path they take.
+- F-180 waits: the scan reads per-user MFA, so "nobody is asked for MFA today" needs that
+  reading beside it before it can be true. Next round.
+- OWN-B1 moves from Review later to Needs attention: Home + demo is the lowest surface, and the
+  evaluator's first ten seconds show no product. It comes as a design with options.
+- The policy-matching question comes as a design with options (below), not a fix: it is the
+  biggest lever on an expert's trust and the owner's decision.
+
+### The ten, as planned
+
+| # | ID | Fix | Reader, moment | Surface (score) | Effort | Risk | Frozen |
+|---|---|---|---|---|---|---|---|
+| 1 | F-028, F-040 | After Scan or Approve you stay with the step, and what changed is at its top, whole | Admin: every scan from a step; the three decisions in the first hour | Plan + steps (90) | M | medium | yes (Plan board; top of a step) |
+| 2 | F-091 | The (i) opens on a click and stays open | Everyone who clicks an (i) | Shared: Plan, steps, Inventory | S | medium | yes (behaviour only) |
+| 3 | F-001 | Removing an old exclusion waits for the exclusions group, and says so | Admin on a half-built tenant, opening 4.x early | Plan + steps; safety floor | S | medium | yes (4.1 to 4.3, only while 1.2 is open) |
+| 4 | F-012 | At turn-on, the card says what report-only saw | Admin at the riskiest click | Plan + steps; safety floor | XS | medium | yes (every policy step's turn-on card) |
+| 5 | F-041, F-067, F-069 | The decisions say what each answer does, beside the baseline's version | Admin in 2.1 to 2.3; every MSP-managed tenant | Plan + steps; safety floor | S | medium | yes (2.1, 2.2, 2.3) |
+| 6 | F-042, F-104 | Nothing you change in a decision is lost | Admin revisiting 2.x; adding a key model in 1.3 | Plan + steps; safety floor | S | medium | yes (2.x behaviour; 1.3 one button fewer) |
+| 7 | F-044, F-116 | MFA Readiness's headline reads right, and search finds people | Help desk and admin | MFA Readiness (91) | S | low | |
+| 8 | F-140, F-064 | The sample tenant holds up to an expert | Evaluator who looks closely | Home + demo (82), Inventory (83) | M | medium | demo only |
+| 9 | F-168, F-186 | The header works during a scan; Connect says when a scan is old | Admin rescanning; admin back after a week | Shell, Connect (90) | S | low | |
+| 10 | OWN-B1 | Home shows the product | Evaluator, first ten seconds | Home + demo (82) | M | low | Home pack revision |
+
+#### 1. F-028, F-040: after Scan or Approve, you stay with the step
+
+- **Before.** Scan in 4.2 (demo): the page lands at the top and 4.2 sits 1,800px below. The line
+  reads "Updated: Confirm What You Use, Identify Service and Shared Accounts, Prepare Emergency
+  Access Accounts and 5 more completed · 8 steps removed: … and 5 more." with no way to see the
+  rest. Approve 2.1: 2.2 opens, keyboard focus drops to the page, and "3 steps removed: …" sits
+  590px above the view. The cause: a new snapshot redraws the Plan from Loading, and nothing
+  moves back to the open step.
+- **After.** The page returns to the step you scanned from, or to the decision Approve opened,
+  with its row at the top of the view. The change line sits at the top of that step (one line,
+  in one place at a time: above the board when nothing moved the page). A cut list ends with
+  "Show all", which lists every title. Keyboard focus lands on the step's title.
+- **Words.** New `pages.plan.changes.showAll`: "Show all". The line's own keys are unchanged.
+- **Options.** (a) The line at the top of the step the page moved to (recommended). (b) The page
+  and focus move, and the line stays above the board, out of sight.
+- **Acceptance.** Unit: `planChanges.test.ts` keeps every title behind a cut list; a pure
+  helper says which step to move to after a new snapshot and after Approve. Live (demo): open
+  4.2, Scan: 4.2's row within 150px of the top, the line at its top, Show all lists all 8
+  removed steps. Initial scan, Approve 2.1: 2.2 open, its top reads "Updated: Confirm What You
+  Use completed · 3 steps removed: …", focus on 2.2's title.
+
+#### 2. F-091: the (i) opens on a click and stays open
+
+- **Before.** Hover opens it, so the click that follows closes it (confirmed live on the
+  Estimated finish (i)); Enter on a focused (i) closes it too.
+- **After.** Hover and focus show it; a click, Enter or Space keeps it open until a second
+  click, Esc or a click elsewhere. Moving the mouse off no longer closes a clicked one.
+- **Words.** None.
+- **Acceptance.** Unit: the open/pinned state as a pure reducer, each event. Live (demo): hover
+  then click the Estimated finish (i), move away: still open; click again: closed.
+
+#### 3. F-001: removing an old exclusion waits for the exclusions group
+
+- **Before.** Demo 4.1, 4.2, 4.3 (Up Next): the card reads "Correct users: Under Users → Exclude,
+  remove the group Core - Break glass." above "Configure Emergency Exclusions · Prerequisite · To
+  do". The Correct task and the PowerShell script remove it with nothing about order. Done
+  first, it takes the emergency accounts' exclusion off an enforced policy before the new group
+  is on it. (The engine already holds the step on 1.2; only the words are missing.)
+- **After.** Under the correction, the card reads "After Configure Emergency Exclusions adds Core
+  - Exclusions to it." The Correct task starts "Do this after Configure Emergency Exclusions adds
+  Core - Exclusions to this policy.", and the PowerShell script's first comment says the same.
+  Only where a correction removes an exclusion from a policy 1.2 still has to edit, and only
+  until 1.2 is done. The owner's tenant: no change (1.2 is done).
+- **Words.** New `shared.procedure.card.afterExclusions`: "After {step} adds {group} to it." and
+  `shared.procedure.afterExclusions`: "Do this after {step} adds {group} to this policy."
+- **Options.** (a) The lines (recommended). (b) Also withhold PowerShell and JSON until 1.2 is
+  done, as 7.4 withholds them while its create is held.
+- **Acceptance.** Unit: on the demo's Initial scan, 4.2's card, Correct task and script carry the
+  lines; with the exclusions group already on the policy, none does. Live: demo 4.2's card, its
+  Entra task and its PowerShell tab.
+
+#### 4. F-012: at turn-on, the card says what report-only saw
+
+- **Before.** "Report-only blocked no one." and nothing else (demo Follow-up, Token Protection).
+  It reads the same whether thirty people were seen or none.
+- **After.** "Report-only blocked no one: 0 failing or interrupted, 29 of 29 active people seen in
+  8 days." The numbers are the two gates the engine already requires before it calls a policy
+  ready (derive/readyWhen.ts), in the words the row's reason line already uses.
+- **Words.** New `shared.procedure.card.blockedNoOneBasis`: "Report-only blocked no one: {basis}."
+  filled with the existing `shared.engine.tracking.evidenceToday`. `blockedNoOne` stays for a
+  reading with no numbers.
+- **Acceptance.** Unit: a ready-to-enforce step's card carries "active people seen in". Live: demo
+  Follow-up, Require Token Protection on Windows.
+
+#### 5. F-041, F-067, F-069: each answer says what it does, beside the baseline's version
+
+- **Before.** 2.1 suggests Yes for partner and MSP technicians and says only "Keeps partner and
+  MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed."
+  The baseline includes them (its B2B-Guest policy lists service provider users), and the card
+  never says so, against the rule that the baseline's version shows beside the person's choice.
+  No, and the mail devices' None, say nothing. "Everyone works remotely" (2.3) takes the
+  service-accounts group out of every exclusion, so picked service accounts get MFA like anyone,
+  and neither card says it (only the shared-device card says "counts as people").
+- **After (words).**
+  - Partner, Yes: the existing line, then `shared.deviation.line` with new
+    `…questions.partner.baseline`: "… · your choice; the baseline's version: they sign in with MFA
+    like any guest, and only from your countries".
+  - Partner, No: new `…questions.partner.chosenNo`: "Partner and MSP technicians sign in with MFA
+    like any guest, and only from your countries, as the baseline asks."
+  - Mail devices, None, where senders were seen: new `…questions.mailDevices.chosenNone`: "Once
+    Block Legacy Authentication is on, these accounts can't send mail the old way."
+  - Service accounts, picked, with everyone remote: new `…questions.serviceAccounts.joinsRemote`:
+    "Counts these accounts as people: everyone works remotely, so there is no office network to
+    keep them to, and they get MFA like anyone." The shared-device line takes the same ending
+    (edit `…questions.sharedDevices.joinsRemote`).
+  - Everyone works remotely, with accounts picked in 2.2: new
+    `…questions.officeNetwork.chosenRemoteAccounts`: the existing remote line, then "Your service
+    and shared-device accounts then count as people and get MFA like anyone."
+- **Option.** Partner No where partners signed in this month: (a) the fact only (recommended);
+  (b) add "{n} partner or MSP accounts signed in this month: check each can meet both before
+  these policies turn on." (an instruction, so the owner's call).
+- **Acceptance.** Unit (`directionStep.test.ts`): each line under its answer. Live (demo): 2.1's
+  partner card under Yes and No; 2.2 after 2.3 says everyone works remotely.
+
+#### 6. F-042, F-104: nothing you change in a decision is lost
+
+- **Before.** Change an approved answer (demo 2.1, Azure Virtual Desktop to Yes): the card reads
+  "Not approved yet". Open another step and come back: the change is gone and the card reads
+  Approved, with nothing said. In 1.3, "Add to List" changes only the screen; the model is lost
+  unless "Save Additional Authenticators" is pressed.
+- **After.** A changed answer stays on its card, Not approved yet, until you approve it or change
+  it back, across closing the step and moving between pages (a reload starts again). In 1.3,
+  Add and Remove save at once, and the Save button goes.
+- **Words.** 1.3's five hard-coded labels move into content.json unchanged; "Save Additional
+  Authenticators" is removed.
+- **Options (F-042).** (a) Keep the change until approved (recommended: the approval stays the
+  gate the owner designed). (b) On an approved decision, a change saves at once. (c) Ask before
+  leaving a step with an unapproved change.
+- **Acceptance.** Unit: the draft survives the card unmounting; Add calls the save with the new
+  list. Live (demo): the 2.1 change survives opening 2.2 and coming back; a model added in 1.3
+  survives closing and reopening the step.
+
+#### 7. F-044, F-116: MFA Readiness reads right and finds people
+
+- **Before.** "4 of 30 are ready for phishing-resistant sign-in: 29 people and 1 guest." reads as
+  if the 29 and the guest are the ready ones. Search opens no group and no sub-group, so a
+  person in a closed group, or past a group's first rows, stays hidden; with a view that hides
+  every match, it says "No people match this view." and stops.
+- **After.** "4 of 30 (29 people and 1 guest) are ready for phishing-resistant sign-in." While
+  searching, every group and sub-group with a match opens and shows every match; where the view
+  hides them all, the empty line has a "Search everyone" button.
+- **Words.** Edit `pages.readiness.summaryWithGuests`: "{ready} of {total} ({cohort}) are ready
+  for phishing-resistant sign-in." New `pages.readiness.searchEveryone`: "Search everyone".
+- **Acceptance.** Unit: the headline; a search's groups open with every match. Live (demo): the
+  headline; a name from the closed Ready group shows when typed.
+
+#### 8. F-140, F-064: the sample tenant holds up to an expert
+
+- **Before (demo).** iOS phones "Hybrid joined" and "Entra joined"; the printer account "MFP
+  Reception" owns an Entra-joined Windows PC; Inventory's legacy list names svc-mailer-1 and
+  svc-mailer-2 while 2.1 and 4.1 name only svc-mailer-1; the client-app breakdown shows no
+  legacy client; SharePoint has 408 sign-ins against 272 in total; Quinn Taylor's drawer reads
+  "the one seen Sep 18 is no longer registered" beside "None registered yet."
+- **After.** iOS devices registered, not joined; the printer owns no PC; one legacy-auth list
+  everywhere (Inventory, 2.1, 2.2, 4.1), and legacy clients in the breakdown; app counts within
+  the total; "None registered now." where a method was removed.
+- **Words.** New `pages.readiness.panel.noneNow`: "None registered now."
+- **Options.** (a) The sample only (recommended). (b) Also make the code keep one legacy list
+  (every reader through `legacySignInIds`), deleting the second classifier: engine work, for a
+  disagreement no real tenant shows.
+- **Risk.** The fixture feeds about 150 test files and pinned counts: the full suite runs after it.
+- **Acceptance.** Unit: an agreement test on the demo (the legacy lists match; no iOS device
+  joined; app counts within the total). Live (demo): Inventory's Devices, Apps and Sign-in
+  countries; 4.1's card.
+
+#### 9. F-168, F-186: the header works during a scan; Connect says when a scan is old
+
+- **Before.** During every rescan, Plan, MFA Readiness and Export in the header stop working,
+  though the last plan is on screen. A scan 40 days old reads "Ready to plan" on Connect while
+  the other pages say to scan again.
+- **After.** The three stay live during a rescan. From 7 days, Connect's strip and scan tile read
+  the header's own sentence: "This scan is more than a week old. Scan again before acting on its
+  findings."
+- **Words.** None new (reuses `pages.app.shell.staleEvidence`).
+- **Acceptance.** Unit: the tabs are on while a rescan runs over a plan; Connect's tile carries
+  the sentence at 8 days and not at 6. Live: none today (the owner's scan is a day old and the
+  demo re-dates itself); F-168 can be seen on the owner's next scan, with the owner's OK.
+
+#### 10. OWN-B1: Home shows the product
+
+- **Before.** Home is words only; an evaluator sees nothing of the plan before clicking.
+- **After.** One image of the sample tenant's Plan (the tiles, the Next line, section 1) under
+  the hero's buttons, in the page's theme, with a caption, linking to the demo. It is captured
+  from the demo by a script, so it never shows a real tenant.
+- **Words.** New `pages.home.shotCaption`: "The plan IAMAI writes for the sample tenant."
+- **Options.** (a) One Plan image under the hero (recommended). (b) Three smaller images (the
+  Plan, a step, MFA Readiness) beside Check, Understand and Prepare. (c) Words only: name the
+  outputs in the hero.
+- **Needs.** A Home pack revision (`home-v3.html`) the owner approves before it is built, then
+  the manifest hash, build-home and home.test.
+- **Acceptance.** Unit: `home.test.ts` finds the figure and its caption; the anatomy test reads
+  the new pack. Live: getiamai.com at 1280 in both themes.
+
+### The decision: how steps meet the policies a tenant already has
+
+Not a fix: a design for the owner (see "Owner question" under Not low-hanging for the full
+case). Two scenarios:
+
+- **A fresh tenant** (security defaults on, no policies). Every policy step creates the
+  baseline's policy in report-only under its own name. No option changes anything.
+- **The sample tenant** (five policies it wrote, four On). Today: 4.1 and 4.2 edit enforced
+  policies (remove Core - Break glass), 4.4 edits an enforced policy (exclude Intune
+  Enrollment), 4.3 asks to weaken a stricter admin grant or accept it (OWN-W4), Require MFA for
+  Guests edits another. Each edit of an On policy applies at the next sign-in, with no
+  report-only week.
+
+**Options.**
+- **A. As today:** correct the tenant's policy in place, with the safety lines (item 3).
+- **B. Build new, retire old (recommended, as in the Owner question):** exact controls under any
+  name stay Completed; the plan's own policy (its IAMAI tag or the baseline's name) is corrected
+  as now; any other policy is left alone, the step creates the baseline's beside it in
+  report-only and lists the old one ("also covers these people today"), and Cleanup retires it
+  after the new one is On (turn off, then delete, or keep with a reason; a stricter one can
+  stay). Configure Emergency Exclusions still adds the exclusions group to every policy.
+- **C. By state:** as B for a tenant policy that is On; a tenant policy that is Off or
+  report-only is corrected in place, since editing it affects nobody.
+
+**Costs of B.** A report-only week even where an old policy enforces most of it; more policies
+for a while (the sample: five to ten); an L change across every policy step, their frozen
+screens, tracking and Cleanup; it reverses the 2026-09-25 narrow rule ("another step's job") and,
+for policies the plan did not write, the 2026-09-26 "every difference corrected or accepted".
+A patch of the broad rule from 2026-09-25 exists as a starting point.
+
+**Owner decision (2026-09-27): B.** Pilot on 4.3 (the admin policy) in Round 5, then 4.1, 4.2 and
+4.4, then every policy step.
 
 
 ## Not low-hanging: decisions or larger work
@@ -453,6 +684,9 @@ the create path.
 three template policies) for the owner's approval. Then a pilot on 4.3, then
 every policy step.
 
+**Decided (owner, 2026-09-27): B, build new and retire old.** The design with its two
+scenarios is under Round 4. The pilot on 4.3 is Round 5's felt item.
+
 ### Other larger items
 
 - **OWN-B1:** a product image on Home (an approved-pack revision, M).
@@ -468,7 +702,7 @@ every policy step.
 - **F-183:** weeks later the plan re-dates every unfinished step to today with nothing
   reading overdue (L, the engine).
 
-## Needs attention (38)
+## Needs attention (39)
 
 Everything here is worth fixing: a real user is misled, put at risk, blocked or
 meaningfully slowed on a path they actually take. Each round picks its ten from
@@ -515,14 +749,15 @@ item are in the -backlog.json.
 | F-130 |  | present | S | low | 2 |  | Export | The grounding bundle carries no dates, although its readme says it does |
 | F-140 |  | present | M | medium | 2 |  | Inventory | The sample data contradicts itself in places an expert will notice |
 | F-101 |  | partly | XS | medium | 1 | yes | Step | Instructions name controls the step doesn't have: a Service accounts group picker, a Done shown only inside the open list, and 'Mark as done' |
+| OWN-B1 | 4 | present | M | low | 3 |  | Home | Home shows no product image and undersells the output (moved from Review later, Round 4: Home + demo is the lowest surface, and an evaluator sees no product in the first ten seconds) |
 
-## Not worth fixing / review later (142)
+## Not worth fixing / review later (141)
 
 Kept out of the rounds.
 - **Drop (54):** not worth building. Already fixed or gone, an
   owner decision that stands, or cosmetic.
 - **Merged (4):** the same defect as another item, tracked there.
-- **Review later (84):** real, but parked until its trigger
+- **Review later (83):** real, but parked until its trigger
   fires. That means a decision is made, a real tenant shows the data state, or
   users report it. When a trigger fires, move the item to Needs attention first
   and say why.
@@ -611,7 +846,6 @@ is in the -backlog.json (`judges`, `bucket`, `bucket_reason`).
 | F-124 | Review later | An owner decision: The briefing could carry one line per answer; revisit if a manager or board asks why a policy is in or out. | Printed plan lists the decisions as Completed but not the answers |
 | F-173 | Review later | An owner decision: The no-P1 refusal is an owner decision in a state no real tenant has shown; revisit naming security defaults when one does. | Without Entra ID P1 the Plan is one sentence: no security defaults route, no steps that need no licence, no link to MFA Readiness |
 | F-178 | Review later | An owner decision: Same root as F-177; counting the operator as active reverses a documented rule, so revisit once F-177 lands. | When the signed-in admin looks dormant, admin policies show 'No user impact' and the admin vanishes from Readiness |
-| OWN-B1 | Review later | An owner decision: A product image needs an owner-approved Home pack revision; batch the output wording with it. | Home shows no product image and undersells the output |
 | OWN-D4 | Review later | An owner decision: Staggering turn-ons by weekly capacity is an L change to the forecast model and needs the owner's call. | Demo dates cluster on one day |
 | OWN-F2 | Review later | An owner decision: Trimming the Connect hero for returning admins departs from the approved Connect pack, so it waits for the owner. | Returning admin sees the full Connect hero + Global Reader explainer every visit |
 | OWN-W8 | Review later | An owner decision: 'Enforced' versus Entra's 'On' is a vocabulary call that touches frozen steps and the lifecycle bar. | 'Enforced' badge vs Entra's own word 'On' |
