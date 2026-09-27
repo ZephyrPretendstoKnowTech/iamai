@@ -108,6 +108,17 @@ export function stepFromPlanHash(hash: string): string | null {
   return REPAIR_STEP_ALIASES[id] ?? id
 }
 
+/**
+ * Opening or closing a step on the Plan, as a place in the browser's history
+ * (F-051). It used to replace the current entry, so Back after opening a step
+ * skipped the Plan: it left IAMAI, or on the demo went to the home page. Each
+ * open and close is an entry of its own now; Back undoes the last one, and the
+ * Plan's hashchange listener opens or closes the step to match.
+ */
+export function visitStep(history: Pick<History, 'pushState'>, stepId: string | null): void {
+  history.pushState(null, '', stepId ? returnToStep(stepId) : PLAN_HREF)
+}
+
 /** The Show key an MFA Readiness hash carries (#/readiness/rung-3, and the old #/today/rung-3), or null for the whole table. */
 export function showFromReadinessHash(hash: string): string | null {
   const h = hash.replace(/^#\/?/, '')

@@ -47,7 +47,7 @@ import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { BaselineMappings } from './BaselineMappings.tsx'
 import { BASELINE_MAPPINGS_KEY } from '../../roadmap/sourceMappings.ts'
 import { freezeInputOf } from '../../roadmap/schedule.ts'
-import { returnToStep, stepFromPlanHash } from '../shell/routes.ts'
+import { returnToStep, stepFromPlanHash, visitStep } from '../shell/routes.ts'
 import { scan as runScan } from '../actions.ts'
 import { stillThisTurn, subscribe, tenantTurn } from '../session.ts'
 import { observePlan } from './planChanges.ts'
@@ -165,11 +165,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
   })
   const openStep = (id: string | null): void => {
     linked.current = false
-    setOpen((cur) => {
-      const next = cur === id ? null : id
-      window.history.replaceState(null, '', next ? `#/plan/${next}` : '#/plan')
-      return next
-    })
+    const next = open === id ? null : id
+    visitStep(window.history, next)
+    setOpen(next)
   }
 
   if (!scan || !account) {
