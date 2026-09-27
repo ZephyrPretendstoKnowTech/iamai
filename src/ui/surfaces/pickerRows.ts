@@ -91,11 +91,13 @@ function vars(key: string, rows: string[], ids: string[], ticked: string[], matc
  * Whether a decision's picker saves the decision from its list (owner,
  * 2026-09-23): Done saves the selection, and so does taking a chip off. Not where
  * the decision also asks a question: saving from the picker would record the
- * question's default before it is answered (the countries location and its
- * travel destinations), so that decision keeps Save as the one thing that saves.
+ * question's default before it is answered, so that decision keeps Save as the
+ * one thing that saves. Nor on the countries step, which kept its Save
+ * Countries when its travel question left (owner, 2026-09-27, F-070): the
+ * countries it opens with are the sign-ins' suggestion, and Save confirms them.
  */
 export function pickerSaves(d: Readonly<Record<string, unknown>>, stepId: string): boolean {
-  return Boolean(d.pickerRow) && !d.question
+  return Boolean(d.pickerRow) && !d.question && stepId !== PREREQ_STEP_ID.allowedCountries
 }
 
 /**

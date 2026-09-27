@@ -118,7 +118,7 @@ import { passkeyTargetsReach, recoveryPasskeyCandidateSet } from './passkeyCompa
 import { exclusionsReach } from '../validation/exclusionsGroupPolicies.ts'
 import { journeyPasskeyFindings, journeyAccountFindings, journeyGroupFindings, journeyRecoveryFindings } from './emergencyJourney.ts'
 import { isFloorGoal } from './floor.ts'
-import { devicePlanOf, devicePlanComplete, deviceScopeOf, mailDevicesOf, openInputsOf, travelCountriesOf } from './answers.ts'
+import { devicePlanOf, devicePlanComplete, deviceScopeOf, mailDevicesOf, openInputsOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, asksAPerson, deviceStepDoesntApply, serviceAccountsExclusionDue } from './deviations.ts'
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
@@ -1358,14 +1358,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   let countriesTask: Step | null = null
   if (canUseConditionalAccess && input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'licence-limited')) {
     const proposed = proposedObjectNames(naming).allowedCountries
-    const needsWorkCountryReview = mapping.workCountriesConfirmed !== true && travelCountriesOf(mapping).some(country => mapping.allowedCountries.includes(country))
-    const matched = !needsWorkCountryReview && mapping.wizardAnswered.countries === true && mapping.allowedCountries.length > 0 && snapshot.config.namedLocations?.status === 'ok' && countryLocation !== null
+    const matched = mapping.wizardAnswered.countries === true && mapping.allowedCountries.length > 0 && snapshot.config.namedLocations?.status === 'ok' && countryLocation !== null
     const s = { ...prereq(countriesStepId), ...stateFields(matched ? { satisfied: true, inPlace: true } : {}), naming: { proposed: proposed.name, fromBaseline: null } }
     if (matched) s.deliveredBy = [`A scanned countries location matches the confirmed Work Countries: ${mapping.allowedCountries.join(', ')}.`]
-    if (needsWorkCountryReview) {
-      s.blockers = [{ kind: 'decision', label: 'work-countries-review', binding: 'Confirm Work Countries: this older plan combined work and travel countries.' }]
-      setState(s, { condition: 'needs-decision' })
-    }
     countriesTask = s
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).

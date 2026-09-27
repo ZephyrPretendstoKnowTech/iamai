@@ -644,8 +644,6 @@ type DevicePlanWords = { phone: Record<string, string>; computer: Record<string,
 function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<string, unknown> {
   const m = ctx.mapping
   const out: Record<string, unknown> = {}
-  const travel = answerOf(m, QUESTION_STEP.travel, 'question')
-  if (travel) out.travelAnswer = travel.picked.reduce((t, c) => t.replace(c, countryName(c)), travel.text)
   const partner = answerOf(m, QUESTION_STEP.partner, 'question')
   if (partner) out.partnerAnswer = partner.text
   const mail = answerOf(m, QUESTION_STEP.mailDevices, 'decision')

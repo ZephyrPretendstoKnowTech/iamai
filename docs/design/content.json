@@ -2882,7 +2882,7 @@
                 },
                 "s-prereq-allowed-countries": {
                   "subject": "Confirm Work Countries",
-                  "body": "Please confirm the countries where people normally work and the recurring travel destinations listed below. Recurring travel is recorded separately from the normal-work access policy. Please send any corrections."
+                  "body": "Please confirm the countries where people normally work, listed below. Please send any corrections."
                 },
                 "s-prereq-trusted-location": {
                   "subject": "Confirm Office Networks",
@@ -2914,8 +2914,7 @@
                 }
               },
               "countries": [
-                "Normal-work countries: {countries}",
-                "Recurring travel destinations: {travel}"
+                "Normal-work countries: {countries}"
               ],
               "devicePlan": [
                 "Phone Management: {phones}",
@@ -4244,23 +4243,10 @@
       },
       "decision": {
         "label": "Work countries",
-        "help": "Select the countries where people normally work.",
+        "$commentHelp": "F-070 (owner, 2026-09-27): a Recurring travel countries picker sat under this one, looked like an allow list and blocked every country it held; its only effects were a line in the staff email and a review flag. It is gone: the consequence is said here, where the countries are chosen.",
+        "help": "Select the countries where people work. Sign-ins from every other country are blocked, so add a country before someone travels there.",
         "pickerRow": "{country} · {people} people · {signIns} sign-ins",
         "save": "Save Countries",
-        "question": {
-          "label": "Recurring travel countries",
-          "text": "Record recurring destinations separately from normal work countries.",
-          "options": [
-            "No Recurring Destinations",
-            "Select Recurring Destinations {travelCountries}"
-          ],
-          "effect": [
-            "",
-            "These destinations are recorded separately. They are not added to the normal-work access policy."
-          ],
-          "tileValue": "Not confirmed",
-          "tileNote": "Recurring destinations are stored separately from the countries named location."
-        },
         "location": {
           "label": "Countries Location",
           "help": "If a countries location already exists, pick it and IAMAI corrects it; otherwise the steps below create one.",
@@ -4328,7 +4314,6 @@
         "countryLocations": [
           "Core - Allowed - Countries · 1 country"
         ],
-        "travelCountries": "[type the countries]",
         "from": "Aug 1"
       },
       "aiFocus": "Distinguish approved countries from observed countries, identify additions and removals, and explain that IP location can differ from physical location.",

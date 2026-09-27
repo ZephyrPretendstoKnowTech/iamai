@@ -106,10 +106,6 @@ export function currentAnswerText(answer: string): string {
 export function parseAnswer(answer: string | null | undefined, options: readonly string[]): { index: number; picked: string[] } | null {
   if (typeof answer !== 'string') return null
   answer = currentAnswerText(answer)
-  if (options.includes('No Recurring Destinations')) {
-    if (answer === 'Nobody' || answer.startsWith('Occasionally:')) answer = 'No Recurring Destinations'
-    if (answer.startsWith('Countries used regularly: ')) answer = answer.replace('Countries used regularly: ', 'Select Recurring Destinations ')
-  }
   const exact = options.indexOf(answer)
   if (exact >= 0) return { index: exact, picked: [] }
   for (const [index, o] of options.entries()) {
@@ -131,7 +127,7 @@ export function answerOf(mapping: Pick<MappingState, 'questionAnswers'>, stepId:
   const label = questionLabels(stepId)[kind]
   if (!label) return null
   const legacyLabels = stepId === PREREQ_STEP_ID.allowedCountries
-    ? kind === 'decision' ? ['Allowed countries', 'Work Countries'] : kind === 'question' ? ['People who travel or work abroad', 'Recurring Travel Countries'] : []
+    ? kind === 'decision' ? ['Allowed countries', 'Work Countries'] : []
     : []
   const text = [label, ...legacyLabels].map(key => mapping.questionAnswers?.[answerKey(stepId, key)]).find(value => typeof value === 'string')
   const parsed = parseAnswer(text, questionOptions(stepId, kind))
@@ -155,19 +151,12 @@ export function effectLine(effect: unknown, answer: { index: number } | null): s
 
 // ---- The questions whose answers change the plan ----
 
-/** The step each question sits on: the travellers question (the countries step), the partner question (the guests policy), the mail-sending devices (the legacy block), the device decision (its own step). */
+/** The step each question sits on: the partner question (the guests policy), the mail-sending devices (the legacy block), the device decision (its own step). The countries step asks no travel question (owner, 2026-09-27, F-070). */
 export const QUESTION_STEP = {
-  travel: PREREQ_STEP_ID.allowedCountries,
   partner: stepIdForGoal('guests-mfa'),
   mailDevices: stepIdForGoal('block-legacy-auth'),
   devices: PREREQ_STEP_ID.devicePlan,
 } as const
-
-/** The countries the travellers answer adds to the allowed list (Regularly: add: …), as upper-case codes. */
-export function travelCountriesOf(mapping: Pick<MappingState, 'questionAnswers'>): string[] {
-  const a = answerOf(mapping, QUESTION_STEP.travel, 'question')
-  return a ? a.picked.map((c) => c.toUpperCase()) : []
-}
 
 /** True when the partner answer excludes the Service provider type from the guests and countries policies. */
 export function serviceProvidersExcluded(mapping: Pick<MappingState, 'questionAnswers'>): boolean {

@@ -1162,7 +1162,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
     const parsed = answerParts(value, choices)
     return parsed !== null && (parsed.option.needs === null || parsed.picked.length > 0)
   }
-  const canSaveWith = (picked: PickerOption[]): boolean => (accountPickerOnly || options.length === 0 || complete(option, options)) && (!question || stepId === 's-prereq-allowed-countries' || complete(answer, question.options)) && (isNetwork ? remote || picked.length > 0 || networkDraftValid : (!single && stepId !== 's-prereq-allowed-countries') || picked.length > 0)
+  const canSaveWith = (picked: PickerOption[]): boolean => (accountPickerOnly || options.length === 0 || complete(option, options)) && (!question || complete(answer, question.options)) && (isNetwork ? remote || picked.length > 0 || networkDraftValid : (!single && stepId !== 's-prereq-allowed-countries') || picked.length > 0)
   const canSave = canSaveWith(chips)
   // The picker saves (owner, 2026-09-23): Done in its list, or a chip taken off,
   // saves the decision with the selection as it stands, through the same Save
@@ -1182,7 +1182,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
       ...(hasPicker || isNetwork ? { picked: remote ? [] : picked.map((c) => c.id) } : {}),
       ...(isNetwork ? { option: remote ? 'remote' : 'office-network', answers: { [NETWORK_NAME]: !remote && picked.length === 0 ? networkName.trim() : '', [NETWORK_RANGES]: !remote && picked.length === 0 ? networkRanges.trim() : '' }, ...(remote ? {assumed: 'none'} : {}) } : {}),
       ...(option !== null ? { option } : accountPickerOnly ? { option: 'None' } : {}),
-      ...(question && (answer !== null || stepId === 's-prereq-allowed-countries') ? { answers: { [question.label]: answer ?? 'No Recurring Destinations' } } : {}),
+      ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
       ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
     })
   }

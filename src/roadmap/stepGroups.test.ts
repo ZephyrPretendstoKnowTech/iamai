@@ -310,7 +310,8 @@ const ASKED_AT: Readonly<Record<string, string>> = {
   's-question-mail-devices': DIRECTION_QUESTIONS.mailDevices.step,
   's-question-partner': DIRECTION_QUESTIONS.partner.step,
   's-prereq-device-plan': DIRECTION_QUESTIONS.computers.step,
-  's-question-travel': objectTaskOwner(QUESTION_STEP.travel) ?? QUESTION_STEP.travel,
+  // No longer asked (F-070: its condition reads not-applicable); the node keeps the place its question had.
+  's-question-travel': objectTaskOwner(PREREQ_STEP_ID.allowedCountries) ?? PREREQ_STEP_ID.allowedCountries,
 }
 
 /**

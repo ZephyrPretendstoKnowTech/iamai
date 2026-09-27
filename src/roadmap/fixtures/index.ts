@@ -845,8 +845,8 @@ export function buildFixture(spec: Spec): Fixture {
       if (Array.isArray(methods)) snapshot.authMethods[id] = methods.map(m => m.kind === 'fido2' || m.kind === 'passkey' ? {...m, aaGuid: m.kind === 'fido2' ? 'a25342c0-3cdc-4414-8e46-f4807fca511c' : 'de1e552d-db1d-4423-a619-566b625cdc84', passkeyType: 'deviceBound', attestationLevel: 'attested'} : m)
     }
     decisions = { ...decisions }
-    const countries = questionLabels(PREREQ_STEP_ID.allowedCountries)
-    if (countries.question) decisions[PREREQ_STEP_ID.allowedCountries] = { picked: [...mapping.allowedCountries], answers: { [countries.question]: 'Regularly: add: NZ' }, at: NOW }
+    // Week one's technician confirmed the work countries (the travel question they also answered is gone, F-070).
+    decisions[PREREQ_STEP_ID.allowedCountries] = { picked: [...mapping.allowedCountries], at: NOW }
     const guests = questionLabels(stepIdForGoal('guests-mfa'))
     if (guests.question) decisions[stepIdForGoal('guests-mfa')] = { picked: [], answers: { [guests.question]: "Exclude service providers (they use their own tenant's MFA)" }, at: NOW }
     if (printerId !== null) decisions[stepIdForGoal('block-legacy-auth')] = { option: `Yes: add: ${printerId}; the service-accounts group carries them`, at: NOW }

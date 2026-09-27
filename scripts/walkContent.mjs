@@ -89,7 +89,8 @@ export const ACCEPTANCE = [
   { item: '2', step: 's-prereq-exclusion-group', path: 'whatToDo.checkFixes.not-mail-enabled', must: 'recreate it as a plain security group', mustNot: 'remove the mail address and the licence' },
   { item: '2', step: 's-prereq-exclusion-group', path: 'whatToDo.checkFixes.no-admin-members', must: 'besides the emergency accounts' },
   { item: '3', step: 's-check-dormant-accounts', path: 'title', must: 'Disable or Confirm Dormant Accounts', mustNot: 'Address Problematic Accounts' },
-  { item: '4', step: 's-prereq-allowed-countries', path: 'decision.help', must: 'Select the countries where people normally work.', mustNot: /add one people (will )?travel to/ },
+  // F-070 (owner, 2026-09-27): the travel question that took the travel line out of this help is gone, so the help says what happens to travellers.
+  { item: '4', step: 's-prereq-allowed-countries', path: 'decision.help', must: 'Sign-ins from every other country are blocked, so add a country before someone travels there.', mustNot: /add one people (will )?travel to/ },
   // Control Where People Sign In From T2-T4 (docs/plans/where-people-sign-in-spec.md
   // section 3, Microsoft Learn checked 2026-09-20): the step told an admin not to
   // enter a range Entra rejects anyway, and stated a risk-score effect Learn does

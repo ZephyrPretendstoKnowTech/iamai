@@ -32,13 +32,18 @@ function conditionOf(name: string, ownedBy: string, byId: ReadonlyMap<string, St
     // first scan, whoever is still not ready. The step completes on its people.
     case 'campaign-targets-passkey': return campaignTargetsPasskeys() === true ? 'applicable' : 'unresolved'
     case 'sd-enabled': return owner !== undefined && owner.status !== 'done' ? 'applicable' : 'not-applicable'
+    // No travel exceptions in V1 (owner, 2026-09-27, F-070): the step that owns them
+    // (s-question-travel) is hidden, and the countries step no longer asks about
+    // recurring travel. Its Save stored "No Recurring Destinations", which kept this
+    // not-applicable; unresolved, the edge would hold the countries policy's turn-on
+    // behind a step nobody can see.
+    case 'travel-exceptions-allowed': return 'not-applicable'
     case 'shared-devices-exist': return owner !== undefined ? 'applicable' : 'not-applicable'
     default: break
   }
   if (owner !== undefined) return 'applicable'
   if (!answers) return 'unresolved'
   switch (name) {
-    case 'travel-exceptions-allowed': return yesNo(answerOf(answers, QUESTION_STEP.travel, 'question')?.index)
     case 'partner-accounts-exist': return yesNo(answerOf(answers, QUESTION_STEP.partner, 'question')?.index)
     case 'mail-devices-incompatible-path': {
       const a = answerOf(answers, QUESTION_STEP.mailDevices, 'decision')

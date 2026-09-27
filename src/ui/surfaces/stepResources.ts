@@ -7,7 +7,7 @@ import type { Channel, Artifact } from './stepBody.ts'
 import { contentTitle, contentStepFor } from '../../content/stepTitle.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { countryName } from '../../mapping/countries.ts'
-import { answerOf, devicePlanOf, effectLine, travelCountriesOf } from '../../roadmap/answers.ts'
+import { answerOf, devicePlanOf, effectLine } from '../../roadmap/answers.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { HEAD } from './stepHeadings.ts'
 import { app } from '../../content/content.ts'
@@ -114,7 +114,7 @@ export function emailResource(step: Step, ctx: StepVarContext, why: string): Art
   const listed = (lines: string[], ex: Record<string, string>): string => lines.map((l) => fillText(l, ex)).join('\n')
   const device = devicePlanOf(ctx.mapping)
   const extra = step.id === 's-prereq-allowed-countries'
-    ? [listed(EMAILS.countries, { countries: ctx.mapping.allowedCountries.map(countryName).join(', ') || EMAILS.notSelected, travel: travelCountriesOf(ctx.mapping).map(countryName).join(', ') || EMAILS.noneSelected })]
+    ? [listed(EMAILS.countries, { countries: ctx.mapping.allowedCountries.map(countryName).join(', ') || EMAILS.notSelected })]
     : step.id === 's-prereq-device-plan'
       ? [listed(EMAILS.devicePlan, { phones: device?.phonesText ?? EMAILS.notSelected, appProtection: device?.phoneAppProtection === 'required' ? EMAILS.required : device?.phoneAppProtection === 'not-required' ? EMAILS.notRequired : EMAILS.notSelected, computers: device?.computersText ?? EMAILS.notSelected })]
       : []

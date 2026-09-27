@@ -15,7 +15,7 @@ import type { FixtureRun } from './fixtures/run.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
-import { QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, serviceProvidersExcluded, travelCountriesOf } from './answers.ts'
+import { QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, serviceProvidersExcluded } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { decisionsOf } from './progress.ts'
 import { defaultDecisions } from '../ui/surfaces/pickerRows.ts'
@@ -45,9 +45,8 @@ test('saved answers apply to the steps they are asked on and add no step of thei
     const before = applied(f, null)
     const m = applied(f, f.decisions)
 
-    // The travellers answer: New Zealand joins the allowed list.
+    // The countries step asks no travel question (F-070): nothing a week-one answer said adds a country.
     assert.ok(!before.allowedCountries.includes('NZ'), 'unanswered: New Zealand is not on the list')
-    assert.deepEqual(travelCountriesOf(m), ['NZ'])
     assert.ok(!m.allowedCountries.includes('NZ'), 'travel does not expand ordinary workplace access')
     assert.ok(m.allowedCountries.includes('AU'), 'the picker\'s own countries stay')
 
