@@ -45,7 +45,7 @@ export type EmergencyAccountTask = {
   /** The Threshold card states what this task waits for, so no card of its own is drawn (owner, 2026-09-26). */
   onThresholdCard?: true
   /** A correction's own settings, per policy, for its Tasks Remaining card (policyTasks.ts policySubjectsOf). */
-  corrections?: { name: string; settings: string[] }[]
+  corrections?: { name: string; settings: string[]; after?: string }[]
   /** Exact constituent findings this action/evidence replaces in interactive Readiness. */
   issueKeys?: string[]
   facts?: { label: string; value: string }[]
@@ -94,6 +94,8 @@ export type EmergencyTaskProjection = {
   milestone?: string | null
   /** A policy step's card where its own tasks are all done and the step still waits (policyTasks.ts policyProcedureOf). */
   waiting?: { title: string; detail: string } | null
+  /** A policy step's correction that waits for Configure Emergency Exclusions, in one line (policyTasks.ts, F-001): the PowerShell script says it first. */
+  exclusionsFirst?: string
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */

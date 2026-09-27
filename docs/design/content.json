@@ -201,8 +201,12 @@
         "blockedNoOneBasis": "Report-only blocked no one: {basis}.",
         "after": "After {items}.",
         "$commentExclusionsEdit": "The card of a policy whose only change left is the exclusions group, which Configure Emergency Exclusions adds itself (walk list 4.x item 7): it read Correct the policy, beside that step's own task for the same edit.",
-        "exclusionsEdit": "{step} adds {group} to it."
+        "exclusionsEdit": "{step} adds {group} to it.",
+        "$commentAfterExclusions": "F-001: a correction that removes an exclusion from a policy Configure Emergency Exclusions has not reached yet. Done first, it takes the emergency accounts' old exclusion off before the group is there.",
+        "afterExclusions": "After {step} adds {group} to it."
       },
+      "$commentAfterExclusions": "F-001: the Correct task's first line (and the PowerShell script's first comment) while Configure Emergency Exclusions still has to add the exclusions group to the policy whose exclusion the correction removes.",
+      "afterExclusions": "Do this after {step} adds {group} to this policy.",
       "$commentFocus": "AI Info's Focus on a Turn On MFA for Everyone policy that is already in the tenant (ui/surfaces/aiGrounding.ts; walk list 4.x item 31): the create sentence (steps[].aiFocus) stands only while the policy is still to create.",
       "focusTurnOn": "Walk me through turning this policy on after its report-only period.",
       "focusCorrect": "Walk me through correcting this policy.",

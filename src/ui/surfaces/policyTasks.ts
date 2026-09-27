@@ -156,6 +156,8 @@ type ProcedureMember = {
   correction: string[]
   /** Whether Configure Emergency Exclusions adds the exclusions group to it (afterExclusionsEdit). */
   exclusionsEdit?: boolean
+  /** Whether the correction removes a user, group or role exclusion from a policy Configure Emergency Exclusions has not reached yet (F-001): it waits for that step. */
+  exclusionsFirst?: boolean
   /** The name the create writes, where it is not the name the other tasks open (a goal a tenant policy delivers). */
   createName?: string
 }
@@ -195,6 +197,11 @@ const groupsExcluded = (policy: Record<string, unknown>): string[] => {
   return Array.isArray(groups) ? groups.map(String) : []
 }
 const excludesGroup = (policy: Record<string, unknown>, id: string): boolean => groupsExcluded(policy).some((g) => g.toLowerCase() === id.toLowerCase())
+/** The users, groups and roles a policy excludes, lower-cased. */
+const userExclusionsOf = (policy: Record<string, unknown>): string[] => {
+  const users = asRecord(asRecord(policy.conditions)?.users)
+  return ['excludeUsers', 'excludeGroups', 'excludeRoles'].flatMap((k) => (Array.isArray(users?.[k]) ? (users[k] as unknown[]).map((x) => String(x).toLowerCase()) : []))
+}
 
 /** A policy with a patch applied the way Graph applies it: a condition the patch carries replaces that condition, the rest stay. */
 const patched = (policy: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> => {
@@ -272,6 +279,9 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
         off: found?.state === 'disabled',
         correction: stricterGrant(correction, t),
         exclusionsEdit: found !== null && current !== found,
+        // Done before Configure Emergency Exclusions adds the group, removing the
+        // policy's old exclusion leaves the emergency accounts in it (F-001).
+        exclusionsFirst: found !== null && current !== found && target !== null && userExclusionsOf(found).some((id) => !userExclusionsOf(target).includes(id)),
       })
     }
     return out
@@ -497,7 +507,15 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const off = [...new Set([...switchedOffPolicies(step).map((p) => p.name), ...members.filter((m) => m.off).map((m) => m.name)])]
   if (off.length > 0) tasks.push(task('report-only', 'reportOnly', off.flatMap((name) => reportOnlyLines(name)), true))
   const correct = members.filter((m) => m.correction.length > 0)
-  if (correct.length > 0) tasks.push({ ...task('correct', 'correct', correct.flatMap((m) => correctionLines(m.name, m.correction)), true), corrections: correct.map((m) => ({ name: m.name, settings: m.correction })) })
+  // A correction that removes an exclusion from a policy Configure Emergency
+  // Exclusions has not reached says so first, on its task and its card (F-001):
+  // done first, it takes the emergency accounts' old exclusion off before the
+  // exclusions group is there.
+  const exclusionsStep = stepById[PREREQ_STEP_ID.exclusionsGroup]?.title ?? ''
+  const exclusionsGroup = ctx.exclusionsGroupId ? ctx.nameOf(ctx.exclusionsGroupId) : ''
+  const exclusionsFirst = (m: ProcedureMember): boolean => m.exclusionsFirst === true && exclusionsStep !== '' && exclusionsGroup !== ''
+  const firstLine = fillText(PROCEDURE.afterExclusions, { step: exclusionsStep, group: exclusionsGroup })
+  if (correct.length > 0) tasks.push({ ...task('correct', 'correct', correct.flatMap((m) => [...(exclusionsFirst(m) ? [firstLine] : []), ...correctionLines(m.name, m.correction)]), true), corrections: correct.map((m) => ({ name: m.name, settings: m.correction, ...(exclusionsFirst(m) ? { after: fillText(PW.card.afterExclusions, { step: exclusionsStep, group: exclusionsGroup }) } : {}) })) })
   // The turn-on is the same task in every state, but while the plan's own
   // prerequisites hold it (roadmap/enforceWaits.ts: the recovery test not
   // recorded, security defaults still on) it hands over no instruction that
@@ -565,7 +583,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // In doing order: the accounts move before the turn-on that waits for them.
   const at = tasks.findIndex((t) => t.id === 'turn-on')
   const ordered = mail === null ? tasks : at < 0 ? [...tasks, mail] : [...tasks.slice(0, at), mail, ...tasks.slice(at)]
-  return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}) }
+  return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}), ...(correct.some(exclusionsFirst) ? { exclusionsFirst: firstLine } : {}) }
 }
 
 /**
@@ -999,7 +1017,7 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   const corrections = correcting ? projected!.tasks.find((t) => t.id === 'correct')?.corrections ?? [] : []
   const corrected: EmergencySubjectTile[] = corrections.map((c, i) => {
     const fields = [...new Set(c.settings.map(correctionSectionOf).filter((f): f is string => f !== null).map((f) => f.toLowerCase()))]
-    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: c.settings.map(cardLineOf).join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
+    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: [...c.settings.map(cardLineOf), ...(c.after ? [c.after] : [])].join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
   })
   const rest = [...readiness.tiles.filter((tile) => corrected.length === 0 || tile.key !== 'drift').map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
   // One sentence, said once. The policy card's sentence is the contract's one

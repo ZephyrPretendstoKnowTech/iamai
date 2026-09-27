@@ -337,7 +337,9 @@ test('a policy card states no stage it is not at, and no check the plan never re
     assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and lacks the exclusions group')
     const correct = (correction.body.emergencyAccountTasks?.tasks ?? []).find((t) => t.id === 'correct')
     assert.ok(correct?.steps.includes('Under **Users → Exclude**, remove the group **Core - Break glass**.'), JSON.stringify(correct?.steps))
-    assert.equal(correct!.steps.some((l) => l.includes('Core - Exclusions')), false, 'the step asks for the edit Configure Emergency Exclusions makes')
+    // It names that step's edit only to wait for it (F-001), never to ask for it.
+    assert.equal(correct!.steps[0], 'Do this after Configure Emergency Exclusions adds Core - Exclusions to this policy.')
+    assert.equal(correct!.steps.slice(1).some((l) => l.includes('Core - Exclusions')), false, 'the step asks for the edit Configure Emergency Exclusions makes')
     const [card, ...first] = policySubjectsOf(correction.body.contract, correction.body.readiness, correction.body.emergencyAccountTasks)
     assert.equal(card.title, 'Correct users')
     assert.deepEqual(first.map((c) => c.heading), ['Configure Emergency Exclusions', 'Prepare Emergency Access Accounts'])
