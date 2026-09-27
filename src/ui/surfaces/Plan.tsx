@@ -792,7 +792,7 @@ function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, on
         chip={factOf(step)}
         wave={step.scheduled?.wave ?? null}
         title={contentTitle(step)}
-        waitingFor={lane.waitingFor}
+        waitingFor={lane.waitingIn ?? lane.waitingFor}
         who={drawsImpact(lane.lane) ? rowWho(step) : null}
         when={drawsCompact(lane.lane) ? finishedDayOf(step, lane.lane) ?? '' : when}
         open={open}

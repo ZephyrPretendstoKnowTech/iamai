@@ -176,3 +176,31 @@ test('the legend explains every word a row carries, and the report-only tile use
   assert.ok(observing.toLowerCase().includes(CONTRACT.lifecycle['report-only'].toLowerCase()), 'the tile says the chip\'s word')
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /<h3>\{PP\.howTo\.legendHeading\}<\/h3>/)
 })
+
+// OWN-W2: rows held on a decision step's answers read "Waiting on your answers"
+// and never said which of the three decision steps to open. The board row now
+// names it; the step's own screens keep their words (the opened step's
+// Readiness tile already heads the wait with the decision step's title).
+test('a row waiting on answers names the decision step, and only the row does', async () => {
+  const { readinessBlockersOf } = await import('./planBoard.ts')
+  const { customerPlanSteps } = await import('./customerPlanSteps.ts')
+  const { directionWords } = await import('../../content/content.ts')
+  const { isDirectionStep } = await import('../../roadmap/directionAnswers.ts')
+  const { fillText } = await import('../../content/render.ts')
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const board = boardOf(customerPlanSteps(r.steps), r.schedule.cleanup ?? null, f.mapping.breakGlassAnswers ?? null)
+  const waiting = board.rows.filter((row) => row.lane.waitingFor === directionWords.waiting)
+  assert.ok(waiting.length >= 3, `the premise: demo rows wait on answers (${waiting.length})`)
+  const titleOf = (id: string): string | null => board.titleOf(id)
+  for (const row of waiting) {
+    const on = row.reading && row.reading.reason && isDirectionStep(row.reading.reason.id) ? row.reading.reason.id : null
+    assert.ok(on, `${row.item.id}: held on a decision step`)
+    assert.equal(row.lane.waitingIn, fillText(directionWords.waitingIn, { step: titleOf(on) ?? '' }), row.item.id)
+    // The step's own screens are unchanged: each decision tile keeps the plain words under the decision step's title.
+    for (const tile of readinessBlockersOf(row.reading, titleOf).filter((b) => isDirectionStep(b.id))) assert.equal(tile.label, directionWords.waiting, `${row.item.id}: ${tile.id}`)
+    assert.equal(row.lane.waitingFor, directionWords.waiting, 'and the step screens read waitingFor, unchanged')
+  }
+  assert.ok(waiting.some((row) => row.lane.waitingIn === 'Waiting on your answers in Confirm What You Use'))
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /waitingFor=\{lane\.waitingIn \?\? lane\.waitingFor\}/)
+})

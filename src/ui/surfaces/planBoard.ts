@@ -276,7 +276,10 @@ export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
  */
 export function laneViewOf(r: LaneReading, titleOf: (id: string) => string | null): LaneView {
   const until = reportOnlyUntilOf(r)
-  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor: waitingForOf(r, titleOf), tone: LANE_TONE[r.lane], ...(r.estimate ? { estimate: r.estimate } : {}), ...(until !== null ? { reportOnlyUntil: until } : {}) }
+  const waitingFor = waitingForOf(r, titleOf)
+  // A row held on a decision step's answers names the step (OWN-W2); the step's own screens keep waitingFor.
+  const inStep = waitingFor === directionWords.waiting && r.reason !== null && waitsOnDirection(r) ? titleOf(r.reason.id) : null
+  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), waitingFor, ...(inStep !== null ? { waitingIn: fillText(directionWords.waitingIn, { step: inStep }) } : {}), tone: LANE_TONE[r.lane], ...(r.estimate ? { estimate: r.estimate } : {}), ...(until !== null ? { reportOnlyUntil: until } : {}) }
 }
 
 /** The engine's id for a policy's report-only window (planLanes.ts observe). */

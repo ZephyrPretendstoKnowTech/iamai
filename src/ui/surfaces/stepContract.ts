@@ -99,6 +99,13 @@ export type LaneView = {
    * The collapsed row draws it under its title; the badge cannot carry it.
    */
   waitingFor: string | null
+  /**
+   * The board row's own words for a wait on a decision step's answers: the step
+   * named, "Waiting on your answers in Confirm What You Use" (OWN-W2, owner
+   * 2026-09-27). Only the row draws it; the opened step's Readiness tile already
+   * heads the wait with that step's title.
+   */
+  waitingIn?: string
   tone: StatusTone
   /**
    * Read with nothing around it (planBoard.ts laneViewAlone): a stand-in where
