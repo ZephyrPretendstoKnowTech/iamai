@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { readinessView, shows, subGroupsOf, SUB_GROUP_AT } from '../../derive/mfaReadiness.ts'
-import type { ShowKey } from '../../derive/mfaReadiness.ts'
+import type { ReadinessRow, ShowKey } from '../../derive/mfaReadiness.ts'
 import { nextCheck, remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -15,7 +15,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, computersSeen, leadLine, subDevicesTitle, notCountedWhy } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, computersSeen, leadLine, subDevicesTitle, notCountedWhy, needsActionWords, groupWhy } from './readinessCells.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
@@ -503,4 +503,26 @@ test('each Not counted view lists its accounts, each with why it is not counted'
   assert.match(src, /const uncountedView = show === 'notActive' \|\| \(KINDS as readonly string\[\]\)\.includes\(show\)/)
   assert.match(src, /view\.rows\.filter\(\(r\) => r\.state === null && matches\(r\)\)/)
   assert.match(src, /\{notCountedWhy\(r\)\}/)
+})
+
+// OWN-R1: the owner's tenant read "1 lapse in the next 7 days" over "Needs
+// action · 0 / Nobody needs action: everyone counted is Ready.", while the
+// lapsing person's row said "Sign in with the passkey on the Windows computer
+// before Oct 3". Somebody about to lapse has a step: they count in Needs
+// action and are listed there, and stay Ready in the headline until the day.
+test('a Ready person about to lapse counts in Needs action and is listed there, open, under Ready', () => {
+  const f = fixture('demo')
+  const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+  const target = view.rows.find((r) => r.state === 'ready' || r.state === 'seamless')
+  assert.ok(target, 'the premise: the demo has a Ready person')
+  const counted = view.rows.filter((r) => r.state !== null)
+  const count = (rows: readonly ReadinessRow[]): number => Number(/· (\d+)/.exec(needsActionWords(rows))?.[1])
+  const before = count(counted)
+  const lapsing = counted.map((r) => (r === target ? { ...r, lapsing: true } : r))
+  assert.equal(count(lapsing), before + 1, needsActionWords(lapsing))
+  assert.equal(shows(target, 'needsAction', [target.user.id]), true)
+  assert.equal(shows(target, 'needsAction', []), false, 'Ready and not lapsing: nothing to do')
+  // The group says how many of its people have to sign in again, Ready as well as Seamless.
+  assert.equal(groupWhy(target.state!, [{ ...target, lapsing: true }], 'why'), fillText(pages.readiness.seamlessLapsing, { n: 1 }))
+  assert.match(page(), /open=\{isNext \|\| openAll \|\| \(quiet && show === 'needsAction'\) \|\| undefined\}/)
 })

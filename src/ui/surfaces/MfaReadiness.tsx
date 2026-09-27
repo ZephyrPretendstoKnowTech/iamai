@@ -416,6 +416,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     // A group of people only the missing licence leaves unconfirmed is not "couldn't read these people".
     const G = state === 'unknown' && rows.every(signInsUnavailableFor) ? T.groupNoP1 : T.groups[state]
     const isNext = state === lead && show !== 'lapsing'
+    // Under Needs action a Ready group holds only the people about to lapse (OWN-R1): it opens on them.
     const quiet = isReady(state)
     const body = groupBodyLine(state, seen, offersSynced)
     // The group's title is in its summary, which heading navigation can't reach: a visually hidden heading
@@ -423,7 +424,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     return (
       <Fragment key={state}>
         <h3 className="sr-only">{G.title}</h3>
-        <details className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={isNext || openAll || undefined} data-state={state}>
+        <details className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={isNext || openAll || (quiet && show === 'needsAction') || undefined} data-state={state}>
           <summary>
             <span className={`state-dot s-${state}`} aria-hidden="true" />
             <span>

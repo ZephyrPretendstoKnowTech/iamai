@@ -341,7 +341,8 @@ export function signInsUnavailableFor(r: ReadinessRow): boolean {
  * records at all the page says so once, so those people are not unread either.
  */
 export function needsActionWords(counted: readonly ReadinessRow[]): string {
-  const action = counted.filter((r) => r.state !== null && r.state !== 'unknown' && !isReadyState(r.state)).length
+  // A Ready person about to lapse has a step too (sign in again by a day), as the filter shows them (mfaReadiness.ts shows).
+  const action = counted.filter((r) => (r.state !== null && r.state !== 'unknown' && !isReadyState(r.state)) || r.lapsing === true).length
   const unread = counted.filter((r) => r.state === 'unknown' && !signInsUnavailableFor(r)).length
   const line = `${T.show.needsAction} · ${action}`
   // Filled directly: "read" here is a participle, and fillText would conjugate it after a count of one ("1 not reads").
@@ -396,10 +397,10 @@ export function nextCell(r: ReadinessRow): string {
   return nextWords(rd.next)
 }
 
-/** A group's line under its title: Seamless says "Nothing to do" unless some of its people have to sign in again soon. */
+/** A group's line under its title: a Ready or Seamless group says how many of its people have to sign in again soon, where some do. */
 export function groupWhy(state: ReadinessState, rows: readonly ReadinessRow[], why: string): string {
   const n = rows.filter((r) => r.lapsing).length
-  return state === 'seamless' && n > 0 ? fillText(T.seamlessLapsing, { n }) : why
+  return isReadyState(state) && n > 0 ? fillText(T.seamlessLapsing, { n }) : why
 }
 
 /** The rail's completed checks: the checks passed, not the notes listed with them. */

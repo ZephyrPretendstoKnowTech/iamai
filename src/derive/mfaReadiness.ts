@@ -177,7 +177,9 @@ const SCORED = new WeakMap<TenantSnapshot, WeakMap<LadderMapping, Map<string, Mf
 
 /** Whether a row is shown under a filter. A filter narrows what is on screen and nothing else. */
 export function shows(r: ReadinessRow, key: ShowKey, lapsing: readonly string[] = []): boolean {
-  if (key === 'needsAction') return r.state !== null && !isReady(r.state)
+  // Somebody whose Ready ends within the week has a step to take (sign in again by a
+  // day): they need action, though they are counted Ready until then (OWN-R1).
+  if (key === 'needsAction') return (r.state !== null && !isReady(r.state)) || lapsing.includes(r.user.id)
   if (key === 'all') return r.state !== null
   if (key === 'admins') return r.state !== null && r.admin
   if (key === 'lapsing') return lapsing.includes(r.user.id)

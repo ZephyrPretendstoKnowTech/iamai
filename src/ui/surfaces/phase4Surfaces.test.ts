@@ -78,14 +78,16 @@ test('the renewal is the sign-in on the device whose proof runs out first, not t
   assert.deepEqual(rd.renewWith, { cls: 'windowsHello', os: 'Windows' })
 })
 
-test('the renewal takes the place of "Nothing to do" only, and the Seamless header counts who has to sign in again', () => {
+test('the renewal takes the place of "Nothing to do" only, and the Seamless and Ready headers count who has to sign in again', () => {
   const row = (over: Record<string, unknown>, lapsing = true): ReadinessRow => ({ user: { id: 'u1' }, kind: 'person', active: true, state: 'seamless', explained: null, admin: false, guest: false, methods: [], viability: null, ...(lapsing ? { lapsing } : {}), readiness: { next: { kind: 'none' }, recommended: null, readyUntil: '2026-10-01T10:00:00.000Z', lastConfirmed: { cls: 'passkey', os: 'iOS', at: '2026-09-05T10:00:00.000Z', retained: false }, renewWith: { cls: 'windowsHello', os: 'Windows' }, signInsRead: true, devices: [], credentials: [], unknown: null, ...over } }) as unknown as ReadinessRow
   assert.equal(nextCell(row({})), fillText(R.next.renewByOn, { method: R.methodsInline.windowsHello, device: deviceNoun('Windows'), date: monthDay('2026-10-01T10:00:00.000Z') }))
   assert.equal(nextCell(row({ recommended: { kind: 'replaceKey', model: 'Old key', aaguid: '00000000-0000-0000-0000-000000000001' } })), R.next.replaceKey, 'the key replacement comes first')
   assert.equal(nextCell(row({}, false)), R.next.none, 'not lapsing: nothing to do')
   assert.equal(groupWhy('seamless', [row({}), row({}, false)], 'Nothing to do'), fillText(R.seamlessLapsing, { n: 1 }))
   assert.equal(groupWhy('seamless', [row({}, false)], 'Nothing to do'), 'Nothing to do')
-  assert.equal(groupWhy('ready', [row({})], 'Confirmed'), 'Confirmed')
+  // Ready counts who has to sign in again as Seamless does (OWN-R1); with nobody lapsing it keeps its own line.
+  assert.equal(groupWhy('ready', [row({})], 'Confirmed'), fillText(R.seamlessLapsing, { n: 1 }))
+  assert.equal(groupWhy('ready', [row({}, false)], 'Confirmed'), 'Confirmed')
 })
 
 test('Ready’s reason names no kind of device the person was not seen on', () => {
