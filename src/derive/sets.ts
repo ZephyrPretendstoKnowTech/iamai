@@ -18,6 +18,7 @@ import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import type { Step } from '../roadmap/types.ts'
 import { INACTIVE_DAYS } from '../scoring/mfaViability.ts'
+import { scanSignInOf } from './operator.ts'
 import { adminUserIds } from '../roles.ts'
 import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
@@ -164,9 +165,10 @@ export function enabledUsers(snapshot: TenantSnapshot, confirmedServiceAccountId
  * The directory's date lags, and an account seen signing in is not "never
  * signed in". The one reading every activity rule takes (scoring/mfaViability.ts too).
  */
-export function lastSuccessOf(snapshot: Pick<TenantSnapshot, 'signInEvidence'>, u: Pick<UserRow, 'id' | 'lastSuccessfulSignIn'>): string | null {
+export function lastSuccessOf(snapshot: Pick<TenantSnapshot, 'signInEvidence'> & Partial<Pick<TenantSnapshot, 'config' | 'asOf'>>, u: Pick<UserRow, 'id' | 'lastSuccessfulSignIn'>): string | null {
   const records = (snapshot.signInEvidence?.[u.id]?.platforms ?? []).map((p) => p.at).sort().pop() ?? null
-  return [u.lastSuccessfulSignIn, records].filter((x): x is string => !!x).sort().pop() ?? null
+  // The scan is a sign-in for the account that ran it (operator.ts scanSignInOf, F-177).
+  return [u.lastSuccessfulSignIn, records, scanSignInOf(snapshot, u.id)].filter((x): x is string => !!x).sort().pop() ?? null
 }
 
 /**
@@ -284,7 +286,7 @@ export function disabledInactiveUsers(snapshot: TenantSnapshot, now: string, con
 function inactive(snapshot: TenantSnapshot, now: string, u: UserRow): boolean {
   const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
   if (activityUnread(snapshot, u)) return false
-  // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
+  // The later of the directory's last sign-in, the records' and, for the account that ran it, the scan (lastSuccessOf).
   // An account created inside the window has not had the chance to go dormant.
   const created = u.createdDateTime ? Date.parse(u.createdDateTime) : Number.NaN
   if (Number.isFinite(created) && created >= cutoff) return false
