@@ -45,6 +45,7 @@ import { PrintPlan } from './PrintPlan.tsx'
 import { exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf } from './stepExport.ts'
 import { boardOf, boardOrderOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
+import { announceSaved } from '../planSync.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 // The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
@@ -223,6 +224,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
       setExportError(A.importSaveFailed)
       return
     }
+    // Every other tab's copy of this plan is now older than the stored one (planSync.ts, F-161).
+    announceSaved(snapshot.tenantId, 'replaced')
     window.location.hash = '#/plan'
   }
 

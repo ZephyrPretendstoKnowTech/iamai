@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { hasStorageIssue, subscribeStorageIssues } from '../../graph/collect/storageIssues.ts'
+import { isBehind, subscribeBehind } from '../planSync.ts'
 // The shell (prompt 47 Part 3, target-state §2): one 48px header with a
 // hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
 // "Next" framing. Signed out, the header is the wordmark and the theme control;
@@ -266,6 +267,8 @@ export function AppShell({
   children: ReactNode
 }) {
   const storageFailed = useSyncExternalStore(subscribeStorageIssues, () => hasStorageIssue(snapshot?.tenantId ?? ''), () => false)
+  // Another tab saved this tenant's plan over this tab's copy: this tab saves nothing until it reloads (planSync.ts, F-161).
+  const behind = useSyncExternalStore(subscribeBehind, () => isBehind(snapshot?.tenantId ?? account?.tenantId), () => false)
   const [theme, toggleTheme] = useTheme()
   const signedIn = account !== null && state !== 'signedOut'
   const tabsOn = state === 'scanned'
@@ -369,6 +372,7 @@ export function AppShell({
       {signedIn && <ScanLine route={route} />}
       <main className="page" data-route={route}>
         {storageFailed && <p role="alert" className="callout">{SHELL.saveFailed} <a href="#/export">{SHELL.saveBackup}</a></p>}
+        {behind && <p role="alert" className="callout plan-behind">{SHELL.planChangedElsewhere} <Button variant="secondary" onClick={() => window.location.reload()}>{app.error.reload}</Button></p>}
         {signedIn && (
           <div className="print-only muted">
             {fillText(SHELL.printHeader, { tenant: tenantName ?? account.username, date: absoluteDate(new Date().toISOString()), by: account.username })}

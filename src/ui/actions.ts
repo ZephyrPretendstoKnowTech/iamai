@@ -24,6 +24,7 @@ import type { ScanRecord } from './scan/scanRecord.ts'
 import type { BaselineResult } from './baseline.ts'
 import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import { IDLE_SCAN, endTenantTurn, getSession, setScan, setSession, stillThisTurn, tenantTurn } from './session.ts'
+import { announceSaved } from './planSync.ts'
 
 /** The sign-in library behind the actions (graph/auth.ts). A test replaces these: the real one needs a browser. */
 export const authLib = { signIn: auth.signIn, signInAnother: auth.signInAnother, signOut: auth.signOut }
@@ -226,6 +227,8 @@ export async function forgetTenant(): Promise<void> {
   endTenantTurn()
   await baselineSave.catch(() => {})
   await storeLib.forgetTenant(account.tenantId)
+  // Another tab still holding this tenant's plan must not write it back (planSync.ts, F-161).
+  announceSaved(account.tenantId, 'replaced')
   setSession({ lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
   go(CONNECT_HREF)
 }

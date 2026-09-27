@@ -1943,7 +1943,9 @@
         "saveBackup": "Download a backup",
         "evidenceContext": "{tenant} · Last successful scan: {date}",
         "staleEvidence": "This scan is more than a week old. Scan again before acting on its findings.",
-        "partialEvidence": "Some configuration reads were unavailable. Check the affected steps before making changes."
+        "partialEvidence": "Some configuration reads were unavailable. Check the affected steps before making changes.",
+        "$commentPlanChangedElsewhere": "F-161: another tab of this browser saved this tenant's plan over this tab's copy, so this tab stops saving until it reloads (ui/planSync.ts). The button reuses pages.app.error.reload.",
+        "planChangedElsewhere": "This plan changed in another tab. Reload before changing anything here."
       },
       "error": {
         "title": "This page hit an error",

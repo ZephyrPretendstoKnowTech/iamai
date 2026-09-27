@@ -42,6 +42,7 @@ import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
+import { announceSaved, isBehind, noteOwn } from '../planSync.ts'
 import { readGroup, readUserTransitiveGroupIds } from '../../graph/collect/onDemand.ts'
 import type { GroupRead } from '../../graph/collect/presence.ts'
 import { actionableExclusionsGroupId, directoryEvidenceOf, exclusionsGroupIdToVerify } from '../../mapping/safetyChoice.ts'
@@ -176,9 +177,15 @@ export function usePlanData(
   const [mappingFailed, setMappingFailed] = useState(false)
   const pendingMapping = useRef<MappingState | null>(null)
   const persistMapping = (next: MappingState): void => {
+    // A tab another tab has saved over saves nothing: the shell asks it to reload (planSync.ts, F-161).
+    if (isBehind(next.tenantId)) return
     pendingMapping.current = next
     setMappingFailed(false)
-    persistQueue.current = persistQueue.current.catch(() => {}).then(() => saveMappingState(next)).then(() => { if (pendingMapping.current === next) pendingMapping.current = null }).catch(() => { if (pendingMapping.current === next) setMappingFailed(true) })
+    persistQueue.current = persistQueue.current.catch(() => {}).then(async () => {
+      if (isBehind(next.tenantId)) return
+      await saveMappingState(next)
+      announceSaved(next.tenantId, 'mapping', JSON.stringify(next))
+    }).then(() => { if (pendingMapping.current === next) pendingMapping.current = null }).catch(() => { if (pendingMapping.current === next) setMappingFailed(true) })
   }
   const [groups, setGroups] = useState<GroupMembers>(new Map())
   // What this scan's own reads said about each of those groups: present, gone,
@@ -223,6 +230,8 @@ export function usePlanData(
     void Promise.all([loadMappingState(snapshot.tenantId), loadPlanRecord<LegacyOrDecisions>(snapshot.tenantId)]).then(([m, p]) => {
       if (cancelled) return
       setMapping(m)
+      // This tab's copy of the mapping, for telling whether another tab saves over it (planSync.ts).
+      noteOwn(snapshot.tenantId, 'mapping', JSON.stringify(m))
       // Read the record once for its decisions, in whatever shape it was written;
       // a pre-50.1 blob is reduced to its skips here and rewritten on the next save.
       // A plan never started is locked here, as it is first computed: its start
@@ -478,6 +487,7 @@ export function usePlanData(
   // migration of a pre-50.1 record: its blob was dropped on load, and this
   // rewrites the record in the decisions-only shape (prompt 50.1 items 1-2).
   const lastPersist = useRef('')
+  const savedOnce = useRef(false)
   useEffect(() => {
     if (readOnly || !computed || !snapshot || !saved) return
     const decisions: PlanDecisions = {
@@ -511,9 +521,21 @@ export function usePlanData(
     if (saved.firstDeployment) decisions.firstDeployment = saved.firstDeployment
     const key = JSON.stringify({ tenantId: snapshot.tenantId, securityDefaultsSeenOnAt: decisions.securityDefaultsSeenOnAt, perUserMfaSeenOnAt: decisions.perUserMfaSeenOnAt, completedAt: decisions.completedAt, skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, firstDeployment: decisions.firstDeployment, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
     if (key === lastPersist.current) return
+    // Behind another tab's save, this tab's plan is older than the stored one: it is not written (planSync.ts, F-161).
+    if (isBehind(snapshot.tenantId)) return
     lastPersist.current = key
     setPersistence('saving')
-    persistQueue.current = persistQueue.current.catch(() => {}).then(() => savePlanRecord(snapshot.tenantId, decisions)).then(() => {
+    // This hook's first save writes back the plan it loaded: nobody changed
+    // anything, so no other tab is told. Every later one follows a change (an
+    // answer, a deferral, a scan) and is announced (planSync.ts, F-161).
+    const loadedOnly = !savedOnce.current
+    savedOnce.current = true
+    persistQueue.current = persistQueue.current.catch(() => {}).then(async () => {
+      if (isBehind(snapshot.tenantId)) return
+      await savePlanRecord(snapshot.tenantId, decisions)
+      if (loadedOnly) noteOwn(snapshot.tenantId, 'plan', key)
+      else announceSaved(snapshot.tenantId, 'plan', key)
+    }).then(() => {
       if (lastPersist.current === key) setPersistence('saved')
     }).catch(() => {
       if (lastPersist.current === key) { lastPersist.current = ''; setPersistence('failed') }
