@@ -254,7 +254,7 @@ const SINGULAR: Record<string, string> = {
   members: 'member', devices: 'device', methods: 'method', days: 'day', weeks: 'week', keys: 'key',
   checks: 'check', steps: 'step', tenants: 'tenant', locations: 'location', countries: 'country', roles: 'role', groups: 'group',
   'sign-ins': 'sign-in', files: 'file', pages: 'page', records: 'record', sections: 'section', rings: 'ring', windows: 'window', prerequisites: 'prerequisite', results: 'result',
-  controls: 'control',
+  controls: 'control', decisions: 'decision', items: 'item',
 }
 // The verbs a count governs, plural → singular, for a count of one: "1 person
 // holds", "1 of them has". Present-tense verbs the content writes after a

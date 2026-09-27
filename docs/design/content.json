@@ -3507,7 +3507,17 @@
         "promptScope": "About one step: {step}",
         "promptWholePlan": "About the whole plan",
         "importBaselineMismatch": "This plan file was saved with a different baseline from the one this plan uses, so it was not loaded. Your current plan has not been changed.",
-        "importSaveFailed": "The plan could not be saved. Your previous saved plan has not been replaced. Keep the backup file and try again."
+        "importSaveFailed": "The plan could not be saved. Your previous saved plan has not been replaced. Keep the backup file and try again.",
+        "$commentLoadConfirm": "F-023: a plan file that passed its checks, loaded where this browser already holds answers, deferrals or Cleanup items marked done for the tenant, asks before replacing them (ui/surfaces/planFileLoad.ts). {holds} is the file's own counts from loadHolds, or loadHoldsNone. The buttons reuse pages.app.shell.forgetSaveFirst and forgetCancel. A browser holding nothing loads straight away. Either way the Plan then opens on loaded.",
+        "loadConfirm": "This plan file was saved {date}. It holds {holds}. Loading it replaces what this browser holds for {tenant}.",
+        "loadHolds": {
+          "decisions": "{n} answered decisions",
+          "deferred": "{n} deferred steps",
+          "cleanup": "{n} Cleanup items marked done"
+        },
+        "loadHoldsNone": "no answers, deferrals or Cleanup items marked done",
+        "loadReplace": "Replace with this file",
+        "loaded": "Loaded the plan file saved {date}."
       },
       "print": {
         "brief": {

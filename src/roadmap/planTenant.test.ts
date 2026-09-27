@@ -29,7 +29,7 @@ const PAGE = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
 
 test('the tenant check and the no-tenant refusal both run before anything is persisted, and both return without writing', () => {
   const check = PAGE.indexOf('planTenantId !== snapshot.tenantId')
-  const write = PAGE.indexOf('await importPlanRecords(snapshot.tenantId, record')
+  const write = PAGE.indexOf('await importPlanRecords(snapshot.tenantId, load.record')
   assert.ok(check > 0, 'the plan import no longer checks the tenant')
   assert.ok(write > 0, 'the plan import no longer writes a record')
   assert.ok(check < write, 'the tenant check runs after the write, which is the defect it was meant to fix')
@@ -37,7 +37,7 @@ test('the tenant check and the no-tenant refusal both run before anything is per
   // A plan with no tenant is refused rather than assumed.
   {
     const guard = PAGE.indexOf('if (!planTenantId)')
-    const write = PAGE.indexOf('await importPlanRecords(snapshot.tenantId, record')
+    const write = PAGE.indexOf('await importPlanRecords(snapshot.tenantId, load.record')
     assert.ok(guard > 0 && guard < write, 'a plan file with no tenant id is not refused before the write')
   }
 

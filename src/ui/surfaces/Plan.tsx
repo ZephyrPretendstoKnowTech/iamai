@@ -50,7 +50,7 @@ import { freezeInputOf } from '../../roadmap/schedule.ts'
 import { returnToStep, stepFromPlanHash, visitStep } from '../shell/routes.ts'
 import { scan as runScan } from '../actions.ts'
 import { stillThisTurn, subscribe, tenantTurn } from '../session.ts'
-import { observePlan } from './planChanges.ts'
+import { clearPlanNotice, observePlan, peekPlanNotice } from './planChanges.ts'
 import type { ChangeRow, Seen } from './planChanges.ts'
 
 type PlanPage = {
@@ -118,7 +118,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const [showHow, setShowHow] = useState(false)
   // What the last Save or scan changed (planChanges.ts): one line above the board.
   const [visit] = useState(() => ++planVisits)
-  const [changeLine, setChangeLine] = useState<string | null>(null)
+  // A plan file loaded on Export opens the Plan saying which one (planChanges.ts noticeForPlan, F-023). It leads the change line
+  // through the board's first computes, which say nothing yet, until the person opens a step or moves.
+  const [notice] = useState(peekPlanNotice)
+  const noticeLeft = useRef(notice)
+  useEffect(() => clearPlanNotice(), [])
+  const [changeLine, setChangeLine] = useState<string | null>(notice)
   // The board's four tabs (planBoard.ts). All work is the default and sits
   // leftmost (owner, 2026-09-23): the whole plan, section by section, from the
   // top. Ready, Up Next and On Hold are filters over the same list.
@@ -138,7 +143,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // already open changes nothing, so the effect that clears it does not run.
   const linked = useRef<boolean>(stepFromPlanHash(window.location.hash) !== null)
   useEffect(() => {
-    const onHash = () => { setChangeLine(null); linked.current = true; setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
+    const onHash = () => { setChangeLine(null); noticeLeft.current = null; linked.current = true; setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -165,6 +170,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   })
   const openStep = (id: string | null): void => {
     linked.current = false
+    noticeLeft.current = null
     const next = open === id ? null : id
     visitStep(window.history, next)
     setOpen(next)
@@ -459,7 +465,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
       {showSettings && <Settings mappingRequest={mappingRequest} data={data} steps={c.steps} snapshot={scan.snapshot} nameOf={nameOf} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
 
       {/* What the last Save or scan changed, in one line above the board (planChanges.ts). */}
-      <PlanChanges tenantId={scan.snapshot.tenantId} cause={`${scan.snapshot.asOf}|${visit}|${data.revision}`} rows={items} onLine={setChangeLine} />
+      <PlanChanges tenantId={scan.snapshot.tenantId} cause={`${scan.snapshot.asOf}|${visit}|${data.revision}`} rows={items} onLine={(line) => setChangeLine(noticeLeft.current ? [noticeLeft.current, line].filter(Boolean).join(' ') : line)} />
       {changeLine !== null && <p className="reason no-print" role="status">{changeLine}</p>}
 
       {/* ---- the board's one row set, and the three lanes over it ----

@@ -46,6 +46,8 @@ import { exportAnnouncementOf, exportCleanupViewsOf, exportHoldOf, exportViewsOf
 import { boardOf, boardOrderOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import { announceSaved } from '../planSync.ts'
+import { asksBeforeLoading, holdsOf, loadConfirmText, loadedText } from './planFileLoad.ts'
+import { noticeForPlan } from './planChanges.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 // The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
@@ -83,6 +85,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const [showPrompts, setShowPrompts] = useState(false)
   const [bundleRedacted, setBundleRedacted] = useState(true)
   const fileInput = useRef<HTMLInputElement>(null)
+  // A checked plan file waiting on Replace, where loading it would replace recorded work (planFileLoad.ts, F-023).
+  const [pendingLoad, setPendingLoad] = useState<{ record: PlanDecisions; mappings: Record<string, unknown>; savedAt: string } | null>(null)
   const [printing, setPrinting] = useState(false)
   const c = data.computed
   const snapshot = scan?.snapshot ?? null
@@ -218,14 +222,24 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
       setExportError(A.importBaselineMismatch)
       return
     }
+    const load = { record, mappings: plan.mappings as unknown as Record<string, unknown>, savedAt: plan.createdAt }
+    // Over recorded work the page says what the file holds and asks; over none there is nothing to lose (F-023).
+    if (asksBeforeLoading(data.recordForExport)) {
+      setPendingLoad(load)
+      return
+    }
+    await replaceWith(load)
+  }
+  const replaceWith = async (load: { record: PlanDecisions; mappings: Record<string, unknown>; savedAt: string }): Promise<void> => {
     try {
-      await importPlanRecords(snapshot.tenantId, record, plan.mappings as unknown as Record<string, unknown>)
+      await importPlanRecords(snapshot.tenantId, load.record, load.mappings)
     } catch {
       setExportError(A.importSaveFailed)
       return
     }
     // Every other tab's copy of this plan is now older than the stored one (planSync.ts, F-161).
     announceSaved(snapshot.tenantId, 'replaced')
+    noticeForPlan(loadedText(load.savedAt))
     window.location.hash = '#/plan'
   }
 
@@ -287,6 +301,17 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
             </Button>
             <input ref={fileInput} type="file" accept=".json" hidden aria-hidden onChange={(e) => void loadPlan(e.currentTarget.files)} />
           </p>
+          {/* A checked file over recorded work: what it holds, then Save first, Cancel and Replace (F-023). */}
+          {pendingLoad && (
+            <div className="load-confirm no-print" role="group" aria-label={A.loadReplace}>
+              <p>{loadConfirmText({ savedAt: pendingLoad.savedAt, holds: holdsOf(pendingLoad.record), tenant: tenantName })}</p>
+              <p className="actions">
+                <Button variant="secondary" onClick={() => { setExportError(null); void savePlan().catch(() => setExportError("The plan could not be saved. Try again.")) }}>{app.shell.forgetSaveFirst}</Button>
+                <Button variant="secondary" autoFocus onClick={() => setPendingLoad(null)}>{app.shell.forgetCancel}</Button>
+                <Button variant="secondary" className="load-replace" onClick={() => { const load = pendingLoad; setPendingLoad(null); void replaceWith(load) }}>{A.loadReplace}</Button>
+              </p>
+            </div>
+          )}
         </Card>
       </div>
 

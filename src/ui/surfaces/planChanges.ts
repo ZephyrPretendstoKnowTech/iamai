@@ -75,3 +75,19 @@ export function observePlan(seen: Seen | null, tenantId: string, cause: string, 
   const line = base === null ? null : planChangeLine(base, rows)
   return { seen: { tenantId, cause, base, rows }, line: line === null && seen.cause !== cause ? undefined : line }
 }
+
+// A sentence the next Plan visit opens its change line with, once (F-023): a
+// plan file just loaded on Export says which one it was, where the plan it
+// brought back is on screen.
+let notice: string | null = null
+/** Leave a line for the next Plan visit to lead with. */
+export function noticeForPlan(text: string): void {
+  notice = text
+}
+/** The line left for this Plan visit, if any; read once, then cleared by clearPlanNotice. */
+export function peekPlanNotice(): string | null {
+  return notice
+}
+export function clearPlanNotice(): void {
+  notice = null
+}
