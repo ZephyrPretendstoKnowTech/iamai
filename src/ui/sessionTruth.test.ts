@@ -148,3 +148,15 @@ test('Forget this tenant needs a second action, from a confirm that says what go
   assert.equal(fillText(app.shell.forgetConfirm, { tenant: 'Contoso' }), 'Forget Contoso? This deletes its scan, answers, deferrals and dates from this browser. Nothing in your tenant changes.')
   assert.equal(fillText(app.shell.forgetYes, { tenant: 'Contoso' }), 'Forget Contoso')
 })
+
+// F-160b (Round 1's live audit): the Forget confirm's "Save a plan file first"
+// took the header's plain text style (header.app .right a), so it did not look
+// like a link. It carries the page's link colour and underline, in a rule more
+// specific than the header's.
+test("the Forget confirm's plan-file link looks like a link", () => {
+  const css = readFileSync('src/ui/app.css', 'utf8')
+  const rule = /header\.app \.right \.menu-confirm a \{([^}]*)\}/.exec(css)?.[1] ?? ''
+  assert.match(rule, /color: var\(--brand-primary\);/)
+  assert.match(rule, /text-decoration: underline;/)
+  assert.ok(css.indexOf('header.app .right .menu-confirm a {') > css.indexOf('header.app .right a {'), 'it comes after the header rule it overrides')
+})

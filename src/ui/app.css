@@ -5426,6 +5426,11 @@ th .th-sort:focus-visible,
 .menu-confirm p {
   margin: 0;
 }
+/* The way to save the plan file first is a link, in the page's link style, never the header's plain text (F-160b). */
+header.app .right .menu-confirm a {
+  color: var(--brand-primary);
+  text-decoration: underline;
+}
 .menu-confirm .menu-confirm-actions {
   display: flex;
   flex-wrap: wrap;
