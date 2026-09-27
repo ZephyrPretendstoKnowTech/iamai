@@ -73,10 +73,9 @@ test('the Estimated finish is a date on every plan, from the first scan on, and 
   assert.equal(plan.includes('finishUnknown'), false, 'the tile can still read "Depends on open work"')
   assert.match(plan, /statedEstimate\(c\.steps, finish, c\.schedule, board\.forecast\)/, 'the tile does not read the board\'s forecast')
   assert.match(plan, /planLengthSentence\(finish, c\.schedule, \{ steps: c\.steps, forecast: board\.forecast, titleOf \}\)/, 'the ⓘ does not read the board\'s forecast')
-  // The printed cover states the same day.
+  // The printed briefing states the same day.
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  assert.match(print, /const estimate = statedEstimate\(steps, finish, schedule, board\.forecast\)/, 'the cover states another finish than the tile')
-  assert.match(print, /const weeks = planWeeks\(\{ \.\.\.finish, finish: estimate \}, schedule\)/, 'the cover counts its weeks to another day')
+  assert.match(print, /const estimate = statedEstimate\(steps, finish, schedule, board\.forecast\)/, 'the briefing states another finish than the tile')
 })
 
 // One length, stated three ways. With the Estimated finish on the board's

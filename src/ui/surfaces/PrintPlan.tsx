@@ -31,7 +31,7 @@ function BriefStep({ entry }: { entry: BriefEntry }) {
   const when = [entry.status, entry.when].filter((x): x is string => Boolean(x)).join(' · ')
   return (
     <article className="brief-step">
-      <header>
+      <header className="brief-step-head">
         <h4>
           <span className="print-number">{entry.number}</span> {entry.title}
         </h4>
@@ -146,7 +146,9 @@ export function PrintPlan({
         <h1>{fillText(BRIEF.title, { tenant: tenantName })}</h1>
         <p className="brief-meta">{fillText(BRIEF.meta, { date: today, by: operator, baseline: baselineLabel })}</p>
         <p className="brief-status">
-          {fillText(BRIEF.status, { done: doneCount, total })} {estimate ? fillText(BRIEF.finishOn, { date: absoluteDate(estimate) }) : BRIEF.finishOpen}
+          {fillText(BRIEF.status, { done: doneCount, total })}
+          {/* The finish only while work is left: statedEstimate is always a date, and a finished plan has no rest to finish. */}
+          {brief.counts.ahead > 0 && <> {fillText(BRIEF.finishOn, { date: absoluteDate(estimate) })}</>}
         </p>
         <div className="brief-cards">
           <p>
@@ -231,9 +233,22 @@ export function PrintPlan({
         </section>
       )}
 
-      {(doesntApply.length > 0 || notLicensed.length > 0) && (
+      {(brief.aside.length > 0 || doesntApply.length > 0 || notLicensed.length > 0) && (
         <section className="brief-not">
           <h2>{BRIEF.headings.notInPlan}</h2>
+          {/* The steps the person set aside: a control someone chose not to deploy is in the document, never silently gone. */}
+          {brief.aside.length > 0 && (
+            <>
+              <h3>{BRIEF.headings.aside}</h3>
+              <ul>
+                {brief.aside.map((a) => (
+                  <li key={a.id}>
+                    <span className="print-number">{a.number}</span> {a.title}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {doesntApply.length > 0 && (
             <ul>
               {doesntApply.map((l) => (

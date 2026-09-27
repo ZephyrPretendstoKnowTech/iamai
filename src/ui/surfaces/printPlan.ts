@@ -8,7 +8,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { app, cleanup as cleanupContent, directionWords, pages } from '../../content/content.ts'
+import { app, cleanup as cleanupContent, pages } from '../../content/content.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { doesntApplyRows } from './planRows.ts'
 import { boardSectionsOf, boardWhenOf, groupSummary, rowNumbersOf, waveStartOf } from './planBoard.ts'
@@ -18,6 +18,9 @@ import type { StepVarContext } from './stepVars.ts'
 import { managerText } from './stepExport.ts'
 import { cleanupRowWho, rowWho } from './rowWho.ts'
 import { cleanupWhenOf } from './cleanupExport.ts'
+import { readinessCountOf } from './planLanes.ts'
+import { readinessFamilyOf } from '../../copy/reasons.ts'
+import { NAMES_UP_TO } from '../../derive/contentLists.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { LaneView } from './stepContract.ts'
 import type { Lane } from '../../actionability/lanes.ts'
@@ -64,10 +67,8 @@ export type PrintRow = {
 /**
  * A printed section: one of the board's sections (planBoard.ts boardSectionsOf)
  * with its number, the title and line the board draws it with, and its rows in
- * the board's order. A finished section prints as `line`, its title and what
- * became of it ("All 4 completed"), over only the rows it keeps
- * (`finishedRowsOf`); an open one has no `line` and prints its heading over its
- * rows.
+ * the board's order. A finished section carries `line`, its title and what
+ * became of it ("All 4 completed"); an open one has no `line`.
  */
 export type PrintSection = { key: string | null; number: number | null; title: string; summary: string; finished: boolean; line: string | null; rows: PrintRow[] }
 
@@ -78,8 +79,8 @@ export type PrintSection = { key: string | null; number: number | null; title: s
  * The document grouped its rows by phase and by lane (Preparation, Phase 1, the
  * undated rows under Ready or On Hold, Completed, Deferred, Cleanup), so a plan
  * taken to paper read in another order, under other headings, from the Plan it
- * came from. Every row the board draws prints once, in its section; the dates
- * stay the schedule's and are stated by each row's body and by the timeline.
+ * came from. Every row the board draws prints once, in its section; each row's
+ * date is the board's (planBoard.ts boardWhenOf).
  */
 export function printSectionsOf(board: Pick<Board, 'rows'>): PrintSection[] {
   const rows = new Map(board.rows.map((r) => [r.item.id, r]))
@@ -126,14 +127,12 @@ type BriefWords = {
   meta: string
   status: string
   finishOn: string
-  finishOpen: string
   cards: { done: string; ahead: string; needs: string }
-  headings: { needs: string; journey: string; ahead: string; risk: string; done: string; notInPlan: string }
+  headings: { needs: string; journey: string; ahead: string; risk: string; done: string; notInPlan: string; aside: string }
   labels: { does: string; matters: string; notice: string; reaches: string }
   lanes: Record<Lane, string>
   needDecision: string
-  chapterDone: string
-  chapterLeft: string
+  need: { adminsNamed: string; admins: string; adminsCount: string; peopleCount: string; peopleShare: string; people: string; stoppedNamed: string; stopped: string }
   journey: Record<string, string>
   risk: string[]
 }
@@ -148,40 +147,61 @@ type BriefLines = { does?: string; matters?: string; notice?: string }
 export type BriefEntry = { id: string; number: string | null; title: string; status: string; when: string | null; does: string | null; matters: string | null; notice: string | null; reaches: string | null }
 /** Something the plan needs a decision or an action on before it can move. */
 export type BriefNeed = { id: string; number: string | null; title: string; why: string }
-/** One of the Plan's sections, told as a chapter of the journey. */
+/** A row by its number and title: a finished one with the day it finished, or one the person set aside. */
+export type BriefLine = { id: string; number: string | null; title: string; when: string | null }
+/** One of the Plan's sections, told as a chapter of the journey: its progress is the board's own summary of it. */
 export type BriefChapter = { key: string | null; number: number | null; title: string; purpose: string | null; progress: string; entries: BriefEntry[] }
-/** What the briefing states: the chapters, the needs, what is done, and the counts the summary cards show. */
-export type Brief = { chapters: BriefChapter[]; needs: BriefNeed[]; done: { id: string; number: string | null; title: string; when: string | null }[]; counts: { done: number; ahead: number; needs: number } }
+/** What the briefing states: the chapters, the needs, what is done and set aside, and the counts the summary cards show. */
+export type Brief = { chapters: BriefChapter[]; needs: BriefNeed[]; done: BriefLine[]; aside: BriefLine[]; counts: { done: number; ahead: number; needs: number } }
 
 const OPEN: ReadonlySet<Lane> = new Set(['Ready', 'Up Next', 'On Hold'])
+const SHARE = /^\d+(?:\.\d+)?%$/
 
 /** A content line, filled, where every variable it names has a value; null otherwise. */
 const briefLine = (s: unknown, ex: Record<string, unknown>): string | null => (typeof s === 'string' && whole(s, ex) ? fillText(s, ex) : null)
 
 /**
+ * A readiness wait as the people it waits on: the admins by name where the
+ * step names them (stepVars.ts adminsWithout, three or fewer), else how many;
+ * a count gate's own "2 of 3"; a share gate's number beside the one it needs.
+ */
+function readinessNeed(step: Step, ex: Record<string, unknown>): string {
+  const gate = step.action.readinessGate!
+  const named = Array.isArray(ex.adminsWithout) ? (ex.adminsWithout as string[]) : []
+  if (named.length > 0) return fillText(BRIEF.need.adminsNamed, { names: named })
+  if (typeof ex.adminsWithoutCount === 'number') return fillText(BRIEF.need.admins, { n: ex.adminsWithoutCount })
+  const count = readinessCountOf(step)
+  if (count !== null) return fillText(readinessFamilyOf(gate) === 'admin' ? BRIEF.need.adminsCount : BRIEF.need.peopleCount, count)
+  return gate.floor !== true && SHARE.test(gate.value) && SHARE.test(gate.threshold) ? fillText(BRIEF.need.peopleShare, { value: gate.value, threshold: gate.threshold }) : BRIEF.need.people
+}
+
+/**
  * The briefing (Brief): the board's sections as chapters, each open row with
- * its three leadership lines, the rows that need a decision or an action, and
- * the finished rows with the day they finished.
+ * its three leadership lines, the rows that need a decision or an action, the
+ * finished rows with the day they finished, and the rows the person set aside.
  *
  * What it does for you is the step's manager line (stepExport.ts managerText,
  * the words the opened step shows under For your manager, with the clause the
  * records earn) and, for a step with none, its brief's own `does`; why it
  * matters and what people will notice are the brief's. The reach is the board
- * row's Impact (rowWho.ts), and the When is the board row's (boardWhenOf,
- * cleanupWhenOf).
+ * row's Impact (rowWho.ts) where it names people, and the When is the board
+ * row's (boardWhenOf, cleanupWhenOf).
  *
  * A row needs a decision or an action where the board reads it as a decision
- * (Ready · Decision), where it waits on a readiness number (people setting up a
- * method, devices being enrolled: Step.action.readinessGate), or where its
- * report-only week named people it would have stopped. A row that only waits
- * for another step, or for the rollout to finish, is the plan's own order and
- * not a request: the chapters show it.
+ * (Ready · Decision), where what holds it is a readiness number (people setting
+ * up a method: the reading's reason is an evidence:readiness gate), or where a
+ * report-only week that is over named people it would have stopped (Ready ·
+ * Observing with failures recorded). A row that waits for another step, for its
+ * report-only week or for a Direction answer asked above it is the plan's own
+ * order and not a request: the chapters show it.
  */
 export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) => StepVarContext; cleanup: CleanupPhase | null; undated: boolean }): Brief {
   const { board, stepCtx, cleanup, undated } = input
   const needs: BriefNeed[] = []
-  const done: Brief['done'] = []
+  const done: BriefLine[] = []
+  const aside: BriefLine[] = []
   const numberOf = (sec: PrintSection, r: PrintRow): string | null => (sec.number !== null && r.number !== null ? `${sec.number}.${r.number}` : null)
+  const readings = new Map(board.rows.map((r) => [r.item.id, r.reading]))
   const chapters = printSectionsOf(board).map((sec): BriefChapter => {
     const entries: BriefEntry[] = []
     for (const r of sec.rows) {
@@ -189,6 +209,10 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
       if (r.lane.lane === 'Completed') {
         const when = r.step ? boardWhenOf(r.step, waveStartOf(r.step), r.lane) : r.cleanup ? cleanupWhenOf(r.cleanup.row, undated, r.lane, true) || null : null
         done.push({ id: r.id, number, title: r.title, when })
+        continue
+      }
+      if (r.lane.lane === 'Deferred') {
+        aside.push({ id: r.id, number, title: r.title, when: null })
         continue
       }
       if (!OPEN.has(r.lane.lane)) continue
@@ -210,21 +234,22 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
         when = cleanupWhenOf(r.cleanup.row, undated, r.lane) || null
         reaches = cleanup ? cleanupRowWho(cleanup, r.cleanup.row) : null
       }
-      // The reach says who, never what: a count of people, admins, guests or accounts ("3 policies" names no one a manager can picture).
-      const people = reaches !== null && /\b(person|people|admins?|guests?|accounts?)\b/i.test(reaches) ? reaches : null
+      // The reach says who, never what: a count of people, admins, guests or
+      // accounts ("3 policies" names no one a manager can picture), and never
+      // the none form ("No guests"), which reads as a contradiction over an Impact line.
+      const people = reaches !== null && /\b(person|people|admins?|guests?|accounts?)\b/i.test(reaches) && !/^(no|none|nobody|no one)\b/i.test(reaches.trim()) ? reaches : null
       entries.push({ id: r.id, number, title: r.title, status: BRIEF.lanes[r.lane.lane], when, does, matters: briefLine(lines.matters, ex), notice: briefLine(lines.notice, ex), reaches: people })
-      const wait = r.lane.waitingFor
-      const decision = r.lane.lane === 'Ready' && r.lane.substatus === 'Decision'
-      // A row held on a Direction answer is the decision above it, asked once (planBoard.ts waitsOnDirection).
-      const threshold = r.lane.lane === 'On Hold' && r.step?.action.readinessGate != null && wait !== null && wait !== directionWords.waiting
-      const stopped = wait !== null && (r.step?.tracking?.failuresByUser ?? []).length > 0
-      if (decision) needs.push({ id: r.id, number, title: r.title, why: BRIEF.needDecision })
-      else if ((threshold || stopped) && wait !== null) needs.push({ id: r.id, number, title: r.title, why: wait })
+      const reason = readings.get(r.id)?.reason ?? null
+      const failures = r.step?.tracking?.failuresByUser ?? []
+      if (r.lane.lane === 'Ready' && r.lane.substatus === 'Decision') needs.push({ id: r.id, number, title: r.title, why: BRIEF.needDecision })
+      else if (r.step && r.lane.lane === 'On Hold' && r.step.action.readinessGate != null && reason?.kind === 'evidence' && reason.id.startsWith('evidence:readiness:')) needs.push({ id: r.id, number, title: r.title, why: readinessNeed(r.step, ex) })
+      else if (r.step && r.lane.lane === 'Ready' && r.lane.substatus === 'Observing' && failures.length > 0) {
+        const nameOf = stepCtx(r.step).nameOf
+        needs.push({ id: r.id, number, title: r.title, why: failures.length <= NAMES_UP_TO ? fillText(BRIEF.need.stoppedNamed, { names: failures.map((f) => nameOf(f.userId)) }) : fillText(BRIEF.need.stopped, { n: failures.length }) })
+      }
     }
-    const total = sec.rows.filter((r) => r.lane.lane !== 'Deferred').length
-    const remaining = sec.rows.filter((r) => OPEN.has(r.lane.lane)).length
-    return { key: sec.key, number: sec.number, title: sec.title, purpose: sec.key ? BRIEF.journey[sec.key] ?? null : null, progress: remaining === 0 ? BRIEF.chapterDone : fillText(BRIEF.chapterLeft, { remaining, total }), entries }
+    return { key: sec.key, number: sec.number, title: sec.title, purpose: sec.key ? BRIEF.journey[sec.key] ?? null : null, progress: sec.summary, entries }
   })
   const ahead = chapters.reduce((n, c) => n + c.entries.length, 0)
-  return { chapters, needs, done, counts: { done: done.length, ahead, needs: needs.length } }
+  return { chapters, needs, done, aside, counts: { done: done.length, ahead, needs: needs.length } }
 }

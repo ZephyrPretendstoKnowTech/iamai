@@ -275,10 +275,13 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
       assert.equal(booked(p, s.id), scheduledEventOf(s) !== null, `${where}: the calendar and the step's scheduling result disagree about its day`)
     }
   }
-  // The printed plan draws the board's own rows (printPlan.ts printSectionsOf),
-  // dates its timeline by the Plan's own phase rule and states the Plan's own length.
+  // The printed briefing draws the board's own rows in the board's sections
+  // (printPlan.ts briefOf, printSectionsOf), dates each row as the board does
+  // (planBoard.ts boardWhenOf) and states the Plan's own finish and hold.
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
-  for (const read of ['printSectionsOf(board)', 'phaseRows(', 'planFinish(', 'planWeeks({ ...finish, finish: estimate }, schedule)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
+  for (const read of ['briefOf(', 'planFinish(', 'statedEstimate(steps, finish, schedule, board.forecast)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
+  const briefing = readFileSync('src/ui/surfaces/printPlan.ts', 'utf8')
+  for (const read of ['printSectionsOf(board)', 'boardWhenOf(']) assert.ok(briefing.includes(read), `the briefing no longer reads ${read}`)
   // The screen draws lanes (S3, planLanes.ts) and reads the same length and the same hold; its rows' dates read the same scheduling result (planBoard.ts boardWhenOf).
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   // The lanes through the one board construction (planBoard.ts boardReadingsOf, R4-22).

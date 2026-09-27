@@ -554,19 +554,16 @@ test('013.H: an unanswered decision leaves the work it holds in the printed plan
 test('013.H/R4-22: the print, the Export page, Connect and the Plan read the one board construction and write no row rule of their own', () => {
   {
     const src = readFileSync(new URL('./PrintPlan.tsx', import.meta.url), 'utf8')
-    // The document prints the board's rows in the board's sections (printPlan.ts
-    // printSectionsOf, roadmap flow V1 decision 8), and decides no grouping of its
-    // own. Its timeline dates each phase by the Plan's own phase rule, reading the
-    // board's hold (planBoard.ts boardHolds, owner decision 2): a step the board
-    // holds is dated under no phase, and the print decides no hold of its own.
-    assert.match(src, /const sections = printSectionsOf\(board\)/, 'the print groups its rows itself')
-    assert.match(src, /planPhases\(schedule\)/, 'the print does not read the Plan’s phases')
-    assert.match(src, /phaseRows\(steps, w, boardHeld\)/, 'the print decides a numbered phase’s rows itself')
-    assert.match(src, /const boardHeld = \(s: Step\): boolean => boardHolds\(s, laneOf\(s\.id\)\)/, 'the print decides for itself which steps are held')
-    // Every printed step uses the screen's own step body, which is what withholds
-    // the implementation, the dates, the announcement and the rollback: there is
-    // one place the document draws a step in full (task 025).
-    assert.equal(src.match(/<ContentStep step=\{s\}/g)?.length, 1, 'a printed step builds a body of its own')
+    // The briefing prints the board's rows in the board's sections (printPlan.ts
+    // briefOf over printSectionsOf, roadmap flow V1 decision 8) and dates each row
+    // as the board does (planBoard.ts boardWhenOf): it decides no grouping, hold
+    // or date of its own, and draws no step body (owner, 2026-09-26: the
+    // procedures stay on screen).
+    const briefing = readFileSync(new URL('./printPlan.ts', import.meta.url), 'utf8')
+    assert.match(src, /briefOf\(\{ board, /, 'the print groups its rows itself')
+    assert.match(briefing, /const chapters = printSectionsOf\(board\)/, 'the briefing groups its rows itself')
+    assert.match(briefing, /boardWhenOf\(/, 'the briefing dates its rows itself')
+    for (const own of ['phaseRows(', 'planPhases(', 'boardHolds(', '<ContentStep']) assert.equal(src.includes(own) || briefing.includes(own), false, `the print still reads ${own}`)
     // And the Plan draws the same steps, in lanes (S3, planLanes.ts): every step
     // the print's timeline dates has a lane reading, and the Plan derives no
     // phase, undated or floor grouping of its own.
@@ -577,11 +574,6 @@ test('013.H/R4-22: the print, the Export page, Connect and the Plan read the one
     assert.match(plan, /const board = boardOf\(c\.steps, cleanupPhase, answers\)\n\s*const \{ readings, titleOf, cleanupRows, prerequisiteLabel, enforceWaits \} = board/, 'the Plan no longer reads the engine for its rows')
     assert.match(plan, /const rowSteps = c\.steps\.filter\(\(s\) => readings\.has\(s\.id\)\)/, 'the Plan decides its rows somewhere else')
     for (const own of ['phaseRows(', 'undatedRows(', 'floorRows(']) assert.equal(plan.includes(own), false, `the Plan still groups by ${own}`)
-    for (const c of CASES) {
-      const readings = laneReadings(c.run.steps)
-      const printed = [...planPhases(c.run.schedule).flatMap((w) => phaseRows(c.run.steps, w)), ...undatedRows(c.run.steps, planPhases(c.run.schedule)), ...floorRows(c.run.steps)]
-      for (const s of printed) assert.ok(readings.has(s.id), `${c.name}/${s.id}: printed, but the Plan draws it in no lane`)
-    }
   }
   // The Export page built its lane readings with no Cleanup rows, while the Plan,
   // the print and Connect passed them. The drill — the prerequisite every

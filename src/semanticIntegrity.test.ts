@@ -450,7 +450,7 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   const row = read('src/ui/surfaces/rowWhen.ts')
   const demoTile = read('src/ui/demoFacts.ts')
 
-  // The weeks a plan runs: derive/finish.ts `planWeeks`, and the three surfaces
+  // The weeks a plan runs: derive/finish.ts `planWeeks`, and the surfaces
   // that state it read it. The expression had been copied into all three. The
   // Plan header states it through the one plan-length sentence
   // (derive/finish.ts planLengthSentence, shared with the prompt pack), which
@@ -458,10 +458,13 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   const finishSrc = read('src/derive/finish.ts')
   const lengthSentence = finishSrc.slice(finishSrc.indexOf('export function planLengthSentence('))
   assert.ok(lengthSentence.includes('planWeeks('), 'the plan-length sentence no longer reads planWeeks')
-  for (const [name, src, reader] of [['Plan', plan, 'planLengthSentence('], ['PrintPlan', print, 'planWeeks('], ['demoFacts', demoTile, 'planWeeks(']] as const) {
+  for (const [name, src, reader] of [['Plan', plan, 'planLengthSentence('], ['demoFacts', demoTile, 'planWeeks(']] as const) {
     assert.equal(/7 \* 86_400_000/.test(src), false, `${name} computes the plan's length itself; derive/finish.ts planWeeks is the one derivation`)
     assert.ok(src.includes(reader), `${name} no longer states the plan's length at all`)
   }
+  // The printed briefing states the tile's finish day (derive/finish.ts statedEstimate), never a length of its own.
+  assert.equal(/7 \* 86_400_000/.test(print), false, 'PrintPlan computes the plan\'s length itself')
+  assert.ok(print.includes('statedEstimate('), 'PrintPlan no longer states the finish')
 
   // A Cleanup row's completion and its word: roadmap/cleanupDone.ts, and the
   // word is the lane the engine read for the row (planBoard.ts laneViewOf, A1b
@@ -475,8 +478,8 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   assert.ok(board.includes('cleanupComplete('), 'the board construction does not read the one Cleanup completion')
   // The Plan's Cleanup rows carry the lane view boardOf built (planBoard.ts),
   // and so do the printed plan's, which are the board's rows in its sections
-  // (printPlan.ts printSectionsOf).
-  for (const [name, src, word] of [['Plan', plan, 'board.rows'], ['PrintPlan', print, 'printSectionsOf(board)']] as const) {
+  // (printPlan.ts briefOf over printSectionsOf).
+  for (const [name, src, word] of [['Plan', plan, 'board.rows'], ['PrintPlan', print, 'briefOf({ board,']] as const) {
     // The Plan reads it through boardOf, which is built on it (planBoard.ts).
     assert.ok(src.includes('boardReadingsOf(') || src.includes('boardOf('), `${name} does not read the one board construction`)
     assert.equal(src.includes('cleanupComplete('), false, `${name} decides a Cleanup row's completion itself`)
@@ -493,7 +496,7 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
   // and a readiness count computed in JSX beside them.
   assert.equal(/rungs\[1\]|rungs\[2\]/.test(exportSurface), false, 'Export computes a readiness population itself; derive/facts.ts toSetUp is the count')
   assert.equal(/Everyone active/.test(exportSurface), false, 'Export words a sentence the printed plan should take from content.json')
-  // The print draws it from its view (ui/surfaces/printPlan.ts verificationNoteOf), which words it from the content entry.
-  assert.ok(print.includes('verificationNoteOf(steps)'), 'the printed plan words the verification note itself')
-  assert.ok(read('src/ui/surfaces/printPlan.ts').includes('app.print.verificationNote'), 'the printed plan does not take the verification note from its own content entry')
+  // The printed plan is a leadership briefing (owner, 2026-09-26) and prints no
+  // verification window: nothing words the note, on paper or on the Export page.
+  assert.equal(/verificationNote/.test(print) || /verificationNote/.test(exportSurface), false, 'a surface words the verification window note again')
 })

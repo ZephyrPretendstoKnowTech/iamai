@@ -1712,7 +1712,7 @@
       "cards": {
         "print": [
           "Print or save as PDF",
-          "The whole plan as a document: a one-page summary, then each phase, then every step in full.",
+          "A briefing for a manager, director or owner: where the plan stands, what it needs from them, and what each step does and why. The how-to stays on screen.",
           "Print or save as PDF"
         ],
         "calendar": [
@@ -3482,7 +3482,6 @@
           "meta": "Prepared {date} by {by} · Measured against {baseline}",
           "status": "{done} of {total} steps are done.",
           "finishOn": "The rest are planned to finish around {date}.",
-          "finishOpen": "The finish date depends on the steps that are waiting.",
           "cards": {
             "done": "Done",
             "ahead": "Still to do",
@@ -3494,7 +3493,8 @@
             "ahead": "The changes ahead",
             "risk": "How the risk is managed",
             "done": "Done so far",
-            "notInPlan": "Not in this plan"
+            "notInPlan": "Not in this plan",
+            "aside": "Set aside for now"
           },
           "labels": {
             "does": "What it does for you",
@@ -3510,15 +3510,24 @@
             "Deferred": "Set aside"
           },
           "needDecision": "A decision is needed.",
-          "chapterDone": "Done",
-          "chapterLeft": "{remaining} of {total} still to do",
+          "$commentNeed": "Why a row is in What we need from you (ui/surfaces/printPlan.ts briefOf): the people it waits on, by name for admins and for the people a report-only week would have stopped when there are three or fewer, by count otherwise. The board's own tail (\"When every admin has a method it accepts (2 of 3)\") is the administrator's reading, not the ask.",
+          "need": {
+            "adminsNamed": "Waiting on {list:names} to set up the sign-in method this step needs.",
+            "admins": "Waiting on {n} admins to set up the sign-in method this step needs.",
+            "adminsCount": "Waiting on admins to set up the sign-in method this step needs: {ready} of {total} have.",
+            "peopleCount": "Waiting on people to set up the sign-in method this step needs: {ready} of {total} have.",
+            "peopleShare": "Waiting on more people to get ready for this step: {value} are ready, and it needs {threshold}.",
+            "people": "Waiting on more people to get ready for this step.",
+            "stoppedNamed": "Its report-only week would have stopped {list:names}; they need to be ready before it is switched on.",
+            "stopped": "Its report-only week would have stopped {n} people; they need to be ready before it is switched on."
+          },
           "journey": {
             "emergency-access": "A tested way back in, set up before any rule is switched on.",
             "direction": "The plan learns what the business uses and how people work, so it includes only what applies.",
             "prepare": "Accounts, people and settings are made ready, so the new rules don't lock anyone out.",
             "core": "Every sign-in needs more than a password.",
-            "extend-mfa": "MFA reaches the places it doesn't cover yet: new sign-in methods, new devices, guests, admin roles and risky sign-ins.",
-            "remaining-doors": "Sign-in routes nobody at the business needs, and attackers use, are closed.",
+            "extend-mfa": "MFA reaches the places it doesn't cover yet, such as adding a sign-in method or a device, and guests.",
+            "remaining-doors": "Sign-in routes attackers use are closed, or narrowed to where they're needed.",
             "devices-sessions": "Sign-ins last only as long as they should, on devices the business manages.",
             "ongoing": "It stays working: alerts on the emergency accounts, clear rule names and regular checks."
           },
@@ -3526,7 +3535,7 @@
             "Most new rules run in report-only first: for about a week they record what they would do without stopping anyone, and they are switched on once that shows who they would affect.",
             "Emergency access accounts are kept out of every rule, so there is always a way back in.",
             "Any rule can be switched back to report-only straight away, and nothing else in the tenant changes when it is.",
-            "Where a change reaches people, the plan includes a message telling them what to expect before it does.",
+            "Every step says who it affects before it is switched on, and most that reach people come with a message to send them first.",
             "IAMAI only reads the tenant. Your administrator makes every change, one step at a time."
           ]
         },
@@ -6096,7 +6105,7 @@
       "id": "admin-session",
       "brief": {
         "matters": "An admin session left open is a way in for anyone who reaches that computer or copies its session.",
-        "notice": "Admins sign in a little more often in admin portals."
+        "notice": "Admins sign in again more often in the browser, in every app they use there, including email and Teams where they use their admin account for them."
       },
       "kind": "policy",
       "title": "Shorten Admin Sessions",
@@ -6393,7 +6402,7 @@
           "Entra registration alone does not meet this grant. Use a compliant device or Microsoft Entra hybrid joined device within the saved platform scope.",
           "A sign-in that used device code flow cannot meet this grant at all: Microsoft does not support the managed-device controls on that flow."
         ],
-        "manager": "Away from the office, work apps open only on devices the business manages. {n} people on devices that do not meet this yet need to enrol them.",
+        "manager": "Away from the office, work apps open only on devices the business manages.",
         "waits": null
       },
       "example": {
@@ -6772,7 +6781,7 @@
       "id": "token-protection",
       "brief": {
         "matters": "Attackers increasingly steal the signed-in session itself, which gets past MFA.",
-        "notice": "Nothing in supported Windows apps; a few older apps and add-ins stop working and need replacing."
+        "notice": "People on Windows PCs the business hasn't registered may be blocked in those apps until the PC is registered. Some older apps, Teams Rooms and Surface Hub stop working."
       },
       "kind": "policy",
       "title": "Require Token Protection on Windows",
@@ -6831,7 +6840,7 @@
           "For a failing script or client, test a supported authentication path and review the actual target resources and conditions. Do not add a service-account exclusion solely to clear the error.",
           "An external person reporting an unexplained failure: their device has to meet the registration requirement in their own directory, and the error they see does not say so."
         ],
-        "manager": "On Windows, sign-ins to email, Teams, SharePoint and virtual desktops are tied to the device, so a stolen sign-in can't be reused on another machine.",
+        "manager": "On Windows, the desktop apps for email, Teams, SharePoint and virtual desktops tie each sign-in to the device, so a stolen sign-in can't be reused on another machine.",
         "waits": null
       },
       "example": {
@@ -7195,7 +7204,7 @@
           "A corporate-owned device enrolled through Apple automated device enrollment, or an Android Enterprise fully managed device, needs a second device or a Temporary Access Pass to answer the challenge.",
           "Two prompts in five minutes: it will not happen. Microsoft allows five minutes of clock skew on Every time, so nobody is asked more often than that."
         ],
-        "manager": "Enrolling a device asks the person to sign in again, so an open session can't quietly enrol one.",
+        "manager": "Enrolling a device asks the person to sign in again, so an open session can't quietly enroll one.",
         "waits": null
       },
       "example": {
@@ -7224,7 +7233,7 @@
       "id": "sign-in-risk",
       "brief": {
         "matters": "A high-risk sign-in was probably not made by the account's owner.",
-        "notice": "Only people whose sign-in looks risky; they confirm and carry on."
+        "notice": "Only people whose sign-in looks risky. Anyone who can't meet the check is blocked until IT helps them."
       },
       "kind": "policy",
       "licence": "Microsoft Entra ID P2",
@@ -7291,7 +7300,7 @@
           "A person prompted again straight afterwards: some detections are no longer cleared by answering the prompt, and the person has to complete a secure password change instead. Read the detection before dismissing anything.",
           "A sign-in blocked with AADSTS53004: the person has no registered method that meets the requirement, and cannot register one while the sign-in is risky."
         ],
-        "manager": "When Microsoft rates a sign-in as high risk, the person must prove it's them with a strong method before it goes through.",
+        "manager": "When Microsoft rates a sign-in as high risk, the person must prove it's them before it goes through.",
         "waits": null
       },
       "example": {
@@ -7331,7 +7340,7 @@
       "id": "user-risk",
       "brief": {
         "matters": "A high-risk account has probably been taken over.",
-        "notice": "Only people Microsoft flags as high risk; they confirm and clear the flag at their next sign-in."
+        "notice": "Only people Microsoft flags as high risk. They secure their account at their next sign-in; people without a passkey, Windows Hello or a one-time pass, and guests, are blocked until IT helps them."
       },
       "kind": "policy",
       "licence": "Microsoft Entra ID P2",
@@ -7492,7 +7501,7 @@
       "id": "user-risk-medium",
       "brief": {
         "matters": "A medium-risk account's password may be known to someone else.",
-        "notice": "Only people Microsoft flags; they confirm and change their password at their next sign-in."
+        "notice": "Only people Microsoft flags. They change their password at their next sign-in; people without a passkey, Windows Hello or a one-time pass are blocked until IT helps them."
       },
       "kind": "policy",
       "licence": "Microsoft Entra ID P2",

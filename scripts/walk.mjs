@@ -1127,26 +1127,25 @@ async function walkFixture(fx) {
         if ((await evaluate(`document.querySelectorAll('main.page .readiness, main.page .readiness-people').length`)) > 0) add('P0', `${label}: the old readiness strip still renders`)
         if (/Clear the date|Starting locks the dates/.test(text)) add('P0', `${label}: a note under the start date still renders`)
       }
-      // The print cover (E4): Print or save as PDF mounts the print document; its
-      // statement carries the Plan header's own count (the steps and the Cleanup
-      // rows), and its contents list Cleanup. window.print is stubbed so headless
-      // Chrome does not block; afterprint tears the document down.
+      // The print cover (E4): Print or save as PDF mounts the print document, the
+      // leadership briefing (printPlan.ts briefOf); its status carries the Plan
+      // header's own count (the steps and the Cleanup rows). window.print is
+      // stubbed so headless Chrome does not block; afterprint tears the document down.
       if (route === 'export') {
         await evaluate(`window.print = function () { try { window.dispatchEvent(new Event('beforeprint')) } catch (e) {} }`)
         const printed = await clickText('button', /^Print or save as PDF$/)
-        const cover = printed ? await waitFor(`document.querySelector('.print-plan .print-statement') !== null`, 8000) : false
+        const cover = printed ? await waitFor(`document.querySelector('.print-plan .brief-status, .print-plan .print-statement') !== null`, 8000) : false
         if (!cover) add('P0', `${label}: Print or save as PDF renders no cover`)
         else {
-          const statement = await evaluate(`[...document.querySelectorAll('.print-plan .print-statement')].map((e) => e.textContent).join(' ')`)
+          const statement = await evaluate(`[...document.querySelectorAll('.print-plan .brief-status, .print-plan .print-statement')].map((e) => e.textContent).join(' ')`)
           // Without Entra ID P1 the document is the Plan's one licence sentence and
-          // no plan (printPlan.ts noPlanLine): no count and no Cleanup to check.
+          // no plan (printPlan.ts noPlanLine): no count to check.
           const licenceOnly = /^Conditional Access needs Entra ID P1/.test(statement.trim())
-          const m = statement.match(/(\d+) steps · (\d+) (?:in place|done)/)
-          if (!m && !licenceOnly) add('P0', `${label}: the print cover's statement carries no step count ("${statement.slice(0, 80)}")`)
-          else if (m && planHeaderCounts && m[1] !== planHeaderCounts.steps) add('P0', `${label}: the print cover counts ${m[1]} steps and the Plan header ${planHeaderCounts.steps} (Cleanup is in the header's count)`)
+          const m = statement.match(/(\d+) of (\d+) steps? (?:are|is) done/)
+          if (!m && !licenceOnly) add('P0', `${label}: the print cover's status carries no step count ("${statement.slice(0, 80)}")`)
+          else if (m && planHeaderCounts && m[2] !== planHeaderCounts.steps) add('P0', `${label}: the print cover counts ${m[2]} steps and the Plan header ${planHeaderCounts.steps} (Cleanup is in the header's count)`)
           // The print document is hidden on screen (print media shows it), so its innerText is empty: read textContent.
           const printText = await evaluate(`[...document.querySelectorAll('.print-plan h1, .print-plan h2, .print-plan h3, .print-plan p, .print-plan li, .print-plan td, .print-plan dd')].map((e) => e.textContent).join('\\n')`)
-          if (!licenceOnly && !/\bCleanup\b/.test(printText)) add('P0', `${label}: the print does not list Cleanup`)
           checkText(`${label} (print)`, printText, { emails: true })
         }
         await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
@@ -1179,9 +1178,10 @@ async function walkFixture(fx) {
       // Finished rows are not opened one by one, for the same reason the footer's
       // never were: the loop below walks the work that is still to do.
       let inComplete = rows.map((r) => r.complete)
-      // Checks over the work artifacts only the printed plan carries now — the
-      // emails and the manager's sentence — run once every row has been opened.
+      // Checks over the emails and the manager's sentence, read from each opened
+      // step's More (stepReadings), run once every row has been opened.
       const emailChecks = []
+      const stepReadings = {}
       for (let i = 0; i < n; i++) {
         if (inFooter[i] || inComplete[i]) continue
         const title = rowTitles[i]
@@ -1334,10 +1334,11 @@ async function walkFixture(fx) {
         await shot(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.png`))
         if (bodyTitle.trim() && bodyTitle.trim() !== title) add('P0', `${slabel}: the row says "${title}" and the opened step says "${bodyTitle.trim()}"`)
         checkText(slabel, bodyText)
-        // The emails, the help-desk lines and the manager's sentence belong to the
-        // printed plan now, not to the opened step (the approved Plan design): they
-        // are read from the print document once every row has been opened, and each
-        // check that reads them waits for it (emailChecks, below the loop).
+        // The emails and the manager's sentence as the opened step shows them under
+        // More: the printed plan is a leadership briefing and carries neither. Each
+        // check that reads them runs once every row has been opened (emailChecks,
+        // below the loop).
+        stepReadings[title] = await evaluate(`((() => { const s = document.querySelector('main.page .step'); return s ? { email: [...s.querySelectorAll('.copy-box')].map((e) => [...e.querySelectorAll('p')].map((x) => x.textContent).join('\\n')).join('\\n'), more: (s.querySelector('details.more') || {}).textContent || '' } : { email: '', more: '' } })())`)
         // No step tip on an opened step.
         if ((await evaluate(`document.querySelectorAll('main.page .step-body .page-tip').length`)) !== 0) add('P0', `${slabel}: the step still renders a tip`)
         // The campaign step's rung counts, kept for the ladder to agree with. The
@@ -1691,27 +1692,9 @@ async function walkFixture(fx) {
           i -= 1
         }
       }
-      // The work artifacts the opened step no longer draws, read from the printed
-      // plan: PrintPlan renders every step through the same body with More open,
-      // so the emails and the manager's sentence are the ones the step always had.
-      if (emailChecks.length > 0) {
-        await send('Page.navigate', { url: `${fx.base}#/export` })
-        await sleep(300)
-        await ensureWeek2('export')
-        await waitFor(`[...document.querySelectorAll('main.page button')].some((b) => /^Print or save as PDF$/.test((b.textContent || '').trim()))`, 10000)
-        await evaluate(`window.print = function () { try { window.dispatchEvent(new Event('beforeprint')) } catch (e) {} }`)
-        const printing = await clickText('button', /^Print or save as PDF$/)
-        const ready = printing ? await waitFor(`document.querySelector('.print-plan .print-statement') !== null`, 8000) : false
-        if (!ready) add('P0', `${fx.name} @${width}: the printed plan does not render, so the step emails cannot be read`)
-        const printed = ready
-          ? await evaluate(`Object.fromEntries([...document.querySelectorAll('.print-plan article.step')].map((s) => [((s.querySelector('.step-head .step-title') || {}).textContent || '').trim(), { email: [...s.querySelectorAll('.copy-box')].map((e) => [...e.querySelectorAll('p')].map((x) => x.textContent).join('\\n')).join('\\n'), more: (s.querySelector('details.more') || {}).textContent || '' }]))`)
-          : {}
-        await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
-        await sleep(200)
-        for (const c of emailChecks) {
-          const p = printed[c.title] ?? { email: '', more: '' }
-          c.run(p.email, p.more)
-        }
+      for (const c of emailChecks) {
+        const p = stepReadings[c.title] ?? { email: '', more: '' }
+        c.run(p.email, p.more)
       }
       // The footer groups, expanded.
       await send('Page.navigate', { url: `${fx.base}#/plan` })

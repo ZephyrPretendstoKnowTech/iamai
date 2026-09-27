@@ -3475,7 +3475,7 @@ footer.app a {
   .brief-journey p { margin: 0; }
   .brief-purpose, .brief-progress, .brief-when { color: var(--secondary-text); }
   .brief-step { break-inside: avoid-page; border-top: 1px solid var(--line); padding: 3mm 0 2mm; }
-  .brief-step header { display: flex; justify-content: space-between; gap: 6mm; align-items: baseline; }
+  .brief-step-head { display: flex; justify-content: space-between; gap: 6mm; align-items: baseline; }
   .brief-step .brief-when { margin: 0; white-space: nowrap; }
   .brief-step dl { display: grid; grid-template-columns: 38mm 1fr; gap: 1mm 4mm; margin: 2mm 0 0; }
   .brief-step dt { color: var(--secondary-text); }
@@ -3486,26 +3486,8 @@ footer.app a {
   .print-cover h1 { font-size: var(--t-6); margin: 0 0 12mm; }
   .print-cover dl { display: grid; grid-template-columns: 8rem 1fr; gap: 3mm 6mm; }
   .print-cover dt { color: var(--secondary-text); }
-  .print-page { break-before: page; }
-  .print-page h2 { font-size: var(--t-5); margin: 0 0 4mm; border-bottom: 2px solid var(--brand-primary); padding-bottom: 2mm; }
-  .print-page h3 { font-size: var(--t-4); margin: 6mm 0 2mm; }
-  .print-page h4 { font-size: var(--t-3); margin: 4mm 0 1mm; }
-  .print-step { break-inside: avoid-page; border-top: 1px solid var(--line); padding-top: 3mm; margin-top: 4mm; }
-  /* A finished step's warnings, under its Completed line (printPlan.ts completedLinesOf). */
-  .print-warnings { margin: 1mm 0 2mm 4mm; }
-  .print-warnings dt { font-weight: var(--weight-strong); margin-top: 1mm; }
-  .print-warnings dd { margin: 0; }
-  /* The board's numbers on paper (printPlan.ts printSectionsOf): a section's in
-     its heading, a row's above its step or at the head of its line. A finished
-     section is one line where the board folds it, with no page of its own: a
-     heading under the section heading's rule, set apart from the rows above it
-     so its number never reads as the next row of the section before. */
+  /* The board's numbers on paper (printPlan.ts printSectionsOf): a step's beside its title. */
   .print-number { font-variant-numeric: tabular-nums; font-weight: var(--weight-strong); color: var(--secondary-text); }
-  .print-row-number { margin: 0; color: var(--secondary-text); }
-  .print-line { break-inside: avoid-page; border-top: 1px solid var(--line); padding-top: 2mm; margin-top: 2mm; }
-  .print-line p { margin: 0; }
-  .print-section-done { margin-top: 12mm; }
-  .print-section-line { font-size: var(--t-4); margin: 0; border-bottom: 2px solid var(--brand-primary); padding-bottom: 2mm; break-after: avoid-page; }
   /* The screen's attached frame is a screen idea: on paper a step is a section
      under a heading, in one column, with no card, no shadow and no rail beside
      it. The rail's own blocks still print, under the main column, because they
@@ -3527,15 +3509,12 @@ footer.app a {
   .print-plan .impl-preview { height: auto; overflow: visible; }
   .print-plan .impl-preview .preview-text { padding-right: 13px; }
   .print-plan .track { display: none; }
-  .print-json { break-inside: auto; }
   .print-plan .datatable, .print-plan table { width: 100%; border-collapse: collapse; }
   .print-plan .datatable th, .print-plan .datatable td, .print-plan table th, .print-plan table td { border: 1px solid var(--line); padding: 2mm; text-align: left; vertical-align: top; font-size: var(--t-2); }
   .print-plan pre, .print-plan .code-block { font-size: var(--t-2); border: 1px solid var(--line); background: var(--secondary-surface); }
   .export-grid, .journey { grid-template-columns: 1fr !important; }
   .print-cover .brand-mark { color: var(--brand-primary); margin-bottom: 8mm; }
   .print-cover .print-statement { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid var(--line); color: var(--secondary-text); font-size: var(--t-2); }
-  .print-progress { border: 1px solid var(--line); padding: 3mm 4mm; margin: 4mm 0; }
-  .print-progress p { margin: 0 0 1mm; }
 }
 
 /* ================= the surfaces no approved pack governs (task 040) =================

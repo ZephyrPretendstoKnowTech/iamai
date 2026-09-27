@@ -214,8 +214,9 @@ test('F5: the Cleanup rows keep their shape — Why, the instructions, Done when
     assert.ok(entry.whatToDo.length > 0, `${kind}: no instructions`)
     assert.ok(entry.doneWhen.length > 0, `${kind}: no Done when`)
     assert.ok(entry.learn?.url, `${kind}: no Learn link`)
-    // No row grew an anatomy of its own: these are the only four keys a row draws.
-    assert.deepEqual(Object.keys(entry).sort(), ['doneWhen', 'learn', 'title', 'whatToDo', 'why'])
+    // No row grew an anatomy of its own: these are the keys a row draws, and the
+    // briefing's three lines the printed plan carries (printPlan.ts briefOf).
+    assert.deepEqual(Object.keys(entry).sort(), ['brief', 'doneWhen', 'learn', 'title', 'whatToDo', 'why'])
   }
 })
 

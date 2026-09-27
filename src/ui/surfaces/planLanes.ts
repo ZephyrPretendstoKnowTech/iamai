@@ -65,10 +65,21 @@ const ROW = (pages.plan as unknown as { when: { readinessAdmins: string; readine
  * binding, starting with a capital: "When MFA readiness reaches 90% (now 85%)".
  */
 function readinessRowWords(step: Step, label: string, binding: string): string {
-  const gate = step.action.readinessGate
-  const count = label === 'readiness' && gate !== undefined && everyoneGate(gate) ? /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '') : null
-  if (count !== null) return fillText(readinessFamilyOf(gate!) === 'admin' ? ROW.readinessAdmins : ROW.readinessEveryone, { ready: count[1], total: count[2] })
+  const count = label === 'readiness' ? readinessCountOf(step) : null
+  if (count !== null) return fillText(readinessFamilyOf(step.action.readinessGate!) === 'admin' ? ROW.readinessAdmins : ROW.readinessEveryone, count)
   return binding.charAt(0).toUpperCase() + binding.slice(1)
+}
+
+/**
+ * The people a threshold that counts everyone it covers is short of, as its
+ * row states them ("2 of 3"), from the step's own readiness line; null for a
+ * threshold stated as a share, and where the step has none.
+ */
+export function readinessCountOf(step: Step): { ready: string; total: string } | null {
+  const gate = step.action.readinessGate
+  if (gate === undefined || !everyoneGate(gate)) return null
+  const m = /(\d[\d,]*) of (\d[\d,]*)/.exec(step.readiness.lines?.[0] ?? '')
+  return m ? { ready: m[1]!, total: m[2]! } : null
 }
 
 const GRAPH = buildGraph(data as DependencyData)
