@@ -17,7 +17,9 @@ export function redactIdentifiers(text: string, keep: ReadonlySet<string> = new 
     return v
   }
   return text
-    .replace(/[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => sub(m, () => `upn-${++upns}@redacted`))
+    // A guest's sign-in name carries its own email before #EXT# (jane_contoso.com#EXT#@tenant…): '#' belongs to
+    // the name, or the pattern found nothing to match and the whole address stayed in a "masked" file (F-195).
+    .replace(/[A-Za-z0-9._%+'#-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => sub(m, () => `upn-${++upns}@redacted`))
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, (m) =>
       keep.has(m.toLowerCase()) ? m : sub(m, () => `guid-${String(++guids).padStart(4, '0')}`),
     )
