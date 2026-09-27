@@ -42,7 +42,7 @@ import { app, pages, shared } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { checkWords, completedChecks, deviceChips, groupWhy, methodsCell, needsActionWords, nextCell, noDevicesWord, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords, subDevicesTitle } from './readinessCells.ts'
+import { checkWords, completedChecks, deviceChips, groupWhy, methodsCell, needsActionWords, nextCell, noDevicesWord, notCountedWhy, panelDevices, panelMethods, rowCells, rowNote, searchText, signInsUnavailableFor, stateTitle, whyLine, goalLine, computersSeen, leadLine, groupBodyLine, railRemaining, panelNoDevices, panelNoMethods, summaryLine, unreadMethodsWords, countedLine, scopeWords, noRecordsWords, guestTrustWords, evidenceWords, countedKindWords, subDevicesTitle } from './readinessCells.ts'
 import type { PanelItem } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -287,6 +287,11 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     .map((s) => ({ state: s, rows: view.rows.filter((r) => r.state === s && matches(r)) }))
     .filter((g) => g.rows.length > 0)
   const openAll = show !== 'needsAction' && show !== 'all'
+  // The Not counted views (the rail's links): the accounts the page does not
+  // count carry no readiness state, so no group gathers them; they are one list,
+  // each with why it is not counted (F-071: every link opened an empty list).
+  const uncountedView = show === 'notActive' || (KINDS as readonly string[]).includes(show)
+  const uncounted = uncountedView ? view.rows.filter((r) => r.state === null && matches(r)) : []
 
   const rowView = (r: ReadinessRow): ReactNode => {
     const chips = deviceChips(r)
@@ -593,7 +598,29 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
               )}
             </section>
           )}
-          {groups.length === 0 ? <p className="reason">{show === 'needsAction' && !q && active > 0 ? T.empty : T.emptyFilter}</p> : groups.map(groupView)}
+          {uncountedView ? (
+            uncounted.length === 0 ? <p className="reason">{T.emptyFilter}</p> : (
+              <div className="readiness-rows readiness-uncounted">
+                <div className="readiness-row uncounted head" aria-hidden="true">
+                  <span>{T.columns[0]}</span>
+                  <span>{T.rail.counted}</span>
+                </div>
+                {uncounted.map((r) => (
+                  <div className="readiness-row uncounted" key={r.user.id}>
+                    <div className="person">
+                      <span className="person-name">
+                        {r.user.displayName ?? r.user.userPrincipalName}
+                        {r.admin && <span className="tag">{T.admin}</span>}
+                        {r.guest && <span className="tag">{T.guest}</span>}
+                      </span>
+                      {r.user.displayName && r.user.userPrincipalName && <span className="person-upn tenant-object">{r.user.userPrincipalName}</span>}
+                    </div>
+                    <div className="next-step">{notCountedWhy(r)}</div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : groups.length === 0 ? <p className="reason">{show === 'needsAction' && !q && active > 0 ? T.empty : T.emptyFilter}</p> : groups.map(groupView)}
         </div>
 
         <aside className="readiness-rail" aria-label={T.rail.setup}>

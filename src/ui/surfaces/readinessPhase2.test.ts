@@ -6,7 +6,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { readinessView, subGroupsOf, SUB_GROUP_AT } from '../../derive/mfaReadiness.ts'
+import { readinessView, shows, subGroupsOf, SUB_GROUP_AT } from '../../derive/mfaReadiness.ts'
+import type { ShowKey } from '../../derive/mfaReadiness.ts'
 import { nextCheck, remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -14,7 +15,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, computersSeen, leadLine, subDevicesTitle } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, computersSeen, leadLine, subDevicesTitle, notCountedWhy } from './readinessCells.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
@@ -476,4 +477,30 @@ test('the Confirm it group never tells somebody to remove a method before they h
     assert.match(body, /left with no method needs a Temporary Access Pass to register\./, body)
   }
   assert.match(R.checks.tap.failText, /^People with no method need one to register\./, 'the fact the Temporary Access Pass check already states')
+})
+
+// F-071: every Not counted link on the rail opened "No people match this view."
+// The accounts the page does not count carry no readiness state, so no group
+// gathered them. Each view is now one list of its accounts, each with why it is
+// not counted, in the Not counted tile's own words.
+test('each Not counted view lists its accounts, each with why it is not counted', () => {
+  const f = fixture('demo')
+  const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+  const listed = (key: ShowKey) => view.rows.filter((r) => r.state === null && shows(r, key, view.lapsing))
+  const names = (key: ShowKey) => listed(key).map((r) => r.user.displayName ?? r.user.userPrincipalName)
+  assert.deepEqual(names('service'), ['svc-mailer-1', 'svc-mailer-2'])
+  assert.equal(listed('emergency').length, 2)
+  assert.equal(listed('notActive').length, view.explained.never + view.explained.retired + view.explained.new + view.explained.script + view.explained.unread)
+  for (const key of ['notActive', 'emergency', 'service', 'shared'] as const) {
+    assert.ok(listed(key).length > 0, `the premise: the demo has ${key} accounts`)
+    for (const r of listed(key)) assert.notEqual(notCountedWhy(r), '', `${key}: ${r.user.displayName} says why`)
+  }
+  const C = pages.readiness.counted as unknown as Record<string, string> & { one: Record<string, string> }
+  assert.equal(notCountedWhy(listed('service')[0]), C.one.service)
+  assert.ok(listed('notActive').every((r) => notCountedWhy(r) === C[r.explained!]))
+  // The page draws that list for these views, from the same filter, and never the empty line over it.
+  const src = page()
+  assert.match(src, /const uncountedView = show === 'notActive' \|\| \(KINDS as readonly string\[\]\)\.includes\(show\)/)
+  assert.match(src, /view\.rows\.filter\(\(r\) => r\.state === null && matches\(r\)\)/)
+  assert.match(src, /\{notCountedWhy\(r\)\}/)
 })

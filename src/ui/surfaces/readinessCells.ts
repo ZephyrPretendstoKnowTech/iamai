@@ -462,6 +462,12 @@ export function countedKindWords(k: Kind, n: number): string {
   return n === 1 ? T.counted.one[k] : T.counted[k]
 }
 
+/** Why a row in a Not counted list is not counted, in the Not counted tile's own words: the explained reason, or the kind of account, named in the singular. */
+export function notCountedWhy(r: Pick<ReadinessRow, 'kind' | 'explained'>): string {
+  if (r.explained) return T.counted[r.explained]
+  return r.kind !== 'person' ? countedKindWords(r.kind, 1) : ''
+}
+
 /** An evidence line with its count in the sentence, so a count of one reads as one. */
 export function evidenceWords(key: 'notCovered' | 'individually', n: number): string {
   return fillText(T.evidence[key], { n })

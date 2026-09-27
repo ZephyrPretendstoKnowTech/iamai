@@ -5410,3 +5410,8 @@ th .th-sort:focus-visible,
 .authored-list-more > summary { cursor: pointer; margin: 2px 0; }
 /* A line under a step's cards that is no task: what Create the Policies in Report-only leaves out (reportOnlyStep.ts). */
 .readiness-note { margin: 12px 0 0; color: var(--secondary-text); }
+
+/* A Not counted list (F-071): the person and why they are not counted. */
+.readiness-row.uncounted {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 3.5fr);
+}
