@@ -70,3 +70,23 @@ test('removing extra members from the exclusions group states how many, which li
   assert.ok(text.includes('Remove a few at a time and check their next sign-in before the next few.'))
   assert.ok(text.includes('**Members outside the saved emergency selection**'))
 })
+
+// F-002: on the demo's day one, Configure Emergency Exclusions said "Exclude
+// Core - Exclusions from 4 policies" and listed four, while its row's Impact
+// said 5 and "Core - Grant - MFA for all users" sat under Completed checks:
+// that policy's row carried no excludeGroups array (Graph always returns one),
+// and it leaves Break-glass 1 out by name, not through the group. The step
+// counts and lists the same five its row does, and the name-exclusion cleanup
+// no longer claims the group is already there.
+test('on the demo, Configure Emergency Exclusions lists and counts the same five policies its row does', async () => {
+  const { stepSnapshotsOf } = await import('../../testing/stepSnapshots.ts')
+  const { rowWho } = await import('./rowWho.ts')
+  const { content } = await import('../../content/content.ts')
+  const snap = stepSnapshotsOf('demo')['s-prereq-exclusion-group']
+  assert.equal(snap.rail, 'Exclude Core - Exclusions from 5 policies.')
+  const step = runFixture(fixture('demo')).steps.find((s) => s.id === 's-prereq-exclusion-group')!
+  assert.equal(rowWho(step), '5 policies', 'the row says the same number')
+  const cleanup = JSON.stringify(content).match(/"why":"These policies leave an emergency account out by name[^"]*"/)?.[0] ?? ''
+  assert.ok(cleanup.length > 0, 'the premise: the name-exclusion cleanup row')
+  assert.doesNotMatch(cleanup, /as well as through the exclusions group/)
+})

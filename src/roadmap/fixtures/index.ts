@@ -551,7 +551,7 @@ export function buildFixture(spec: Spec): Fixture {
     // name and not the group, so the second account sits inside it and the
     // emergency-access step has one check to fix; by week two the group is
     // excluded and the step is In place.
-    const body = spec.demo && !spec.week2 && n === 0 ? { ...t[2], conditions: { ...(t[2].conditions as Record<string, unknown>), users: { includeUsers: ['All'], excludeUsers: [bgIds[0]] } } } : t[2]
+    const body = spec.demo && !spec.week2 && n === 0 ? { ...t[2], conditions: { ...(t[2].conditions as Record<string, unknown>), users: { includeUsers: ['All'], excludeUsers: [bgIds[0]], excludeGroups: [] } } } : t[2]
     policies.push(policy(n, n < templates.length ? t[0] : `Core - Extra ${n} - ${t[0].split(' - ').slice(1).join(' - ')}`, state, body, n < templates.length ? t[3] : undefined))
   }
   for (let n = 0; n < (spec.disabledPolicies ?? 0); n++) policies.push(policy(500 + n, `Old - Disabled ${n}`, 'disabled', templates[n % templates.length][2]))
