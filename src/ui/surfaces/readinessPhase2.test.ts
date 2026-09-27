@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { readinessView, shows, subGroupsOf, SUB_GROUP_AT } from '../../derive/mfaReadiness.ts'
+import { groupOpens, readinessView, shows, subGroupsOf, SUB_GROUP_AT } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow, ShowKey } from '../../derive/mfaReadiness.ts'
 import { nextCheck, remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import { pages } from '../../content/content.ts'
@@ -531,7 +531,9 @@ test('a Ready person about to lapse counts in Needs action and is listed there, 
   assert.equal(shows(target, 'needsAction', []), false, 'Ready and not lapsing: nothing to do')
   // The group says how many of its people have to sign in again, Ready as well as Seamless.
   assert.equal(groupWhy(target.state!, [{ ...target, lapsing: true }], 'why'), fillText(pages.readiness.seamlessLapsing, { n: 1 }))
-  assert.match(page(), /open=\{isNext \|\| openAll \|\| \(quiet && show === 'needsAction'\) \|\| undefined\}/)
+  // Ready's group opens on them under Needs action (derive/mfaReadiness.ts groupOpens).
+  assert.equal(groupOpens({ next: false, quiet: true, show: 'needsAction', searching: false }), true)
+  assert.match(page(), /open=\{groupOpens\(\{ next: isNext, quiet, show, searching \}\) \|\| undefined\}/)
 })
 
 // F-018: Prepare Your Team for MFA says "10 of 30 people not ready" and its

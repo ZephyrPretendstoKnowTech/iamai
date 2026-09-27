@@ -28,7 +28,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
-import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, readinessView, showKeyOf, shows, subGroupsOf } from '../../derive/mfaReadiness.ts'
+import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, groupOpens, matchesElsewhere, readinessView, rowsShown, showKeyOf, shows, subGroupOpens, subGroupsOf } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow, ShowKey, SubGroup, SubGroupBy } from '../../derive/mfaReadiness.ts'
 import { remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import type { SetupCheck } from '../../derive/readinessSetup.ts'
@@ -96,6 +96,7 @@ type Words = {
   inventory: string
   empty: string
   emptyFilter: string
+  searchEveryone: string
   planContext: { filtered: string; unknown: string; back: string; uncounted: string }
   show: Record<string, string>
   guests: { title: string; count: string; trustOn: string; trustOff: string; trustUnknown: string; policyInPlace: string; policyNotInPlace: string; policyLink: string; suggestion: string }
@@ -291,7 +292,10 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const groups = order
     .map((s) => ({ state: s, rows: view.rows.filter((r) => r.state === s && matches(r)) }))
     .filter((g) => g.rows.length > 0)
-  const openAll = show !== 'needsAction' && show !== 'all'
+  // A search opens every group and sub-group it matches in, and shows every match (F-116).
+  const searching = q !== ''
+  // Where the view hides every match, the whole list may still hold some: the empty line offers it.
+  const elsewhere = searching ? matchesElsewhere(view.rows.filter(inScope), (r) => searchText(r).includes(q), show, view.lapsing) : 0
   // The Not counted views (the rail's links): the accounts the page does not
   // count carry no readiness state, so no group gathers them; they are one list,
   // each with why it is not counted (F-071: every link opened an empty list).
@@ -392,8 +396,8 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
         </div>
         {subs.map((g) => {
           const key = `${state}|${groupBy}|${g.key}`
-          const shown = Math.min(g.rows.length, limitOf(key, g.admins ? 3 : SUB_GROUP_AT))
-          const isOpen = openSubs[key] ?? g.admins
+          const shown = rowsShown(g.rows.length, limitOf(key, g.admins ? 3 : SUB_GROUP_AT), searching)
+          const isOpen = subGroupOpens({ saved: openSubs[key], admins: g.admins, searching })
           return (
             <details className="readiness-sub" key={key} open={isOpen || undefined} onToggle={(e) => { const open = e.currentTarget.open; setOpenSubs((o) => (o[key] === open ? o : { ...o, [key]: open })) }}>
               <summary>
@@ -429,7 +433,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     return (
       <Fragment key={state}>
         <h3 className="sr-only">{G.title}</h3>
-        <details className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={isNext || openAll || (quiet && show === 'needsAction') || undefined} data-state={state}>
+        <details className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={groupOpens({ next: isNext, quiet, show, searching }) || undefined} data-state={state}>
           <summary>
             <span className={`state-dot s-${state}`} aria-hidden="true" />
             <span>
@@ -626,7 +630,17 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
                 ))}
               </div>
             )
-          ) : groups.length === 0 ? <p className="reason">{show === 'needsAction' && !q && active > 0 ? T.empty : T.emptyFilter}</p> : groups.map(groupView)}
+          ) : groups.length === 0 ? (
+            <p className="reason">
+              {show === 'needsAction' && !q && active > 0 ? T.empty : T.emptyFilter}
+              {elsewhere > 0 && (
+                <>
+                  {' '}
+                  <Button variant="tertiary" onClick={() => select('all')}>{T.searchEveryone}</Button>
+                </>
+              )}
+            </p>
+          ) : groups.map(groupView)}
         </div>
 
         <aside className="readiness-rail" aria-label={T.rail.setup}>

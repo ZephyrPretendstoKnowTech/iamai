@@ -1698,6 +1698,7 @@
       "inventory": "Every account and policy the scan read →",
       "empty": "Nobody needs action: everyone counted is Ready.",
       "emptyFilter": "No people match this view.",
+      "searchEveryone": "Search everyone",
       "planContext": {
         "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it; derive/stepMfaReadiness.ts is the answer.",
         "filtered": "Filtered to the {cohort} {step} is waiting on.",

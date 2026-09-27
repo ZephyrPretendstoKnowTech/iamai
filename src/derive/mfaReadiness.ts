@@ -189,6 +189,36 @@ export function shows(r: ReadinessRow, key: ShowKey, lapsing: readonly string[] 
   return r.kind === key
 }
 
+/**
+ * Whether a worklist group opens (F-116). While a search is typed, every group
+ * holding a match opens: a person in a closed group was matched and stayed out of
+ * sight. Otherwise as before: the next check's group, every group of a view that
+ * names one state or kind, and Ready's lapsing people under Needs action.
+ */
+export function groupOpens(g: { next: boolean; quiet: boolean; show: ShowKey; searching: boolean }): boolean {
+  return g.searching || g.next || (g.show !== 'needsAction' && g.show !== 'all') || (g.quiet && g.show === 'needsAction')
+}
+
+/** Whether a sub-group opens: every one holding a match while searching, else as the person left it, admins open to begin with. */
+export function subGroupOpens(g: { saved: boolean | undefined; admins: boolean; searching: boolean }): boolean {
+  return g.searching || (g.saved ?? g.admins)
+}
+
+/** How many of a group's rows show: every match while searching, else up to the group's limit. */
+export function rowsShown(total: number, limit: number, searching: boolean): number {
+  return searching ? total : Math.min(total, limit)
+}
+
+/**
+ * Where a view hides every match of a search, how many the whole list holds, so
+ * the empty line can offer to search everyone (F-116). Zero where the view is the
+ * whole list already, or nothing matches anywhere.
+ */
+export function matchesElsewhere(rows: readonly ReadinessRow[], matchesQuery: (r: ReadinessRow) => boolean, show: ShowKey, lapsing: readonly string[] = []): number {
+  if (show === 'all') return 0
+  return rows.filter((r) => shows(r, 'all', lapsing) && matchesQuery(r)).length
+}
+
 /** How a large group splits: by the devices people use (each part shares one set of instructions), or by department. */
 export type SubGroupBy = 'devices' | 'department'
 /** `unread`: split by devices, the people with no device because their sign-ins were not read, apart from those with none seen. */
