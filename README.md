@@ -48,9 +48,10 @@ policy the scan read.
 IAMAI requests these delegated Microsoft Graph permissions, once, at sign-in
 (`src/graph/scopes.ts`). Every one is a read scope.
 
-`Policy.Read.All`, `Directory.Read.All`, `AuditLog.Read.All`,
-`RoleManagement.Read.Directory`, `UserAuthenticationMethod.Read.All`,
-`Reports.Read.All`, plus `openid`, `profile` and `offline_access` for the sign-in itself.
+`Policy.Read.All`, `Policy.Read.AuthenticationMethod`, `Directory.Read.All`,
+`AuditLog.Read.All`, `RoleManagement.Read.Directory`,
+`UserAuthenticationMethod.Read.All`, `Reports.Read.All`, plus `openid`, `profile`
+and `offline_access` for the sign-in itself.
 
 - **Role.** Global Reader is the least privilege that reads everything IAMAI needs, and it
   can change nothing. A delegated read only succeeds where both the consent and your role
@@ -129,9 +130,10 @@ redirect URIs registered there.
 ## Project status
 
 Active development by a single maintainer. There are no tagged releases; `main` is what
-is deployed. Every push runs the `ci` workflow (typecheck, unit tests, site build, smoke),
-and a push to `main` walks the sample tenant in headless Chrome before the site is
-published. Wording, plan logic and layout still change often.
+is deployed. A push to `main` publishes the site once its production build passes. The
+`ci` workflow (typecheck, the full unit suite, site build, browser smoke) runs on pull
+requests and on demand, and a local pre-push check runs the tenant-data guard and the
+typecheck. Wording, plan logic and layout still change often.
 
 `SPEC.md` records product decisions and their reasons, with a status note on what is
 historical. [`CONTRIBUTING.md`](CONTRIBUTING.md) has the rules a change must keep.

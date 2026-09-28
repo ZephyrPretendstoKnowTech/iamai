@@ -45,6 +45,7 @@ consent screen (`src/graph/scopes.ts`). There is no write scope, and
 | Permission | What it lets IAMAI read | Without it |
 |---|---|---|
 | `Policy.Read.All` | Conditional Access policies, named locations, authentication strengths, the authentication methods policy, security defaults, cross-tenant access | Nothing can be compared against the baseline, so there is no plan |
+| `Policy.Read.AuthenticationMethod` | The Passkey (FIDO2) method configuration, assigned profiles, attestation settings and allowed authenticator models | IAMAI cannot verify passkey profiles or whether the configured models meet the plan |
 | `Directory.Read.All` | People, groups and members, devices, licences, the organisation name, the signed-in account | IAMAI cannot read the people, so it builds no plan |
 | `AuditLog.Read.All` | Up to 30 days of interactive sign-in records and directory audit events (from an event: what happened, when, its result and the objects it changed), when each account last signed in, and the registered-methods report | IAMAI cannot read the sign-in records, so it builds no plan (without Entra ID P1 there are none to read, and the plan is built without them) |
 | `RoleManagement.Read.Directory` | Which accounts hold which directory roles, permanently or through PIM | IAMAI cannot tell who administers the tenant |
