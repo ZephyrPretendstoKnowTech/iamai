@@ -754,7 +754,7 @@
   "pages": {
     "connect": {
       "eyebrow": "Setup",
-      "h1": "Strengthen identity security with evidence about who could be affected.",
+      "h1": "Three steps from your tenant to its rollout plan.",
       "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps and see who each change affects. It is read-only and runs in this browser.",
       "status": {
         "$comment": "Task 032: the approved pack's status strip above the staged flow (docs/design/approved/connect-v3.html). It is a projection of the same progression the stages already carry — the stage with the next action, or nothing left to do — never a second reading of readiness. The quiet half is the current stage's own state line, so the strip and the step cannot disagree.",
@@ -1824,7 +1824,7 @@
       "shotAlt": "The sample tenant's plan in IAMAI Planner: what is ready now, the next step, and the first section's steps with their dates.",
       "workLabel": "What it does",
       "workHeading": "From your tenant to the baseline, one step at a time.",
-      "workLead": "IAMAI compares your tenant with the Defense in Depth baseline and orders the work so each policy waits until what it depends on is ready.",
+      "workLead": "IAMAI orders the work so each policy waits until what it depends on is ready.",
       "work": [
         {
           "verb": "Reads",
@@ -1836,7 +1836,7 @@
         },
         {
           "verb": "Plans",
-          "text": "A dated plan: emergency access first, new policies in report-only first wherever Microsoft evaluates them, and who each change could affect."
+          "text": "A dated plan: emergency access first, and new policies in report-only first wherever Microsoft evaluates them."
         }
       ],
       "baselineLabel": "Baseline",

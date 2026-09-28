@@ -86,7 +86,7 @@
       },
       "allow": {
         "headings": [
-          "Strengthen identity security without guessing what will break.",
+          "Three steps from your tenant to its rollout plan.",
           "re:^Sign in .+$",
           "re:^Baseline .+$",
           "re:^Scan after sign-in · .+$",
@@ -192,7 +192,7 @@
       },
       "allow": {
         "headings": [
-          "Strengthen identity security without guessing what will break.",
+          "Three steps from your tenant to its rollout plan.",
           "re:^Signed in .+$",
           "re:^Baseline .+$",
           "re:^Scan (complete · .+|finished with gaps · no plan built|not started( · this account can't read the tenant)?|.+ · \\d+(m \\d+)?s)$",

@@ -27,7 +27,8 @@ test('the public words make no predictive or blanket data claim, and the method 
     for (const claim of [/what (would|will) break/i, /predicted to affect/i, /never leaves the browser/i, /nothing (is )?sent anywhere/i, /stay in your browser/i]) {
       assert.doesNotMatch(publicText, claim, String(claim))
     }
-    assert.match(String(pages.connect.h1), /who could be affected/)
+    // Connect names where its steps lead, as Home's headline does (owner, 2026-09-28).
+    assert.equal(String(pages.connect.h1), 'Three steps from your tenant to its rollout plan.')
     // The public-beta notice is gone (owner, 2026-09-26: "close enough to ready"); the baseline's attribution is untouched.
     assert.doesNotMatch(JSON.stringify(pages.connect), /Public beta|still being validated/)
     assert.match(String(home.baseline), /built by Jon Hope, a Microsoft MVP/)
