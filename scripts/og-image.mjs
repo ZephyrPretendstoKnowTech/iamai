@@ -9,7 +9,7 @@
 // Chrome draws a page with everything inlined (fonts as data URIs), so nothing
 // is fetched while it renders.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -48,16 +48,22 @@ h1 { margin: 20px 0 0; font-family: 'IBM Plex Serif', serif; font-weight: 700; f
 <div class="site">getiamai.com</div>
 </body></html>`
 
+// Chrome writes into a fresh folder, and home/og.png is replaced only by a picture
+// this run made: the committed one is always there, so its presence proves nothing.
 const dir = mkdtempSync(join(tmpdir(), 'iamai-og-'))
 try {
   const html = join(dir, 'og.html')
+  const shot = join(dir, 'og.png')
   writeFileSync(html, page)
-  const run = spawnSync(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1', '--window-size=1200,630', `--user-data-dir=${join(dir, 'profile')}`, `--screenshot=${OUT}`, pathToFileURL(html).href], { stdio: 'pipe', timeout: 60_000 })
-  if (run.status !== 0 || !existsSync(OUT)) {
-    console.error(`og-image: Chrome did not write the picture (exit ${run.status})\n${run.stderr}`)
-    process.exit(1)
+  const run = spawnSync(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1', '--window-size=1200,630', `--user-data-dir=${join(dir, 'profile')}`, `--screenshot=${shot}`, pathToFileURL(html).href], { stdio: 'pipe', timeout: 60_000 })
+  if (run.status !== 0 || !existsSync(shot) || statSync(shot).size === 0) {
+    console.error(`og-image: Chrome did not write the picture (exit ${run.status}); home/og.png is unchanged\n${run.stderr ?? ''}`)
+    process.exitCode = 1
+  } else {
+    copyFileSync(shot, OUT)
+    console.log(`og-image: wrote ${OUT}`)
   }
-  console.log(`og-image: wrote ${OUT}`)
 } finally {
-  rmSync(dir, { recursive: true, force: true })
+  // Chrome's helpers can still hold the profile for a moment on Windows.
+  rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
 }
