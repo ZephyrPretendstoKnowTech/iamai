@@ -428,7 +428,8 @@ export function rowNote(r: ReadinessRow): string {
 export function keyStopsNote(r: ReadinessRow): string {
   const readiness = r.readiness
   if (!readiness || readiness.next?.kind === 'replaceKey' || readiness.recommended?.kind === 'replaceKey') return ''
-  return onlyKeyThatStops(readiness.credentials) ? T.notes.keyStops : ''
+  // Both readings agree: the plan's model list leaves it out, and the Plan's projection confirms it stops.
+  return onlyKeyThatStops(readiness.credentials)?.stopConfirmed === true ? T.notes.keyStops : ''
 }
 
 export type PanelItem = { icon: 'computer' | 'phone' | 'key'; name: string; sub: string; facts: [string, string][] }

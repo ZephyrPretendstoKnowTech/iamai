@@ -612,3 +612,22 @@ test('on passkey profiles, a leftover top-level allow list does not keep a key t
   const same = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.user.id === flagged.user.id)!
   assert.equal(rowNote(same), words.notes.keyStops, 'a key the person\'s own profile stops is shown as kept')
 })
+
+test('with the passkey settings unread or held for review, a key is never called allowed and no stop is claimed (third review of F-075)', () => {
+  // Review, 2026-09-28: the Plan's projection judges nobody without settled settings, and
+  // reading that as "nothing stops" called every usable key "Allowed by Configure Passkey
+  // Authentication". The projection now only confirms a stop.
+  const words = (pages as unknown as { readiness: { notes: { keyStops: string } } }).readiness
+  const base = structuredClone(fixture('demo'))
+  const flagged = readinessView(base.snapshot, base.snapshot.asOf, base.mapping).rows.find((r) => rowNote(r) === words.notes.keyStops)!
+  assert.ok(flagged, 'the premise: someone\'s only key is off the plan\'s list')
+  const unread = structuredClone(fixture('demo'))
+  unread.snapshot.config.authMethodsPolicy = { status: 'error', reason: 'throttled', rows: [] } as typeof unread.snapshot.config.authMethodsPolicy
+  const held = structuredClone(fixture('demo'))
+  held.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, includeTargets: [{ id: 'all_users', targetType: 'group' }], excludeTargets: [], keyRestrictions: { isEnforced: true, enforcementType: 'block', aaGuids: ['11111111-2222-4333-8444-555555555555'] } }] }] } as typeof held.snapshot.config.authMethodsPolicy
+  for (const [name, f] of [['unread', unread], ['held for review', held]] as const) {
+    const row = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.user.id === flagged.user.id)!
+    assert.equal(rowNote(row), '', `${name}: a stop is claimed the Plan cannot judge`)
+    for (const c of row.readiness?.credentials ?? []) if (c.cls === 'passkey') assert.notEqual(c.afterStep3, 'yes', `${name}: an off-list key is called allowed`)
+  }
+})

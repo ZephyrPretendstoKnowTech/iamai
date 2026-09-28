@@ -319,6 +319,8 @@ export type CredentialReading = {
   allowedNow: Verdict
   /** Allowed by Emergency Access Step 3's intended models; null where Step 3's settings are already the tenant's, or the class has no model. */
   afterStep3: Verdict | null
+  /** The Plan's projection confirms Configure Passkey Authentication stops this key, for this person (MFA Readiness's row warning needs it). */
+  stopConfirmed?: true
   /** The latest confirmed sign-in with this class of method, in the window or kept from earlier scans. */
   lastConfirmed: { at: string; os: Platform | null; retained: boolean } | null
   /** A passkey's last use as Microsoft reports it: supporting evidence only, it never makes anybody Ready (owner item 2). */
@@ -451,9 +453,10 @@ export type ReadinessContext = {
     applied: boolean
     /**
      * Which held passkeys the planned settings stop, per person, as the Plan's own
-     * projection reads them (roadmap/passkeyCompatibility.ts affectedPasskeysByProposedChange):
-     * each person's own profile, the allow list the plan keeps, the passkey types. A key
-     * id (or model where it has none) per account; accounts it could not judge.
+     * projection reads them (roadmap/passkeyCompatibility.ts affectedPasskeysByProposedChange),
+     * present only where the Plan has settled settings to judge by. A key id (or model
+     * where it has none) per account; accounts it could not judge. It confirms a stop;
+     * it never makes a key "allowed".
      */
     stops?: { stopped: ReadonlyMap<string, ReadonlySet<string>>; unjudged: ReadonlySet<string> }
   }
@@ -828,14 +831,13 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       forms.add(passkeyForm(m, reg ?? null))
       if (allowedNow !== 'no') usableForms.add(passkeyForm(m, reg ?? null))
     }
-    // One verdict with the Plan's card (review, 2026-09-28): from its per-person
-    // projection where the context carries it, for a key usable today (the projection
-    // judges only those); else by the plan's model list.
+    const afterStep3: Verdict | null = cls !== 'passkey' || ctx.step3.applied || step3.size === 0 ? null : aaguid === null ? 'unknown' : step3.has(aaguid) ? 'yes' : 'no'
+    // The Plan's own per-person projection confirms this key stops (F-075, reviews of
+    // 2026-09-28): only where it has settled settings to judge by and judged this person.
+    // Where it cannot say, nothing is claimed either way.
     const stops = ctx.step3.stops
     const account = input.userId?.toLowerCase() ?? null
-    const afterStep3: Verdict | null = cls !== 'passkey' || ctx.step3.applied ? null
-      : stops && account !== null && allowedNow !== 'no' ? (stops.unjudged.has(account) ? 'unknown' : (stops.stopped.get(account)?.has((m?.id ?? aaguid ?? '').toLowerCase()) ? 'no' : 'yes'))
-      : step3.size === 0 ? null : aaguid === null ? 'unknown' : step3.has(aaguid) ? 'yes' : 'no'
+    const stopConfirmed = cls === 'passkey' && !ctx.step3.applied && stops !== undefined && account !== null && !stops.unjudged.has(account) && stops.stopped.get(account)?.has((m?.id ?? aaguid ?? '').toLowerCase()) === true
     const last = latestOf(cls)
     const model = cls === 'platformCredential' ? (ctx.modelNames.get(PLATFORM_CREDENTIAL_AAGUID) ?? null) : aaguid ? (ctx.modelNames.get(aaguid) ?? m?.model ?? null) : (m?.model ?? null)
     // The same model name on another AAGUID (other firmware): the approved list names this model, and still does not allow this key.
@@ -851,6 +853,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       created: m?.createdDateTime ?? null,
       allowedNow,
       afterStep3,
+      ...(stopConfirmed ? { stopConfirmed: true as const } : {}),
       lastConfirmed: last ? { at: last.at, os: last.os, retained: last.retained } : null,
       lastUsed: cls === 'passkey' ? (m?.lastUsedDateTime ?? null) : null,
       unused: cls === 'passkey' ? unusedOf(m) : null,
