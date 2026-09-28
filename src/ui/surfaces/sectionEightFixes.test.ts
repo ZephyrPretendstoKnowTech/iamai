@@ -214,3 +214,15 @@ test('held 8.1: its rail names what it waits for, it offers no Mark as done unti
   assert.match(cleanup, /onDone && !row\.done && !held && <Button/)
   assert.doesNotMatch(cleanup, /alertingSubjects\(row\)\}[^>]*scanNote=\{false\}/)
 })
+
+test('Remove Emergency Accounts Excluded by Name waits for the security rollout, like 8.1 (F-092)', () => {
+  // Owner, 2026-09-28: the sample read it Ready, a month out, at the bottom of the
+  // Plan. Removing a by-name exclusion before the exclusions group is on that policy
+  // leaves the emergency account exposed to it, so the row waits for the rollout.
+  const { f, r } = demo()
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+  const named = board.readings.get('cleanup-namedExclusions')
+  assert.ok(named, 'the premise: the sample excludes an emergency account by name')
+  assert.notEqual(named.lane, 'Ready', 'it reads Ready while the rollout is still going')
+  assert.equal(named.reason?.id, 'after-security-rollout')
+})
