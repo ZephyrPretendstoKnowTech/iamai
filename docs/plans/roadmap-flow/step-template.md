@@ -17,7 +17,7 @@ What the owner set on 1.1–1.4 (2026-09-23) and wants on every step. Every sect
 5. **About** is one or two sentences on why the step matters, ending "Learn →" as on 1.1–1.4. It carries no lecture and no qualifier.
 6. **Tasks Remaining** shows only open tasks, each as a card. Satisfied holds only satisfied items, each stating its fact, never "In place · No change needed."
    - A Completed step keeps the Tasks Remaining header, "No tasks remaining" and the folded Satisfied items.
-   - "After making changes, select Scan to update the plan." sits under Tasks Remaining.
+   - "After making changes, select Scan to update the plan." sits under Tasks Remaining while a task remains; a Completed step does not carry it (OWN-W7, owner 2026-09-28).
 7. **Implementation Tasks** stand open and whole in every state, a Completed one included. They give the real procedure and values, and name the accounts, groups and policies involved.
    - Never "review, no save needed", "No change is needed", "Scan again to verify".
    - No "Reference" fold, no qualifier lines, no lectures, and no troubleshooting lines inside the procedure.

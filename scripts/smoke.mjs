@@ -1483,7 +1483,7 @@ try {
         close: [...st.querySelectorAll('button')].filter((x) => x.textContent.trim() === 'Close').length,
         heads: heads.map((h) => h.textContent.trim()),
         headType: heads.slice(0, 4).map((h) => { const s = getComputedStyle(h); return s.fontSize + ' ' + s.fontWeight + ' ' + h.parentElement.className.split(' ')[0] }).join(' / '),
-        scanNote: tasks ? ((tasks.parentElement.querySelector('.emergency-account-scan-note') || {}).textContent || '').trim() : null,
+        scanNote: tasks ? ((tasks.parentElement.querySelector('.emergency-account-scan-note:not(.readiness-note)') || {}).textContent || '').trim() : null,
         width: innerWidth,
         fits: st.getBoundingClientRect().right <= innerWidth + 1 && st.scrollWidth <= st.clientWidth + 1,
       }
@@ -1554,7 +1554,8 @@ try {
       if (t.controls && (done ? t.instructionCount !== 0 || t.accountsHelp !== 0 : (!t.instruction || !t.instructionFirst || t.instructionCount !== 1))) bad.push(`${at}: instruction ${JSON.stringify([t.instruction, t.instructionFirst, t.instructionCount, t.accountsHelp])}`)
       if (!t.footer || t.scan !== 'Scan to update the plan' || t.close !== 0) bad.push(`${at}: footer ${JSON.stringify([t.footer, t.scan, t.close])}`)
       if (JSON.stringify(t.heads.slice(0, 4)) !== JSON.stringify(FOUR) || t.heads.slice(4).some((h) => FOUR.includes(h))) bad.push(`${at}: sections ${t.heads.join(' | ')}`)
-      if (t.scanNote !== SCAN_NOTE) bad.push(`${at}: Tasks Remaining helper "${t.scanNote}"`)
+      // The helper stands while a task remains, and not on a finished step (OWN-W7).
+      if (t.scanNote !== (done ? '' : SCAN_NOTE)) bad.push(`${at}: Tasks Remaining helper "${t.scanNote}"`)
       if (/rgba\(0, 0, 0, 0\)|transparent/.test(t.bg)) bad.push(`${at}: the column has no surface`)
       if (!t.fits) bad.push(`${at}: wider than the page at ${t.width}px`)
       if (desktop && (!t.fills || !/^[1-9][0-9.]*px solid$/.test(t.rule))) bad.push(`${at}: the column does not run the body's height beside its rule (${t.fills}, ${t.rule})`)

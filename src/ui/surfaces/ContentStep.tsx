@@ -196,7 +196,8 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, 
     </details>}
     {/* A line under the cards that is no task: what Create the Policies in Report-only leaves out (reportOnlyStep.ts). */}
     {note && <p className="emergency-account-scan-note readiness-note">{note}</p>}
-    {scanNote && <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>}
+    {/* Only while a task remains: a finished step asked for changes under "No tasks remaining" (OWN-W7, owner 2026-09-28). */}
+    {scanNote && remaining.length > 0 && <p className="emergency-account-scan-note">After making changes, select <strong>{SHARED.scanControl}</strong>.</p>}
     {bar}
   </section>
 }

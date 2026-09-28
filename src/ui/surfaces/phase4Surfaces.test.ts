@@ -237,3 +237,14 @@ test('8.2 skips a name that differs only in its dashes', () => {
   const step = { id: 'a', status: 'active', doesntApply: false, state: { setAside: false }, action: { intended: {} }, tracking: { members: [{ key: 'p1', sourceName: '', policyId: 'p1', policyName: 'IAC - GLOBAL - SESSION - Admin Persistence (4 Hours)', plannedName: 'IAC - GLOBAL – SESSION – Admin Persistence (4 Hours)' }] } } as unknown as Step
   assert.deepEqual(renamesOf([step]), [])
 })
+
+test('the "After making changes" note stands only while a task remains, never on a finished step (OWN-W7)', () => {
+  // Owner, 2026-09-28: a Completed step read "No tasks remaining" and then asked for changes.
+  const src = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
+  const fn = src.slice(src.indexOf('export function EmergencySubjectReadiness'), src.indexOf('/** True when a content line has every variable'))
+  assert.match(fn, /\{scanNote && remaining\.length > 0 && <p className="emergency-account-scan-note">After making changes/)
+  assert.equal(fn.split('After making changes').length - 1, 1, 'one note, gated')
+  for (const check of ['../../../scripts/smoke.mjs', '../../../scripts/template-check.mjs']) {
+    assert.match(readFileSync(new URL(check, import.meta.url), 'utf8'), /\(done \? (''|null) : SCAN_NOTE\)/, `${check} still expects the note on a finished step`)
+  }
+})

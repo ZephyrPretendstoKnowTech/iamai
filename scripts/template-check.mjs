@@ -365,7 +365,7 @@ async function readStep(id) {
     ? {
         clear: /No tasks remaining/.test(tasks.textContent),
         open: [...tasks.querySelectorAll('.emergency-account-status-grid:not(.satisfied) > article, .readiness-strip.unresolved > li')].filter((x) => !x.closest('details')).map((x) => text(x).slice(0, 90)),
-        scanNote: norm((tasks.querySelector('.emergency-account-scan-note') || {}).textContent) || null,
+        scanNote: norm((tasks.querySelector('.emergency-account-scan-note:not(.readiness-note)') || {}).textContent) || null,
       }
     : null
   out.satisfied = []
@@ -523,7 +523,8 @@ function judge(t, row, anatomy, ref) {
   if (anatomy !== 'decision' && t.tasks) {
     if (done && !t.tasks.clear) add('tasks remaining (Completed)', 'no "No tasks remaining"')
     if (done && t.tasks.open.length > 0) add('tasks remaining (Completed)', `${t.tasks.open.length} open card${t.tasks.open.length === 1 ? '' : 's'}: ${t.tasks.open.map((x) => q(x, 60)).join(', ')}`)
-    if (t.tasks.scanNote !== SCAN_NOTE) add('scan helper', `under Tasks Remaining: ${q(t.tasks.scanNote ?? '(none)')}`)
+    // The helper stands while a task remains, and not on a finished step (OWN-W7).
+    if (t.tasks.scanNote !== (done ? null : SCAN_NOTE)) add('scan helper', `under Tasks Remaining: ${q(t.tasks.scanNote ?? '(none)')}`)
   }
   for (const card of t.satisfied) {
     const hit = SATISFIED_BANNED.find((re) => re.test(card))
