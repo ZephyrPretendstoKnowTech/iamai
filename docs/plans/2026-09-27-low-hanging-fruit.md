@@ -52,17 +52,17 @@ The goal: an overall score of **90 or better, with no surface below 85**. Each s
 
 The baseline comes from the audience-framed audit on 2026-09-26 (live 55017e45), which gave an overall of about 74. Every round re-scores every surface from a live walk and adds a column.
 
-| Surface | Reader | Baseline 2026-09-26 | After Round 1 | After Round 2 | After Round 3 | What moved it |
-|---|---|---|---|---|---|---|
-| Home + demo | Evaluator deciding whether to try it | 72 | 76 | 80 | 82 | The sample's length now agrees (Connect and the Plan both say 5 weeks), the sample's MFA Readiness no longer shows banned wording and its Not counted lists work, and the Plan names where to start. Still: Scan in the demo jumps to the follow-up scan unexplained (Round 2), no product image (OWN-B1). Round 2: Scan in the demo says it moved to the sample's follow-up scan, and the switch looks like one; the sample's 1.2 lists and counts five policies and 4.4 no longer repeats 1.2's edit. Still: no product image (OWN-B1), nothing says how to remove the sample's data (F-078). Round 3: Back stays in the demo instead of leaving for the home page; Connect and How say how to delete what the browser keeps. Still: no product image (OWN-B1); the sample's data contradicts itself where an expert looks (F-140). |
-| Connect | First-time admin deciding whether to trust it | 82 | 86 | 89 | 90 | The beta notice went (cdf79d82), the sample tile is true, and Forget asks first. Still: a cancelled sign-in leaves the button stuck until a reload (F-057, Round 2). Round 2: a cancelled or refused sign-in leaves Sign in ready, with the consent paragraph kept; Forget's plan-file link looks like a link. Still: "1 section was not read in full" leads nowhere (F-058), a 40-day-old scan reads Ready to plan (F-186). Round 3: the removal line says Sign out keeps what is stored and Forget this tenant deletes it. Still: a 40-day-old scan reads Ready to plan (F-186). |
-| Plan + steps | Admin doing the work | 82 | 85 | 88 | 90 | Next: names the first Ready step; an accepted difference is said once; AI Info warns before it is copied; service cards say what Yes keeps; Work countries says travellers are blocked. Still: rows waiting on answers don't say where (Round 2), the legend covers half the words (Round 2), a deferral's reason is never shown (Round 2). Round 2: rows name the decision step they wait on, the legend covers every word on the board, a deferral says why, taking an emergency account off asks first, 1.1's Troubleshooting opens on Temporary Access Pass. Still: the Plan's own "could not read" sentences (OWN-B4), Completed steps still say "select Scan" (OWN-W7). Round 3: Back closes the step it opened and keeps a tile filter; a tab another tab saved over stops saving and says Reload; the one-line instruction clips are gone; the account pickers mark administrators and your own account; the signed-in admin is never dormant (F-177). Still: after a scan the page jumps to the top (F-028); the (i) closes on the click that should open it (F-091); Up Next steps never say "not yet" (F-001). |
-| MFA Readiness | Admin and help desk running the campaign | 85 | 88 | 90 | 91 | Not counted links list their accounts, someone about to lapse needs action, and nothing says "couldn't read". Still: opened from Prepare Your Team it shows 30 people where the step named 10 (F-018, Round 2). Round 2: opened from Prepare Your Team it shows the nine people the step names. Still: the headline's "(29 people and 1 guest)" reads as if they are the ready ones (F-044); search hides matches in closed groups (F-116). Round 3: opens at its top from a scrolled Plan. Still: the headline's cohort reads as the ready ones (F-044); search misses matches in closed groups (F-116). |
-| Inventory | Admin checking what the scan saw | 78 | 78 | 78 | 83 | Unchanged: no round has reached it yet. Round 3: lists the plan's own groups, its Distinct users tip is true, its MFA state words are defined, and it opens at its top. Still: no search; the sample's data contradicts itself (F-140); legacy authentication is named differently from its step (F-064). |
-| Export page | Other tools and records | 80 | 80 | 80 | 85 | Unchanged: no round has reached it yet. Round 3: loading a plan file says what it holds and asks over recorded work, and the Plan says which file came back; the prompts are the implementer's and never cut mid-instruction; masked means masked for guests; the JSON note is true. Still: file names carry no tenant or date (F-047); CSVs open badly in Excel (F-127). |
-| Printed plan | Manager, director, owner | 25 | 78 | 82 | 85 | First score of the leadership briefing (c623ff0d..d9516a22), walked live on the owner's tenant: status, what it needs from the reader, the journey and each change in manager terms. Still: no scan date, so an old briefing reads as current (F-184, Round 2); set-aside steps carry no reason (F-013, Round 2). Round 2: the cover says which scan it was made from, and warns past a week; a set-aside step says why. Round 3: each decision under What we need from you names the questions it asks. Still: a person the plan waits on is named once per step (4.3, 5.1 and 5.2 each name the same admin). |
-| How | Security-minded evaluator | 85 | 85 | 85 | 86 | Unchanged. Round 3: says how to delete what the browser keeps. |
-| **Overall** | | **about 74** | **82** | **84** | **86.5** | The mean of the eight. After Round 1 the briefing's first score was most of the rise, and Round 1 added about 2; Round 2 added 2; Round 3 added 2.5, most of it on Export, Inventory and the briefing. The honest whole-tool rating is about 84 (from 81): the truth and safety layer about 89, the experience layer about 78. To reach 90 with none under 85, Inventory (83) and Home + demo (82) need the next rounds, and the experience layer needs the felt fixes. |
+| Surface | Reader | Baseline 2026-09-26 | After Round 1 | After Round 2 | After Round 3 | After Round 4 | What moved it |
+|---|---|---|---|---|---|---|---|
+| Home + demo | Evaluator deciding whether to try it | 72 | 76 | 80 | 82 | 85 | The sample's length now agrees (Connect and the Plan both say 5 weeks), the sample's MFA Readiness no longer shows banned wording and its Not counted lists work, and the Plan names where to start. Still: Scan in the demo jumps to the follow-up scan unexplained (Round 2), no product image (OWN-B1). Round 2: Scan in the demo says it moved to the sample's follow-up scan, and the switch looks like one; the sample's 1.2 lists and counts five policies and 4.4 no longer repeats 1.2's edit. Still: no product image (OWN-B1), nothing says how to remove the sample's data (F-078). Round 3: Back stays in the demo instead of leaving for the home page; Connect and How say how to delete what the browser keeps. Still: no product image (OWN-B1); the sample's data contradicts itself where an expert looks (F-140). Round 4: Home shows the sample's Plan under the hero, in the page's theme, linking to the sample; the sample agrees with itself (phones register, the printer owns no computer, one legacy-authentication list, app counts within the total); no date is marked "Est.". Still: a returning visitor's stored sample can read 7 weeks where Connect says 5. |
+| Connect | First-time admin deciding whether to trust it | 82 | 86 | 89 | 90 | 91 | The beta notice went (cdf79d82), the sample tile is true, and Forget asks first. Still: a cancelled sign-in leaves the button stuck until a reload (F-057, Round 2). Round 2: a cancelled or refused sign-in leaves Sign in ready, with the consent paragraph kept; Forget's plan-file link looks like a link. Still: "1 section was not read in full" leads nowhere (F-058), a 40-day-old scan reads Ready to plan (F-186). Round 3: the removal line says Sign out keeps what is stored and Forget this tenant deletes it. Still: a 40-day-old scan reads Ready to plan (F-186). Round 4: a scan more than a week old says so on the strip and the scan tile (F-186); the header stays live during a rescan (F-168, unit-tested: no rescan was walked). Still: nothing on the first-hour path left in Needs attention. |
+| Plan + steps | Admin doing the work | 82 | 85 | 88 | 90 | 92 | Next: names the first Ready step; an accepted difference is said once; AI Info warns before it is copied; service cards say what Yes keeps; Work countries says travellers are blocked. Still: rows waiting on answers don't say where (Round 2), the legend covers half the words (Round 2), a deferral's reason is never shown (Round 2). Round 2: rows name the decision step they wait on, the legend covers every word on the board, a deferral says why, taking an emergency account off asks first, 1.1's Troubleshooting opens on Temporary Access Pass. Still: the Plan's own "could not read" sentences (OWN-B4), Completed steps still say "select Scan" (OWN-W7). Round 3: Back closes the step it opened and keeps a tile filter; a tab another tab saved over stops saving and says Reload; the one-line instruction clips are gone; the account pickers mark administrators and your own account; the signed-in admin is never dormant (F-177). Still: after a scan the page jumps to the top (F-028); the (i) closes on the click that should open it (F-091); Up Next steps never say "not yet" (F-001). Round 4: after Scan or Approve the page stays with the step and the change line sits at its top, whole; the (i) stays open; removing an old exclusion waits for the exclusions group and says so; turn-on says what report-only saw; each 2.x answer says what it does beside the baseline's version; an unapproved answer is kept; a key model saves at once; Needs your input counts each question once; no "Est.". Still: steps edit the tenant's own policies in place (policy matching B, the Round 5 pilot); a Ready step dated a month out (F-092); 3.x/4.x contradictions (F-035, F-036, F-062); Completed steps say "select Scan" (OWN-W7). |
+| MFA Readiness | Admin and help desk running the campaign | 85 | 88 | 90 | 91 | 93 | Not counted links list their accounts, someone about to lapse needs action, and nothing says "couldn't read". Still: opened from Prepare Your Team it shows 30 people where the step named 10 (F-018, Round 2). Round 2: opened from Prepare Your Team it shows the nine people the step names. Still: the headline's "(29 people and 1 guest)" reads as if they are the ready ones (F-044); search hides matches in closed groups (F-116). Round 3: opens at its top from a scrolled Plan. Still: the headline's cohort reads as the ready ones (F-044); search misses matches in closed groups (F-116). Round 4: the headline's cohort reads as the whole, not the ready ones (F-044); search opens every group with a match and offers Search everyone, and a group you opened or closed stays so. Still: one person gets different next steps across pages (F-072); a row says to use a passkey the drawer says will stop working (F-075). |
+| Inventory | Admin checking what the scan saw | 78 | 78 | 78 | 83 | 85 | Unchanged: no round has reached it yet. Round 3: lists the plan's own groups, its Distinct users tip is true, its MFA state words are defined, and it opens at its top. Still: no search; the sample's data contradicts itself (F-140); legacy authentication is named differently from its step (F-064). Round 4: legacy authentication is one list, as its step names it (F-064), and the sample's devices and apps agree (F-140). Still: no search. |
+| Export page | Other tools and records | 80 | 80 | 80 | 85 | 85 | Unchanged: no round has reached it yet. Round 3: loading a plan file says what it holds and asks over recorded work, and the Plan says which file came back; the prompts are the implementer's and never cut mid-instruction; masked means masked for guests; the JSON note is true. Still: file names carry no tenant or date (F-047); CSVs open badly in Excel (F-127). Round 4: unchanged. Still: file names (F-047), CSVs in Excel (F-127), the bundle's missing dates (F-130). |
+| Printed plan | Manager, director, owner | 25 | 78 | 82 | 85 | 85 | First score of the leadership briefing (c623ff0d..d9516a22), walked live on the owner's tenant: status, what it needs from the reader, the journey and each change in manager terms. Still: no scan date, so an old briefing reads as current (F-184, Round 2); set-aside steps carry no reason (F-013, Round 2). Round 2: the cover says which scan it was made from, and warns past a week; a set-aside step says why. Round 3: each decision under What we need from you names the questions it asks. Still: a person the plan waits on is named once per step (4.3, 5.1 and 5.2 each name the same admin). Round 4: no date is marked "Est.". Still: the waiting admin is named once per step; 4.3 has no Who section and the timeline's phases overlap (Phase 4 suggestions, not approved). |
+| How | Security-minded evaluator | 85 | 85 | 85 | 86 | 86 | Unchanged. Round 3: says how to delete what the browser keeps. Round 4: unchanged. |
+| **Overall** | | **about 74** | **82** | **84** | **86.5** | **87.75** | The mean of the eight. After Round 1 the briefing's first score was most of the rise, and Round 1 added about 2; Round 2 added 2; Round 3 added 2.5, most of it on Export, Inventory and the briefing. The honest whole-tool rating is about 84 (from 81): the truth and safety layer about 89, the experience layer about 78. To reach 90 with none under 85, Inventory (83) and Home + demo (82) need the next rounds, and the experience layer needs the felt fixes. Round 4 added 1.25, spread across the Plan, MFA Readiness, Home and Inventory. The honest whole-tool rating is about 86 (from 84): the truth and safety layer about 90, the experience layer about 81. What stands between it and 90: the policy-matching pilot (steps still edit the tenant's own policies), Export's files and CSVs, Inventory search, and real users; no surface is under 85. |
 
 ## Round 1: done (live at de1695c2, 2026-09-27)
 
@@ -387,7 +387,58 @@ they take, and is fixing it worth the time? Approved as proposed:
 - Put aside as decisions, in "Not low-hanging": F-006 (make the change freeze work, or take the
   setting out) and F-183 (the plan re-dates weeks later).
 
-## Round 4: approved (2026-09-27), building
+## Round 4: done (live at c02de2fd, 2026-09-27)
+
+**Commits:** a18b6e51 (F-044), 9382af0c (F-116), 83cbc352 (F-091), 89015e43 (F-012),
+c28fd1ca (F-001), 6884be26 (F-041, F-067, F-069), 528a7050 (F-042), 7b64c2f1 (F-104),
+86275103 (F-168), e79e098c (F-186), 3680e3bf (F-028, F-040), 0669b966 (F-140, F-064),
+fb247dfa (no "Est.", owner), 96aa26a9 (Needs your input counts once, owner), b1538758 (OWN-B1),
+1a83601e (full-suite fixes), 9f84e8cf (review fixes), 158b92f2 and c02de2fd (the two walk
+findings, owner).
+
+**What the owner added while building:**
+- No date anywhere is marked "Est." or "(estimated)": the tile already says Estimated finish,
+  and every date is a plan (owner: "the plan looks better").
+- Needs your input counts each question once, not once per step that waits on it.
+- The Home image (pack home-v3) is regenerated each release: `npm run build:site && node
+  scripts/home-shot.mjs`, both themes, from the sample.
+- Review words: the partner line names the baseline's strength ("sign in with Modern MFA + TAP
+  and only from your countries"); the remote lines keep only the MFA fact ("get MFA like
+  anyone"; "count as people" was false: the accounts stay out of the people counts).
+
+**The review (a workflow over the round's diff, confirmed findings only):** a scan returned to
+a step it was not started from, and an earlier change line showed as the scan's own; a row press
+kept a pending move; the change line sat in a closed group; Show all left focus behind; a group
+you opened or closed on MFA Readiness forgot it after a search; Search everyone lost the cursor;
+unapproved answers outlived Sign out and Forget and were held per step instead of per question;
+4.3's exclusions-first line missed a user list the baseline doesn't write; the Home shot could
+capture the wrong theme; the sample's legacy mail sat on a guest and the sync account. All fixed
+in 9f84e8cf.
+
+**The Chrome review of Rounds 1–4 (owner: "reviewing the changes we've made in the past 4
+rounds"), on localhost before the push:** the sample's Initial and Follow-up scans, then the
+owner's tenant: SSO sign-in, one read-only scan, the owner's plan file carried across in-page
+(never saved) and loaded. Every fix walked held. Two findings, fixed before the push with the
+owner's yes: 4.1's instructions were cut by 22px at 1280 (the limit is now 39rem), and 2.2's
+About said the accounts join a group "kept to your office network" two lines above "there is no
+office network" under a remote answer (2.2's About and milestone now stop at what stays true).
+
+**The live audit (c02de2fd):** Home shows the sample's Plan in both themes and links to the
+sample, which reads 10 / 4 / 1 / 2 of 38 / Oct 29, with no "Est." anywhere. The owner's tenant:
+8 / 1 / 9 / 18 of 36 / Oct 28, Next 3.6; 2.1's partner line names Modern MFA + TAP; 2.2 reads the
+remote words; MFA Readiness "2 of 2 people are ready", Needs action · 1 (the admin about to
+lapse); the briefing carries 39 dates and no "Est."; 4.1's box 537 of 546px.
+
+**Not walked live:** F-168 (the sample's scan is instant; a real rescan was not run), F-012 on
+the owner's tenant (no step is past its report-only window until Sep 28), F-001 on the owner's
+tenant (4.3 is done there). Their unit tests are the acceptance; F-012 and F-001 were walked on
+the sample.
+
+**Seen once, not reproduced:** a first tab read "This plan changed in another tab" right after a
+second tab signed in (before any change). Three reloads either way and a plan-file load behaved
+as designed.
+
+### As approved
 
 Branch `fix/low-hanging-4`, cut from main at 82274f1 (Round 3 and F-177 are on main).
 Picked with the owner's lens (who hits it on a path they take, and is the fix the quality one),
@@ -638,6 +689,29 @@ A patch of the broad rule from 2026-09-25 exists as a starting point.
 4.4, then every policy step.
 
 
+## Round 5: candidates (end of Round 4, 2026-09-27)
+
+Not yet verified at HEAD or live: step 2 of the prompt does that before planning.
+
+- **The felt item: the policy-matching pilot on 4.3** (owner decision B, build new and retire
+  old). The design is under Round 4. L, high risk, frozen (4.3): the biggest lever on an
+  expert's trust.
+- **Export, the reader's files:** F-047 (file names carry no tenant or date; Accounts saves as
+  people.csv) and F-127 (CSVs in Excel). Export has had one round.
+- **Accessibility:** F-079 (keyboard focus invisible on filled primary buttons in the light
+  theme), XS.
+- **Truth on the main path:** F-075 (a row says to use a passkey the drawer says will stop
+  working), F-036 (1.3 names one affected account and another locked out), F-062 (the admin
+  roles count and Global Administrator), F-035 (completion criteria contradictions), OWN-W7
+  (Completed steps still say "select Scan": seen live on the owner's 4.1 in the Round 4 audit).
+- **The schedule:** F-092 (a Ready step dated a month out, at the bottom).
+- **A blocked tenant told why:** F-180 (no policies, security defaults off: nobody is asked for
+  MFA today), which needs the per-user MFA reading beside it.
+- **New from the Round 4 walk:** Inventory has no search (a 300-person tenant is a scroll); a
+  returning visitor's stored sample can read 7 weeks while Connect says 5; the Phase 4
+  suggestions still waiting for a yes (the lapsing reason line under the next step, 4.3's print
+  has no Who section, the print timeline's phases overlap).
+
 ## Not low-hanging: decisions or larger work
 
 ### Owner question: how should steps meet the policies a tenant already has?
@@ -689,7 +763,6 @@ scenarios is under Round 4. The pilot on 4.3 is Round 5's felt item.
 
 ### Other larger items
 
-- **OWN-B1:** a product image on Home (an approved-pack revision, M).
 - **OWN-D4:** stagger turn-ons by weekly capacity (L, engine).
 - **F-009:** one plan-wide list of deviations from the baseline (L).
 - **F-192:** a bulk path at scale (L).
@@ -702,7 +775,7 @@ scenarios is under Round 4. The pilot on 4.3 is Round 5's felt item.
 - **F-183:** weeks later the plan re-dates every unfinished step to today with nothing
   reading overdue (L, the engine).
 
-## Needs attention (39)
+## Needs attention (22)
 
 Everything here is worth fixing: a real user is misled, put at risk, blocked or
 meaningfully slowed on a path they actually take. Each round picks its ten from
@@ -712,44 +785,27 @@ item are in the -backlog.json.
 | ID | Round | Status | Effort | Risk | Reward | Frozen | Surface | Finding |
 |---|---|---|---|---|---|---|---|---|
 | F-035 |  | partly | XS | medium | 3 | yes | Step | Completion criteria and the AI briefing contain contradictions and stray text: 'except Core - Exclusions and Break-glass 1', 'for guests except Core - Exclusions and guests', and a stray 'strong:' line |
-| F-041 |  | present | XS | medium | 3 | yes | Decision | Exempting partner and MSP technicians is suggested 'Yes', and the baseline's version is not shown at the decision |
-| F-044 |  | present | XS | low | 3 |  | Readiness | The MFA Readiness headline reads as if 29 people and a guest are ready |
 | F-062 |  | present | XS | medium | 3 | yes | Step | 'Require Phishing-Resistant MFA for Admins' says 'change the Directory roles selection as listed below. Select (45)', and the list leaves out Global Administrator |
 | F-063 |  | present | XS | medium | 3 | yes | Step | 'Set up Windows Hello for Business' rows have no how-to in the Plan step they link to |
 | F-092 |  | present | XS | high | 3 | yes | Plan | A 'Ready' step is dated a month out and sits at the very bottom of the plan |
-| F-168 |  | present | XS | low | 3 |  | Shell (mock) | Plan, MFA Readiness and Export in the header stop working before the first scan and during every rescan, look the same as live links, and say 'after the first scan' even when a plan exists |
-| F-001 |  | partly | S | medium | 3 | yes | Step | 'Up Next' steps give go-live and exclusion-removal instructions, plus a script that writes to the tenant, and never say 'not yet' |
 | F-010 |  | present | S | medium | 3 | yes | Step | The AI Info brief for 'Configure Emergency Exclusions' says no exclusions group exists, while the same card shows the group as selected and verified |
-| F-012 |  | partly | S | medium | 3 | yes | Step | Report-only evidence is one unquantified sentence, so 'nothing was evaluated' reads the same as 'safe to enforce' |
 | F-036 |  | present | S | high | 3 | yes | Step | 'Configure Passkey Authentication' names one account as affected and a different account as the one that would be locked out |
 | F-037 |  | present | S | medium | 3 | yes | Step | The Email tab's single Copy button copies the staff, admin and follow-up emails as one blob, signed 'IT', in a code-style monospace box |
-| F-040 |  | present | S | medium | 3 |  | Decision | Approving a decision jumps to the next one while the 'steps removed' note sits off-screen, focus is lost, and a removed review step is never listed |
-| F-064 |  | partly | S | medium | 3 | yes | Step | Inventory shows two accounts using legacy authentication; the Block Legacy Authentication step names only one |
-| F-067 |  | present | S | medium | 3 | yes | Decision | Confirm What You Use explains only one direction of each choice, so the other answer's effect is invisible, including an MSP lockout risk (Round 1 gave every service card its Yes line; the partner and mail-sending cards still explain one direction) |
 | F-072 |  | partly | S | medium | 3 | yes | Readiness | The same person is given different next steps on MFA Readiness, Prepare Your Team for MFA and Require MFA to Register a Device |
 | F-075 |  | present | S | low | 3 |  | Readiness | Jamie Brown's row says to use a passkey that the drawer says will stop working |
-| F-116 |  | present | S | low | 3 |  | Readiness | Search leaves matches hidden in collapsed groups and gives a dead-end empty state |
 | F-180 |  | partly | S | low | 3 |  | Plan (mock) | A tenant with no policies and security defaults off is never told nobody is asked for MFA today, and the print counts an empty exclusions step as 'in place' |
-| F-186 |  | present | S | medium | 3 |  | Connect | Connect says 'Ready to plan' for a 40-day-old scan while every other page says to scan again, and the warning is a small grey line that never escalates |
 | OWN-W5 |  | present | S | medium | 3 |  | Step | 5.9 Reset Passwords for Medium-Risk Users has no path forward |
 | F-066 |  | present | XS | medium | 2 | yes | Decision | Emergency access accounts can be picked as service or shared-device accounts, and the card that offers them says they are already out |
-| F-069 |  | partly | XS | medium | 2 | yes | Decision | 'Everyone works remotely' silently undoes the service-accounts decision: service accounts and the Teams Room fall under MFA for Everyone |
 | F-079 |  | present | XS | low | 2 | yes | Shell | Keyboard focus is invisible on every filled primary button in the light theme |
-| F-104 |  | present | XS | medium | 2 | yes | Step | A key model added to the list is silently lost unless a second Save is pressed |
 | F-107 |  | partly | XS | medium | 2 | yes | Step | Prepare Your Team says the registration campaign is already on, then tells you to turn it on |
 | F-111 |  | partly | XS | medium | 2 | yes | Step | The admin MFA step has no Readiness hand-off, and its Readiness view gives a misleading reason |
 | F-114 |  | present | XS | medium | 2 | yes | Decision | The account picker says '8 results' when more match, and already-picked accounts vanish from search |
 | F-121 |  | present | XS | low | 2 |  | Readiness | Personal (registered) Windows devices get opposite advice about Windows Hello for Business |
 | OWN-W7 |  | present | XS | medium | 2 | yes | Step | Completed steps still say 'After making changes, select Scan to update the plan.' |
-| F-028 |  | present | S | low | 2 |  | Plan | After a scan the page jumps to the top, and 'what changed' is a truncated sentence that cannot be expanded or exported |
-| F-042 |  | present | S | medium | 2 | yes | Decision | An answer changed on a completed decision is thrown away silently if the user leaves without re-approving |
 | F-047 |  | present | S | low | 2 |  | Export | Export files carry no tenant or date in their names, and 'Accounts as CSV' saves as people.csv |
-| F-091 |  | present | S | medium | 2 |  | Plan | The Estimated finish (i) opens on hover, closes on click, and closes on Enter |
 | F-127 |  | present | S | low | 2 |  | Export | CSVs are hard to use in Excel: no UTF-8 marker, a sample-data sentence in column A of every row, mixed blanks and dashes, and different header names for the same field |
 | F-130 |  | present | S | low | 2 |  | Export | The grounding bundle carries no dates, although its readme says it does |
-| F-140 |  | present | M | medium | 2 |  | Inventory | The sample data contradicts itself in places an expert will notice |
 | F-101 |  | partly | XS | medium | 1 | yes | Step | Instructions name controls the step doesn't have: a Service accounts group picker, a Done shown only inside the open list, and 'Mark as done' |
-| OWN-B1 | 4 | present | M | low | 3 |  | Home | Home shows no product image and undersells the output (moved from Review later, Round 4: Home + demo is the lowest surface, and an evaluator sees no product in the first ten seconds) |
 
 ## Not worth fixing / review later (141)
 
@@ -931,11 +987,11 @@ We're taking IAMAI Planner to 90%. This chat decides the next ten fixes, the one
 that actually lift the tool, then plans, builds and audits them.
 
 Read docs/plans/2026-09-27-low-hanging-fruit.md first: Readiness scores, Rounds 1
-to 3 (done), Round 4 candidates, Needs attention, and "Not low-hanging". If a
+to 4 (done), Round 5 candidates, Needs attention, and "Not low-hanging". If a
 round's work is not on main yet, it is on its branch fix/low-hanging-N: work there.
-(As of the end of Round 3, 2026-09-27: check `git log origin/main` for caa86c7a, F-177,
-and the Round 3 plan update; if they are not there, they are on fix/low-hanging-3.
-Start Round 4 on fix/low-hanging-4 from wherever they are.)
+(As of the end of Round 4, 2026-09-27: main is at c02de2fd. The pre-launch night's
+cleanup is on night/2026-09-27 until the owner approves it; ask whether it has merged.
+Start Round 5 on fix/low-hanging-5 from main.)
 
 WHAT 90% MEANS (owner, 2026-09-27)
 - 100%: the tool works perfectly, is 100% accurate, and every feature it has has
@@ -957,16 +1013,29 @@ WHAT 90% MEANS (owner, 2026-09-27)
 Score every surface by it: would nine in ten of its readers come away feeling it
 was useful and well made?
 
-WHERE THINGS STAND (end of Round 3, 2026-09-27)
-- Live: cac1a3e (Round 3); F-177 is caa86c7a. Rounds 1–3 shipped 36 fixes, three
-  review-fix commits and a backlog scrub (38 items left in Needs attention).
-- Table (surface average): 86.5. Home + demo 82, Connect 90, Plan + steps 90,
-  MFA Readiness 91, Inventory 83, Export 85, briefing 85, How 86.
-- Honest whole-tool rating: about 84.
-  - The truth and safety layer is about 89.
-  - The experience layer is about 78: Back, top-of-page and the two-tab guard were
-    the first felt changes to how the tool moves.
-  - Under 85: Inventory and Home + demo.
+WHERE THINGS STAND (end of Round 4, 2026-09-27)
+- Live: c02de2fd (Round 4). Rounds 1–4 shipped about 55 fixes, four review-fix commits
+  and a backlog scrub (22 items left in Needs attention).
+- Table (surface average): 87.75. Home + demo 85, Connect 91, Plan + steps 92,
+  MFA Readiness 93, Inventory 85, Export 85, briefing 85, How 86. None under 85.
+- Honest whole-tool rating: about 86.
+  - The truth and safety layer is about 90.
+  - The experience layer is about 81: staying with the step after a scan or an
+    approval, the (i), kept answers and the Home image were Round 4's felt changes.
+  - What stands between it and 90: steps still edit the tenant's own policies (the
+    policy-matching pilot on 4.3 is Round 5's felt item), Export's files and CSVs,
+    Inventory search, and real users.
+
+WHAT ROUND 4 TAUGHT
+- Walk every round's changes in Chrome after the review, not only this round's: the
+  owner asked for Rounds 1–4 in execution, and it found two contradictions the unit
+  tests and the review missed (a clipped box, an About that contradicted the line
+  below it under one answer). Walk each decision under each of its answers.
+- A fix's lines under one answer can make a static sentence elsewhere on the same
+  screen false (2.2's About under a remote 2.3). Read the whole screen per answer.
+- The owner's tenant can be walked on localhost without touching the live plan: SSO
+  sign-in there, one approved read-only scan, and the owner's plan file carried from
+  the live tab in-page (below).
 
 WHAT ROUND 3 TAUGHT
 - The owner judges each pick by one question: who hits this on a path they take, and
@@ -1095,6 +1164,19 @@ PRACTICAL LEARNINGS
 - Capture any download in-page instead of saving it: stub URL.createObjectURL and
   HTMLAnchorElement.prototype.click, read the Blob, then restore both.
 - The full suite has about 2,100 tests and takes about 10 minutes.
+- Carry the owner's plan file to a localhost tab without saving it: capture the Save
+  blob in the live tab; open the localhost tab from a button you add to the live page
+  and click for real (window.open needs a gesture); post the text with postMessage
+  until the localhost tab acks; park it in that tab's sessionStorage across the SSO
+  redirect; load it through Export's file input with a DataTransfer; then delete it
+  from both tabs.
+- `navigate` to the URL a tab already shows is a fragment navigation, not a reload:
+  use location.reload(). Typing into a background Claude in Chrome tab can miss: click
+  the field, check document.activeElement, then type.
+- The sample's scan finishes at once: F-168 (the header during a rescan) can only be
+  walked on a real tenant's scan.
+- Regenerate the Home image after any change the Plan's top shows: `npm run build:site
+  && node scripts/home-shot.mjs` (it checks the theme and the Plan before writing).
 
 STANDING RULES
 - The product stays read-only.
