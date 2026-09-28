@@ -162,11 +162,14 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const mapping = useAppliedMapping(snapshot)
   const again = useAction()
   const view = useMemo(() => (snapshot && mapping ? readinessView(snapshot, snapshot.asOf, mapping) : null), [snapshot, mapping])
-  // Opened from a step that asks for MFA to register a device, each person held by it
+  // Opened from a step that asks for MFA to register a device, each person it holds
   // reads the step's own next step, as its card states it (F-072): no method on the
-  // device being registered answers it. Everywhere else, the page's own.
-  const scopedIds = useMemo(() => new Set(context?.registersDevice ? context.ids ?? [] : []), [context])
-  const nextOf = (r: ReadinessRow): string => (snapshot && mapping && scopedIds.has(r.user.id) ? personNextOf(snapshot, snapshot.asOf, mapping, r.user.id, true) : nextCell(r))
+  // device being registered answers it. Only while it holds people, and only people the
+  // page places: the card names nobody else (review, 2026-09-28). Everywhere else, and
+  // for anyone else, the page's own.
+  const scopedIds = useMemo(() => new Set(context?.registersDevice && context.held ? context.ids ?? [] : []), [context])
+  const nextOf = (r: ReadinessRow): string => (snapshot && mapping && scopedIds.has(r.user.id) && r.state !== 'unknown' ? personNextOf(snapshot, snapshot.asOf, mapping, r.user.id, true) : nextCell(r))
+  const findIn = (r: ReadinessRow): string => searchText(r, scopedIds.has(r.user.id) ? nextOf(r) : undefined)
   const checks = useMemo(() => (snapshot && view ? tenantSetupChecks(snapshot, view) : []), [snapshot, view])
   const progress = useMemo(() => (snapshot && view ? progressOf(view, snapshot) : null), [snapshot, view])
   const [query, setQuery] = useState('')
@@ -293,7 +296,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const next = stepNextCheck(scopedView, context ? tenantSetupChecks(snapshot, scopedView) : checks, context ? context.ids : undefined)
   const remaining = remainingChecks(checks)
   const done = checks.filter((c) => c.outcome === 'pass' || c.outcome === 'note')
-  const matches = (r: ReadinessRow): boolean => inScope(r) && shows(r, show, view.lapsing) && (!q || searchText(r).includes(q))
+  const matches = (r: ReadinessRow): boolean => inScope(r) && shows(r, show, view.lapsing) && (!q || findIn(r).includes(q))
 
   // The worklist: the next check's group first, the rest in the fixed order. The
   // done groups appear only where the filter asks for everyone (or for them).
@@ -305,7 +308,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   // A search opens every group and sub-group it matches in, and shows every match (F-116).
   const searching = q !== ''
   // Where the view hides every match, the whole list may still hold some: the empty line offers it.
-  const elsewhere = searching ? matchesElsewhere(view.rows.filter(inScope), (r) => searchText(r).includes(q), show, view.lapsing) : 0
+  const elsewhere = searching ? matchesElsewhere(view.rows.filter(inScope), (r) => findIn(r).includes(q), show, view.lapsing) : 0
   // The Not counted views (the rail's links): the accounts the page does not
   // count carry no readiness state, so no group gathers them; they are one list,
   // each with why it is not counted (F-071: every link opened an empty list).

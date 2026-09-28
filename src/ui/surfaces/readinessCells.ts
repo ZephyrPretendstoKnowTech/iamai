@@ -541,13 +541,17 @@ const capital = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
 
 const SEARCH = new WeakMap<ReadinessRow, string>()
 /** What the search box matches: the person, their devices, methods, state and next step. Built once per row. */
-export function searchText(r: ReadinessRow): string {
+export function searchText(r: ReadinessRow, next?: string): string {
+  // A page that shows another next step (a device-registration step's, F-072) searches the words it shows.
+  if (next !== undefined) return [searchFields(r), next].join(' ').toLowerCase()
   const held = SEARCH.get(r)
   if (held !== undefined) return held
-  const text = [r.user.displayName ?? '', r.user.userPrincipalName ?? '', r.user.department ?? '', roleWord(r), methodsCell(r).main, ...deviceChips(r).chips.map((c) => `${c.os} ${c.word}`), r.state ? stateTitle(r.state) : '', nextCell(r)].join(' ').toLowerCase()
+  const text = [searchFields(r), nextCell(r)].join(' ').toLowerCase()
   SEARCH.set(r, text)
   return text
 }
+
+const searchFields = (r: ReadinessRow): string => [r.user.displayName ?? '', r.user.userPrincipalName ?? '', r.user.department ?? '', roleWord(r), methodsCell(r).main, ...deviceChips(r).chips.map((c) => `${c.os} ${c.word}`), r.state ? stateTitle(r.state) : ''].join(' ')
 
 /** A setup check's words: the line, and what to do where it fails. */
 export function checkWords(c: SetupCheck): { line: string; text: string } {

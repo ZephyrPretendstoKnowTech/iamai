@@ -26,7 +26,12 @@ test('opened from Require MFA to Register a Device, MFA Readiness reads each hel
   assert.ok(differ.length > 0, 'the premise: the page\'s own next step differs from the card\'s for someone the step holds')
   // The page reads the card's words for the people a device-registration step holds: the row, the drawer and the CSV.
   const src = readFileSync(new URL('./MfaReadiness.tsx', import.meta.url), 'utf8')
-  assert.match(src, /scopedIds\.has\(r\.user\.id\) \? personNextOf\(snapshot, snapshot\.asOf, mapping, r\.user\.id, true\) : nextCell\(r\)/)
+  assert.match(src, /scopedIds\.has\(r\.user\.id\) && r\.state !== 'unknown' \? personNextOf\(snapshot, snapshot\.asOf, mapping, r\.user\.id, true\) : nextCell\(r\)/, "someone the page cannot place keeps the page's own words (the card names nobody unplaced)")
+  // Only while the step holds people: with nobody held, the page is the whole cohort and the card names no one (review, 2026-09-28).
+  assert.match(src, /new Set\(context\?\.registersDevice && context\.held \? context\.ids \?\? \[\] : \[\]\)/)
+  // The search and the filtered CSV match the words the row shows.
+  assert.match(src, /const findIn = \(r: ReadinessRow\): string => searchText\(r, scopedIds\.has\(r\.user\.id\) \? nextOf\(r\) : undefined\)/)
+  assert.match(src, /\(!q \|\| findIn\(r\)\.includes\(q\)\)/)
   assert.match(src, /\{nextOf\(r\)\}/, 'the row')
   assert.match(src, /<strong>\{nextOf\(openRow\)\}<\/strong>/, 'the drawer')
   assert.match(src, /rowCells\(r, nextOf\(r\)\)/, 'the CSV')
