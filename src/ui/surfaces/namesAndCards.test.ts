@@ -75,6 +75,20 @@ test('a policy to correct is one card: the policy, "Correct {fields}", and the c
   assert.deepEqual(policySubjectsOf(b.contract, b.readiness, b.emergencyAccountTasks).filter((c) => c.key.startsWith('correct:')).map((c) => c.title), ['Correct target resources'])
 })
 
+test('a roles correction says to change only the roles listed, so the ones already ticked stay (F-062)', () => {
+  // Owner, 2026-09-28: the sample's 4.3 listed 45 roles to select without Global
+  // Administrator, which the tenant's policy already holds, under "change the selection
+  // as listed below": an admin matching the list would have unticked it.
+  const { r, ctx } = run('demo')
+  const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
+  const lines = (stepBodyOf(step, ctx).emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps)
+  const lead = lines.find((l) => l.includes('**Directory roles**') && l.includes('Users → Include'))
+  assert.ok(lead, `the premise: the correction has a roles lead: ${lines.join(' | ')}`)
+  assert.match(lead, /change only the \*\*Directory roles\*\* listed below; leave every other role as it is/)
+  const select = lines.find((l) => /Select \(45\)/.test(l))
+  assert.ok(select && !select.includes('Global Administrator'), 'the premise: Global Administrator is already ticked, so it is not in the list')
+})
+
 test('7.1 to 7.3 set only how long a sign-in lasts, so Completion Criteria claim no report-only period that stopped nobody', () => {
   const { r, ctx } = run('demo')
   const says = (id: string): boolean => stepBodyOf(r.steps.find((s) => s.id === id)!, ctx).contract.doneWhen.some((l) => /report-only period showed no sign-in/.test(l))
