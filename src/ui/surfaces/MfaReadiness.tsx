@@ -32,6 +32,7 @@ import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, groupOpe
 import type { ReadinessRow, ShowKey, SubGroup, SubGroupBy } from '../../derive/mfaReadiness.ts'
 import { personNextOf } from './personNext.ts'
 import { stepRegistersDevice } from '../../roadmap/evidenceStrategy.ts'
+import { gateNamedIds } from './stepContract.ts'
 import { remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import type { SetupCheck } from '../../derive/readinessSetup.ts'
 import { progressOf } from '../../derive/readinessProgress.ts'
@@ -117,7 +118,7 @@ const PANEL_ID = 'readiness-panel'
  * on them (`held`), the people it covers where it holds on nobody, or null where
  * this scan could not settle who.
  */
-type PlanContext = { title: string; stepId: string; ids: string[] | null; held: boolean; notReady?: boolean; registersDevice?: true }
+type PlanContext = { title: string; stepId: string; ids: string[] | null; held: boolean; notReady?: boolean; cardIds?: string[] }
 
 export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null }) {
   const [stepId, setStepId] = useState<string | null>(() => stepFromReadinessHash(window.location.hash))
@@ -139,7 +140,7 @@ export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: T
   // "Open MFA Readiness" lands on the list it named (F-018); everyone it covers
   // once nobody is left.
   const notReady = !hold && step && step.status !== 'done' && (step.preparation?.missingIds.length ?? 0) > 0 ? step.preparation!.missingIds : null
-  const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (notReady ?? cohort ?? reached(step)?.ids ?? null), held: hold !== null, ...(notReady ? { notReady: true } : {}), ...(stepRegistersDevice(step) ? { registersDevice: true as const } : {}) } : null
+  const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (notReady ?? cohort ?? reached(step)?.ids ?? null), held: hold !== null, ...(notReady ? { notReady: true } : {}), ...(stepRegistersDevice(step) ? { cardIds: gateNamedIds(step, null) } : {}) } : null
   const stepIds = new Set(steps.map((s) => s.id))
   const guestStep = steps.find((s) => s.id === GUEST_STEP_ID) ?? null
   return <ReadinessPage snapshot={lastScan?.snapshot ?? null} context={context} planSteps={stepIds} guestStep={guestStep} />
@@ -162,13 +163,12 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const mapping = useAppliedMapping(snapshot)
   const again = useAction()
   const view = useMemo(() => (snapshot && mapping ? readinessView(snapshot, snapshot.asOf, mapping) : null), [snapshot, mapping])
-  // Opened from a step that asks for MFA to register a device, each person it holds
-  // reads the step's own next step, as its card states it (F-072): no method on the
-  // device being registered answers it. Only while it holds people, and only people the
-  // page places: the card names nobody else (review, 2026-09-28). Everywhere else, and
-  // for anyone else, the page's own.
-  const scopedIds = useMemo(() => new Set(context?.registersDevice && context.held ? context.ids ?? [] : []), [context])
-  const nextOf = (r: ReadinessRow): string => (snapshot && mapping && scopedIds.has(r.user.id) && r.state !== 'unknown' ? personNextOf(snapshot, snapshot.asOf, mapping, r.user.id, true) : nextCell(r))
+  // Opened from a step that asks for MFA to register a device, each person its card
+  // names reads the card's own next step (F-072): no method on the device being
+  // registered answers it. Exactly the card's people (stepContract.ts gateNamedIds,
+  // review 2026-09-28); everyone else, the page's own.
+  const scopedIds = useMemo(() => new Set(context?.cardIds ?? []), [context])
+  const nextOf = (r: ReadinessRow): string => (snapshot && mapping && scopedIds.has(r.user.id) ? personNextOf(snapshot, snapshot.asOf, mapping, r.user.id, true) : nextCell(r))
   const findIn = (r: ReadinessRow): string => searchText(r, scopedIds.has(r.user.id) ? nextOf(r) : undefined)
   const checks = useMemo(() => (snapshot && view ? tenantSetupChecks(snapshot, view) : []), [snapshot, view])
   const progress = useMemo(() => (snapshot && view ? progressOf(view, snapshot) : null), [snapshot, view])

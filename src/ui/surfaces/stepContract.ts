@@ -2542,10 +2542,19 @@ function methodGateSentence(step: Step, gate: NonNullable<Step['action']['readin
  * signed-in admin has a card of their own (walk list 4.x item 43).
  */
 function adminGateNamesOf(step: Step, ctx: StepVarContext): string[] | null {
-  const gate = step.action.readinessGate
-  if (!gate || step.state.satisfied || step.state.lifecycle === 'enforced') return null
-  const ids = everyoneGate(gate) ? adminShortIds(step, gate, ctx.operatorId) : extendMfaShortIds(step, ctx.operatorId)
+  const ids = gateNamedIds(step, ctx.operatorId)
   return ids.length > 0 ? personLines(ctx, ids, { registersDevice: stepRegistersDevice(step) }) : null
+}
+
+/**
+ * The people a readiness gate's card names, each with a next step: the one list the
+ * card and MFA Readiness opened from it read (F-072, review 2026-09-28), so the page
+ * gives the card's words to exactly the people the card names.
+ */
+export function gateNamedIds(step: Step, operatorId: string | null): string[] {
+  const gate = step.action.readinessGate
+  if (!gate || step.state.satisfied || step.state.lifecycle === 'enforced') return []
+  return everyoneGate(gate) ? adminShortIds(step, gate, operatorId) : extendMfaShortIds(step, operatorId)
 }
 
 /**
