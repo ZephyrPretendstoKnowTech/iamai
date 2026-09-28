@@ -30,6 +30,7 @@ import type { MethodKind } from '../scoring/mfaViability.ts'
 import { methodAvailability } from './methodAvailability.ts'
 import { adminUserIds } from '../roles.ts'
 import { affectedPasskeysByProposedChange } from './passkeyCompatibility.ts'
+import type { AffectedPasskeyProjection, AffectedPasskeyUser } from './passkeyCompatibility.ts'
 
 /** The kinds that satisfy a phishing-resistant requirement besides a passkey (the stranded one is the passkey). */
 const PHISHING_RESISTANT: ReadonlySet<MethodKind> = new Set<MethodKind>(['windowsHelloForBusiness'])
@@ -50,6 +51,22 @@ export type PasskeyRestrictionReading = {
   lockedOut: string[]
   /** Those of them that keep another method, with it: they lose a passkey, not their access. */
   keeps: { accountId: string; method: MethodKind }[]
+}
+
+/**
+ * The accounts whose passkeys the change IAMAI hands over actually stops. While an
+ * account would be locked out, the allow list is withheld (emergencyPasskeyTasks.ts
+ * `withheld`), so a passkey that only the allow list stops is not stopped by what is
+ * handed over, and its account is not affected (F-036, owner 2026-09-28: the sample's
+ * card named one account whose passkey "loses access" while its task named another
+ * as the one locked out). The card and the task read this one list.
+ */
+export function affectedByHandover(affected: AffectedPasskeyProjection, reading: PasskeyRestrictionReading, beforeChange: boolean): AffectedPasskeyUser[] {
+  // Once the settings are in place the allow list is the tenant's, and it stops them.
+  if (reading.lockedOut.length === 0 || !beforeChange) return affected.users
+  return affected.users
+    .map((user) => ({ ...user, methods: user.methods.filter((m) => m.reason !== 'modelRestricted') }))
+    .filter((user) => user.methods.length > 0)
 }
 
 export function passkeyRestrictionReading(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers = new Map()): PasskeyRestrictionReading {

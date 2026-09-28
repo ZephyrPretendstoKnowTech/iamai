@@ -251,6 +251,7 @@
       "strandedAfter": "The passkey settings are applied. Have each of {count} sign in once with their passkey to confirm it still works: {names}. Each keeps {kept} if it does not.",
       "strandedAfterLocked": "The passkey settings are applied. Have each of {count} sign in with their passkey now: {names}. Where it no longer works, register an approved passkey for that account.",
       "withheld": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey those accounts hold is one the allow list would stop, and none has another way in (for an administrator, another phishing-resistant method). Register an approved passkey for each, then scan again: the restrictions are offered once nobody would be locked out.",
+      "withheldOne": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey that account holds is one the allow list would stop, and it has no other way in (for an administrator, another phishing-resistant method). Register an approved passkey for it, then scan again: the restrictions are offered once nobody would be locked out.",
       "withheldTask": "Key restrictions are not part of this change yet: {count} would be locked out by them. Prepare affected passkeys says who and what to do first.",
       "keptMany": "another sign-in method ({methods})"
     },

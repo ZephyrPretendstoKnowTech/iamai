@@ -5,7 +5,7 @@ import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTas
 import { emergencyRegistrationVariants, yubiKeySteps } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
+import { affectedByHandover, passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
 import type { PasskeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
 import { shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -179,7 +179,11 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   // whether any of them would keep no way to sign in (roadmap/passkeyRestrictions.ts).
   const restriction = passkeyRestrictionReading(ctx.snapshot, ctx.mapping, ctx.groups)
   const withheld = restriction.lockedOut.length > 0
-  const affectedFacts = affected.users.flatMap(user => user.methods.map(method => ({
+  // The accounts the change handed over stops, read as the Existing passkeys affected
+  // card reads them (roadmap/passkeyRestrictions.ts affectedByHandover, F-036): a passkey
+  // only the withheld allow list stops is not one of them.
+  const users = affectedByHandover(affected, restriction, reading.state !== 'inPlace')
+  const affectedFacts = users.flatMap(user => user.methods.map(method => ({
     label: upnOf(ctx, user.accountId),
     value: `${method.displayName}${method.aaguid ? ` · ${method.aaguid}` : ''}${method.passkeyType ? ` · ${method.passkeyType}` : ''}${user.hasCompatibleAlternative ? ' · Compatible alternative registered' : ' · Replacement needed'}`,
   })))
@@ -233,8 +237,8 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   // some accounts' methods, are gone (owner, 2026-09-23).
   const namedFromRead = restriction.stranded.length > 0
     ? strandedSentence(restriction, ctx, protectionFields.length > 0)
-    : affected.users.length
-    ? `Keep the existing working method available while preparing each affected account: ${affected.users.map(user => `**${upnOf(ctx, user.accountId)}**`).join(', ')}.`
+    : users.length
+    ? `Keep the existing working method available while preparing each affected account: ${users.map(user => `**${upnOf(ctx, user.accountId)}**`).join(', ')}.`
       : null
   // With nobody named the procedure opens on what to keep, with no all-clear
   // and no qualifier about what the scan read (owner, 2026-09-23): the
@@ -252,8 +256,8 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       // Required while an account would be, or is, locked out; before the change also while
       // anyone's passkey would stop (they are told first). Once applied, an account that keeps
       // another way in is the card's to say, not work that holds the step (net-new 4).
-      required: affected.users.length > 0 || restriction.lockedOut.length > 0 || (protectionFields.length > 0 && restriction.stranded.length > 0), readinessKey: 'affected-passkeys', evidence: affected.users.length ? `${affected.users.length} user${affected.users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
-      issueKeys: affected.users.map(user => `passkey:affected:${user.accountId.toLowerCase()}`), facts: affectedFacts, variants, defaultVariantId: variants[0].id,
+      required: users.length > 0 || restriction.lockedOut.length > 0 || (protectionFields.length > 0 && restriction.stranded.length > 0), readinessKey: 'affected-passkeys', evidence: users.length ? `${users.length} user${users.length === 1 ? '' : 's'} confirmed affected.` : null, actionLabel: 'Open preparation instructions',
+      issueKeys: users.map(user => `passkey:affected:${user.accountId.toLowerCase()}`), facts: affectedFacts, variants, defaultVariantId: variants[0].id,
       steps: [prepareLead, '**Compatible alternative:** sign in with the registered compatible alternative in a separate session, confirm the account, then continue to the final scan action.', '**Replacement registration, only if needed:** where no compatible alternative is registered, continue with the steps below to register a replacement.', protectionFields.length > 0 ? 'Return to IAMAI and select **Scan to update the plan** before applying restrictions.' : 'Return to IAMAI and select **Scan to update the plan**.'],
     },
     {
@@ -271,7 +275,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   return { tasks, printAll: true, approvedModels: intendedModels, ...(prepareFirst ? { recommendedTaskId: 'prepare-affected-passkeys' } : {}) }
 }
 
-type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldTask: string; keptMany: string }
+type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldOne: string; withheldTask: string; keptMany: string }
 const PR = (): PasskeyRestrictionWords => (shared as unknown as { passkeyRestrictions: PasskeyRestrictionWords }).passkeyRestrictions
 
 /** Accounts by sign-in name, the first NAMES_INLINE of them, the rest counted. */
@@ -295,7 +299,7 @@ export function strandedSentence(r: PasskeyRestrictionReading, ctx: StepVarConte
   // "each keeps …" is not true of an account with no other confirmed way in: the
   // step says to check each one now.
   if (r.lockedOut.length > 0 && !beforeChange) return fillText(PR().strandedAfterLocked, { count: count(r.stranded.length, 'account'), names: namedAccounts(r.stranded, ctx) })
-  if (r.lockedOut.length > 0) return fillText(PR().withheld, { count: count(r.lockedOut.length, 'account'), names: namedAccounts(r.lockedOut, ctx) })
+  if (r.lockedOut.length > 0) return fillText(r.lockedOut.length === 1 ? PR().withheldOne : PR().withheld, { count: count(r.lockedOut.length, 'account'), names: namedAccounts(r.lockedOut, ctx) })
   const methods = [...new Set(r.keeps.map(k => methodName(k.method === 'phone' ? 'mobilephone' : k.method)))]
   const kept = methods.length === 1 ? methods[0] : fillText(PR().keptMany, { methods: list(methods) })
   return fillText(beforeChange ? PR().stranded : PR().strandedAfter, { count: count(r.stranded.length, 'account'), names: namedAccounts(r.stranded, ctx), kept })

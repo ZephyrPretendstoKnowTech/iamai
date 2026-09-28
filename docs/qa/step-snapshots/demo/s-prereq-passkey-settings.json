@@ -19,7 +19,7 @@
     },
     {
       "label": "Existing passkeys affected",
-      "state": "1 user has a passkey that loses access"
+      "state": "1 account would be locked out"
     },
     {
       "label": "Passkey protections",

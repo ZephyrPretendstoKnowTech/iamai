@@ -288,6 +288,26 @@ test('1.3’s card and its task state one count, the accounts the allow list wou
   assert.ok(task.steps.some((l) => l.includes(`would lock out ${locked.length} accounts`)), 'the task says the same count')
 })
 
+test("1.3's card and its task name the same accounts: the one it would lock out, not a passkey only the withheld allow list stops (F-036)", () => {
+  // Owner, 2026-09-28: the sample's card said one account's passkey "loses access" (a key
+  // only the allow list stops) while its task said another account would be locked out.
+  // The allow list is withheld while an account would be locked out, so the first
+  // passkey is not stopped by what is handed over.
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-prereq-passkey-settings')!
+  const locked = passkeyRestrictionReading(f.snapshot, f.mapping, f.groups).lockedOut
+  assert.equal(locked.length, 1, 'the premise: the sample would lock one account out')
+  const card = (step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')!
+  assert.equal(card.value, '1 account would be locked out')
+  assert.deepEqual((card.items ?? []).map((i) => i.accountId), locked, 'the card names another account than the one locked out')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const prepare = emergencyPasskeyTasksOf(step, ctx).tasks.find((t) => t.id === 'prepare-affected-passkeys')!
+  assert.match(prepare.steps[0], /would lock out 1 account/)
+  assert.match(prepare.steps[0], /Every passkey that account holds/, 'one account is "that account", not "those accounts"')
+  assert.deepEqual(prepare.facts ?? [], [], 'the task lists a passkey the change it hands over does not stop')
+})
+
 /** The fixture with Configure Passkey Authentication's planned settings already applied. */
 function applied(name: 'mid' | 'small') {
   const f = curatedFixture(name)

@@ -21,7 +21,7 @@ import { displayZone } from '../copy/dates.ts'
 import { count, list } from '../copy/statements.ts'
 import { app } from '../content/content.ts'
 import { EMERGENCY_TASK } from './emergencyTaskTitles.ts'
-import { passkeyRestrictionReading } from './passkeyRestrictions.ts'
+import { affectedByHandover, passkeyRestrictionReading } from './passkeyRestrictions.ts'
 import { fillText } from '../content/render.ts'
 
 // A failing finding's value. "Needs attention" is a retired state word
@@ -299,26 +299,34 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   // lock out, each named (net-new 3). The card read "33 accounts to prepare"
   // while its task said the list "would lock out 5 accounts", both right and
   // read as a contradiction.
-  const lockedOut = affected.users.length || affected.state === 'known' ? [] : passkeyRestrictionReading(snapshot, mapping, groups).lockedOut
+  const restrictionRead = passkeyRestrictionReading(snapshot, mapping, groups)
+  const lockedOut = restrictionRead.lockedOut
+  // One reading with the task (F-036, owner 2026-09-28): the accounts the change handed
+  // over stops, and an account it would lock out named once, as locked out. The card
+  // named one account whose passkey "loses access" to the allow list the task withholds,
+  // while the task named another as the one locked out.
+  const locked = new Set(lockedOut.map((id) => id.toLowerCase()))
+  const users = affectedByHandover(affected, restrictionRead, reading.state !== 'inPlace').filter((user) => !locked.has(user.accountId.toLowerCase()))
   // Applied, and every account whose passkey it stops keeps another way in: a fact, not work (net-new 4).
-  const settled = reading.state === 'inPlace' && !affected.users.length && lockedOut.length === 0
+  const settled = reading.state === 'inPlace' && !users.length && lockedOut.length === 0
   // Applied, and it stopped no passkey: nothing to say about a change already
   // made (owner audit, 2026-09-24: "No existing passkey stops working under
   // this change." on a finished step).
-  const madeHarmless = reading.state === 'inPlace' && affected.state === 'known' && !affected.users.length
-  const affectedFinding: ConfigurationFinding | null = madeHarmless || (!affected.users.length && affected.state !== 'known' && !affected.stranded.length) ? null : {
+  const madeHarmless = reading.state === 'inPlace' && affected.state === 'known' && !users.length && lockedOut.length === 0
+  const affectedFinding: ConfigurationFinding | null = madeHarmless || (!users.length && !lockedOut.length && affected.state !== 'known' && !affected.stranded.length) ? null : {
     key: 'affected-passkeys',
     label: 'Existing passkeys affected',
-    value: affected.users.length
-      ? `${affected.users.length} ${affected.users.length === 1 ? 'user has' : 'users have'} a passkey that loses access`
-      : affected.state === 'known'
-        ? 'No existing passkey stops working under this change.'
-        : lockedOut.length > 0
-          ? fillText(reading.state === 'inPlace' ? LOCKED_OUT.accountsToCheck : LOCKED_OUT.accountsLockedOut, { count: count(lockedOut.length, 'account') })
+    value: lockedOut.length > 0
+      ? fillText(reading.state === 'inPlace' ? LOCKED_OUT.accountsToCheck : LOCKED_OUT.accountsLockedOut, { count: count(lockedOut.length, 'account') })
+      : users.length
+        ? `${users.length} ${users.length === 1 ? 'user has' : 'users have'} a passkey that loses access`
+        : affected.state === 'known'
+          ? 'No existing passkey stops working under this change.'
           : fillText(settled ? LOCKED_OUT.accountsKeepAnother : ACCOUNTS_TO_PREPARE, { count: count(affected.stranded.length, 'account') }),
-    outcome: affected.users.length ? 'fail' : affected.state === 'known' || settled ? 'pass' : 'unknown',
+    // A lockout the scan settled is a fail; one resting on a passkey it could not judge stays unknown, as before.
+    outcome: users.length || (lockedOut.length > 0 && affected.state === 'known') ? 'fail' : lockedOut.length === 0 && (affected.state === 'known' || settled) ? 'pass' : 'unknown',
     detail: '',
-    items: affected.users.flatMap(user => user.methods.map((method, index) => ({
+    items: users.flatMap(user => user.methods.map((method, index) => ({
       label: `Affected passkey ${index + 1}`, factLabel: `Affected passkey ${index + 1}`, accountId: user.accountId, subjectId: user.accountId, subjectLabel: accountLabel(snapshot, user.accountId),
       value: `${[method.displayName, method.aaguid, method.passkeyType].filter(Boolean).join(' · ')}${user.hasCompatibleAlternative ? ' · Compatible alternative observed' : ''}`,
       outcome: 'fail' as const, issueKeys: [`passkey:affected:${user.accountId.toLowerCase()}`],
