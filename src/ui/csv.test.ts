@@ -55,6 +55,7 @@ test('a download names the tenant and the day, and a masked one names neither te
   assert.equal(exportName('iamai-accounts.csv', 'Société Générale', { now: '2026-09-28' }), 'iamai-accounts-societe-generale-2026-09-28.csv')
   assert.equal(exportName('iamai-accounts.csv', 'Müller GmbH', { now: '2026-09-28' }), 'iamai-accounts-muller-gmbh-2026-09-28.csv')
   assert.equal(exportName('iamai-accounts.csv', 'Øresund Straße Łódź', { now: '2026-09-28' }), 'iamai-accounts-oresund-strasse-lodz-2026-09-28.csv', 'letters that do not decompose')
+  assert.equal(exportName('iamai-accounts.csv', 'GROẞE Ħal', { now: '2026-09-28' }), 'iamai-accounts-grosse-hal-2026-09-28.csv', 'capitals map as their small letters')
   assert.equal(exportName('iamai-accounts.csv', '株式会社', { id: '4a3b2c1d-0000-4000-8000-000000000000', now: '2026-09-28' }), 'iamai-accounts-4a3b2c1d-2026-09-28.csv')
   assert.equal(exportName('iamai-plan.ics', '株式会社', { now: '2026-09-28' }), 'iamai-plan-2026-09-28.ics', 'a masked file gets no ID')
 })
