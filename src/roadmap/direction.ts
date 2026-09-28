@@ -57,7 +57,7 @@ import { mailAnswerMoot } from './blockSignIns.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { checkStep, serviceEvidence, serviceNameOf, serviceOf, serviceReading } from './workflows.ts'
 import type { ServiceSignal } from './workflows.ts'
-import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, answeredReasonOf, directionComplete, directionStepOf, isDirectionStep, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
+import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, answeredReasonOf, directionComplete, directionStepOf, everyoneRemote, isDirectionStep, savedAnswerOf, savedBasisOf, trustedIpLocations } from './directionAnswers.ts'
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
@@ -192,7 +192,7 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
   const setAside = mapping.breakGlassUserIds.length > 0 ? fillText(W.alreadySetAside, { names: mapping.breakGlassUserIds.map(nameOf).join(', ') }) : null
   // Everyone working remotely leaves no office network to keep these accounts to: they get MFA like
   // anyone (roadmap/deviations.ts serviceAccountsExclusionDue), and both cards say so (F-069).
-  const remote = savedAnswerOf('officeNetwork', mapping)?.value === 'remote'
+  const remote = everyoneRemote(mapping)
   // What the scan saw; where the user rows were not read it holds no fact, and the card shows no evidence line.
   const seen = (words: { seen: string; seenOne: string; notSeen: string }, n: number): string => !usersRead ? '' : n > 1 ? fillText(words.seen, { n }) : n === 1 ? words.seenOne : words.notSeen
   return [
@@ -272,7 +272,7 @@ function officeNetworkQuestion(ctx: Context): DirectionQuestion {
     basis: read ? [...trusted].sort().join(',') : null,
     // Named locations not read: no evidence line (walk list 60). A remote answer
     // beside a location Entra trusts says what it does with it (walk list 61).
-    evidence: read && trusted.length > 0 && savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote' ? fillText(Q.officeNetwork.savedRemoteUnused, { names }) : '',
+    evidence: read && trusted.length > 0 && everyoneRemote(ctx.mapping) ? fillText(Q.officeNetwork.savedRemoteUnused, { names }) : '',
     // Accounts picked in Identify Service and Shared Accounts then get MFA like anyone (F-069).
     chosen: serviceAccountIdsOf(ctx.mapping).length > 0 ? { ...Q.officeNetwork.chosen, remote: `${Q.officeNetwork.chosen.remote} ${Q.officeNetwork.remoteAccounts}` } : Q.officeNetwork.chosen,
   })
@@ -280,7 +280,8 @@ function officeNetworkQuestion(ctx: Context): DirectionQuestion {
 
 // ---- the steps ----
 
-const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string; brief?: { does?: string; matters?: string; notice?: string } }>> = {
+type StepWords = { title: string; why: string; brief?: { does?: string; matters?: string; notice?: string } }
+const STEP_WORDS: Readonly<Record<DirectionStepId, StepWords>> = {
   [DIRECTION_STEP.use]: W.steps.use,
   [DIRECTION_STEP.accounts]: W.steps.accounts,
   [DIRECTION_STEP.devices]: W.steps.devices,
@@ -289,8 +290,7 @@ const STEP_WORDS: Readonly<Record<DirectionStepId, { title: string; why: string;
 /** A Direction step's title (content.json pages.app.plan.direction.steps). */
 export const directionTitleOf = (id: DirectionStepId): string => STEP_WORDS[id].title
 
-function directionStep(id: DirectionStepId, questions: DirectionQuestion[], savedAt: string | null): Step {
-  const words = STEP_WORDS[id]
+function directionStep(id: DirectionStepId, questions: DirectionQuestion[], savedAt: string | null, words: StepWords = STEP_WORDS[id]): Step {
   const step = checkStep(id, words.title, words.why)
   step.directionQuestions = questions
   step.guidance = { id, kind: 'decision', title: words.title, why: words.why, whatToDo: { steps: [W.notSure] }, doneWhen: [W.done], ...(words.brief ? { brief: words.brief } : {}) }
@@ -326,7 +326,8 @@ export function directionSteps(input: DirectionInput): Step[] {
   const at = (id: DirectionStepId): string | null => input.approvedAt?.[id] ?? (id === DIRECTION_STEP.use ? input.mapping.workflowConfirmedAt ?? null : null)
   return [
     directionStep(DIRECTION_STEP.use, useQuestions(ctx, services), at(DIRECTION_STEP.use)),
-    directionStep(DIRECTION_STEP.accounts, accountQuestions(ctx, nameOf), at(DIRECTION_STEP.accounts)),
+    // With everyone remote there is no service-accounts group for the About to name (F-069).
+    directionStep(DIRECTION_STEP.accounts, accountQuestions(ctx, nameOf), at(DIRECTION_STEP.accounts), everyoneRemote(input.mapping) ? { ...W.steps.accounts, why: W.steps.accounts.whyRemote } : undefined),
     directionStep(DIRECTION_STEP.devices, deviceQuestions(ctx), at(DIRECTION_STEP.devices)),
   ]
 }

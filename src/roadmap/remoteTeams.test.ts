@@ -10,7 +10,7 @@ import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { answerKey } from './answers.ts'
-import { DIRECTION_LOCATIONS_STORAGE, answeredReasonOf } from './directionAnswers.ts'
+import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answeredReasonOf, directionMilestoneAction } from './directionAnswers.ts'
 
 const BLOCKS = ['s-goal-service-accounts-trusted-network', 's-goal-avd-trusted-network', 's-goal-sharepoint-trusted-network']
 
@@ -46,6 +46,25 @@ test('2.2 says what a remote answer does to shared-device accounts: nothing keep
   office.mapping.sharedDeviceUserIds = f.mapping.sharedDeviceUserIds
   const qo = runFixture(office).steps.flatMap((s) => s.directionQuestions ?? []).find((x) => x.key === 'sharedDevices')
   assert.match(qo?.chosen?.some ?? '', /keeps them to your office network/)
+})
+
+// A fully remote business opening 2.2 read that its accounts join a group
+// "kept to your office network", two lines above "there is no office network
+// to keep these accounts to" (Round 4 walk). With a remote answer the About and
+// the milestone stop at what stays true; with an office they are unchanged.
+test('2.2 names the service-accounts group only when there is an office (owner, 2026-09-27)', () => {
+  for (const [answer, group] of [['remote', false], ['office', true]] as const) {
+    const f = withOffice(answer)
+    const step = runFixture(f).steps.find((s) => s.id === DIRECTION_STEP.accounts)
+    assert.ok(step, 'the premise: 2.2 is on the plan')
+    for (const why of [step.why, step.guidance?.why]) {
+      assert.match(why ?? '', /stops counting them as people/, `${answer}: ${why}`)
+      assert.equal(/service-accounts group|office network/.test(why ?? ''), group, `${answer}: ${why}`)
+    }
+    const milestone = directionMilestoneAction(DIRECTION_STEP.accounts, f.mapping) ?? ''
+    assert.match(milestone, /which accounts count as people/)
+    assert.equal(/service-accounts group/.test(milestone), group, `${answer}: ${milestone}`)
+  }
 })
 
 test('with an office, each block is a step to do', () => {

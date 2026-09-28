@@ -449,7 +449,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // holds exactly the picked accounts and nobody has saved it: saving it is the
   // milestone, in the step's own words for that state (whatToDoWhen).
   const serviceGroupFound = step.id === PREREQ_STEP_ID.serviceAccountsGroup && truthy(ex.serviceGroupFound) && typeof w.lead === 'string' && whole(w.lead, ex) ? fillText(w.lead, ex) : null
-  const ownRailWords = choosing ?? prepare?.milestone ?? reportOnlyMilestoneOf(step) ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id)
+  const ownRailWords = choosing ?? prepare?.milestone ?? reportOnlyMilestoneOf(step) ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id, ctx.mapping)
   // Disable or Confirm Dormant Accounts takes a choice too, the accounts kept:
   // its instruction stands in the same slot while any account is open (walk
   // list item 17), and a finished step draws none (item 29).

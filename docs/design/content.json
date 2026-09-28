@@ -3371,7 +3371,10 @@
               },
               "title": "Identify Service and Shared Accounts",
               "why": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Approve or correct them: the MFA campaign stops counting them as people, and they join the service-accounts group, which is kept to your office network instead of being asked for MFA.",
-              "milestoneAction": "Approving these answers sets which accounts count as people and which join the service-accounts group."
+              "milestoneAction": "Approving these answers sets which accounts count as people and which join the service-accounts group.",
+              "$commentRemote": "With Decide How and Where People Sign In answered Everyone works remotely there is no office network and no service-accounts group step (F-069), so the About and the milestone stop at the part that stays true; the MFA line under each question says the rest (owner, 2026-09-27).",
+              "whyRemote": "Some accounts aren't a person: a mailbox a scanner uses, a script's account, a meeting-room device. Approve or correct them: the MFA campaign stops counting them as people.",
+              "milestoneActionRemote": "Approving these answers sets which accounts count as people."
             },
             "devices": {
               "brief": {

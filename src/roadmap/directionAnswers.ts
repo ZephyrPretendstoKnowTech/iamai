@@ -105,10 +105,16 @@ export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, 
   officeNetwork: { step: DIRECTION_STEP.devices, storedAs: `trustedLocationIds, wizardAnswered.trustedLocations, questionAnswers['${DIRECTION_LOCATIONS_STORAGE}:officeNetwork']` },
 }
 
-/** What approving a Direction step's answers does, in its own written words (pages.app.plan.direction.steps.<key>.milestoneAction); null for any other step. */
-export function directionMilestoneAction(stepId: string): string | null {
+/**
+ * What approving a Direction step's answers does, in its own written words
+ * (pages.app.plan.direction.steps.<key>.milestoneAction); null for any other
+ * step. With everyone working remotely, Identify Service and Shared Accounts
+ * has no service-accounts group to name (milestoneActionRemote).
+ */
+export function directionMilestoneAction(stepId: string, mapping?: Mapping): string | null {
   const key = (Object.entries(DIRECTION_STEP) as [string, string][]).find(([, id]) => id === stepId)?.[0]
-  const text = key ? (directionWords.steps as Record<string, { milestoneAction?: unknown }>)[key]?.milestoneAction : undefined
+  const words = key ? (directionWords.steps as Record<string, { milestoneAction?: unknown; milestoneActionRemote?: unknown }>)[key] : undefined
+  const text = stepId === DIRECTION_STEP.accounts && mapping && everyoneRemote(mapping) ? words?.milestoneActionRemote : words?.milestoneAction
   return typeof text === 'string' && text.trim() !== '' ? text : null
 }
 
@@ -161,6 +167,11 @@ export function phonesOf(m: Pick<MappingState, 'questionAnswers'>): string | nul
   if (plan.phoneManagement === 'enrolled' || (plan.phoneManagement === undefined && plan.phones === 'enrol')) return 'enrolled'
   if (plan.phoneManagement === 'blocked' || plan.noWorkPhones || (plan.phoneManagement === undefined && plan.phones === 'none')) return 'blocked'
   return 'apps'
+}
+
+/** Decide How and Where People Sign In answered Everyone works remotely: no office network, so no service-accounts group (F-069). */
+export function everyoneRemote(m: Mapping): boolean {
+  return savedAnswerOf('officeNetwork', m)?.value === 'remote'
 }
 
 /**
