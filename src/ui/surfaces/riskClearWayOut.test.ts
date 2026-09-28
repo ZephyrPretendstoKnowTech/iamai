@@ -51,6 +51,15 @@ test('the way out says the stopped sign-ins count until they leave the collectio
   assert.doesNotMatch(CLEAR, /Then scan again/)
 })
 
+// Review, 2026-09-28: a user-risk policy applies to every sign-in while the account is at
+// risk, so the sign-ins it would have stopped are nearly always the person's own. Whose
+// sign-ins they were is no test for Confirm user safe; Learn keeps it for false positives.
+test('Confirm user safe is offered only for detections that are false positives, never on whose sign-ins they were', () => {
+  assert.match(CLEAR, /review their risk detections/)
+  assert.match(CLEAR, /Confirm user safe only if the detections are false positives/)
+  assert.doesNotMatch(CLEAR, /sign-ins were theirs/)
+})
+
 test('a user-risk step held by someone report-only would have stopped says how to clear their risk, on the task and its card', () => {
   for (const goal of ['user-risk', 'user-risk-medium']) {
     const text = turnOnText(stepIdForGoal(goal), true)

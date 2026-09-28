@@ -17,6 +17,10 @@ test('the public words make no predictive or blanket data claim, and the method 
     const home = pages.home
     // The headline names the plan IAMAI writes (owner, 2026-09-28: the old one read as a What If check).
     assert.match(String(home.h1), /rollout plan/i)
+    // Report-only first is promised for new policies only: a correction to a policy that
+    // is already On applies at the next sign-in (review, 2026-09-28).
+    assert.match(JSON.stringify(home.work), /new policies in report-only first/)
+    assert.doesNotMatch(JSON.stringify(home), /report-only first wherever Microsoft evaluates it,/)
     assert.match(JSON.stringify(home), /method|exclu|sign-in/i)
     assert.match(JSON.stringify(home.trust), /browser/)
     const publicText = [JSON.stringify(pages.home), JSON.stringify(pages.connect), read('home/index.html'), read('README.md')].join('\n')
