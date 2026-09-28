@@ -246,6 +246,10 @@ main.page a[href] {
   overflow: hidden;
   box-shadow: var(--shadow-panel);
 }
+/* The frame's shadow outranks the page's focus ring: a keyboard focus on the picture shows the ring instead. */
+.shot a:focus-visible {
+  box-shadow: var(--focus-ring);
+}
 .shot img {
   display: block;
   width: 100%;

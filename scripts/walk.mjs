@@ -264,7 +264,7 @@ const LANE_LABEL_RE = /^(Ready|Up Next|On Hold|Completed|Deferred)( · \S.*)?$|^
 const COMPLETED_RE = /^Completed$/
 const READY_TO_ENFORCE_RE = /^Ready · Ready to enforce$/
 /** A day as the board prints it (copy/dates.ts absoluteDate). */
-const DAY_RE = /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+const DAY_RE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
 /** The When column (A1b): a day or the placeholder, never a reason. */
 const ROW_WHEN_RE = new RegExp(`^(?:${DAY_RE.source.slice(1, -1)}|${WHEN_NONE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})$`)
 const showLane = async (name) => {
@@ -1928,10 +1928,11 @@ async function walkHome(url) {
   // The retired composition: the tool card, its Preview pill and the Tools grid
   // left with the v2 direction and may not come back. Nor may a card wall: the
   // approved Home separates its sections with a hairline, and the only bordered
-  // things in the page body are the two hero actions.
+  // things in the page body are the two hero actions — the picture of the Plan
+  // (OWN-B1) is framed, but it is a picture, not a card.
   const retired = await evaluate(`[...document.querySelectorAll('main.page .card, main.page .pill, main.page .grid, main.page .tool-name, main.page details, main.page .panel, main.page .panel-key')].length`)
   if (retired > 0) add('P0', `${label}: ${retired} element(s) of the retired tool-card composition (a card, a pill, a grid, a collapsible or a panel) render on the home page`)
-  const boxes = await evaluate(`[...document.querySelectorAll('main.page *')].filter((e) => { const s = getComputedStyle(e); return s.borderBottomWidth !== '0px' && s.borderLeftWidth !== '0px' && s.borderRightWidth !== '0px' }).length`)
+  const boxes = await evaluate(`[...document.querySelectorAll('main.page *')].filter((e) => e.closest('.shot') === null).filter((e) => { const s = getComputedStyle(e); return s.borderBottomWidth !== '0px' && s.borderLeftWidth !== '0px' && s.borderRightWidth !== '0px' }).length`)
   if (boxes !== 2) add('P0', `${label}: ${boxes} boxed element(s) in the page body; the two hero actions and nothing else`)
   // The public header: the lockup, the public links with the product entry
   // last, and the theme control. No signed-in navigation on a public page.
@@ -1970,14 +1971,15 @@ async function walkHome(url) {
     if (JSON.stringify(hero.buttons) !== JSON.stringify(wantHero)) add('P0', `${label}: the hero's actions are ${hero.buttons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ') || 'missing'}; ${wantHero.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ')}`)
   }
   // The ways into the product are the three the approved pack draws: the header,
-  // the hero's primary action and the side rail — plus the hero's sample data
-  // and the header's How. No section below invents a fourth call to action.
-  const intoTool = await evaluate(`[...document.querySelectorAll('a[href^="/${TOOL_PATH}/"]')].map((a) => ({ href: a.getAttribute('href'), where: a.closest('header') ? 'header' : a.closest('.hero') ? 'hero' : a.closest('.side') ? 'rail' : 'elsewhere' }))`)
+  // the hero's primary action and the side rail — plus the hero's sample data,
+  // the picture of the sample's Plan that opens it, and the header's How. No section below invents a fourth call to action.
+  const intoTool = await evaluate(`[...document.querySelectorAll('a[href^="/${TOOL_PATH}/"]')].map((a) => ({ href: a.getAttribute('href'), where: a.closest('header') ? 'header' : a.closest('.hero') ? 'hero' : a.closest('.shot') ? 'shot' : a.closest('.side') ? 'rail' : 'elsewhere' }))`)
   const wantInto = [
     { href: `/${TOOL_PATH}/#/how`, where: 'header' },
     { href: `/${TOOL_PATH}/#/connect`, where: 'header' },
     { href: `/${TOOL_PATH}/#/connect`, where: 'hero' },
     { href: `/${TOOL_PATH}/?demo=1#/plan`, where: 'hero' },
+    { href: `/${TOOL_PATH}/?demo=1#/plan`, where: 'shot' },
     { href: `/${TOOL_PATH}/#/connect`, where: 'rail' },
   ]
   if (JSON.stringify(intoTool) !== JSON.stringify(wantInto)) {

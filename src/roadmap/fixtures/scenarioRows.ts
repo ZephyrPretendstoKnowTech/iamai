@@ -89,9 +89,12 @@ export function scenarioRows(name: string, ids: string[], svcIds: string[]): Sto
     // so at least twelve fire on it (prompt 50 items 9, 10).
     return [
       // 1 / 7 / 21 — legacy mail clients: a person on IMAP, the printer on SMTP AUTH, a phone's built-in Mail.
-      row({ userId: u(4), clientAppUsed: 'IMAP4' }),
+      // The two people are plain members the sample tells no other story about: not
+      // a guest (u(3), u(4)) nor the directory-sync account (u(6)), whose legacy mail
+      // would read as a guest's or a service account's (demoAgreement.test.ts).
+      row({ userId: u(23), clientAppUsed: 'IMAP4' }),
       row({ userId: svcIds[0] ?? u(5), clientAppUsed: 'Authenticated SMTP' }),
-      row({ userId: u(6), clientAppUsed: 'Exchange ActiveSync' }),
+      row({ userId: u(26), clientAppUsed: 'Exchange ActiveSync' }),
       // 4 — a non-Microsoft app for the session steps.
       row({ userId: u(7), appId: 'ffffffff-0000-0000-0000-000000000001', appDisplayName: 'FortiClient VPN' }),
       row({ userId: u(8), appId: 'ffffffff-0000-0000-0000-000000000001', appDisplayName: 'FortiClient VPN' }),

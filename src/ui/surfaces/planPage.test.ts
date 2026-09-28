@@ -127,7 +127,8 @@ test('completing a step produces one line naming it', () => {
   // The page draws it above the board (or just above the step a scan or an approval moved to, F-028),
   // and a navigation clears it.
   const page = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.match(page, /<p className="reason no-print plan-change-line" role="status">/)
+  // Focusable, so Show all can take focus to it (Round 4 review).
+  assert.match(page, /<p className="reason no-print plan-change-line" role="status" ref=\{ref\} tabIndex=\{-1\}>/)
   assert.match(page, /\{!lineOnStep && lineView\}/)
   assert.match(page, /const onHash = \(\) => \{ setChangeLine\(null\);/)
 })

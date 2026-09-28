@@ -41,7 +41,7 @@ test('2.2 says what a remote answer does to shared-device accounts: nothing keep
   const f = withOffice('remote')
   f.mapping.sharedDeviceUserIds = [f.snapshot.users.find((u) => u.userType !== 'guest' && !f.mapping.breakGlassUserIds.includes(u.id) && !f.mapping.serviceAccountUserIds.includes(u.id))!.id]
   const q = runFixture(f).steps.flatMap((s) => s.directionQuestions ?? []).find((x) => x.key === 'sharedDevices')
-  assert.match(q?.chosen?.some ?? '', /no office network to keep them to/)
+  assert.match(q?.chosen?.some ?? '', /no office network to keep these accounts to/)
   const office = withOffice('office')
   office.mapping.sharedDeviceUserIds = f.mapping.sharedDeviceUserIds
   const qo = runFixture(office).steps.flatMap((s) => s.directionQuestions ?? []).find((x) => x.key === 'sharedDevices')

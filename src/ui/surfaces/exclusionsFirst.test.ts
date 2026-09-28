@@ -46,3 +46,12 @@ test('once Configure Emergency Exclusions has put the group on the policy, nothi
   for (const card of cards) assert.doesNotMatch(String(card.detail ?? ''), /After Configure Emergency Exclusions adds/)
   assert.doesNotMatch(ps, /Do this after Configure Emergency Exclusions/)
 })
+
+test('4.3, whose users the change does not write, says to wait for Configure Emergency Exclusions too (Round 4 review)', () => {
+  const { correct, cards, ps } = opened('demo', 's-goal-admins-phishing-resistant')
+  assert.ok(correct && correct.steps.some((l) => /remove the group \*{0,2}Core - Break glass/.test(l)), 'the premise: 4.3 removes the old exclusion')
+  assert.equal(correct.steps[0], 'Do this after Configure Emergency Exclusions adds Core - Exclusions to this policy.', correct.steps.join('\n'))
+  const card = cards.find((c) => c.key.startsWith('correct:'))
+  assert.match(String(card?.detail), /After Configure Emergency Exclusions adds Core - Exclusions to it\.$/)
+  if (ps !== '') assert.ok(ps.startsWith('# Do this after Configure Emergency Exclusions'), ps.slice(0, 120))
+})

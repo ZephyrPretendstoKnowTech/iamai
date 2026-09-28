@@ -207,6 +207,9 @@ const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind; prefilled
   { stepId: QUESTION_STEP.partner, kind: 'question' },
 ]
 
+/** The steps whose conditional inputs these are (Step.unsavedInputs). */
+export const conditionalInputSteps = (): string[] => CONDITIONAL_INPUTS.map((input) => input.stepId)
+
 /** The labels of the conditional inputs on a step nobody has saved; a question its content does not ask is not one. */
 export function unsavedInputsOf(stepId: string, mapping: InputRecord): string[] {
   return openInputsOf(stepId, mapping).map((input) => input.label)

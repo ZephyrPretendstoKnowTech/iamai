@@ -48,9 +48,11 @@ test('a search the view hides entirely counts the matches the whole list holds (
 test('the page opens its groups for a search and offers Search everyone', () => {
   const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
   assert.match(page, /const searching = q !== ''/)
-  assert.match(page, /open=\{groupOpens\(\{ next: isNext, quiet, show, searching \}\) \|\| undefined\}/)
+  // Searching opens every group, and leaves the one a person opened or closed as they left it once the search clears.
+  assert.match(page, /open=\{\(searching \|\| \(openGroups\[state\] \?\? groupOpens\(\{ next: isNext, quiet, show, searching: false \}\)\)\) \|\| undefined\} onToggle=\{\(e\) => \{ if \(searching\) return;/)
   assert.match(page, /subGroupOpens\(\{ saved: openSubs\[key\], admins: g\.admins, searching \}\)/)
   assert.match(page, /rowsShown\(g\.rows\.length, limitOf\(key, g\.admins \? 3 : SUB_GROUP_AT\), searching\)/)
-  assert.match(page, /onClick=\{\(\) => select\('all'\)\}>\{T\.searchEveryone\}/)
+  // Search everyone keeps the words in the box and the cursor there.
+  assert.match(page, /onClick=\{\(\) => \{ select\('all'\); searchRef\.current\?\.focus\(\) \}\}>\{T\.searchEveryone\}/)
   assert.equal((pages.readiness as unknown as { searchEveryone: string }).searchEveryone, 'Search everyone')
 })

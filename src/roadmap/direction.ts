@@ -38,6 +38,7 @@
 // Pure: no DOM, no network.
 import goals from '../../data/goals.json' with { type: 'json' }
 import { directionWords, shared } from '../content/content.ts'
+import { PINNED } from '../baseline/pinned.ts'
 import { fillText } from '../content/render.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 import { list } from '../copy/statements.ts'
@@ -153,13 +154,31 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     evidence: partnerReview ? fillText(W.reopened, { answer: Q.partner.options.no, evidence: partnerSeen !== '' ? partnerSeen : Q.partner.seenPartial }) : partnerSeen,
     // Yes departs from the baseline, which asks partner and MSP technicians for MFA like any guest: the
     // card says so beside the choice (F-041). No is the baseline's own version, and says what it does (F-067).
-    chosen: { yes: fillText((shared.deviation as { line: string }).line, { line: Q.partner.consequence, baseline: Q.partner.baseline }), no: Q.partner.chosenNo },
+    chosen: { yes: fillText((shared.deviation as { line: string }).line, { line: Q.partner.consequence, baseline: fillText(Q.partner.baseline, { strength: partnerStrength() }) }), no: fillText(Q.partner.chosenNo, { strength: partnerStrength() }) },
     needsReview: partnerReview,
     basis: partnersUsed ? 'present' : partners !== null && signInsRead(snapshot) ? 'absent' : 'unread',
   }))
   return out
 }
 
+
+/**
+ * What the baseline asks of partner and MSP technicians (service provider
+ * users): the authentication strength of the pinned baseline's policy that
+ * includes them (IAC - GLOBAL - GRANT - MFA - B2B-Guest, Modern MFA + TAP), the
+ * fact the guests step states too. "MFA like any guest" was weaker than the
+ * baseline asks (Round 4 review). Plain MFA where no such policy names a strength.
+ */
+function partnerStrength(): string {
+  for (const p of PINNED.policies) {
+    const users = (p.conditions as { users?: { includeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string } | null } } | null)?.users
+    const types = users?.includeGuestsOrExternalUsers?.guestOrExternalUserTypes ?? ''
+    if (!types.split(',').map((x) => x.trim()).includes('serviceProvider')) continue
+    const name = (p.grantControls as { authenticationStrength?: { displayName?: string } | null } | null)?.authenticationStrength?.displayName
+    if (typeof name === 'string' && name.trim() !== '') return name
+  }
+  return 'MFA'
+}
 
 // ---- D2 Identify Service and Shared Accounts ----
 

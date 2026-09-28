@@ -19,6 +19,14 @@ for (const name of ['demo', 'demo-week2'] as const) {
     const byClient = s.evidenceAggregates?.byClientApp ?? {}
     assert.ok(['IMAP4', 'Authenticated SMTP', 'Exchange ActiveSync'].every((c) => (byClient[c] ?? 0) > 0), JSON.stringify(byClient))
     assert.equal(Object.values(byClient).reduce((a, b) => a + b, 0), s.evidenceAggregates?.total)
+    // The people on legacy mail are people: not a guest, and not the directory-sync account.
+    const people = rows.filter((id) => !fixture(name).mapping.serviceAccountUserIds.includes(id))
+    assert.ok(people.length > 0, 'the premise: a person, not only a service account, uses legacy mail')
+    for (const id of people) {
+      const u = s.users.find((x) => x.id === id)
+      assert.notEqual(u?.userType, 'guest', `${u?.displayName} is a guest on legacy mail`)
+      assert.equal((s.roles.active[id] ?? []).includes('d29b2b05-8046-44ba-8758-1e26182fcf32'), false, `${u?.displayName} holds the sync role and uses legacy mail`)
+    }
   })
 
   test(`${name}: phones register, the printer owns no computer, app sign-ins fit the total (F-140)`, () => {

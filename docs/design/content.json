@@ -1007,7 +1007,7 @@
         "coversEnabled": "covers {n} enabled"
       },
       "when": {
-        "$comment": "The board's When column (planBoard.ts boardWhenOf): a date on every open row (owner, 2026-09-23). A row with no day of its own, a held one included, reads estimate: the day the plan expects its waits to clear (roadmap/forecast.ts planForecast). none and waiting stand only where no board reading estimated the row; waiting is also the opened step's rail for a step the board holds. after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
+        "$comment": "The board's When column (planBoard.ts boardWhenOf): a date on every open row (owner, 2026-09-23), never marked Est. (owner, 2026-09-27). A row with no day of its own, a held one included, reads the plain day the plan expects its waits to clear (roadmap/forecast.ts planForecast). none and waiting stand only where no board reading estimated the row; waiting is also the opened step's rail for a step the board holds. after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
         "none": "Not scheduled",
         "after": "After {step}",
         "afterPrerequisites": "After prerequisites",
@@ -3428,9 +3428,9 @@
               "$commentSeenPartial": "Where a saved No reopens over sign-in records read only in part, or over sign-ins that name no account (net-new 6): what the records read show. Only on a reopen.",
               "seenPartial": "The sign-in records this scan read show partner or MSP sign-ins.",
               "consequence": "Keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed",
-              "$commentBaseline": "F-041: the baseline's guest policy includes service provider users, so Yes departs from it, and the card says so in shared.deviation.line's words. No is the baseline's own version (F-067).",
-              "baseline": "they sign in with MFA like any guest, and only from your countries",
-              "chosenNo": "Partner and MSP technicians sign in with MFA like any guest, and only from your countries, as the baseline asks."
+              "$commentBaseline": "F-041: the baseline's B2B-Guest policy includes service provider users and asks them for its authentication strength ({strength}, read from the pinned baseline), so Yes departs from it, and the card says so in shared.deviation.line's words. No is the baseline's own version (F-067). Review fix: it read 'MFA like any guest', weaker than the baseline asks.",
+              "baseline": "they sign in with {strength}, and only from your countries",
+              "chosenNo": "Partner and MSP technicians sign in with {strength} and only from your countries, as the baseline asks."
             },
             "accountOptions": {
               "none": "None",
@@ -3451,9 +3451,8 @@
               "note": "Counts these accounts as people.",
               "$commentJoins": "Owner, 2026-09-24 (Phase 2a): Jon's baseline has no policy for shared devices, so their accounts are treated as service accounts.",
               "joins": "These accounts join the service-accounts group: Restrict Service Accounts to the Trusted Network keeps them to your office network, and the policies that ask a person for MFA leave them out.",
-              "$commentJoinsRemote": "Phase 2d: with everyone working remotely there is no office to keep them to, so the group and the block don't apply.",
-              "$commentJoinsRemote": "F-069: with everyone remote the service-accounts group leaves every exclusion (roadmap/deviations.ts serviceAccountsExclusionDue), so the MFA policies ask these accounts too. The service-accounts card says it in the same words.",
-              "joinsRemote": "Counts these accounts as people: everyone works remotely, so there is no office network to keep them to, and they get MFA like anyone."
+              "$commentJoinsRemote": "Phase 2d and F-069: with everyone remote there is no office to keep these accounts to, so the service-accounts group leaves every exclusion (roadmap/deviations.ts serviceAccountsExclusionDue) and the MFA policies ask them too. The service-accounts card says it in the same words. They stay out of the people counts (derive/sets.ts notPeopleIds), so it never says they count as people.",
+              "joinsRemote": "Everyone works remotely, so there is no office network to keep these accounts to: they get MFA like anyone."
             },
             "$commentChosen": "Each card says what the chosen answer does, in one line (roadmap/direction.ts chosen; owner, 2026-09-24). 2.3 draws no scan counts: it asks how people should sign in, not what the tenant has today.",
             "computers": {
@@ -3494,7 +3493,7 @@
                 "remote": "Every sign-in counts as outside the office. Define the Trusted Network leaves your plan, and so do the policies that only block sign-ins from outside it."
               },
               "$commentRemoteAccounts": "F-069: after the remote line, where Identify Service and Shared Accounts has picked accounts.",
-              "remoteAccounts": "Your service and shared-device accounts then count as people and get MFA like anyone.",
+              "remoteAccounts": "Your service and shared-device accounts then get MFA like anyone.",
               "$commentUnused": "A saved answer of \"Everyone works remotely\" beside a location Entra marks trusted says what the answer does with it.",
               "savedRemoteUnused": "{names} is marked trusted in Entra; this answer doesn't use it as your office."
             },

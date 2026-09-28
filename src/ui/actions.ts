@@ -7,6 +7,7 @@
 // and the button that called them renders the error beside itself
 // (ui/useAction.ts). No handler swallows.
 import type { AccountInfo } from '@azure/msal-browser'
+import { clearDrafts } from './surfaces/directionDrafts.ts'
 import type { ScanHandle } from '../graph/collect/runScan.ts'
 import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { RoleGapError } from '../graph/collect/tokenRoles.ts'
@@ -201,6 +202,8 @@ export async function signOut(): Promise<void> {
   stopScan()
   endTenantTurn()
   setSession({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
+  // A decision's unapproved changes go with the tenant (directionDrafts.ts; Round 4 review).
+  clearDrafts()
   go(CONNECT_HREF)
   await authLib.signOut()
 }
@@ -230,6 +233,8 @@ export async function forgetTenant(): Promise<void> {
   // Another tab still holding this tenant's plan must not write it back (planSync.ts, F-161).
   announceSaved(account.tenantId, 'replaced')
   setSession({ lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
+  // A decision's unapproved changes go with the tenant (directionDrafts.ts; Round 4 review).
+  clearDrafts()
   go(CONNECT_HREF)
 }
 

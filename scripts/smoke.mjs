@@ -54,7 +54,7 @@ const PRINT_FORBID = [...FORBID_EVERYWHERE, ...STEP_FORBID.filter((f) => !MORE_H
 // content/render.ts pluralise may bend the noun and the verb to the count. The
 // counted are people, guests, or people and guests: the total is 2 + 3. People and
 // guests together (pages.readiness.summaryWithGuests) put the whole count after "of"
-// and the cohort after a colon: there 3 is absent and 2 is the total.
+// and the cohort in brackets after it: there 3 is absent and 2 is the total.
 const SUMMARY_LINE = /(\d+) of (\d+) (?:(?:people|person|guests?)(?: and (\d+) guests?)? |\(\d+ (?:people|person) and \d+ guests?\) )?(?:is|are) ready for phishing-resistant sign-in\./
 
 // The states the bar and the groups name, read from the words the page ships
@@ -694,12 +694,12 @@ try {
   // prerequisite and check carries is dropped, and a held row says so instead of
   // borrowing its wave's date.
   check('Plan: the board drops the generic now from supporting rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => (e.textContent || '').trim()).filter((t) => t === 'now').length`)) === 0)
-  // When shows a calendar date or an estimate (owner, 2026-09-23): Not scheduled,
-  // After prerequisites and After review are gone from the column.
+  // When shows a calendar date (owner, 2026-09-23), never marked Est. (owner,
+  // 2026-09-27): Not scheduled, After prerequisites and After review are gone from the column.
   // The chip continues to describe the observed policy state.
   const rowStates = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim(), chip: ((r.querySelector('.status') || {}).textContent || '').trim() }))`)
-  const whenWrong = rowStates.filter(({ when }) => !(['Review now', 'Decide now'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
-  check('Plan: every row’s When provides a date or an estimate', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
+  const whenWrong = rowStates.filter(({ when }) => !(['Review now', 'Decide now'].includes(when) || /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
+  check('Plan: every row’s When provides a date', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
   const chipWrong = rowStates.filter(({ chip }) => !(chip === '' || chip === 'Report-only' || chip === 'Enforced'))
   check('Plan: a row’s chip is the tenant fact Report-only or Enforced, or nothing', chipWrong.length === 0, JSON.stringify(chipWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.

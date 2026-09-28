@@ -534,7 +534,8 @@ test('a Ready person about to lapse counts in Needs action and is listed there, 
   assert.equal(groupWhy(target.state!, [{ ...target, lapsing: true }], 'why'), fillText(pages.readiness.seamlessLapsing, { n: 1 }))
   // Ready's group opens on them under Needs action (derive/mfaReadiness.ts groupOpens).
   assert.equal(groupOpens({ next: false, quiet: true, show: 'needsAction', searching: false }), true)
-  assert.match(page(), /open=\{groupOpens\(\{ next: isNext, quiet, show, searching \}\) \|\| undefined\}/)
+  // Searching opens every group; otherwise a group the person opened or closed stays so, and the rule decides the rest.
+  assert.match(page(), /open=\{\(searching \|\| \(openGroups\[state\] \?\? groupOpens\(\{ next: isNext, quiet, show, searching: false \}\)\)\) \|\| undefined\}/)
 })
 
 // F-018: Prepare Your Team for MFA says "10 of 30 people not ready" and its

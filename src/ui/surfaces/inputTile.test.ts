@@ -10,6 +10,8 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { inputStepIds } from './planBoard.ts'
 import { DIRECTION_STEP } from '../../roadmap/directionAnswers.ts'
 import { stepIdForGoal } from '../../roadmap/stepIds.ts'
+import { conditionalInputSteps } from '../../roadmap/answers.ts'
+import { ANSWERED_IN } from '../../roadmap/direction.ts'
 
 test('Needs your input counts the steps that ask, not the steps that wait on their answers', () => {
   const r = runFixture(fixture('demo'))
@@ -24,4 +26,9 @@ test('Needs your input counts the steps that ask, not the steps that wait on the
   assert.ok(ids.has(stepIdForGoal('geo-restriction')), 'the countries picker asks on its own step')
   assert.equal(ids.size, 4, [...ids].join(', '))
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /const inputIds = inputStepIds\(c\.steps\)/)
+})
+
+test('every conditional input is asked on a Direction step, so no step waiting on one is counted again (Round 4 review)', () => {
+  // A new conditional input asked on its own step must fail here, and inputStepIds must then count it.
+  for (const stepId of conditionalInputSteps()) assert.ok((ANSWERED_IN[stepId] ?? []).length > 0, `${stepId}: a conditional input no Direction step asks`)
 })

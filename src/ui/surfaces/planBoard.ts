@@ -32,7 +32,6 @@ import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
-import { ANSWERED_IN } from '../../roadmap/direction.ts'
 import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS, groupOf, groupPositions, groupTotals, membersOf, positionInGroup } from '../../roadmap/stepGroups.ts'
 import type { StepGroup } from '../../roadmap/stepGroups.ts'
 import { fillText } from '../../content/render.ts'
@@ -1348,14 +1347,14 @@ export function groupKeyOf(g: BoardGroup, groups: readonly StepGroup[] = STEP_GR
 
 /**
  * The steps the Plan's Needs your input tile counts (owner, 2026-09-27): each
- * place a question is asked, once. A step whose only missing input is asked on
- * a Direction step (roadmap/direction.ts ANSWERED_IN: the mail-sending
- * accounts, partner access, the office network, the service accounts) waits on
- * that step, and its row says so ("Waiting on your answers in Confirm What You
- * Use"). Counting it too counted Confirm What You Use's answers three times: the
- * sample's tile read 6 where four places ask.
+ * place a question is asked, once. A step's conditional inputs
+ * (Step.unsavedInputs: the mail-sending accounts, partner access) are all asked
+ * on a Direction step (roadmap/direction.ts ANSWERED_IN; inputTile.test.ts pins
+ * it), so a step waiting on them waits on that step, and its row says so
+ * ("Waiting on your answers in Confirm What You Use"). Counting it too counted
+ * Confirm What You Use's answers three times: the sample's tile read 6 where
+ * four places ask.
  */
 export function inputStepIds(steps: readonly Step[]): Set<string> {
-  const asksHere = (s: Step): boolean => (s.unsavedInputs ?? []).length > 0 && (ANSWERED_IN[s.id] ?? []).length === 0
-  return new Set(steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || asksHere(s) || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
+  return new Set(steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
 }

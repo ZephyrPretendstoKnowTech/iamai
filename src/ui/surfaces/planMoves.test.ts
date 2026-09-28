@@ -34,8 +34,10 @@ test('the line sits at the step the page moved to while it is open, above the bo
 
 test('the Plan returns to the open step after a scan, moves focus with the page, and draws the line just above its row', () => {
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  // A new snapshot with a step open: the page goes back to it (F-028).
-  assert.match(plan, /if \(asOf === seenAsOf\.current\) return\n\s+seenAsOf\.current = asOf\n\s+if \(open === null\) return\n\s+moveTo\.current = open\n\s+focusAfterMove\.current = true\n\s+setLineAt\(open\)/)
+  // A new snapshot from a scan started in the open step: the page goes back to it (F-028),
+  // and only then — another tab's scan, or a step opened since, leaves the page where it is.
+  assert.match(plan, /const onScan = \(returnTo: string\): void => \{\n\s+scanFrom\.current = stepFromPlanHash\(returnTo\)\n\s+setChangeLine\(null\)\n\s+setChangeWhole\(null\)/)
+  assert.match(plan, /if \(asOf === seenAsOf\.current\) return\n\s+seenAsOf\.current = asOf\n\s+const from = scanFrom\.current\n\s+scanFrom\.current = null\n\s+if \(open === null \|\| from !== open\) return\n\s+moveTo\.current = open\n\s+focusAfterMove\.current = true\n\s+setLineAt\(open\)/)
   // Approve answers opens the next decision and takes the line and focus with it (F-040).
   assert.match(plan, /onOpen=\{\(next\) => \{ moveTo\.current = next; focusAfterMove\.current = true; setLineAt\(next\); setOpen\(next\);/)
   // Focus lands on the step's row once it is drawn.
@@ -44,6 +46,7 @@ test('the Plan returns to the open step after a scan, moves focus with the page,
   assert.match(plan, /\{open && lead\}\n\s+<PlanRow\n\s+stepId=\{step\.id\}/)
   assert.match(plan, /classList\.contains\('plan-change-line'\) \? line : row\)\.scrollIntoView/)
   // A row press or a link puts it back above the board.
-  assert.match(plan, /const openStep = \(id: string \| null\): void => \{\n\s+linked\.current = false\n\s+noticeLeft\.current = null\n\s+setLineAt\(null\)/)
-  assert.match(plan, /const onHash = \(\) => \{ setChangeLine\(null\); setLineAt\(null\);/)
+  // Either one also drops a move still waiting for its row, so the page never jumps back to it.
+  assert.match(plan, /const openStep = \(id: string \| null\): void => \{\n\s+linked\.current = false\n\s+noticeLeft\.current = null\n\s+setLineAt\(null\)\n\s+moveTo\.current = null\n\s+focusAfterMove\.current = false/)
+  assert.match(plan, /const onHash = \(\) => \{ setChangeLine\(null\); setLineAt\(null\); moveTo\.current = null; focusAfterMove\.current = false;/)
 })

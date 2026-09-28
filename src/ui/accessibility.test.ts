@@ -365,7 +365,7 @@ test('the home sheet leaves its own controls a focus indicator in a forced-colou
   assert.ok(forced, 'home.css carries a forced-colours focus fallback')
   assert.match(forced[0], /:focus-visible[\s\S]*outline:\s*2px solid/)
   const rules = parseRules(homeCss)
-  for (const p of ['a', '.lnk', '.btn', '.btn-primary', '.btn-secondary', '.btn-tertiary', 'header.app .right .text-control']) {
+  for (const p of ['a', '.lnk', '.btn', '.btn-primary', '.btn-secondary', '.btn-tertiary', 'header.app .right .text-control', '.shot a']) {
     assert.equal(effective(rules, p, false, 'box-shadow'), 'var(--focus-ring)', `${p}: the home sheet leaves it with no focus ring`)
     assert.match(effective(rules, p, true, 'outline'), /\bsolid\b/, `${p}: the home sheet leaves it with no focus outline in a forced-colours mode`)
   }

@@ -147,7 +147,7 @@ test('a held row is dated where its wait is expected to clear: behind 1.1, the d
   assert.equal(row.lane.estimate, board.forecast.spans.get(row.item.id)!.at)
 })
 
-test('a date that is an estimate says Est., and a fixed one does not: a completed day and a scheduled review day read bare', () => {
+test('a completed day and a scheduled review day read a plain date, never Est. (owner, 2026-09-27)', () => {
   let fixed = 0
   for (const [name, make] of WHEN_CASES) {
     const f = make()

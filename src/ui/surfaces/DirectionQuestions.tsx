@@ -31,7 +31,7 @@ import type { PickerObject } from './pickerRows.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { QUESTION_STEP } from '../../roadmap/answers.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { draftSlot, heldEdits, holdEdits } from './directionDrafts.ts'
+import { draftSlot, heldAnswers, holdAnswer, questionBasis, releaseStep } from './directionDrafts.ts'
 
 const W = directionWords
 
@@ -111,38 +111,41 @@ function QuestionTile({ q, tag, answer, onAnswer, ctx, printing }: { q: Directio
   )
 }
 
-/** The saved answers and which of them a scan reopened: a save or a reopening starts the draft again (directionDraftOf). */
-const directionDraftKey = (step: Step): string => JSON.stringify((step.directionQuestions ?? []).map((q) => [q.saved, q.needsReview]))
-
 /** A Direction step's draft: each card's answer as it stands on screen, which the cards change and Approve answers saves. */
 export type DirectionDraft = {
   questions: readonly DirectionQuestion[]
   answerOf: (q: DirectionQuestion) => DirectionAnswer
   setAnswer: (key: string, a: DirectionAnswer) => void
+  /** Let the step's changes go once they are approved. */
+  release: () => void
 }
 
 /**
  * The draft, held by the opened step (ContentStep.tsx) so the cards in its main
  * column and Approve answers in its action column read one draft. Only the
- * person's changes are kept, under the key they were made against: once the
- * saved answers or a reopening change (directionDraftKey), every card starts
- * again from directionDraftOf. The changes are held for the session too
- * (directionDrafts.ts), so the step opens on them again (F-042).
+ * person's changes are kept, each under its own question's saved answer: once
+ * that answer is saved or a scan reopens it, that card starts again from
+ * directionDraftOf, and Approve lets the step's changes go. The changes are held
+ * for the session (directionDrafts.ts), so the step opens on them again (F-042).
  */
 export function useDirectionDraft(step: Step, tenantId: string): DirectionDraft {
   const questions = step.directionQuestions ?? []
-  const key = directionDraftKey(step)
   const slot = draftSlot(tenantId, step.id)
-  const [edits, setEdits] = useState<{ key: string; answers: Readonly<Record<string, DirectionAnswer>> }>(() => ({ key, answers: heldEdits(slot, key) }))
-  const own = edits.key === key ? edits.answers : heldEdits(slot, key)
+  // The held changes are the draft's own record, written on every change; this only redraws the cards.
+  const [, redraw] = useState(0)
+  const own = heldAnswers(slot, questions)
   return {
     questions,
     answerOf: (q) => own[q.key] ?? directionDraftOf(q),
     setAnswer: (k, a) => {
-      // The held changes are the draft's own record, written on every change.
-      const next = { key, answers: { ...heldEdits(slot, key), [k]: a } }
-      holdEdits(slot, next)
-      setEdits(next)
+      const q = questions.find((x) => x.key === k)
+      if (!q) return
+      holdAnswer(slot, k, questionBasis(q), a)
+      redraw((n) => n + 1)
+    },
+    release: () => {
+      releaseStep(slot)
+      redraw((n) => n + 1)
     },
   }
 }
@@ -185,6 +188,8 @@ export function ApproveAnswers({ draft, onDecide, saving = false, ctx }: { draft
     const answers = Object.fromEntries(questions.map((q) => [q.key, answerOf(q)]))
     const basis = Object.fromEntries(questions.filter((q) => q.basis !== null).map((q) => [q.key, q.basis as string]))
     onDecide?.(directionDecisionOf(answers, basis))
+    // Approved: the cards read the saved answers from here, as the save normalised them.
+    draft.release()
   }
   const why = [...new Set(empty.map((q) => q.control === 'locations' ? W.pickLocation : W.pickAccount))]
   // An administrator or the signed-in account picked as a service or shared-device account says so before it is approved (F-056).

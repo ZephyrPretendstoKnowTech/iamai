@@ -168,6 +168,9 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const [limits, setLimits] = useState<Record<string, number>>({})
   // Sub-groups the person has opened or closed; admins start open, the rest closed.
   const [openSubs, setOpenSubs] = useState<Record<string, boolean>>({})
+  // Groups the person has opened or closed; a search opens them without recording it (Round 4 review).
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const searchRef = useRef<HTMLInputElement>(null)
   // The panel is held by the account id the row carries, never the display name.
   const [openId, setOpenId] = useState<string | null>(null)
   const trigger = useRef<HTMLElement | null>(null)
@@ -399,7 +402,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           const shown = rowsShown(g.rows.length, limitOf(key, g.admins ? 3 : SUB_GROUP_AT), searching)
           const isOpen = subGroupOpens({ saved: openSubs[key], admins: g.admins, searching })
           return (
-            <details className="readiness-sub" key={key} open={isOpen || undefined} onToggle={(e) => { const open = e.currentTarget.open; setOpenSubs((o) => (o[key] === open ? o : { ...o, [key]: open })) }}>
+            <details className="readiness-sub" key={key} open={isOpen || undefined} onToggle={(e) => { if (searching) return; const open = e.currentTarget.open; setOpenSubs((o) => (o[key] === open ? o : { ...o, [key]: open })) }}>
               <summary>
                 <span>
                   <span className="group-title">{subTitle(g)}</span>
@@ -433,7 +436,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
     return (
       <Fragment key={state}>
         <h3 className="sr-only">{G.title}</h3>
-        <details className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={groupOpens({ next: isNext, quiet, show, searching }) || undefined} data-state={state}>
+        <details className={`readiness-group panel${isNext ? ' next' : ''}${quiet ? ' quiet' : ''}`} open={(searching || (openGroups[state] ?? groupOpens({ next: isNext, quiet, show, searching: false }))) || undefined} onToggle={(e) => { if (searching) return; const open = e.currentTarget.open; setOpenGroups((o) => (o[state] === open ? o : { ...o, [state]: open })) }} data-state={state}>
           <summary>
             <span className={`state-dot s-${state}`} aria-hidden="true" />
             <span>
@@ -578,7 +581,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
         <div ref={groupsRef}>
           <div className="toolbar no-print">
             <h2>{T.worklist}</h2>
-            <input type="search" placeholder={T.search} aria-label={T.search} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
+            <input ref={searchRef} type="search" placeholder={T.search} aria-label={T.search} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
             {SHOW_KEYS.map((k) => (
               <Button key={k} variant="tertiary" className="pill" aria-pressed={show === k} onClick={() => select(k)}>
                 {k === 'needsAction' ? needsActionWords(counted) : T.show[k]}
@@ -636,7 +639,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
               {elsewhere > 0 && (
                 <>
                   {' '}
-                  <Button variant="tertiary" onClick={() => select('all')}>{T.searchEveryone}</Button>
+                  <Button variant="tertiary" onClick={() => { select('all'); searchRef.current?.focus() }}>{T.searchEveryone}</Button>
                 </>
               )}
             </p>

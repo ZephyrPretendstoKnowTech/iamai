@@ -21,8 +21,8 @@ function questionOf(f: Fixture, stepId: string, key: string) {
 test('the partner card shows the baseline’s version beside Yes, and says what No does (F-041, F-067)', () => {
   const q = questionOf(fixture('demo'), DIRECTION_STEP.use, 'partner')
   assert.equal(q.suggested?.value, 'yes', 'the premise: the demo saw a partner sign in, so Yes is suggested')
-  assert.equal(q.chosen?.yes, 'Keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed · your choice; the baseline’s version: they sign in with MFA like any guest, and only from your countries'.replace('’', "'"))
-  assert.equal(q.chosen?.no, 'Partner and MSP technicians sign in with MFA like any guest, and only from your countries, as the baseline asks.')
+  assert.equal(q.chosen?.yes, 'Keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed · your choice; the baseline’s version: they sign in with Modern MFA + TAP, and only from your countries'.replace('’', "'"))
+  assert.equal(q.chosen?.no, 'Partner and MSP technicians sign in with Modern MFA + TAP and only from your countries, as the baseline asks.')
 })
 
 test('the mail-devices card says what None does to the senders the scan saw (F-067)', () => {
@@ -40,10 +40,10 @@ test('with everyone working remotely, the service and shared-device cards and th
   assert.ok(svc, 'the premise: the demo has a service account')
   f.mapping.serviceAccountUserIds = [svc.id]
   f.mapping.questionAnswers = { ...(f.mapping.questionAnswers ?? {}), [answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')]: 'remote' }
-  const joins = 'Counts these accounts as people: everyone works remotely, so there is no office network to keep them to, and they get MFA like anyone.'
+  const joins = 'Everyone works remotely, so there is no office network to keep these accounts to: they get MFA like anyone.'
   assert.equal(Q.sharedDevices.joinsRemote, joins)
   assert.equal(questionOf(f, DIRECTION_STEP.accounts, 'serviceAccounts').chosen?.some, joins)
-  assert.equal(questionOf(f, DIRECTION_STEP.devices, 'officeNetwork').chosen?.remote, `${Q.officeNetwork.chosen.remote} Your service and shared-device accounts then count as people and get MFA like anyone.`)
+  assert.equal(questionOf(f, DIRECTION_STEP.devices, 'officeNetwork').chosen?.remote, `${Q.officeNetwork.chosen.remote} Your service and shared-device accounts then get MFA like anyone.`)
   // With an office network, the service accounts keep their exclusion, and nothing says otherwise.
   const office = structuredClone(fixture('demo'))
   office.mapping.serviceAccountUserIds = [svc.id]

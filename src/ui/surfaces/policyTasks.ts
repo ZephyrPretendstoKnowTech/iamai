@@ -200,6 +200,11 @@ const userExclusionsOf = (policy: Record<string, unknown>): string[] => {
   const users = asRecord(asRecord(policy.conditions)?.users)
   return ['excludeUsers', 'excludeGroups', 'excludeRoles'].flatMap((k) => (Array.isArray(users?.[k]) ? (users[k] as unknown[]).map((x) => String(x).toLowerCase()) : []))
 }
+/** Whether bringing a policy to another takes off one of its user, group or role exclusions. */
+const dropsUserExclusion = (from: Record<string, unknown>, to: Record<string, unknown>): boolean => {
+  const kept = userExclusionsOf(to)
+  return userExclusionsOf(from).some((id) => !kept.includes(id))
+}
 
 /** A policy with a patch applied the way Graph applies it: a condition the patch carries replaces that condition, the rest stay. */
 const patched = (policy: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> => {
@@ -279,7 +284,10 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
         exclusionsEdit: found !== null && current !== found,
         // Done before Configure Emergency Exclusions adds the group, removing the
         // policy's old exclusion leaves the emergency accounts in it (F-001).
-        exclusionsFirst: found !== null && current !== found && target !== null && userExclusionsOf(found).some((id) => !userExclusionsOf(target).includes(id)),
+        // The correction brings the tenant's policy to the change it writes (target) and, where the scan found
+        // its users unlike the plan's without the change writing them, to the plan's whole policy (whole):
+        // either can take the old exclusion off (Round 4 review: 4.3's users are an unwritten dimension).
+        exclusionsFirst: found !== null && current !== found && ((target !== null && dropsUserExclusion(found, target)) || (whole !== null && unwritten.length > 0 && sectionsOfDimensions(unwritten).sections.has('users') && dropsUserExclusion(found, whole))),
       })
     }
     return out
