@@ -479,8 +479,12 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // where a step of the plan makes it: "exclude **CA - Trusted - Head office**".
   // A reference only the baseline's author or a person's mapping can settle has
   // no name to give, and the step says what it waits on instead.
+  // An application the tenant adds itself, which no step of the plan makes (Require
+  // MFA for Inforcer Access: the Inforcer application), is named by its id as the
+  // baseline names it, so the step draws the template's procedure like every other
+  // policy step (owner, 2026-09-28; it fell back to its package's old words).
   const missing = step.action.missing ?? []
-  if (missing.some((m) => m.decision === true || m.unreadable === true || !(m.stepId && OBJECT_OF_STEP[m.stepId]))) return null
+  if (missing.some((m) => m.decision === true || m.unreadable === true || (m.stepId !== null && !OBJECT_OF_STEP[m.stepId]))) return null
   const pendingName = new Map(missing.flatMap((m) => {
     const key = m.stepId ? OBJECT_OF_STEP[m.stepId] : undefined
     return key ? [[m.token.toLowerCase(), input.proposed[key]] as const] : []
