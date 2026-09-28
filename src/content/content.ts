@@ -161,6 +161,9 @@ export type AppWords = {
     planGroups: { exclusions: string; serviceAccounts: string }
     /** The lead of the Accounts tab's MFA state definitions (F-137). */
     mfaStatesLead: string
+    /** The search box over an Inventory table longer than a page, and its no-match line (F-139). */
+    searchPlaceholder: string
+    searchNone: string
   }
   picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string; keep: string; takeOff: string; matched: string; choose: string }
 }

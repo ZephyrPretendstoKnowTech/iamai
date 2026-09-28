@@ -52,6 +52,7 @@ import {
   shownCell,
   roleHoldersOf,
   rolesModel,
+  rowsMatching,
   signInModels,
   usersDetail,
   viabilityOf,
@@ -98,7 +99,7 @@ function ModelTable<R>({
   return (
     <>
       {model.note && <p className="reason">{model.note}</p>}
-      <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={model.csvName} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} />
+      <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={model.csvName} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} search={{ filter: (q) => rowsMatching(model, q), placeholder: app.inventory.searchPlaceholder, none: app.inventory.searchNone }} />
     </>
   )
 }

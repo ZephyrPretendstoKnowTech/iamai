@@ -3,8 +3,9 @@
 // model says only what the scan read.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { appsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, peopleModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, securityDefaultsOf, signInModels } from './inventoryTables.ts'
+import { appsModel, authStrengthsModel, capabilitiesModel, devicesModel, groupsModel, inventoryTables, licencesModel, locationsModel, peopleModel, policyFactsOf, referencedGroupsOf, registrationModel, rolesModel, rowsMatching, securityDefaultsOf, signInModels } from './inventoryTables.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { methodsLine } from './readinessCells.ts'
 import { buildNameDirectory } from '../../names.ts'
@@ -202,3 +203,22 @@ test('the Roles note says no role has "no holder" over assignments read only in 
   assert.equal(rolesModel(eligible, buildNameDirectory(eligible)).hiddenNote, null)
 })
 
+
+test('Inventory search keeps the rows whose cells match, a sign-in name included, and shows only over a table longer than a page (F-139)', () => {
+  // Owner, 2026-09-28: a 285-person tenant's Accounts tab was six pages with no way to find one person.
+  const mid = fixture('mid').snapshot
+  const p = peopleModel(mid, buildNameDirectory(mid))
+  assert.ok(p.rows.length > 50, 'the premise: the mid tenant pages its accounts')
+  const someone = mid.users.find((u) => u.displayName && u.userPrincipalName)!
+  assert.ok(rowsMatching(p, someone.displayName!.toUpperCase()).length >= 1, 'a name, case aside')
+  const byUpn = rowsMatching(p, someone.userPrincipalName!)
+  assert.equal(byUpn.length, 1, 'a sign-in name finds one person')
+  assert.equal(rowsMatching(p, '   ').length, p.rows.length, 'an empty search keeps every row')
+  assert.deepEqual(rowsMatching(p, 'zz-no-such-person-zz'), [])
+  // The box stands only over a table that pages, and the CSV still writes every row.
+  const table = readFileSync(new URL('../components/DataTable.tsx', import.meta.url), 'utf8')
+  assert.match(table, /const searching = search !== undefined && rows\.length > PAGE_SIZE/)
+  assert.match(table, /sortRows\(rows\)\.map\(\(r\) => cols\.map/, 'the export writes the search\'s rows, not every row')
+  const words = app.inventory as unknown as { searchPlaceholder: string; searchNone: string }
+  assert.ok(words.searchPlaceholder && words.searchNone)
+})

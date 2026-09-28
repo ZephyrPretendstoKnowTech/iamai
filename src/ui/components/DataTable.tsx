@@ -36,6 +36,7 @@ export function DataTable<T>({
   initialSort,
   stacked = false,
   panel = false,
+  search,
 }: {
   rows: T[]
   columns: Column<T>[]
@@ -63,10 +64,18 @@ export function DataTable<T>({
   stacked?: boolean
   /** The table sits in a panel of its own, as the approved MFA pack draws it: the shared `.panel` role supplies the surface, the border and the radius. */
   panel?: boolean
+  /**
+   * A search box over a table longer than one page (Inventory, F-139): the rows it
+   * keeps, and its words. The export still writes every row.
+   */
+  search?: { filter: (query: string) => T[]; placeholder: string; none: string }
 }) {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(initialSort ?? null)
   const [page, setPage] = useState(0)
   const [openRow, setOpenRow] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const searching = search !== undefined && rows.length > PAGE_SIZE
+  const visible = useMemo(() => (searching && query.trim() !== '' ? search.filter(query) : rows), [searching, search, query, rows])
   const shown = columns.filter((c) => !c.hidden)
   const wrap = useRef<HTMLDivElement>(null)
   // A wide table scrolls inside its own box rather than widening the page
@@ -90,17 +99,18 @@ export function DataTable<T>({
     [],
   )
 
-  const sorted = useMemo(() => {
-    if (!sort) return rows
+  const sortRows = useCallback((list: T[]): T[] => {
+    if (!sort) return list
     const col = columns.find((c) => c.key === sort.key)
-    if (!col?.sortValue) return rows
+    if (!col?.sortValue) return list
     const f = col.sortValue
-    return [...rows].sort((a, b) => {
+    return [...list].sort((a, b) => {
       const va = f(a)
       const vb = f(b)
       return (va < vb ? -1 : va > vb ? 1 : 0) * sort.dir
     })
-  }, [rows, sort, columns])
+  }, [sort, columns])
+  const sorted = useMemo(() => sortRows(visible), [sortRows, visible])
 
   const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const current = Math.min(page, pages - 1)
@@ -112,7 +122,7 @@ export function DataTable<T>({
       csvName ?? 'export.csv',
       toCsv(
         cols.map((c) => c.header),
-        sorted.map((r) => cols.map((c) => c.csv!(r))),
+        sortRows(rows).map((r) => cols.map((c) => c.csv!(r))),
       ),
       'text/csv',
       unredactedFrom('inventory-csv'),
@@ -129,7 +139,22 @@ export function DataTable<T>({
 
   return (
     <div>
-      <div className={`datatable-wrap${panel ? ' panel' : ''}`} ref={wrap} tabIndex={scrolls ? 0 : undefined}>
+      {searching && (
+        <div className="toolbar no-print">
+          <input
+            type="search"
+            placeholder={search.placeholder}
+            aria-label={search.placeholder}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setPage(0)
+            }}
+          />
+        </div>
+      )}
+      {searching && sorted.length === 0 && <p className="reason">{search.none}</p>}
+      <div className={`datatable-wrap${panel ? ' panel' : ''}`} ref={wrap} tabIndex={scrolls ? 0 : undefined} hidden={searching && sorted.length === 0}>
         <table className={`datatable${stacked ? ' datatable-stacked' : ''}`} role={stacked ? 'table' : undefined}>
           {caption && <caption>{caption}</caption>}
           <thead role={stacked ? 'rowgroup' : undefined}>

@@ -3769,6 +3769,9 @@
         },
         "$commentMfaStatesLead": "F-137: the Accounts tab's MFA state column used five words (Verified, Looks healthy, Never prompted, Possibly broken, No method) that the page defined nowhere. This line leads an ⓘ whose text is each state's existing definition (src/copy/definitions.ts MFA_STATE).",
         "mfaStatesLead": "What each MFA state means",
+        "$commentSearch": "F-139 (owner, 2026-09-28): a search box over any Inventory table longer than one page (50 rows); it matches every cell the table writes, a sign-in name or an object ID included (ui/surfaces/inventoryTables.ts rowsMatching). A 285-person tenant was a scroll with no way to find one person.",
+        "searchPlaceholder": "Search this table",
+        "searchNone": "Nothing in this table matches that search.",
         "caps": {
           "entraP1": "Entra ID P1",
           "entraP2": "Entra ID P2",

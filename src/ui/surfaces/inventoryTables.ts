@@ -66,6 +66,18 @@ export type InventoryModel<R> = {
   note?: string | null
 }
 
+/**
+ * The rows a search keeps: those where any cell the model writes, hidden ones included
+ * (a sign-in name, an object ID), contains the query, case aside. An empty query keeps
+ * every row. Inventory's tables page at 50, and a 285-person tenant was a scroll with no
+ * way to find one person (F-139, owner 2026-09-28).
+ */
+export function rowsMatching<R>(m: Pick<InventoryModel<R>, 'rows' | 'columns'>, query: string): R[] {
+  const q = query.trim().toLowerCase()
+  if (q === '') return m.rows
+  return m.rows.filter((r) => m.columns.some((c) => String(c.cell(r) ?? '').toLowerCase().includes(q)))
+}
+
 /** The file a model writes: every column with a cell, hidden ones included, in the model's order. */
 export function tableOf<R>(m: InventoryModel<R>): InventoryTable {
   return { id: m.id, label: m.label, csvName: m.csvName, header: m.columns.map((c) => c.header), rows: m.rows.map((r) => m.columns.map((c) => c.cell(r))) }
