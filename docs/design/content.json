@@ -1111,7 +1111,9 @@
         "reopened": "{steps} reopened",
         "added": "{n} steps added: {steps}",
         "removed": "{n} steps removed: {steps}",
-        "more": "{steps} and {n} more"
+        "more": "{steps} and {n} more",
+        "$commentShowAll": "F-028: a cut list could not be read whole. Show all reads every title. After a scan or an approval the line sits just above the step the page moved to (F-040).",
+        "showAll": "Show all"
       },
       "settingsLink": "Plan settings",
       "settings": {

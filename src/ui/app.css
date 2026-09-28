@@ -5527,3 +5527,9 @@ header.app .right .menu-confirm a {
   .brief-needs .brief-asks { margin: 1mm 0 0; }
   .brief-needs .brief-asks li { margin: 0; color: var(--secondary-text); }
 }
+
+/* The change line (F-028, F-040): above the board, or just above the row the page moved to after a scan or an approval, with the sticky header's room above it. */
+.plan-change-line {
+  scroll-margin-top: calc(var(--header) + 8px);
+  margin: 12px 0 8px;
+}

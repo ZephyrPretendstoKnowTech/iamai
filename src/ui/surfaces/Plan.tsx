@@ -50,7 +50,7 @@ import { freezeInputOf } from '../../roadmap/schedule.ts'
 import { returnToStep, stepFromPlanHash, visitStep } from '../shell/routes.ts'
 import { scan as runScan } from '../actions.ts'
 import { stillThisTurn, subscribe, tenantTurn } from '../session.ts'
-import { clearPlanNotice, observePlan, peekPlanNotice } from './planChanges.ts'
+import { changeLinePlace, clearPlanNotice, observePlan, peekPlanNotice } from './planChanges.ts'
 import type { ChangeRow, Seen } from './planChanges.ts'
 
 type PlanPage = {
@@ -124,6 +124,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const noticeLeft = useRef(notice)
   useEffect(() => clearPlanNotice(), [])
   const [changeLine, setChangeLine] = useState<string | null>(notice)
+  // The line whole where it cut a list ("and 5 more"), shown on Show all (F-028).
+  const [changeWhole, setChangeWhole] = useState<string | null>(null)
+  const [showWhole, setShowWhole] = useState(false)
+  // The step the page moved to after a scan or an approval: the change line sits
+  // at its top rather than above the board, out of sight (F-028, F-040).
+  const [lineAt, setLineAt] = useState<string | null>(null)
+  // Keyboard focus follows that move to the step's row.
+  const focusAfterMove = useRef(false)
   // The board's four tabs (planBoard.ts). All work is the default and sits
   // leftmost (owner, 2026-09-23): the whole plan, section by section, from the
   // top. Ready, Up Next and On Hold are filters over the same list.
@@ -144,7 +152,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const linked = useRef<boolean>(stepFromPlanHash(window.location.hash) !== null)
   useEffect(() => {
     // A link to a step clears a tile filter that may hide it; Back to the bare Plan keeps the view the person came from (F-051).
-    const onHash = () => { setChangeLine(null); noticeLeft.current = null; linked.current = true; const id = stepFromPlanHash(window.location.hash); if (id !== null) setSummaryFilter(null); setOpen(id) }
+    const onHash = () => { setChangeLine(null); setLineAt(null); noticeLeft.current = null; linked.current = true; const id = stepFromPlanHash(window.location.hash); if (id !== null) setSummaryFilter(null); setOpen(id) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -156,6 +164,21 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // The Direction step whose answers were just approved: the next render, which
   // carries them, opens the step after it in plan order (OpensNextStep).
   const approved = useRef<string | null>(null)
+  // A scan run from an open step lands a new snapshot, and the plan redraws from
+  // Loading, which left the page at its top and the step 1,800px below it: the
+  // page goes back to that step, with what changed at its top (F-028).
+  const asOf = scan?.snapshot.asOf ?? null
+  const seenAsOf = useRef(asOf)
+  useEffect(() => {
+    if (asOf === seenAsOf.current) return
+    seenAsOf.current = asOf
+    if (open === null) return
+    moveTo.current = open
+    focusAfterMove.current = true
+    setLineAt(open)
+    // Only when the snapshot changes: the step open then is the one the scan returns to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asOf])
   useEffect(() => {
     const id = moveTo.current
     // Only once the step is the open one: OpensNextStep asks in the render
@@ -167,11 +190,19 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // scrolling it moves nothing: wait for the render that unfolds it (planBoard.ts releaseFor).
     if (!row || row.closest('[hidden]') !== null) return
     moveTo.current = null
-    row.scrollIntoView({ block: 'start' })
+    // Where the change line sits just above the row (F-028, F-040), the page shows it too.
+    const line = row.previousElementSibling
+    ;(line instanceof HTMLElement && line.classList.contains('plan-change-line') ? line : row).scrollIntoView({ block: 'start' })
+    // After a scan or an approval, keyboard focus goes with the page, to the step's row (F-040).
+    if (focusAfterMove.current) {
+      focusAfterMove.current = false
+      ;(row as HTMLElement).focus({ preventScroll: true })
+    }
   })
   const openStep = (id: string | null): void => {
     linked.current = false
     noticeLeft.current = null
+    setLineAt(null)
     const next = open === id ? null : id
     visitStep(window.history, next)
     setOpen(next)
@@ -267,6 +298,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // (`<section>.<row>`), the same on every tab and while a focus filters rows.
   const sectionNumbers = sectionNumbersOf(items)
   const nextReady = nextReadyOf(items, rowNumbers, sectionNumbers)
+  // What the last Save, scan or approval changed: one line, above the board or at
+  // the top of the step the page moved to (planChanges.ts changeLinePlace).
+  const lineView = changeLine !== null ? <ChangeLine line={changeLine} whole={changeWhole} showWhole={showWhole} onShowAll={() => setShowWhole(true)} /> : null
+  const lineOnStep = changeLinePlace(lineAt, open) === 'step'
+  const leadFor = (id: string): ReactNode => (lineOnStep && open === id ? lineView : null)
   const renderById = new Map<string, () => ReactNode>()
   for (const { step, reading, lane: laneView } of board.rows) {
     if (step === null) continue
@@ -278,14 +314,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, laneView)
-    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[decisionKeyOf(step.id)] ?? null} followUp={step.id === CAMPAIGN_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} deviation={{ saved: data.stepDecisions[DEVIATION_KEY + step.id] ?? null, onDecide: (d) => data.onDecide(DEVIATION_KEY + step.id, d) }} officeNetwork={step.id === PREREQ_STEP_ID.trustedLocation ? (a) => { const devices = c.steps.find((s) => s.id === DIRECTION_STEP.devices); if (devices) data.onDecide(DIRECTION_STEP.devices, directionDecisionWith(devices, 'officeNetwork', a)) } : undefined} onDecide={(d) => { data.onDecide(decisionKeyOf(step.id), d); if (isDirectionStep(step.id)) approved.current = step.id }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} lead={leadFor(step.id)} step={step} lane={laneView} number={rowNumbers.get(step.id) ?? null} blockers={readinessBlockersOf(reading, titleOf)} enforceWaits={enforceWaits} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[decisionKeyOf(step.id)] ?? null} followUp={step.id === CAMPAIGN_STEP_ID ? { saved: data.stepDecisions[MFA_FOLLOW_UP_KEY] ?? null, onDecide: (d) => data.onDecide(MFA_FOLLOW_UP_KEY, d) } : undefined} objectTask={step.objectTask ? { saved: data.stepDecisions[step.objectTask.id] ?? null, onDecide: (d) => data.onDecide(step.objectTask!.id, d) } : undefined} deviation={{ saved: data.stepDecisions[DEVIATION_KEY + step.id] ?? null, onDecide: (d) => data.onDecide(DEVIATION_KEY + step.id, d) }} officeNetwork={step.id === PREREQ_STEP_ID.trustedLocation ? (a) => { const devices = c.steps.find((s) => s.id === DIRECTION_STEP.devices); if (devices) data.onDecide(DIRECTION_STEP.devices, directionDecisionWith(devices, 'officeNetwork', a)) } : undefined} onDecide={(d) => { data.onDecide(decisionKeyOf(step.id), d); if (isDirectionStep(step.id)) approved.current = step.id }} saveStatus={data.persistence} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
     for (const { cleanup, lane: laneView } of board.rows) {
       if (cleanup === null) continue
       const { row: r, id } = cleanup
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} number={rowNumbers.get(id) ?? null} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids, evidence) => data.markCleanupDone(r.kind, date, ids, evidence)} undated={cannotFinish} lane={laneView} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} lead={leadFor(id)} phase={cleanupPhase} row={r} number={rowNumbers.get(id) ?? null} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids, evidence) => data.markCleanupDone(r.kind, date, ids, evidence)} undated={cannotFinish} lane={laneView} />)
     }
   }
 
@@ -467,8 +503,13 @@ export function Plan({ scan: lastScan, baseline, account }: {
       {showSettings && <Settings mappingRequest={mappingRequest} data={data} steps={c.steps} snapshot={scan.snapshot} nameOf={nameOf} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
 
       {/* What the last Save or scan changed, in one line above the board (planChanges.ts). */}
-      <PlanChanges tenantId={scan.snapshot.tenantId} cause={`${scan.snapshot.asOf}|${visit}|${data.revision}`} rows={items} onLine={(line) => setChangeLine(noticeLeft.current ? [noticeLeft.current, line].filter(Boolean).join(' ') : line)} />
-      {changeLine !== null && <p className="reason no-print" role="status">{changeLine}</p>}
+      <PlanChanges tenantId={scan.snapshot.tenantId} cause={`${scan.snapshot.asOf}|${visit}|${data.revision}`} rows={items} onLine={(line, whole) => {
+        const lead = noticeLeft.current
+        setChangeLine(lead ? [lead, line].filter(Boolean).join(' ') : line)
+        setChangeWhole(whole !== null && lead ? `${lead} ${whole}` : whole)
+        setShowWhole(false)
+      }} />
+      {!lineOnStep && lineView}
 
       {/* ---- the board's one row set, and the three lanes over it ----
           Every row is built once, here, with the lane the engine read for it;
@@ -476,7 +517,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           there is one row renderer and not three: a tab hands back ids, and the
           id comes back to the same `<Row>` or `<CleanupRow>` whichever tab shows it. */}
       <TabFollowsOpenStep open={open} lane={openLane} follow={follow} linked={linked} onFollow={onFollow} onShow={onShow} onMoved={onMoved} />
-      <OpensNextStep approved={approved} board={items} onOpen={(next) => { moveTo.current = next; setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) }} />
+      <OpensNextStep approved={approved} board={items} onOpen={(next) => { moveTo.current = next; focusAfterMove.current = true; setLineAt(next); setOpen(next); window.history.replaceState(null, '', `#/plan/${next}`) }} />
       <PlanControls
         tab={tab}
         onTab={(next) => { setSummaryFilter(null); setTab(next) }}
@@ -626,17 +667,36 @@ function OpensNextStep({ approved, board, onOpen }: { approved: { current: strin
 }
 
 /**
+ * The change line (planChanges.ts): what the last Save, scan or approval did,
+ * each list at most three names; Show all reads it whole (F-028).
+ */
+function ChangeLine({ line, whole, showWhole, onShowAll }: { line: string; whole: string | null; showWhole: boolean; onShowAll: () => void }) {
+  const showAll = (PP as unknown as { changes: { showAll: string } }).changes.showAll
+  return (
+    <p className="reason no-print plan-change-line" role="status">
+      {showWhole && whole !== null ? whole : line}
+      {whole !== null && !showWhole && (
+        <>
+          {' '}
+          <Button variant="tertiary" onClick={onShowAll}>{showAll}</Button>
+        </>
+      )}
+    </p>
+  )
+}
+
+/**
  * Compares the board with the one drawn before it (planChanges.ts observePlan)
  * and hands the Plan its change line: a child with the one effect, because the
  * board is built after the Plan's early returns and a hook cannot sit there.
  */
-function PlanChanges({ tenantId, cause, rows, onLine }: { tenantId: string; cause: string; rows: readonly ChangeRow[]; onLine: (line: string | null) => void }) {
+function PlanChanges({ tenantId, cause, rows, onLine }: { tenantId: string; cause: string; rows: readonly ChangeRow[]; onLine: (line: string | null, whole: string | null) => void }) {
   const key = JSON.stringify(rows.map(({ id, title, lane }) => [id, title, lane]))
   useEffect(() => {
     const prior = lastSeen !== null && stillThisTurn(lastSeen.turn) ? lastSeen.seen : null
     const next = observePlan(prior, tenantId, cause, rows.map(({ id, title, lane }) => ({ id, title, lane })))
     lastSeen = { turn: tenantTurn(), seen: next.seen }
-    if (next.line !== undefined) onLine(next.line)
+    if (next.line !== undefined) onLine(next.line, next.whole)
     // Only when the board or its cause changes.
   }, [tenantId, cause, key])
   return null
@@ -683,7 +743,9 @@ function BoardGroupView({ group, number, closed, onToggle, totals, children }: {
 }
 
 /** A Cleanup row (§5): the content title, its lane, who it touches, its day (or the day it was marked done); opens in place. */
-function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDone, undated, lane }: {
+function CleanupRow({ lead = null, phase, row, number, answers, open, onToggle, onScan, onDone, undated, lane }: {
+  /** The change line, at the top of the row the page moved to after a scan (F-028). */
+  lead?: ReactNode
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
   /** The row's one state reading (planBoard.ts laneViewOf): the row and the opened head say its label. */
@@ -715,6 +777,7 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
       {/* A Cleanup row is held by the same engine and says what holds it the same way. */}
       {/* Finished, it is one compact line like every finished row (planBoard.ts drawsCompact), dated the day it was marked done. */}
+      {open && lead}
       <PlanRow stepId={`cleanup-${row.kind}`} lane={lane.label} tone={lane.tone} number={number} title={entry.title} waitingFor={lane.waitingFor} who={drawsImpact(lane.lane) ? who : null} when={cleanupWhenOf(row, undated, lane, drawsCompact(lane.lane))} open={open} onToggle={onToggle} compact={drawsCompact(lane.lane)} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onDone={onDone} />}
     </>
@@ -723,7 +786,9 @@ function CleanupRow({ phase, row, number, answers, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, followUp, objectTask, deviation, officeNetwork, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ lead = null, step, lane, number, blockers, enforceWaits, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, followUp, objectTask, deviation, officeNetwork, saveStatus, confirmations, onConfirm, onUnconfirm, onScan }: {
+  /** The change line, at the top of the step the page moved to after a scan or an approval (F-028, F-040). */
+  lead?: ReactNode
   step: Step
   /** The step's accepted differences from the baseline, and their Save (decisions.ts DEVIATION_KEY). */
   deviation?: { saved: StepDecision | null; onDecide: (decision: StepDecisionInput) => void }
@@ -793,6 +858,8 @@ function Row({ step, lane, number, blockers, enforceWaits, prerequisiteLabel, on
           read "On Hold" and named nothing. The owner resolved the contradiction
           in favour of this line (planBoard.ts waitingForOf), which is null
           wherever the lane already reads as its own reason. */}
+      {/* The change line, just above the row the page moved to (F-028, F-040): the row and its step stay one unit. */}
+      {open && lead}
       <PlanRow
         stepId={step.id}
         lane={lane.label}

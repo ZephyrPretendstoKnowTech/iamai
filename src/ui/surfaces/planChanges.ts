@@ -22,9 +22,9 @@ export type ChangeRow = { readonly id: string; readonly title: string; readonly 
 type ChangeWords = { line: string; completed: string; reopened: string; added: string; removed: string; more: string }
 const words = (): ChangeWords => (pages.plan as unknown as { changes: ChangeWords }).changes
 
-/** At most three titles, then how many more. */
-function named(titles: readonly string[]): string {
-  if (titles.length <= 3) return list([...titles])
+/** At most three titles, then how many more; every title where the line is read whole. */
+function named(titles: readonly string[], whole = false): string {
+  if (whole || titles.length <= 3) return list([...titles])
   return fillText(words().more, { steps: titles.slice(0, 3).join(', '), n: titles.length - 3 })
 }
 
@@ -33,7 +33,7 @@ function named(titles: readonly string[]): string {
  * steps that reached Completed, the steps that left it, the steps added and the
  * steps removed, each by the title its row shows. Null when none happened.
  */
-export function planChangeLine(before: readonly ChangeRow[], after: readonly ChangeRow[]): string | null {
+export function planChangeLine(before: readonly ChangeRow[], after: readonly ChangeRow[], whole = false): string | null {
   const was = new Map(before.map((r) => [r.id, r]))
   const now = new Set(after.map((r) => r.id))
   const completed = after.filter((r) => r.lane === 'Completed' && was.has(r.id) && was.get(r.id)?.lane !== 'Completed').map((r) => r.title)
@@ -42,12 +42,31 @@ export function planChangeLine(before: readonly ChangeRow[], after: readonly Cha
   const removed = before.filter((r) => !now.has(r.id)).map((r) => r.title)
   const W = words()
   const parts = [
-    ...(completed.length > 0 ? [fillText(W.completed, { steps: named(completed) })] : []),
-    ...(reopened.length > 0 ? [fillText(W.reopened, { steps: named(reopened) })] : []),
-    ...(added.length > 0 ? [fillText(W.added, { n: added.length, steps: named(added) })] : []),
-    ...(removed.length > 0 ? [fillText(W.removed, { n: removed.length, steps: named(removed) })] : []),
+    ...(completed.length > 0 ? [fillText(W.completed, { steps: named(completed, whole) })] : []),
+    ...(reopened.length > 0 ? [fillText(W.reopened, { steps: named(reopened, whole) })] : []),
+    ...(added.length > 0 ? [fillText(W.added, { n: added.length, steps: named(added, whole) })] : []),
+    ...(removed.length > 0 ? [fillText(W.removed, { n: removed.length, steps: named(removed, whole) })] : []),
   ]
   return parts.length === 0 ? null : fillText(W.line, { changes: parts.join(' · ') })
+}
+
+/**
+ * Where the change line sits (F-028, F-040): at the top of the step the page
+ * moved to after a scan or an approval, while that step is open; above the
+ * board otherwise. It is one line in one place at a time: above the board it
+ * was 590px above an approval's next decision, and a screen above a scanned step.
+ */
+export function changeLinePlace(lineAt: string | null, open: string | null): 'step' | 'board' {
+  return lineAt !== null && lineAt === open ? 'step' : 'board'
+}
+
+/**
+ * The same line with every title, where the short one cut a list ("and 5
+ * more"), for its Show all (F-028); null where it cut none.
+ */
+export function planChangeWhole(before: readonly ChangeRow[], after: readonly ChangeRow[]): string | null {
+  const all = planChangeLine(before, after, true)
+  return all !== null && all !== planChangeLine(before, after) ? all : null
 }
 
 /**
@@ -69,11 +88,13 @@ export type Seen = { tenantId: string; cause: string; base: readonly ChangeRow[]
  * such as Done after a chip already saved) must not erase what the change
  * before it did.
  */
-export function observePlan(seen: Seen | null, tenantId: string, cause: string, rows: readonly ChangeRow[]): { seen: Seen; line: string | null | undefined } {
-  if (seen === null || seen.tenantId !== tenantId) return { seen: { tenantId, cause, base: null, rows }, line: null }
+export function observePlan(seen: Seen | null, tenantId: string, cause: string, rows: readonly ChangeRow[]): { seen: Seen; line: string | null | undefined; whole: string | null } {
+  if (seen === null || seen.tenantId !== tenantId) return { seen: { tenantId, cause, base: null, rows }, line: null, whole: null }
   const base = seen.cause === cause ? seen.base : seen.rows
   const line = base === null ? null : planChangeLine(base, rows)
-  return { seen: { tenantId, cause, base, rows }, line: line === null && seen.cause !== cause ? undefined : line }
+  // The line whole, where it cut a list (F-028).
+  const whole = base === null || line === null ? null : planChangeWhole(base, rows)
+  return { seen: { tenantId, cause, base, rows }, line: line === null && seen.cause !== cause ? undefined : line, whole }
 }
 
 // A sentence the next Plan visit opens its change line with, once (F-023): a

@@ -124,9 +124,11 @@ test('completing a step produces one line naming it', () => {
   seen = observePlan(seen.seen, 't1', 'scan|visit|3', [row('a', 'Ready'), row('b', 'Completed')])
   assert.equal(seen.line, 'Updated: Step a reopened.', 'a step that leaves Completed is a change the line names')
   assert.equal(observePlan(seen.seen, 't2', 'scan|visit|2', before).line, null, 'another tenant is not compared')
-  // The page draws it above the board, and a navigation clears it.
+  // The page draws it above the board (or just above the step a scan or an approval moved to, F-028),
+  // and a navigation clears it.
   const page = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.match(page, /\{changeLine !== null && <p className="reason no-print" role="status">\{changeLine\}<\/p>\}/)
+  assert.match(page, /<p className="reason no-print plan-change-line" role="status">/)
+  assert.match(page, /\{!lineOnStep && lineView\}/)
   assert.match(page, /const onHash = \(\) => \{ setChangeLine\(null\);/)
 })
 
