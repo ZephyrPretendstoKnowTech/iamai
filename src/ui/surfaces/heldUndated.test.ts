@@ -40,8 +40,8 @@ import { planDates, stepVars } from './stepVars.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, devicePlanOf } from '../../roadmap/answers.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-/** What the board's When reads for a row it holds: the day the plan expects its waits to clear, as an estimate (owner, 2026-09-23). */
-const estimated = (lane: { estimate?: string }): string => fillText(schedulingWords.estimate, { date: absoluteDate(lane.estimate!) })
+/** What the board's When reads for a row it holds: the day the plan expects its waits to clear (owner, 2026-09-23), a plain date (no Est., owner 2026-09-27). */
+const estimated = (lane: { estimate?: string }): string => absoluteDate(lane.estimate!)
 
 /** Any day as the product prints one: the short form, and the long form an email names ("Monday, September 14"). */
 const DATE = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}, \d{4}\b|\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}\b/
@@ -207,7 +207,7 @@ test('a change that turns a policy on has no day of its own on a waiting lane, a
   assert.equal(scheduleOf(as('not-deployed')).transition, 'change', 'the premise: a change')
   assert.equal(boardWhenOf(as('not-deployed'), waveStartOf(token), lane), estimated(lane), 'a change that turns it on')
   assert.equal(scheduleOf(as('enforced')).transition, 'change', 'the premise: a change')
-  assert.equal(boardWhenOf(as('enforced'), waveStartOf(token), lane), fillText(schedulingWords.estimate, { date: absoluteDate(scheduleOf(as('enforced')).at!) }), 'a correction to a policy already on keeps its day, as an estimate')
+  assert.equal(boardWhenOf(as('enforced'), waveStartOf(token), lane), absoluteDate(scheduleOf(as('enforced')).at!), 'a correction to a policy already on keeps its day')
 })
 
 // A held create keeps its report-only preparation on the opened step (the Step
@@ -357,14 +357,13 @@ test('the Plan, the Export page and the step snapshots read the plan-wide dates 
 // or a Direction answer, stated as a deadline. Every surface that prints such a
 // day now prints it as the board does (roadmap/stepSchedule.ts shownDay).
 //
-// "Est." is a column label, and it read badly inside a sentence: "Create the
-// policy in report-only on Est. Aug 31, 2026; …", "Report-only from Est. Aug 31,
-// 2026 · …". A label keeps it (the When cell, the rail, the observation tile,
-// the calendar's SUMMARY); a sentence says the same day in a sentence's words
-// (shared.dates.estimatedInSentence), from the same formatter.
-test('a day the board reads as an estimate is never printed bare: a sentence says it in its own words, the calendar\'s summary as the row does', () => {
-  const EST = schedulingWords.estimate.split('{')[0]
-  let estimates = 0
+// No day is marked as an estimate (owner, 2026-09-27): the Plan's finish tile is
+// labelled Estimated finish, and "Est. Oct 29" beside it, or "(estimated)" in a
+// sentence, said it twice. Every surface prints a step's day as the board does
+// (roadmap/stepSchedule.ts shownDay): the same plain date, in a label or a sentence.
+test('a day the board gives a step reads the same plain date everywhere: no Est. and no (estimated), on the row, in a sentence or in the calendar', () => {
+  const DAY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+  let dated = 0
   let booked = 0
   let sentences = 0
   for (const [name, make] of [...CASES, ['demo-week2, Direction approved', () => withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant'))]] as [string, () => Fixture][]) {
@@ -376,12 +375,12 @@ test('a day the board reads as an estimate is never printed bare: a sentence say
     const ctxOf = (step: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming })
     const view = exportViewsOf(board, ctxOf)
     const ics = buildIcs(r.steps, 'Tenant', 'plan-est', view).replace(/\r\n /g, '')
+    assert.doesNotMatch(ics, /Est\. |\(estimated\)/, `${name}: the calendar marks a day as an estimate`)
     for (const step of r.steps) {
       const lane = laneViewFor(step, board)
       const when = boardWhenOf(step, waveStartOf(step), lane)
-      if (!when.startsWith(EST)) continue
-      estimates++
-      const day = when.slice(EST.length)
+      if (!DAY.test(when)) continue
+      dated++
       const where = `${name}/${step.id}`
       const body = stepBodyOf(step, ctxOf(step), { lane, blockers: readinessBlockersOf(board.readings.get(step.id), board.titleOf), prerequisiteLabel: prerequisiteLabelFor(board.readings) })
       const v = view(step)
@@ -389,20 +388,14 @@ test('a day the board reads as an estimate is never printed bare: a sentence say
       const who = ((contentStepFor(step) ?? {}) as { who?: Record<string, unknown> }).who
       const whoLines = who ? whoEvidenceLines(who, ex).map((l): [string, string] => ['who-line', fillText(l, listCountVars(l, ex) as Record<string, unknown>)]) : []
       for (const [what, text] of [['lead', body.contract.milestone.label], ['Next line', body.contract.milestone.line], ['What to do', body.contract.whatToDo.text], ['Dates line', v.dates], ['export Next line', v.next], ...whoLines] as [string, string | null][]) {
-        if (text === null || !text.includes(day)) continue
-        sentences++
-        assert.ok(!text.includes(when), `${where}: the ${what} reads the label "${when}" inside a sentence: "${text}"`)
-        const inSentence = fillText((shared as unknown as { dates: { estimatedInSentence: string } }).dates.estimatedInSentence, { date: day })
-        assert.ok(!text.split(inSentence).join('').includes(day), `${where}: the ${what} reads ${day} bare under a row reading ${when}: "${text}"`)
+        if (text === null) continue
+        assert.doesNotMatch(text, /Est\. |\(estimated\)/, `${where}: the ${what} marks a day as an estimate: "${text}"`)
+        if (text.includes(when)) sentences++
       }
-      const entry = ics.split('BEGIN:VEVENT').find((e) => e.includes(`UID:plan-est-${step.id}@iamai`))
-      if (entry === undefined) continue
-      booked++
-      const summary = entry.split('\r\n').find((l) => l.startsWith('SUMMARY:')) ?? ''
-      assert.ok(summary.includes(fillText(schedulingWords.estimate, { date: absoluteDate(scheduledEventOf(step)!.start) }).replace(/,/g, '\\,')), `${where}: the calendar books an estimated day as a fixed one: ${summary}`)
+      if (ics.includes(`UID:plan-est-${step.id}@iamai`)) booked++
     }
   }
-  assert.ok(estimates > 0 && booked > 0 && sentences > 0, `the premise: rows the board reads as an estimate (${estimates}), booked in the calendar (${booked}), with the day in a sentence (${sentences})`)
+  assert.ok(dated > 0 && booked > 0 && sentences > 0, `the premise: dated rows (${dated}), booked in the calendar (${booked}), with the day in a sentence (${sentences})`)
 })
 
 // The plan-wide MFA day (stepVars.ts mfaEnforce) fell back to the plan's first
@@ -491,8 +484,8 @@ test('an On Hold row, not Observing, carries no day whatever waits the roadmap r
   // The premise: a create with a day, sequenced behind waits the roadmap records on it, and not held on the board.
   assert.ok(step.blockedBy.length > 0, `${where}: the premise, the roadmap records a wait on it`)
   assert.equal(scheduleOf(step).transition, 'createReportOnly', `${where}: the premise, its day is a create, not a turn-on`)
-  const day = fillText(schedulingWords.estimate, { date: absoluteDate(scheduleOf(step).at!) })
-  assert.equal(boardWhenOf(step, waveStartOf(step), read), day, `${where}: the premise, its row reads its day, as an estimate`)
+  const day = absoluteDate(scheduleOf(step).at!)
+  assert.equal(boardWhenOf(step, waveStartOf(step), read), day, `${where}: the premise, its row reads its day`)
   // Forged: the lane engine files it On Hold behind the same step, not Observing.
   const lane = { ...read, lane: 'On Hold' as const, substatus: null }
   assert.notEqual(lane.tail, BOARD.blockers.evidence, `${where}: the premise, not Observing`)

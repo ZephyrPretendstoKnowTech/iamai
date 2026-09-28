@@ -10,7 +10,7 @@
 // Step the engine already computed (population, names, dates, naming); the
 // content variables are a view over that, not a re-derivation.
 import { operationsOf } from '../../roadmap/operations.ts'
-import { estimatedDay, shownDay } from '../../roadmap/stepSchedule.ts'
+import { shownDay } from '../../roadmap/stepSchedule.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
@@ -166,8 +166,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // settled, which leaves every count and name key unset so the lines that name
   // them render nothing rather than the goal's people (Foundation A).
   const view = stepPopulation(step)
-  const estimate = estimatedDay(step)
-  const planned = (iso: string | null | undefined): string | undefined => (iso ? shownDay(iso, estimate, 'sentence') : undefined)
+  const planned = (iso: string | null | undefined): string | undefined => (iso ? shownDay(iso) : undefined)
   const ev = step.events
   const enforce = ev?.enforce
   const announce = ev?.announce
@@ -197,12 +196,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     signature: ctx.signature,
     // Dates: one short format everywhere (absoluteDate), the long form only for
     // emails (longDate), both from the same instant in the display time zone.
-    // A day the plan gives a step that is an estimate says so, as the board's
-    // row does (roadmap/stepSchedule.ts shownDay): the Dates line read
-    // "Report-only from Aug 31, 2026" under a row reading "Est. Aug 31, 2026"
-    // (R4-34). These days sit inside sentences, so they take the sentence form,
-    // "Aug 31, 2026 (estimated)". The long form is an email's, which already qualifies a day the
-    // plan projects (stepExport.ts commsFor), and a day the scan read is no estimate.
+    // A day the plan gives a step reads as the board's row reads it
+    // (roadmap/stepSchedule.ts shownDay): a plain date, never marked as an
+    // estimate (owner, 2026-09-27). The long form is an email's (stepExport.ts commsFor).
     enforce: planned(enforce?.at),
     enforceLong: long(enforce?.at),
     announce: planned(announce?.at),

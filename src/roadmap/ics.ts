@@ -4,7 +4,7 @@
 import { app } from '../content/content.ts'
 import { calendarDay } from '../copy/dates.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
-import { estimatedDay, scheduledEventOf, shownDay } from './stepSchedule.ts'
+import { scheduledEventOf } from './stepSchedule.ts'
 import type { ScheduledTransition } from './stepSchedule.ts'
 import type { CleanupExport, ExportOrder, Step, StepView } from './types.ts'
 
@@ -138,12 +138,9 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // report-only" beside an entry whose What to do said to finish the steps it
     // waits on first (Phase 2 export finding 0).
     const action = v.operation === event.transition ? TRANSITION[event.transition] ?? v.state : v.state
-    // A day that is an estimate is booked as one, in the words the board's row
-    // reads it in (stepSchedule.ts shownDay): the calendar booked Protect Sign-in
-    // Method Registration's report-only create on Aug 31 as a fixed day under a
-    // row reading "Est. Aug 31, 2026" (R4-34).
-    const estimate = estimatedDay(s) ? shownDay(event.start, true, 'label') : null
-    lines.push(fold(`SUMMARY:${escape(numbered(s.id, [v.title, action, estimate].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' · ')))}`))
+    // The event carries its own day, so the summary names the step and what it does (the plan marks no
+    // day as an estimate: owner, 2026-09-27).
+    lines.push(fold(`SUMMARY:${escape(numbered(s.id, [v.title, action].filter((x): x is string => typeof x === 'string' && x.length > 0).join(' · ')))}`))
     // The calendar entry is the runbook: what the step says on screen, in the
     // order the screen states it (roadmap/artifactLines.ts). Where it is, what
     // comes next, who it reaches, its portal path, what is holding it, its

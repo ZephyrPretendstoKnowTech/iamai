@@ -109,8 +109,6 @@ export type PolicyProcedureInput = {
   contract: Pick<StepContract, 'state' | 'milestone'>
   /** What the turn-on still waits on, by title (the board's enforce waits and the next action's prerequisites). */
   outstanding: readonly string[]
-  /** Whether the milestone's day is an estimate. */
-  estimate: boolean
   /** The names the plan proposes for the objects a policy may name before they exist. */
   proposed: ProposedObjectNames
   mapping?: Pick<MappingState, 'questionAnswers'>
@@ -551,8 +549,8 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   else if (next?.id === 'create' && createdOnStep && !turnOnHeld && input.contract.milestone.at) {
     // Announce it only where the step hands over the announcement (its Email tab): an instruction with nothing to send is homework.
     const announce = input.announces === true ? step.events?.announce?.at ?? null : null
-    const date = shownDay(input.contract.milestone.at, input.estimate, 'sentence')
-    next.readinessTitle = announce ? fillText(PW.card.createOnAnnounced, { announce: shownDay(announce, input.estimate, 'sentence'), date }) : fillText(PW.card.createOnDay, { date })
+    const date = shownDay(input.contract.milestone.at)
+    next.readinessTitle = announce ? fillText(PW.card.createOnAnnounced, { announce: shownDay(announce), date }) : fillText(PW.card.createOnDay, { date })
   }
   if (next?.id === 'turn-on') {
     const { state, milestone } = input.contract
@@ -560,7 +558,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
     // Report-only ran and blocked no one: its week is over with no failure.
     const clean = stepEvidenceStrategy(step) !== 'configuration' && (state.lifecycle === 'ready-to-enforce' || (state.lifecycle === 'report-only' && ready?.kind === 'now' && (ready.failures ?? 0) === 0))
     const after = turnOnHeld && waits.length > 0 ? fillText(PW.card.after, { items: list(waits.map((w) => w.after)) }) : null
-    if (milestone.kind === 'observe' && milestone.at) next.readinessTitle = fillText(PW.card.reportOnlyUntil, { date: shownDay(milestone.at, input.estimate, 'sentence') })
+    if (milestone.kind === 'observe' && milestone.at) next.readinessTitle = fillText(PW.card.reportOnlyUntil, { date: shownDay(milestone.at) })
     else if (clean || after !== null) next.readinessDirection = [clean ? blockedNoOneLine(ready) : null, after].filter((x): x is string => x !== null).join(' ')
   }
   // Every task of its own done while the step still waits (a policy already On

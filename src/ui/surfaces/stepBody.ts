@@ -7,7 +7,6 @@ import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { BLOCKED_MILESTONES } from '../../roadmap/lifecycle.ts'
 import { drawsTaskAnatomy, heldCreateMilestoneOf, ownCardWordsOf, policyProcedureOf, policyTasksOf } from './policyTasks.ts'
 import { emergencyAccountTasksText } from './emergencyAccountTasks.ts'
-import { estimatedDay } from '../../roadmap/stepSchedule.ts'
 import { proposedNamesFor } from './proposedNames.ts'
 import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
 import { reportOnlyMilestoneOf, reportOnlyTasksOf } from './reportOnlyStep.ts'
@@ -723,7 +722,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const ownWaits = step.blockers.flatMap((b) => (b.kind === 'step' ? [contentTitleOfId(b.stepId)] : [])).filter((x): x is string => x !== null)
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...ownWaits, ...(o.enforceWaits ?? [])])]
   const procedure = machine && drawsTaskAnatomy(step.id)
-    ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)), announces: supported.has('email') })
+    ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)), announces: supported.has('email') })
     : null
   if (procedure !== null) {
     const text = emergencyAccountTasksText(procedure)

@@ -36,8 +36,6 @@ import { holdOf } from './holds.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
 import type { HoldKind } from './holds.ts'
 import { awaitsOwnObject, awaitsWorkflowRecord, implementationOffered } from './operations.ts'
-import { schedulingWords, shared } from '../content/content.ts'
-import { fillText } from '../content/render.ts'
 import { absoluteDate } from '../copy/dates.ts'
 
 /**
@@ -241,42 +239,17 @@ export function scheduleOf(step: Step): StepSchedule {
 }
 
 /**
- * The day the plan gives a step is an estimate: every day it proposes for work
- * still open (owner, 2026-09-23) — a creation, a preparation, a turn-on, a
- * person's review, a Direction step's questions. Nothing in the tenant settles
- * when any of them is done, and the old rule, which marked only a person's
- * review and a Direction step's questions, read "Up Next · Est. Aug 31, 2026"
- * beside "Up Next · Aug 31, 2026" for the same kind of work. Two days are fixed
- * and read bare: the day a step was completed, and a report-only policy's
- * review day, on which the window it was created with closes. The board's When
- * column says so ("Est. {date}", pages.plan.when.estimate; ui/surfaces/planBoard.ts
- * boardWhenOf), and every other place that prints the day says it in the same
- * words (`shownDay`).
+ * A day the plan gives a step, as every surface prints it: the board's When
+ * column, the rail, the milestone and its Next line, the Dates line, the
+ * who-lines, the calendar and the exports read this, so every one says a day
+ * the same way. No day is marked as an estimate (owner, 2026-09-27): the Plan's
+ * finish tile is labelled Estimated finish, and "Est. Oct 29" beside that label,
+ * or "(estimated)" in a sentence, said it twice. This reverses the 2026-09-23
+ * rule that marked every open step's day "Est.".
  */
-export function estimatedDay(step: Pick<Step, 'status' | 'state'>): boolean {
-  return step.status !== 'done' && step.status !== 'skipped' && step.state.lifecycle !== 'report-only'
+export function shownDay(at: string): string {
+  return absoluteDate(at)
 }
-
-/**
- * A day the plan gives a step, as every surface prints it: marked as an
- * estimate where it is one (`estimatedDay`), else the day. The rail, the
- * milestone and its Next line, the Dates line, the who-lines and the calendar
- * read this, so none of them states as a deadline a day the board's row reads
- * as an estimate (R4-34: the rail, then the lead, the export and the calendar,
- * read "Aug 31, 2026" bare under a row reading "Est. Aug 31, 2026").
- *
- * `form` is where the day sits. A label - the When cell, the rail, the
- * observation tile, the calendar's summary - reads the board's "Est. Aug 31,
- * 2026" (pages.plan.when.estimate). Inside a sentence that label read "Create
- * the policy in report-only on Est. Aug 31, 2026", so a sentence reads
- * "Aug 31, 2026 (estimated)" (shared.dates.estimatedInSentence).
- */
-export function shownDay(at: string, estimate: boolean, form: 'label' | 'sentence'): string {
-  if (!estimate) return absoluteDate(at)
-  return fillText(form === 'label' ? schedulingWords.estimate : ESTIMATED_IN_SENTENCE, { date: absoluteDate(at) })
-}
-
-const ESTIMATED_IN_SENTENCE = (shared as unknown as { dates: { estimatedInSentence: string } }).dates.estimatedInSentence
 
 /** A step's one dated event, as an export books it: what the day is for, and the days it spans. */
 export type ScheduledEvent = { transition: ScheduledTransition; start: string; end: string }

@@ -59,7 +59,7 @@ import type { PlanStateKind } from './planState.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { doneWhenTemplates, enforcedUnwatched } from './doneWhen.ts'
 import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
-import { estimatedDay, scheduleOf, shownDay } from '../../roadmap/stepSchedule.ts'
+import { scheduleOf, shownDay } from '../../roadmap/stepSchedule.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
@@ -566,11 +566,6 @@ export type StepContract = {
    * decision 2, 2026-09-22).
    */
   undated: boolean
-  /**
-   * The day the plan gives the step is an estimate (roadmap/stepSchedule.ts
-   * estimatedDay): the rail says "Est." before it, as the board's When does.
-   */
-  estimate: boolean
   /** True for a step that delivers a policy: it keeps its Implementation region even with nothing to offer, where a decision or a check draws none. */
   policy: boolean
   /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
@@ -1296,7 +1291,7 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   // The lead for the state the scan read (content/render.ts whatToDoFor).
   const lead = whatToDoFor(cs, ex)?.lead
   if (typeof lead === 'string' && whole(lead, ex)) return { kind: milestone.kind, text: fillText(lead, ex) }
-  return { kind: milestone.kind, text: milestoneSentence(milestone, estimatedDay(step)) }
+  return { kind: milestone.kind, text: milestoneSentence(milestone) }
 }
 
 /**
@@ -1309,9 +1304,9 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
  * observations go — What IAMAI found — and the milestone says what the stage
  * asks for, which is the same either way: watch it.
  */
-function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>, estimate: boolean): string {
+function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>): string {
   if (m.kind !== 'observe' || BLOCKED_MILESTONES.has(m.label)) return m.label
-  return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at, estimate, 'sentence') }) : MILESTONE.observe
+  return m.at ? fillText(MILESTONE.observeUntil, { date: shownDay(m.at) }) : MILESTONE.observe
 }
 
 /** The task a step does first because its policy names an object the step makes itself (ownObjectTaskOf). */
@@ -1627,11 +1622,11 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // action are the same thing said twice, and the action is the better of the
   // two: it is either the step's own words for the work or the authority's
   // reason the work is held.
-  const sentence = milestoneSentence(m, estimatedDay(step))
+  const sentence = milestoneSentence(m)
   const carriesDate = m.at !== null && sentence.includes(absoluteDate(m.at))
   const milestone: ContractMilestone = {
     ...bare,
-    line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: shownDay(m.at, estimatedDay(step), 'sentence') }),
+    line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: shownDay(m.at) }),
   }
   // The signed-in account's blocker says whose account and what fixes it
   // wherever it is handed over: the card, and the AI Info briefing's blockers
@@ -1703,7 +1698,6 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     scheduledOn: undated ? null : (ctx.scheduledOn ?? null),
     schedule: step.scheduled ? scheduleOf(step) : null,
     undated,
-    estimate: estimatedDay(step),
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
     emergencySlots: emergencySlotsOf(step, cs, ex, ctx.nameOf),

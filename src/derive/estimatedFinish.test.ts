@@ -17,6 +17,7 @@ import { boardOf, boardHolds } from '../ui/surfaces/planBoard.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { planFinish, planLengthSentence, planWeeks, statedEstimate } from './finish.ts'
 import { fillText } from '../content/render.ts'
+import { app } from '../content/content.ts'
 import { demoTenant } from '../ui/demo.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
 import { lockedStart } from './planStart.ts'
@@ -68,9 +69,11 @@ test('the Estimated finish is a date on every plan, from the first scan on, and 
     const tip = planLengthSentence(finish, r.schedule, { steps: r.steps, forecast: board.forecast, titleOf: board.titleOf })
     if (r.steps.some((s) => isPolicy(s.kind) && s.status !== 'done' && s.status !== 'skipped')) assert.doesNotMatch(tip ?? '', /no enforcement is left/, `${f.name}: the ⓘ says no enforcement is left over open policies`)
   }
-  // The tile: always the estimate, prefixed as one; never the old placeholder.
+  // The tile: always the estimate, a plain date under its Estimated finish label (no "Est." beside it,
+  // owner 2026-09-27); never the old placeholder.
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.match(plan, /key: 'projectedFinish', label: summary\.finish, value: fillText\(schedulingWords\.estimate, \{ date: absoluteDate\(/, 'the tile does not say its date is an estimate')
+  assert.match(plan, /key: 'projectedFinish', label: summary\.finish, value: absoluteDate\(/, 'the tile does not state its date plainly')
+  assert.match(String((app.plan as unknown as { summary: { finish: string } }).summary.finish), /^Estimated finish$/, 'the tile\'s label no longer says it is an estimate')
   assert.equal(plan.includes('finishUnknown'), false, 'the tile can still read "Depends on open work"')
   assert.match(plan, /statedEstimate\(c\.steps, finish, c\.schedule, board\.forecast\)/, 'the tile does not read the board\'s forecast')
   assert.match(plan, /planLengthSentence\(finish, c\.schedule, \{ steps: c\.steps, forecast: board\.forecast, titleOf \}\)/, 'the ⓘ does not read the board\'s forecast')

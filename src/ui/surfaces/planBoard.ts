@@ -43,7 +43,7 @@ import type { PlanStateFacts } from './planState.ts'
 import { laneReadings } from './planLanes.ts'
 import type { LaneReading, LaneRowInput } from './planLanes.ts'
 import type { LaneView, PrerequisiteBlocker, PrerequisiteLabel } from './stepContract.ts'
-import { estimatedDay, scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { toWeekday } from '../../roadmap/schedule.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
@@ -796,7 +796,7 @@ function boardTimingOf(step: Step, waveStart: string | null, read: LaneView | nu
   if (read !== null && read.lane === 'On Hold' && read.substatus === null && read.tail !== BOARD.blockers.evidence) return { kind: 'held' }
   // Its own report-only week is not such a wait: the week's last day is the row's own (walk list 4.x item 11).
   if (read !== null && (read.lane === 'Up Next' || read.lane === 'On Hold') && read.reportOnlyUntil === undefined && turnsOn(step, scheduled)) return { kind: 'held' }
-  return { kind: 'day', text: estimatedDay(step) ? fillText(schedulingWords.estimate, { date: result }) : result }
+  return { kind: 'day', text: result }
 }
 
 /**
@@ -812,7 +812,7 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, read: L
   const t = boardTimingOf(step, waveStart, read)
   if (t.kind === 'day' || t.kind === 'word') return t.text
   const estimate = read && !read.alone ? (read.estimate ?? null) : null
-  if (estimate !== null) return fillText(schedulingWords.estimate, { date: dayLabel(estimate) })
+  if (estimate !== null) return dayLabel(estimate)
   return t.kind === 'held' ? schedulingWords.waiting : t.word
 }
 

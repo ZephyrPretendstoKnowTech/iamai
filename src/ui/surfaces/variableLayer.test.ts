@@ -13,7 +13,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { setDisplayTimeZone, absoluteDate, longDate } from '../../copy/dates.ts'
-import { estimatedDay, shownDay } from '../../roadmap/stepSchedule.ts'
+import { shownDay } from '../../roadmap/stepSchedule.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { strengthForGoal, strengthNameOf } from './stepPortal.ts'
 import { analysisUnknown, effectsOf } from '../../roadmap/strand.ts'
@@ -97,7 +97,7 @@ test('the short and long date forms name the same day, one short format everywhe
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[policy.id] }
   const ex = stepVars(policy, ctx) as Record<string, string>
   // A day the plan proposes for open work reads as an estimate, in a sentence's words (stepSchedule.ts shownDay).
-  const planned = (iso: string): string => shownDay(iso, estimatedDay(policy), 'sentence')
+  const planned = (iso: string): string => shownDay(iso)
   assert.equal(ex.enforce, planned(policy.events!.enforce.at), 'the enforce date is the one short format')
   // A policy the scan already found in report-only takes its date from the
   // tracking, and only a policy the plan has yet to deploy takes the schedule's

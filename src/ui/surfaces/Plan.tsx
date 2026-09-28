@@ -19,7 +19,7 @@ import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../r
 import { DEVIATION_KEY, decisionKeyOf } from '../../roadmap/decisions.ts'
 import { MFA_FOLLOW_UP_KEY } from '../../roadmap/answers.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/stepIds.ts'
-import { app, pages, schedulingWords } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import { cleanupWhenOf } from './cleanupExport.ts'
@@ -426,8 +426,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
     { key: 'observing', label: summary.observing, value: observingIds.size, select: () => selectSummary('observing') },
     // Deferred steps leave the total; the line under it says how many, so the total dropping is explained (F-013).
     { key: 'completed', label: summary.completed, value: `${counts.complete} / ${items.filter((i) => i.lane !== 'Deferred').length}`, ...(deferredCount > 0 ? { sub: [fillText(summary.deferred, { n: deferredCount })] } : {}), select: () => selectSummary('completed') },
-    // An estimate, and it says so (pages.plan.when.estimate): "Est. Oct 5, 2026".
-    { key: 'projectedFinish', label: summary.finish, value: fillText(schedulingWords.estimate, { date: absoluteDate(projected.estimate ?? finish.finish ?? c.schedule.start) }), tip: lengthTip },
+    // The tile's label says it is estimated; the date reads plain (owner, 2026-09-27).
+    { key: 'projectedFinish', label: summary.finish, value: absoluteDate(projected.estimate ?? finish.finish ?? c.schedule.start), tip: lengthTip },
   ]
 
   // Without Entra ID P1 no Conditional Access policy can exist (owner,

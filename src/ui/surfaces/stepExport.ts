@@ -42,7 +42,7 @@ import { isHeld } from '../../roadmap/holds.ts'
 import { mfaPreparationStaffMessage, namedPortalResource, policyInspectionLines, lifecycleResources, verificationResourceLines } from './stepResources.ts'
 import { drawsTaskAnatomy, policyProcedureOf } from './policyTasks.ts'
 import { proposedNamesFor } from './proposedNames.ts'
-import { estimatedDay, scheduledEventOf } from '../../roadmap/stepSchedule.ts'
+import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
 import { emergencyGroupTasksOf } from './emergencyGroupTasks.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
@@ -490,7 +490,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   const pkg = implementationPackageFor(step)
   const state = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
   const procedure = cs.kind === 'policy' && drawsTaskAnatomy(step.id)
-    ? policyProcedureOf(step, { nameOf: names.nameOf, strengthNameOf: (id) => names.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: [], estimate: estimatedDay(step), proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkg ? packageBindings(step, ctx, contract) : null) })
+    ? policyProcedureOf(step, { nameOf: names.nameOf, strengthNameOf: (id) => names.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: [], proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkg ? packageBindings(step, ctx, contract) : null) })
     : null
   let hasPackagePortal = false
   if (pkg && state && cs.kind === 'policy' && procedure === null) {

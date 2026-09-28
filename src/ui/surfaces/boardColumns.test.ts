@@ -105,10 +105,9 @@ const WHEN_CASES: [string, () => Fixture][] = [
   ['demo-week2', () => fixture('demo-week2')],
 ]
 const DAY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
-const EST = schedulingWords.estimate.split('{')[0]
 const PLACEHOLDERS = [schedulingWords.none, schedulingWords.waiting, schedulingWords.review, WHEN.none, WHEN.afterPrerequisites]
 
-test('every open row on the board reads a date: never Not scheduled or After prerequisites, and a held row reads an Est. date', () => {
+test('every open row on the board reads a date: never Not scheduled or After prerequisites, and a held row reads a plain date (no Est., owner 2026-09-27)', () => {
   let held = 0
   let cleanup = 0
   for (const [name, make] of WHEN_CASES) {
@@ -127,7 +126,7 @@ test('every open row on the board reads a date: never Not scheduled or After pre
       }
       if (!boardHolds(row.step, row.lane)) continue
       held++
-      assert.ok(when.startsWith(EST) && DAY.test(when.slice(EST.length)), `${where}: a held row reads "${when}", not an estimated date`)
+      assert.ok(DAY.test(when), `${where}: a held row reads "${when}", not a plain date`)
     }
   }
   assert.ok(held > 10 && cleanup > 0, `the premise: held rows (${held}) and open Cleanup rows (${cleanup}) checked`)
@@ -143,7 +142,7 @@ test('a held row is dated where its wait is expected to clear: behind 1.1, the d
   const row = board.rows.find((x) => x.item.id === 's-goal-block-auth-transfer')!
   assert.deepEqual(row.reading.blockers.map((b) => b.id), [BREAK_GLASS_STEP_ID], 'the premise: it waits on 1.1 alone')
   assert.equal(boardHolds(row.step!, row.lane), true, 'the premise: the board holds it')
-  assert.equal(boardWhenOf(row.step!, waveStartOf(row.step!), row.lane), fillText(schedulingWords.estimate, { date: absoluteDate(done.slice(0, 10)) }))
+  assert.equal(boardWhenOf(row.step!, waveStartOf(row.step!), row.lane), absoluteDate(done.slice(0, 10)))
   // The day is one the board carries on the row's own reading, never a second answer.
   assert.equal(row.lane.estimate, board.forecast.spans.get(row.item.id)!.at)
 })
@@ -159,21 +158,19 @@ test('a date that is an estimate says Est., and a fixed one does not: a complete
       const when = boardWhenOf(row.step, waveStartOf(row.step), row.lane)
       const review = row.step.scheduled && scheduleOf(row.step).transition === 'review'
       if (row.lane.lane !== 'Completed' && !review) continue
-      if (!DAY.test(when.replace(EST, ''))) continue
+      if (!DAY.test(when)) continue
       fixed++
-      assert.ok(!when.startsWith(EST), `${name}/${row.item.id}: a fixed day reads "${when}"`)
+      assert.doesNotMatch(when, /Est\./, `${name}/${row.item.id}: a fixed day reads "${when}"`)
     }
   }
   assert.ok(fixed > 0, 'the premise: completed and review days checked')
 })
 
-// A day the plan proposes for open work is an estimate, whoever the work is
-// for: Protect Sign-in Method Registration read "Up Next · Est. Aug 31, 2026"
-// beside Require MFA for Everyone's "Up Next · Aug 31, 2026", and Separate Admin
-// Accounts "Ready · Review · Est. Aug 31" beside Review Dormant Accounts' "Ready ·
-// Review · Aug 31" — the old rule marked only a person's review and a Direction
-// step's questions.
-test('two open rows of the same kind never differ only by Est.: every day proposed for open work reads as an estimate', () => {
+// Every day reads the same way, whoever the work is for: Protect Sign-in Method
+// Registration once read "Up Next · Est. Aug 31, 2026" beside Require MFA for
+// Everyone's "Up Next · Aug 31, 2026". No day is marked as an estimate (owner,
+// 2026-09-27): two rows of the same kind and day read the same plain date.
+test('two open rows of the same kind and day read the same plain date, and none reads Est.', () => {
   let rows = 0
   for (const [name, make] of WHEN_CASES) {
     const f = make()
@@ -184,7 +181,7 @@ test('two open rows of the same kind never differ only by Est.: every day propos
     for (const row of board.rows) {
       if (row.lane.lane === 'Completed' || row.lane.lane === 'Deferred') continue
       const when = row.step ? boardWhenOf(row.step, waveStartOf(row.step), row.lane) : cleanupWhenOf(row.cleanup!.row, undated, row.lane)
-      const day = when.startsWith(EST) ? when.slice(EST.length) : when
+      const day = when
       if (!DAY.test(day)) continue
       // A report-only policy's review day is fixed: the window it was created with closes on it.
       const review = row.step !== null && row.step.scheduled != null && scheduleOf(row.step).transition === 'review'
@@ -193,7 +190,7 @@ test('two open rows of the same kind never differ only by Est.: every day propos
       const other = seen.get(kind)
       if (other !== undefined) assert.equal(when, other, `${name}/${row.item.id}: "${row.lane.label} · ${when}" beside "${row.lane.label} · ${other}"`)
       else seen.set(kind, when)
-      if (!review) assert.ok(when.startsWith(EST), `${name}/${row.item.id}: a day proposed for open work reads "${when}"`)
+      assert.doesNotMatch(when, /Est\./, `${name}/${row.item.id}: a day proposed for open work reads "${when}"`)
     }
   }
   assert.ok(rows > 20, `the premise: dated open rows checked (${rows})`)
