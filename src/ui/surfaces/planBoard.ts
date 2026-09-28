@@ -6,7 +6,7 @@ import { schedulingWords } from '../../content/content.ts'
 // healthy prerequisite, On Hold is the work an abnormal blocker stops. The lane
 // is the engine's reading (src/actionability, through planLanes.ts) and this
 // file decides nothing about it: it holds the words, the grouping inside each
-// lane and the two visibility toggles (`Show completed`, `Show deferred`).
+// lane, and where Completed and Deferred work is drawn (All work, in place).
 //
 // Work type is a row attribute and a filter, never a lane.
 //

@@ -1025,7 +1025,7 @@
         "deferred": "Not scheduled"
       },
       "lanes": {
-        "$comment": "The lane engine's five lanes as the Plan says them (A1b, decision 11): the tabs, the toggles, the row label, the badge, the bar and the rail all read these (planBoard.ts BOARD.lanes). A step the person said does not apply here reads doesntApply.",
+        "$comment": "The lane engine's five lanes as the Plan says them (A1b, decision 11): the tabs, the row label, the badge, the bar and the rail all read these (planBoard.ts BOARD.lanes). A step the person said does not apply here reads doesntApply.",
         "ready": "Ready",
         "upNext": "Up Next",
         "onHold": "On Hold",
@@ -3272,7 +3272,7 @@
           "notAssessed": "Baseline policies"
         },
         "board": {
-          "$comment": "The Plan board's All work tab and the heading line a section draws there (src/ui/surfaces/planBoard.ts groupSummary). The three lane tabs and the two toggles say their words in pages.plan.lanes; these belong to the tab that shows whole sections instead of one lane.",
+          "$comment": "The Plan board's All work tab and the heading line a section draws there (src/ui/surfaces/planBoard.ts groupSummary). The three lane tabs say their words in pages.plan.lanes; these belong to the tab that shows whole sections instead of one lane.",
           "allWork": "All work",
           "$commentGroupCompleted": "A finished section of one row, collapsed in place: \"1 of 1 completed\" rather than \"All 1 completed\".",
           "groupCompleted": "{done} of {total} completed",
