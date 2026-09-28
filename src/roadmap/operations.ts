@@ -828,7 +828,7 @@ export function tenantStrengthsOf(snapshot: { config?: Record<string, { rows?: u
  * whole directory per call is a scan per person per policy.
  */
 const identityIndex = new WeakMap<object, Map<string, ExternalIdentity>>()
-function externalIdentityOf(snapshot: { users?: DirectoryRow[] }, accountId: string): ExternalIdentity | null {
+export function externalIdentityOf(snapshot: { users?: DirectoryRow[] }, accountId: string): ExternalIdentity | null {
   const users = snapshot.users ?? []
   let index = identityIndex.get(users)
   if (index === undefined) {

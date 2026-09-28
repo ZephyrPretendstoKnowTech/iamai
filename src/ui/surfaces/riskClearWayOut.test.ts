@@ -13,13 +13,12 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { shared } from '../../content/content.ts'
-
 import { fillText } from '../../content/render.ts'
 import { EVIDENCE_WINDOW_DAYS } from '../../graph/collect/constants.ts'
 
-const WORDS = (shared as unknown as { procedure: { riskClear: string; riskClearGuest: string } }).procedure
-const CLEAR = fillText(WORDS.riskClear, { days: String(EVIDENCE_WINDOW_DAYS) })
-const GUEST = fillText(WORDS.riskClearGuest, { days: String(EVIDENCE_WINDOW_DAYS) })
+const WORDS = (shared as unknown as { procedure: { riskClear: string; riskClearGuest: string; riskClearWait: string } }).procedure
+const CLEAR = WORDS.riskClear
+const WAIT = fillText(WORDS.riskClearWait, { days: String(EVIDENCE_WINDOW_DAYS) })
 
 // No fixture holds a user-risk policy in report-only, so the Follow-up sample's
 // report-only authentication-transfer block stands in: its turn-on waits on its
@@ -29,16 +28,24 @@ const f = fixture('demo-week2')
 const r = runFixture(f)
 const base = r.steps.find((s) => s.id === 's-goal-block-auth-transfer')!
 const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
-const person = (f.snapshot.users ?? []).find((u) => u.accountEnabled !== false)!
+const [person, other] = (f.snapshot.users ?? []).filter((u) => u.accountEnabled !== false && u.userType === 'member' && !u.externalUserState && !/#EXT#/i.test(u.userPrincipalName ?? ''))
+const count = (text: string, part: string): number => text.split(part).length - 1
 
-function turnOnText(id: string, named: boolean, on: StepVarContext = ctx): string {
-  const step = { ...base, id, state: { ...base.state, lifecycle: 'report-only' }, tracking: { ...base.tracking!, failures: named ? 1 : 0, failuresByUser: named ? [{ userId: person.id, count: 1 }] : [] } } as Step
+/** The turn-on task and its card, where report-only named `ids`, read with `on`. */
+function turnOnText(id: string, ids: readonly string[], on: StepVarContext = ctx): string {
+  const step = { ...base, id, state: { ...base.state, lifecycle: 'report-only' }, tracking: { ...base.tracking!, failures: ids.length, failuresByUser: ids.map((userId) => ({ userId, count: 1 })) } } as Step
   const turnOn = (stepBodyOf(step, on).emergencyAccountTasks?.tasks ?? []).find((t) => t.id === 'turn-on')
   assert.ok(turnOn, `the premise: ${id} has a turn-on task`)
   return [turnOn.readinessDirection ?? '', ...turnOn.steps].join(' | ')
 }
 
-test('the way out is Microsoft Learn\'s: Risky users, Reset password or Confirm user safe', () => {
+/** The same tenant with `ids` made B2B guests from another organization. */
+function withGuests(...ids: string[]): StepVarContext {
+  const users = f.snapshot.users.map((u) => (ids.includes(u.id) ? { ...u, userType: 'guest' as const, externalUserState: 'Accepted' } : u))
+  return { ...ctx, snapshot: { ...f.snapshot, users } } as unknown as StepVarContext
+}
+
+test('the way out is Microsoft Learn\'s: ID Protection, Risky users, Reset password or Confirm user safe', () => {
   assert.match(CLEAR, /open ID Protection → Risky users in the Microsoft Entra admin center/)
   assert.match(CLEAR, /Reset password/)
   assert.match(CLEAR, /Confirm user safe/)
@@ -47,9 +54,9 @@ test('the way out is Microsoft Learn\'s: Risky users, Reset password or Confirm 
 // Review, 2026-09-28: IAMAI reads no one's risk, only the sign-ins report-only would have
 // stopped, and counts those while the sign-in collection holds them. A scan right after
 // clearing the risk still names the person, so the line says how long the wait lasts.
-test('the way out says the stopped sign-ins count until they leave the collection, not that a scan clears them', () => {
-  assert.ok(CLEAR.includes(`still count until they are ${EVIDENCE_WINDOW_DAYS} days old`), CLEAR)
-  assert.doesNotMatch(CLEAR, /Then scan again/)
+test('the wait says the stopped sign-ins count until they leave the collection, not that a scan clears them', () => {
+  assert.ok(WAIT.includes(`still count until they are ${EVIDENCE_WINDOW_DAYS} days old`), WAIT)
+  assert.doesNotMatch([CLEAR, WAIT].join(' '), /Then scan again/)
 })
 
 // Review, 2026-09-28: a user-risk policy applies to every sign-in while the account is at
@@ -62,28 +69,40 @@ test('Confirm user safe is offered only for detections that are false positives,
 })
 
 test('a user-risk step held by someone report-only would have stopped says how to clear their risk, on the task and its card', () => {
+  assert.ok(person && other, 'the premise: two members of this tenant')
   for (const goal of ['user-risk', 'user-risk-medium']) {
-    const text = turnOnText(stepIdForGoal(goal), true)
+    const text = turnOnText(stepIdForGoal(goal), [person.id])
     assert.ok(text.includes(`(it would have blocked ${ctx.nameOf(person.id)})`), `${goal}: the premise, the wait names the person: ${text}`)
-    assert.equal(text.split(CLEAR).length - 1, 2, `${goal}: the way out is not on both the task and its card: ${text}`)
+    assert.equal(count(text, CLEAR), 2, `${goal}: the way out is not on both the task and its card: ${text}`)
+    assert.equal(count(text, WAIT), 2, `${goal}: how long the wait lasts is not said once on each: ${text}`)
   }
 })
 
 test('no way out where the wait names no one, or where the step is not a user-risk step', () => {
-  const plain = turnOnText(base.id, true)
+  const plain = turnOnText(base.id, [person.id])
   assert.ok(plain.includes('(it would have blocked'), `the premise: ${plain}`)
-  assert.equal(plain.includes(CLEAR), false, plain)
-  assert.equal(turnOnText(stepIdForGoal('user-risk-medium'), false).includes(CLEAR), false)
+  assert.equal(plain.includes(CLEAR) || plain.includes(WAIT), false, plain)
+  const none = turnOnText(stepIdForGoal('user-risk-medium'), [])
+  assert.equal(none.includes(CLEAR) || none.includes(WAIT), false, none)
 })
 
-// Review, 2026-09-28: a guest invited from another organization is not in this tenant's
-// Risky users, and no one here can clear their risk (Learn, concept-identity-protection-b2b).
-test('a named guest from another organization is sent to their own organization, not to Risky users', () => {
-  assert.ok(!person.externalUserState, 'the premise: the person is a member of this tenant')
-  const asGuest = { ...ctx, snapshot: { ...f.snapshot, users: f.snapshot.users.map((u) => (u.id === person.id ? { ...u, userType: 'guest' as const, externalUserState: 'Accepted' } : u)) } } as unknown as StepVarContext
-  for (const goal of ['user-risk', 'user-risk-medium']) {
-    const text = turnOnText(stepIdForGoal(goal), true, asGuest)
-    assert.equal(text.split(GUEST).length - 1, 2, `${goal}: the guest's way out is not on both the task and its card: ${text}`)
-    assert.ok(!text.includes(CLEAR), `${goal}: a guest was sent to this tenant's Risky users: ${text}`)
+// Review, 2026-09-28: someone from another organization is not in this tenant's Risky
+// users, and no one here can clear their risk (Learn, concept-identity-protection-b2b).
+// They are named, so the reader knows whom to ask; the plan's own reading of an external
+// identity decides it, an #EXT# sign-in name as much as an invitation state.
+test('someone from another organization is named and sent to their own organization, not to Risky users', () => {
+  const guestLine = (names: string): string => fillText(WORDS.riskClearGuest, { names })
+  for (const on of [withGuests(person.id), { ...ctx, snapshot: { ...f.snapshot, users: f.snapshot.users.map((u) => (u.id === person.id ? { ...u, userPrincipalName: `someone_contoso.com#EXT#@${u.userPrincipalName?.split('@')[1] ?? 'contoso.onmicrosoft.com'}` } : u)) } } as unknown as StepVarContext]) {
+    const text = turnOnText(stepIdForGoal('user-risk'), [person.id], on)
+    assert.equal(count(text, guestLine(on.nameOf(person.id))), 2, `the guest is not named and sent home on both the task and its card: ${text}`)
+    assert.ok(!text.includes(CLEAR), `a guest was sent to this tenant's Risky users: ${text}`)
+    assert.equal(count(text, WAIT), 2, text)
   }
+})
+
+test('with a member and a guest named, each gets their own way out and the wait is said once', () => {
+  const text = turnOnText(stepIdForGoal('user-risk'), [person.id, other.id], withGuests(other.id))
+  assert.equal(count(text, CLEAR), 2, text)
+  assert.equal(count(text, fillText(WORDS.riskClearGuest, { names: ctx.nameOf(other.id) })), 2, text)
+  assert.equal(count(text, WAIT), 2, `the wait is repeated: ${text}`)
 })

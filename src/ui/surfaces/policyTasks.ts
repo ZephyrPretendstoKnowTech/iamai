@@ -33,8 +33,8 @@ import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.t
 import { EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnatomy } from '../../roadmap/stepGroups.ts'
 import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import { CONTRACT, FINISHED_FINDINGS, isAllClear } from './stepContract.ts'
-import { createWaitsOnReadiness, enforcementHeld, implementationOffered, operationsOf, policyHold, switchedOffPolicies, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
-import type { UnavailableReason } from '../../roadmap/operations.ts'
+import { createWaitsOnReadiness, enforcementHeld, externalIdentityOf, implementationOffered, operationsOf, policyHold, switchedOffPolicies, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
+import type { DirectoryRow, UnavailableReason } from '../../roadmap/operations.ts'
 import { PROCEDURE, besideBaseline, correctionLines, correctionSectionOf, correctionSettings, createLines, reportOnlyLines, turnOnLines } from '../../roadmap/policyProcedure.ts'
 import type { CorrectionSection, ProcedureContext } from '../../roadmap/policyProcedure.ts'
 import { shownDay } from '../../roadmap/stepSchedule.ts'
@@ -164,16 +164,15 @@ type ProcedureMember = {
 }
 
 /**
- * Whether an account was invited from another organization: Graph sets
- * externalUserState on a B2B account (derive/smsRetirement.ts reads it the same way).
- * Microsoft evaluates such an account's user risk in its home tenant.
+ * Whether an account is from another organization, by the plan's own reading of an
+ * external identity (roadmap/operations.ts externalIdentityOf: an #EXT# sign-in name or
+ * an invitation state). Microsoft evaluates such an account's user risk in its home tenant.
  */
-export function externalOf(ctx: { snapshot: { users?: readonly { id: string; externalUserState?: string | null }[] } }): (id: string) => boolean {
-  const external = new Set((ctx.snapshot.users ?? []).filter((u) => !!u.externalUserState).map((u) => u.id.toLowerCase()))
-  return (id) => external.has(id.toLowerCase())
+export function externalOf(ctx: { snapshot: { users?: DirectoryRow[] } }): (id: string) => boolean {
+  return (id) => externalIdentityOf(ctx.snapshot, id)?.external === true
 }
 
-const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string>; policyOn: string; riskClear: string; riskClearGuest: string }
+const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string>; policyOn: string; riskClear: string; riskClearGuest: string; riskClearWait: string }
 /** The user-risk steps: a person report-only would have stopped stays risky until their risk is cleared (owner, 2026-09-28). */
 const USER_RISK = new Set([stepIdForGoal('user-risk'), stepIdForGoal('user-risk-medium')])
 
@@ -574,12 +573,18 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const heldLine = waits.length > 0 ? fillText(app.plan.enforceOutstanding, { items: list(waits.map((w) => w.wait)) }) : input.contract.milestone.label
   // A user-risk step whose report-only week named someone waits on that person's
   // risk, which nothing clears on its own: say how (owner, 2026-09-28; 5.9 could
-  // never finish on the owner's tenant). A guest invited from another organization
-  // is not in this tenant's Risky users: their home tenant clears their risk.
+  // never finish on the owner's tenant). Someone from another organization is not in
+  // this tenant's Risky users: their home tenant clears their risk, so they are named
+  // and sent there. How long the wait lasts after that is said once.
   const named = turnOnHeld && USER_RISK.has(step.id) ? waits.flatMap((w) => w.named ?? []) : []
   const external = (id: string): boolean => input.externalOf?.(id) === true
-  const days = { days: String(EVIDENCE_WINDOW_DAYS) }
-  const riskLines = [...(named.some((id) => !external(id)) ? [fillText(PW.riskClear, days)] : []), ...(named.some(external) ? [fillText(PW.riskClearGuest, days)] : [])]
+  const guests = named.filter(external)
+  const guestNames = list(guests.length > NAMES_INLINE ? [...guests.slice(0, NAMES_INLINE).map(input.nameOf), fillText(WAITS.more, { n: guests.length - NAMES_INLINE })] : guests.map(input.nameOf))
+  const riskLines = named.length === 0 ? [] : [
+    ...(named.some((id) => !external(id)) ? [PW.riskClear] : []),
+    ...(guests.length > 0 ? [fillText(PW.riskClearGuest, { names: guestNames })] : []),
+    fillText(PW.riskClearWait, { days: String(EVIDENCE_WINDOW_DAYS) }),
+  ]
   const riskClear = riskLines.length > 0 ? riskLines.join(' ') : null
   if (!createdOnStep) tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine, ...riskLines] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
   // What the step's package says comes after the policy is On, in every state:
