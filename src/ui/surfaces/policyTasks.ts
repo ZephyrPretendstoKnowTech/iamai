@@ -499,7 +499,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
     return key ? [[m.token.toLowerCase(), input.proposed[key]] as const] : []
   }))
   const tenant = step.action.resolution?.tenant ?? step.action.planned?.tenant ?? null
-  const ctx: ProcedureContext = { nameOf: (id) => pendingName.get(id.toLowerCase()) ?? input.nameOf(id), strengthNameOf: input.strengthNameOf, exclusionsGroupId: tenant?.exclusionsGroupId ?? null, emergencyIds: tenant?.emergencyIds ?? [], contextNameOf: input.extras?.contextNameOf }
+  const ctx: ProcedureContext = { nameOf: (id) => pendingName.get(id.toLowerCase()) ?? input.nameOf(id), strengthNameOf: input.strengthNameOf, exclusionsGroupId: tenant?.exclusionsGroupId ?? null, emergencyIds: tenant?.emergencyIds ?? [], contextNameOf: input.extras?.contextNameOf, appIdShown: (id) => missing.some((m) => unmadeApp(m) && m.token.toLowerCase() === id.toLowerCase()) }
   // The exclusions group, or the one the plan proposes while it is still to be made.
   const exclusionIds = [ctx.exclusionsGroupId, ...missing.filter((m) => m.stepId === PREREQ_STEP_ID.exclusionsGroup).map((m) => m.token)].filter((id): id is string => typeof id === 'string' && id !== '')
   const members = membersOf(step, input, ctx, exclusionIds).filter((m) => m.name !== '' || m.create !== null)

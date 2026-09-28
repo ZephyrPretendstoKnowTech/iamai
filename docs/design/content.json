@@ -83,7 +83,7 @@
       "resourcesExclude": "Under **Target resources**, include {include} and exclude {exclude}.",
       "userAction": "Under **Target resources**, select **User actions** → **{action}**.",
       "authContext": "Under **Target resources**, select **Authentication context** → {contexts}.",
-      "$commentContextNamed": "An authentication context the plan makes for its own policy, by the name it proposes and its ID (Require MFA at Every Role Activation); a context the plan did not make is named by its ID alone.",
+      "$commentContextNamed": "An authentication context the plan makes for its own policy, by the name it proposes and its ID (Require MFA at Every Role Activation); a context the plan did not make is named by its ID alone. Also an application the policy includes that the tenant adds itself and IAMAI did not find (Require MFA for Inforcer Access, owner 2026-09-28): the portal's resource search takes the ID where the tenant knows the app by another name.",
       "contextNamed": "{name} (ID {id})",
       "locations": "Under **Conditions → Locations**, set **Configure** to **Yes** and include {include}.",
       "locationsExclude": "Under **Conditions → Locations**, set **Configure** to **Yes**, include {include} and exclude {exclude}.",

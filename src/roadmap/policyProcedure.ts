@@ -60,6 +60,12 @@ export type ProcedureContext = {
   emergencyIds?: readonly string[]
   /** The name the plan proposes for an authentication context it makes itself, or null: IAMAI reads no contexts. */
   contextNameOf?: (id: string) => string | null
+  /**
+   * An application the policy includes that the tenant adds itself and IAMAI did not
+   * find (Require MFA for Inforcer Access): named with its ID, which the portal's
+   * resource search accepts where the tenant knows the app by another name.
+   */
+  appIdShown?: (id: string) => boolean
 }
 
 const facts = (policy: Record<string, unknown>): PolicyFacts => policyFacts(policy, new Map())
@@ -184,7 +190,7 @@ function resourceInclude(f: PolicyFacts, ctx: ProcedureContext): string[] {
   const out: string[] = []
   if (f.apps.office365) out.push(bold('Office 365'))
   if (f.apps.adminPortals) out.push(bold('Microsoft Admin Portals'))
-  for (const id of f.apps.ids) out.push(bold(ctx.nameOf(id)))
+  for (const id of f.apps.ids) out.push(ctx.appIdShown?.(id) ? fill(PROCEDURE.contextNamed, { name: bold(ctx.nameOf(id)), id: '`' + id + '`' }) : bold(ctx.nameOf(id)))
   return out
 }
 
