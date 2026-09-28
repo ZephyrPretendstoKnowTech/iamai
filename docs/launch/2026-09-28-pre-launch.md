@@ -48,7 +48,11 @@ On `night/2026-09-27`, not live until the owner has seen it ("Show me first"):
   change (it now says new policies; a correction to a policy that is On applies at the
   next sign-in). The full suite caught two more: the Inforcer step names the app with
   its ID again, and the sample's bar announces a change of scan to a screen reader.
-  Three small ones wait (below).
+  Two more review rounds sharpened the way out: someone from another organization is
+  named and sent to their own organization (Microsoft evaluates their risk there, and
+  they are not in this tenant's Risky users), the path is ID Protection → Risky users,
+  and how long the wait lasts is said once. The fourth round found no behaviour left to
+  fix. Three small ones wait (below).
 - **The sample's bar.** Only the buttons and Leave the demo; the Follow-up button's
   hover says "The same sample, weeks later", and a screen reader hears it when the
   follow-up lands.
