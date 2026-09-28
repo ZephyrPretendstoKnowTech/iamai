@@ -51,8 +51,8 @@ test('the Group by segments are one control: no gap, no inline padding, no margi
   for (const d of ['justify-content: center', 'align-items: center', 'text-align: center', 'height: 100%', 'font-size: var(--t-2)']) assert.ok(segment.includes(d), `a segment lacks ${d}`)
   // The selected segment is filled, and nothing inside the group leaves a strip before the first cell.
   assert.match(rule(".plan-controls .tabs.view-tabs .tab[aria-selected='true']"), /background: var\(--brand-soft\)/)
-  // Search and the focus toggles share the height and the radius.
-  for (const sel of ['.plan-search input', '.plan-controls .focus']) {
+  // Search and the Work type filter share the height and the radius.
+  for (const sel of ['.plan-search input', '.plan-controls .work-type select']) {
     const r = rule(sel)
     assert.ok(r.includes('height: var(--control)') && r.includes('border-radius: var(--radius-control)'), `${sel} is not the same control`)
   }

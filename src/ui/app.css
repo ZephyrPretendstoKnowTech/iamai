@@ -1814,29 +1814,7 @@ footer.app a {
   justify-content: flex-end;
   flex-wrap: wrap;
 }
-/* A focus control is a toggle, and says so: `aria-pressed` carries the state and
-   the fill follows it, so the pressed one is never signalled by colour alone. */
-.plan-controls .focus {
-  border: 1px solid var(--strong-line);
-  background: transparent;
-  color: var(--secondary-text);
-  border-radius: var(--radius-control);
-  height: var(--control);
-  padding: 0 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font: inherit;
-  font-size: var(--t-2);
-  white-space: nowrap;
-  cursor: pointer;
-}
-.plan-controls .focus[aria-pressed='true'] {
-  border-color: var(--brand-primary);
-  background: var(--brand-soft);
-  color: var(--brand-soft-text);
-}
-/* Work type is a filter over the showing lane (S3), in the same control family as the toggles beside it. */
+/* Work type is a filter over the showing lane (S3). */
 .plan-controls .work-type {
   display: inline-flex;
   align-items: center;
@@ -1851,17 +1829,6 @@ footer.app a {
   font: inherit;
   font-size: var(--t-2);
   padding: 0 8px;
-}
-.plan-controls .count {
-  min-width: 19px;
-  height: 19px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--secondary-surface);
-  color: var(--quiet-text);
-  font-size: var(--t-micro);
-  display: grid;
-  place-items: center;
 }
 .plan-controls .dot {
   width: 7px;
@@ -4959,24 +4926,11 @@ footer.app a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     flex-basis: 100%;
   }
-  /* The focus row WRAPS. It used to scroll sideways, which put "Show completed"
-     half off the edge of a 390px screen with nothing to say it was there — a
-     control the operator cannot see is a control they do not have. Wrapping
-     costs one line and keeps every label whole and tappable, and the row is
-     three buttons, not a list that could grow. */
+  /* The focus row wraps rather than scrolling sideways, so nothing in it sits
+     half off the edge of a narrow screen. */
   .plan-controls .focuses {
     flex-wrap: wrap;
     row-gap: 7px;
-  }
-  .plan-controls .focus {
-    flex: 0 1 auto;
-    /* A long label wraps inside its own button rather than being clipped by it. */
-    white-space: normal;
-    text-align: left;
-    height: auto;
-    min-height: var(--control);
-    padding-top: 5px;
-    padding-bottom: 5px;
   }
   /* The group head keeps its heading and its control on one line; the date
      drops under them rather than squeezing the heading. */

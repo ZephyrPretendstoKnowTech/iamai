@@ -607,10 +607,10 @@ try {
   const sectionAt = Array.isArray(sectionHeads) ? sectionHeads.map(([, t]) => SECTION_TITLES.indexOf(t)) : []
   check('Plan: All work draws its sections in the roadmap flow’s order, by their own names', sectionAt.length >= 3 && sectionAt.every((i, k) => i >= 0 && (k === 0 || i > sectionAt[k - 1])), JSON.stringify(sectionHeads))
   check('Plan: All work numbers its sections 1, 2, 3 down the page', Array.isArray(sectionHeads) && sectionHeads.length >= 3 && sectionHeads.every(([n], k) => n === String(k + 1)), JSON.stringify(sectionHeads))
-  // The two toggles stay (owner, roadmap flow V2) and start pressed on All work,
-  // where finished work sits compactly in its own section; a lane tab keeps them
-  // unpressed until a person presses one (checked on Ready below).
-  check('Plan: on All work, Show completed and Show deferred start pressed', /^Show completed=\d+\/true \| Show deferred=\d+\/true$/.test(await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)))
+  // The Show completed and Show deferred toggles went (owner, 2026-09-27): All
+  // work draws finished and deferred rows in their own sections, and a lane tab
+  // draws its own lane (checked on Ready below).
+  check('Plan: there is no Show completed or Show deferred toggle, and All work draws the completed rows', await evaluate(`document.querySelectorAll('main.page .plan-controls .focus').length === 0 && !/Show (completed|deferred)/.test(document.querySelector('main.page .plan-controls').textContent || '') && [...document.querySelectorAll('main.page .plan-row .lane')].some((e) => (e.textContent || '').trim() === 'Completed')`))
   // Finished work shrinks in place (owner, roadmap flow V2): a Completed or
   // Deferred row is one compact line — number, lane word, title, and the day it
   // was finished where one was recorded — with no chip or waiting line. A
@@ -683,10 +683,9 @@ try {
   // Every row says its lane under its state word: `Lane · substatus/reason`.
   const laneLabels = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
   check('Plan: Ready names its action and waiting lanes use concise labels', laneLabels.length >= 3 && laneLabels.every((l) => /^(Ready · \S.*|Up Next|On Hold(?: · \S.*)?)$/.test(l)), JSON.stringify(laneLabels.filter((l) => !/^(Ready · \S.*|Up Next|On Hold(?: · \S.*)?)$/.test(l)).slice(0, 3)))
-  // The focus controls are toggles over the same rows, and their counts come
-  // from the board rather than from a constant.
-  check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Show completed=\d+\/false \| Show deferred=\d+\/false$/) !== null)
-  check('Plan: Work type is a filter beside the toggles, never a lane', (await evaluate(`(() => { const s = document.querySelector('main.page .plan-controls .work-type select'); return s ? [...s.options].map((o) => o.textContent.trim()).join('|') : '' })()`)) === 'All types|Conditional Access|MFA & Authentication|Tenant setup|Resolution & decisions')
+  // A lane tab is its own lane: no finished or deferred row, and no toggle to draw one.
+  check('Plan: a lane tab draws no Completed or Deferred row', await evaluate(`document.querySelectorAll('main.page .plan-controls .focus').length === 0 && ![...document.querySelectorAll('main.page .plan-row .lane')].some((e) => /^(Completed|Deferred)$/.test((e.textContent || '').trim()))`))
+  check('Plan: Work type is a filter, never a lane', (await evaluate(`(() => { const s = document.querySelector('main.page .plan-controls .work-type select'); return s ? [...s.options].map((o) => o.textContent.trim()).join('|') : '' })()`)) === 'All types|Conditional Access|MFA & Authentication|Tenant setup|Resolution & decisions')
   // RUN-CONTEXT-B decision 10: no row carries a "next" pill; the Ready tab's order says which step is next.
   const nextPills = Number(await evaluate(`document.querySelectorAll('main.page .plan-row .next-mark').length`))
   check('Plan: no row carries a next pill', nextPills === 0, `next pills=${nextPills}`)
@@ -1176,8 +1175,7 @@ try {
       await sleep(400)
     }
   }
-  // A deferred step's row reads Deferred (decision 3) and is drawn only while `Show deferred` is pressed (S3).
-  await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Show deferred/.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
+  // A deferred step's row reads Deferred (decision 3), in its own section on All work (owner, 2026-09-27).
   check('Demo: a step is deferred', skipped && (await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Require MFA for Guests/.test(r.textContent) && ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Deferred')`, 4000)), skipNote || openNote)
   // A start date, in the plan settings.
   await demoGo('plan')
@@ -1202,19 +1200,9 @@ try {
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   // The board draws one lane at a time and keeps the lane the last opened step
   // put it on (S5 TabFollowsOpenStep), so both readings are taken on the same lane.
-  // Both toggles pressed for both readings, on the Ready tab: the skip above
-  // pressed Show deferred, and a lane tab starts with neither pressed (All
-  // work, where a loaded plan opens, starts with both; planBoard.ts togglesOf).
-  // One press at a time: each toggle's handler spreads the focus it rendered
-  // with, so two clicks in one tick keep only the second (Plan.tsx onFocus).
-  const revealAll = async () => {
-    for (const word of ['Show completed', 'Show deferred']) {
-      await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => (x.textContent || '').includes(${JSON.stringify(word)})); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
-      await sleep(250)
-    }
-  }
-  await showLane(LANES[0])
-  await revealAll()
+  // Both readings on All work, where every row is, the deferred one in its
+  // section (owner, 2026-09-27: the Show completed and Show deferred toggles went).
+  await showLane('All work')
   await sleep(150)
   const planTextBefore = await mainText()
   const progressBefore = await progressOf()
@@ -1252,8 +1240,7 @@ try {
   await waitFor(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => [...(t.querySelector('dt')?.childNodes ?? [])].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ') === ${JSON.stringify(progressBefore)}`, 8000)
   await sleep(500)
   const recordAfter = await planRecord()
-  await showLane(LANES[0])
-  await revealAll()
+  await showLane('All work')
   await sleep(150)
   // The same rows, read past the one line the load added above them.
   const flatRows = (x) => String(x ?? '').split(/\s+/).join(' ').trim()

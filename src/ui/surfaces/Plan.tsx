@@ -29,7 +29,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, inputStepIds, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, pressKeyOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, inputStepIds, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, pressKeyOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -359,10 +359,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // in section order, each heading once (tileSections).
   const laneTab: LaneTab | null = tab === ALL_WORK_TAB ? null : tab
   const groups = summaryFilter ? tileSections(shown) : laneTab === null ? allWorkGroups(shown, items) : groupsFor(laneTab, shown)
-  // On a lane tab, the Completed and Deferred rows the toggles reveal; on All
-  // work and in a tile's list every row is already inside its section, so
-  // there is no aside at all.
-  const aside = summaryFilter || laneTab === null ? [] : asideGroupsFor(shown)
   // Where a step opened from a link or a tile is shown (planBoard.ts
   // followOpenStep, owner, roadmap flow V2): the view the person is on, where
   // it draws the step; otherwise All work, where every row is, with the focus
@@ -373,10 +369,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // The open step's lane as the board reads it, Cleanup rows included.
   const openLane = open !== null ? items.find((i) => i.id === open)?.lane : undefined
   // When the open step's lane changes under the person (finished, deferred,
-  // answered) and the view no longer draws it: keep the tab and press the
-  // toggle that shows it, or follow it to its new lane's tab (planBoard.ts
-  // followLaneChange), as the board did before roadmap flow V2. All work only
-  // where that still leaves it off screen, such as a tile's list. A step that
+  // answered) and the view no longer draws it: follow it to its new lane's tab,
+  // or to All work where a Completed or Deferred step sits in its section
+  // (planBoard.ts followLaneChange). All work with the focus cleared only where
+  // that still leaves it off screen, such as a tile's list. A step that
   // left the board (marked Doesn't apply here: the footer holds it) is drawn by
   // no view, so the view, its focus, its folds and the scroll stay as they are.
   const onMoved = (): void => {
@@ -390,7 +386,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // section opened out of sight. Each group is keyed by the scope it is drawn
   // under, as drawGroup keys it. A link to a step with no row moves nothing:
   // the page would wait for that row and jump to it once it was put back.
-  const drawn = [...groups.map((g) => [tab, g] as const), ...aside.map((g) => ['aside', g] as const)]
+  const drawn = groups.map((g) => [tab, g] as const)
   lineOnStep = changeLinePlace(lineAt, open) === 'step' && drawn.some(([s, g]) => g.items.some((i) => i.id === open) && !groupClosed(g, open, toggled[pressKeyOf(s, g)], focusActive(focus)))
   const onShow = (): void => {
     if (open === null || openLane === undefined) return
@@ -546,10 +542,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
       />
       {summaryFilter && <p className="actions"><strong>{fillText(summary.filter, { view: summary[summaryFilter] })}</strong><Button variant="tertiary" onClick={() => selectSummary(null)}>{summary.all}</Button></p>}
       <div className="plan-board" {...onePanelProps(boardBase, tab)}>
-        {groups.length === 0 && (aside.length === 0 || !summaryFilter) && <p className="reason plan-board-empty">{focusActive(focus) ? BOARD.empty : nothingReadyLine(tab, counts.lanes) ?? BOARD.emptyLane}</p>}
+        {groups.length === 0 && <p className="reason plan-board-empty">{focusActive(focus) ? BOARD.empty : nothingReadyLine(tab, counts.lanes) ?? BOARD.emptyLane}</p>}
         {groups.map(drawGroup(tab))}
       </div>
-      {aside.length > 0 && <div className="plan-board plan-board-aside">{aside.map(drawGroup('aside'))}</div>}
 
       {/* What is left in the footer is what was never a row: the person's own
           Doesn't apply here answers, the licence ladder and housekeeping. The
@@ -581,10 +576,6 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
   counts: ReturnType<typeof focusCounts>
   base: string
 }) {
-  // What the toggles show on this tab: the person's press, else the tab's
-  // default — pressed on All work, where finished work sits in its sections,
-  // and not on a lane tab (planBoard.ts togglesOf).
-  const shows = togglesOf(focus, tab)
   return (
     <section className="plan-controls no-print" aria-label={BOARD.lanesLabel}>
       <div className="view-wrap">
@@ -614,14 +605,6 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
             ))}
           </select>
         </label>
-        <button type="button" className={`focus${shows.completed ? ' active' : ''}`} aria-pressed={shows.completed} onClick={() => onFocus({ ...focus, showCompleted: !shows.completed })}>
-          {BOARD.showCompleted}
-          <span className="count">{counts.complete}</span>
-        </button>
-        <button type="button" className={`focus${shows.deferred ? ' active' : ''}`} aria-pressed={shows.deferred} onClick={() => onFocus({ ...focus, showDeferred: !shows.deferred })}>
-          {BOARD.showDeferred}
-          <span className="count">{counts.deferred}</span>
-        </button>
       </div>
     </section>
   )

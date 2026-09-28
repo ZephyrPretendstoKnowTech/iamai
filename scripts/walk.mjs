@@ -220,43 +220,27 @@ const settle = async () => {
   }
 }
 /**
- * Reveal the board's completed work on the lane tabs.
+ * Show the board's completed and deferred work.
  *
- * Finished rows were the Plan footer's first `<details>`: closed, but in the
- * DOM, so every check could read them and `inFooter` decided which to open.
- * They are the board's Complete group now and `Show completed` is their one
- * control, and that control FILTERS (ui/surfaces/planBoard.ts `applyFocus`).
- *
- * The Plan opens on All work (roadmap flow V2), where both toggles read pressed
- * by default (planBoard.ts `togglesOf`) and finished rows sit compactly in their
- * own sections. A lane tab starts with neither pressed, so its Completed and
- * Deferred groups — the aside after the panel, which `readRows` reads — are not
- * in the document until a toggle is pressed THERE. Pressing on All work would
- * press nothing, because both already read pressed. So this moves to a lane tab
- * first when All work is showing, then presses each toggle that is not pressed;
- * the press is the focus's and holds on every tab after it. A check that reads
- * finished work calls this, and again after every navigation, because the press
- * is page state and a navigation drops it.
+ * The Show completed and Show deferred toggles went (owner, 2026-09-27): All
+ * work draws finished and deferred rows in their own sections, and a lane tab
+ * draws only its own lane (ui/surfaces/planBoard.ts `applyFocus`). A check that
+ * needs a finished row in the document shows All work, and again after every
+ * navigation, because the tab is page state and a navigation drops it.
  */
 const revealCompleted = async () => {
-  const onLane = await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => x.getAttribute('aria-selected') === 'true'); return !!t && ${JSON.stringify(LANES)}.includes(((t.textContent || '').replace((t.querySelector('.tab-badge') || {}).textContent || '', '').trim())) })()`)
-  if (!onLane) await showLane(LANES[0])
-  // One press at a time: each toggle's handler spreads the focus it rendered
-  // with, so two clicks in one tick keep only the second (Plan.tsx onFocus).
-  for (const word of ['Show completed', 'Show deferred']) {
-    await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => (x.textContent || '').includes(${JSON.stringify(word)})); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
-    await sleep(200)
-  }
+  await showLane(ALL_WORK)
 }
 /**
  * The lane tabs draw one lane at a time (S3, ui/surfaces/planBoard.ts): Ready,
- * Up Next and On Hold are tabs after All work, and the Completed and Deferred
- * groups the toggles reveal are drawn after whichever lane tab is showing
- * (revealCompleted presses them there). A check that reads every row
- * reads the three tabs in turn (`readRows`), keeps each row's tab and its index
- * inside that tab, and shows the row's tab again before it opens it.
+ * Up Next and On Hold are tabs after All work, and Completed and Deferred rows
+ * are drawn only on All work, in their sections. A check that reads every row
+ * reads the three tabs in turn and then All work's finished rows (`readRows`),
+ * keeps each row's tab and its index inside that tab, and shows the row's tab
+ * again before it opens it.
  */
 const LANES = ['Ready', 'Up Next', 'On Hold']
+const ALL_WORK = 'All work'
 /** The When column's placeholder (pages.plan.when.none, A1b): a finished or undated row reads it. */
 const WHEN_NONE = pages.plan.when.none
 /** The lane vocabulary as a row states it (pages.plan.lanes.*, planBoard.ts laneLabelOf, A1c): `Lane`, or `Lane · substatus/reason`. */
@@ -272,17 +256,16 @@ const showLane = async (name) => {
   await sleep(150)
 }
 // One row as the checks read it, flattened in Node: a regex in an evaluate() template loses its backslashes, so the day-0 reading is finished here.
-const ROW_READ = `[...document.querySelectorAll('main.page .plan-row')].map((e, k) => ({ k, title: ((e.querySelector('.step-title') || {}).textContent || '').trim(), label: ((e.querySelector('.lane') || {}).textContent || '').trim(), chip: ((e.querySelector('.status') || {}).textContent || '').trim(), when: ((e.querySelector('.when') || {}).textContent || '').trim(), footer: e.closest('.plan-footer') !== null, complete: e.closest('#plan-group-complete') !== null, aside: e.closest('#plan-group-complete, #plan-group-deferred') !== null, wave0: e.dataset.wave === '0' }))`
+const ROW_READ = `[...document.querySelectorAll('main.page .plan-row')].map((e, k) => ({ k, title: ((e.querySelector('.step-title') || {}).textContent || '').trim(), label: ((e.querySelector('.lane') || {}).textContent || '').trim(), chip: ((e.querySelector('.status') || {}).textContent || '').trim(), when: ((e.querySelector('.when') || {}).textContent || '').trim(), footer: e.closest('.plan-footer') !== null, complete: ((e.querySelector('.lane') || {}).textContent || '').trim() === 'Completed', aside: ['Completed', 'Deferred'].includes(((e.querySelector('.lane') || {}).textContent || '').trim()), wave0: e.dataset.wave === '0' }))`
 const readRows = async () => {
   const out = []
   for (const lane of LANES) {
     await showLane(lane)
-    for (const r of await evaluate(ROW_READ)) {
-      // The Completed and Deferred groups repeat under every tab: read them once.
-      if (r.aside && lane !== LANES[0]) continue
-      out.push({ ...r, lane, dayZero: r.wave0 })
-    }
+    for (const r of await evaluate(ROW_READ)) out.push({ ...r, lane, dayZero: r.wave0 })
   }
+  // Completed and Deferred rows are drawn only on All work, in their sections.
+  await showLane(ALL_WORK)
+  for (const r of await evaluate(ROW_READ)) if (r.aside) out.push({ ...r, lane: ALL_WORK, dayZero: r.wave0 })
   await showLane(LANES[0])
   return out
 }
@@ -1156,9 +1139,9 @@ async function walkFixture(fx) {
 
       // Every row, one by one: it opens; its body shares the row's title; the
       // body keeps the invariants; More opens; Learn links resolve.
-      // Finished work is in the document only while `Show completed` is pressed,
-      // so press it before the rows are read: these lists are what the checks
-      // below ask "is this step on the Plan at all".
+      // Finished work is drawn only on All work, so show it before the rows are
+      // read: these lists are what the checks below ask "is this step on the
+      // Plan at all".
       await revealCompleted()
       // Every row of the three tabs, in tab order (readRows): the checks below
       // index these arrays, and open a row by its tab and its index inside it.
@@ -1437,11 +1420,11 @@ async function walkFixture(fx) {
               const saved = selected && await clickText('button', /^Save Device Choices$/, 'main.page .device-decision')
               if (!saved) add('P0', `${slabel}: the three device choices cannot be saved on this step`)
               if (saved) await revealCompleted()
-              const moved = saved && await waitFor(`[...document.querySelectorAll('main.page #plan-group-complete .plan-row .step-title')].some(e => /Decide How Devices Are Managed/.test(e.textContent || ''))`, 8000)
+              const moved = saved && await waitFor(`[...document.querySelectorAll('main.page .plan-row .step-title')].some(e => /Decide How Devices Are Managed/.test(e.textContent || ''))`, 8000)
               if (saved && !moved) add('P0', `${slabel}: saved device choices did not complete the decision`)
               if (moved) {
-                await evaluate(`(() => { if (document.querySelector('main.page #plan-group-complete .device-decision')) return; const r = [...document.querySelectorAll('main.page #plan-group-complete .plan-row')].find(e => /Decide How Devices Are Managed/.test(e.querySelector('.step-title')?.textContent || '')); r?.click() })()`)
-                const retained = await waitFor(`JSON.stringify([...document.querySelectorAll('main.page #plan-group-complete .device-decision select')].map(e => e.value)) === ${JSON.stringify(JSON.stringify(expected))}`, 8000)
+                await evaluate(`(() => { if (document.querySelector('main.page .device-decision')) return; const r = [...document.querySelectorAll('main.page .plan-row')].find(e => /Decide How Devices Are Managed/.test(e.querySelector('.step-title')?.textContent || '')); r?.click() })()`)
+                const retained = await waitFor(`JSON.stringify([...document.querySelectorAll('main.page .device-decision select')].map(e => e.value)) === ${JSON.stringify(JSON.stringify(expected))}`, 8000)
                 if (!retained) add('P0', `${slabel}: completed device decision did not retain all three saved choices`)
                 readinessOf(currentFixture).delete('device')
                 decidedHere = true
@@ -1596,8 +1579,8 @@ async function walkFixture(fx) {
           if (/Emergency Access Accounts/.test(title) && fx.week2 && asksWhy) add('P0', `${slabel}: the sign-in is a recorded drill in week two, and the step still asks who and why`)
           if (/already covers this with/.test(bodyText)) sawExistingCoverage = true
           if (/Emergency Access Drill/.test(title)) {
-            // Marking it done completes it, and a completed row is in the
-            // document only while `Show completed` is pressed.
+            // Marking it done completes it, and a completed row is drawn only
+            // on All work.
             const doneOnRow = async () => { await revealCompleted(); return waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Emergency Access Drill/.test((r.querySelector('.step-title') || {}).textContent || '') && ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Completed')`, 8000) }
             if (fx.week2) {
               if (!(await doneOnRow())) add('P0', `${slabel}: the drill was recorded, and the row does not read Completed`)

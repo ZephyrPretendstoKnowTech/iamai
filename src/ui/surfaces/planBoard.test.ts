@@ -35,7 +35,6 @@ import {
   TYPE_ORDER,
   WHEN,
   applyFocus,
-  asideGroupsFor,
   boardWhen,
   boardWhenOf,
   drawsCompact,
@@ -61,7 +60,6 @@ import {
   groupClosed,
   pressKeyOf,
   releaseFor,
-  togglesOf,
   nothingReadyLine,
 } from './planBoard.ts'
 import type { BoardItem, LaneTab } from './planBoard.ts'
@@ -109,7 +107,8 @@ function itemsFor(name: FixtureName): BoardItem[] {
 }
 
 const ids = (items: readonly BoardItem[]): string[] => items.map((i) => i.id)
-const ALL = { ...NO_FOCUS, showCompleted: true, showDeferred: true }
+/** Every row a tab draws: there is no toggle to press (owner, 2026-09-27: Show completed and Show deferred went). */
+const ALL = NO_FOCUS
 
 const row = (id: string, lane: BoardItem['lane']): BoardItem => ({ id, title: id, lane, laneLabel: lane, workType: 'setup', order: 0 })
 
@@ -130,9 +129,9 @@ test('with Emergency Access finished, section 1 stays first and collapses to one
   assert.equal(groupSummary(direction), '1 of 2 remaining')
 })
 
-/** Every row the three tabs draw between them, with both toggles on, each tab's own lane only. */
+/** Every row the three tabs draw between them, each tab's own lane only. */
 const acrossTabs = (items: readonly BoardItem[]): string[] =>
-  LANES.flatMap((tab) => groupsFor(tab, applyFocus(items, tab, ALL)).filter((g) => g.key !== 'complete' && g.key !== 'deferred').flatMap((g) => ids(g.items)))
+  LANES.flatMap((tab) => groupsFor(tab, applyFocus(items, tab, ALL)).flatMap((g) => ids(g.items)))
 
 // ------------------------------------------------- one row set, three lanes
 
@@ -147,45 +146,44 @@ test('the three tabs draw exactly the rows of the three lanes between them, and 
   }
 })
 
-test('the Completed and Deferred groups are the two toggles and never a tab, drawn the same under every tab', () => {
-  for (const name of FIXTURES) {
+test('Completed and Deferred rows are drawn on All work in their own sections, and never on a lane tab (owner, 2026-09-27)', () => {
+  // The Show completed and Show deferred toggles went: the plan reads in doing
+  // order with its finished and deferred steps in place, and a lane tab is its
+  // own lane, which neither is.
+  let finished = 0
+  for (const name of [...FIXTURES, 'demo-week2'] as const) {
     const items = itemsFor(name)
+    const aside = items.filter((i) => i.lane === 'Completed' || i.lane === 'Deferred')
+    finished += aside.length
     for (const tab of LANES) {
-      const hidden = asideGroupsFor(applyFocus(items, tab, NO_FOCUS)).map((g) => g.key)
-      assert.deepEqual(hidden, [], `${name}/${tab}: finished or deferred work is drawn with its toggle off`)
-      const inTab = groupsFor(tab, applyFocus(items, tab, ALL)).map((g) => g.key)
-      assert.equal(inTab.includes('complete') || inTab.includes('deferred'), false, `${name}/${tab}: finished or deferred work is drawn inside the tab`)
-      const shown = asideGroupsFor(applyFocus(items, tab, ALL))
-      const complete = shown.find((g) => g.key === 'complete')
-      assert.deepEqual(ids(complete?.items ?? []), ids(items.filter((i) => i.lane === 'Completed').sort((a, b) => a.order - b.order)), `${name}/${tab}: Show completed reveals something other than the completed rows`)
-      const deferred = shown.find((g) => g.key === 'deferred')
-      assert.deepEqual(ids(deferred?.items ?? []), ids(items.filter((i) => i.lane === 'Deferred').sort((a, b) => a.order - b.order)), `${name}/${tab}: Show deferred reveals something other than the deferred rows`)
+      assert.equal(applyFocus(items, tab, NO_FOCUS).some((i) => i.lane === 'Completed' || i.lane === 'Deferred'), false, `${name}/${tab}: a lane tab draws finished or deferred work`)
+    }
+    const drawn = allWorkGroups(applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items)
+    for (const row of aside) {
+      const section = drawn.find((g) => g.items.some((i) => i.id === row.id))
+      assert.ok(section, `${name}/${row.id}: All work does not draw a ${row.lane} step`)
+      const own = groupOf(row.id)
+      if (own) assert.equal(groupKeyOf(section), own.key, `${name}/${row.id}: drawn outside its own section`)
     }
   }
+  assert.ok(finished > 0, 'no fixture has finished or deferred work, so this proves little')
 })
 
-test('A6: on the Follow-up demo the Ready tab holds no Completed row, with or without Show completed, and the aside groups sit outside the tab panel', () => {
+test('A6: on the Follow-up demo the Ready tab holds no Completed row, and the Plan draws nothing after the tab panel', () => {
   const items = itemsFor('demo-week2')
   assert.ok(items.some((i) => i.lane === 'Completed'), 'the premise: the Follow-up demo has completed work')
-  for (const focus of [NO_FOCUS, ALL]) {
-    const inReady = groupsFor('ready', applyFocus(items, 'ready', focus)).flatMap((g) => g.items)
-    assert.ok(inReady.length > 0, 'the premise: the Ready tab draws rows')
-    assert.equal(inReady.filter((i) => i.lane === 'Completed').length, 0, `the Ready tab holds a Completed row (showCompleted=${focus.showCompleted})`)
-  }
-  assert.equal(asideGroupsFor(applyFocus(items, 'ready', ALL)).find((g) => g.key === 'complete')?.items.length, items.filter((i) => i.lane === 'Completed').length)
+  const inReady = groupsFor('ready', applyFocus(items, 'ready', NO_FOCUS)).flatMap((g) => g.items)
+  assert.ok(inReady.length > 0, 'the premise: the Ready tab draws rows')
+  assert.equal(inReady.filter((i) => i.lane === 'Completed').length, 0, 'the Ready tab holds a Completed row')
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  const panelAt = plan.indexOf('{...onePanelProps(boardBase, tab)}>')
-  const panel = plan.slice(panelAt, plan.indexOf('</div>', panelAt))
-  assert.ok(panelAt > 0 && !/aside\.map/.test(panel), 'the Completed and Deferred groups are drawn inside the tab panel')
-  assert.match(plan.slice(plan.indexOf('</div>', panelAt)), /aside\.map\(drawGroup/, 'Plan.tsx does not draw the aside groups after the panel')
+  assert.equal(/asideGroupsFor|plan-board-aside/.test(plan), false, "the Plan still draws finished work after a lane tab's panel")
 })
 
-test('no tab sequences a group of its own: a group draws its registry order under every tab, and the aside keeps the engine’s', () => {
+test('no tab sequences a group of its own: a group draws its registry order under every tab', () => {
   // A tab decides which of a group's rows it SHOWS and never their order. The
   // order inside a group is the registry's, which is the order its numbers
   // count in — the same under all three tabs, so no tab can become a second
-  // plan. The Completed and Deferred groups are not registry groups and keep
-  // the engine's own sequence, as they always did.
+  // plan.
   for (const name of FIXTURES) {
     const items = itemsFor(name)
     for (const tab of LANES) {
@@ -194,10 +192,6 @@ test('no tab sequences a group of its own: a group draws its registry order unde
       for (const g of groupsFor(tab, shown)) {
         const seen = g.items.map((i) => numbers.get(i.id)!)
         assert.deepEqual(seen, [...seen].sort((a, b) => a - b), `${name}/${tab}/${g.key}: the numbers do not ascend`)
-      }
-      for (const g of asideGroupsFor(shown)) {
-        const seen = g.items.map((i) => i.order)
-        assert.deepEqual(seen, [...seen].sort((a, b) => a - b), `${name}/${tab}/${g.key}: the aside reordered the engine's sequence`)
       }
     }
     // And the order a group draws is the same order whichever tab draws it.
@@ -329,18 +323,11 @@ test('the counts are counted off the board, so a control cannot promise more tha
   }
 })
 
-test('showing completed or deferred work is a visibility control: the rows it reveals are the same rows', () => {
+test('a tab is a visibility control: every row it draws is the board\'s own row, unchanged', () => {
   for (const name of FIXTURES) {
     const items = itemsFor(name)
-    for (const tab of LANES) {
-      const hidden = applyFocus(items, tab, NO_FOCUS)
+    for (const tab of TABS) {
       const shown = applyFocus(items, tab, ALL)
-      assert.ok(shown.length >= hidden.length)
-      assert.deepEqual(
-        ids(shown).filter((id) => !ids(hidden).includes(id)).sort(),
-        ids(items.filter((i) => i.lane === 'Completed' || i.lane === 'Deferred')).sort(),
-        `${name}/${tab}: the toggles reveal something other than the completed and deferred rows`,
-      )
       for (const id of ids(shown)) {
         const a = items.find((i) => i.id === id)!
         const b = shown.find((i) => i.id === id)!
@@ -510,7 +497,7 @@ test('a group summary counts the rows under it, and says so when a tab left some
     const totals = groupTotalsOf(items)
     for (const tab of LANES) {
       const shown = applyFocus(items, tab, ALL)
-      for (const g of [...groupsFor(tab, shown), ...asideGroupsFor(shown)]) {
+      for (const g of groupsFor(tab, shown)) {
         const n = g.items.length
         const total = groupKeyOf(g) !== null ? totals.get(groupKeyOf(g)!) ?? null : null
         // Never a count of anything but rows (A1b: no attention count), and
@@ -586,38 +573,23 @@ test('a section heading on All work says what is left, and a finished one what b
   assert.equal(BOARD.allWorkTab, 'All work')
 })
 
-test('Show completed and Show deferred start pressed on All work, and turning one off hides that work there; a lane tab keeps them off until pressed', () => {
-  // Owner, roadmap flow V2: the two toggles stay until the finished product has
-  // been seen. All work shows finished work in its sections by default, and a
-  // toggle turned off hides it; a lane tab keeps its own behaviour, the
-  // finished work drawn after the panel only while a toggle is pressed.
-  assert.deepEqual(togglesOf(NO_FOCUS, ALL_WORK_TAB), { completed: true, deferred: true }, 'All work does not show finished work by default')
-  for (const tab of LANES) assert.deepEqual(togglesOf(NO_FOCUS, tab), { completed: false, deferred: false }, `${tab} shows finished work by default`)
-  // A press is the person's, and it holds whichever tab is showing.
-  assert.deepEqual(togglesOf({ ...NO_FOCUS, showCompleted: false }, ALL_WORK_TAB), { completed: false, deferred: true })
-  assert.deepEqual(togglesOf({ ...NO_FOCUS, showDeferred: true }, 'ready'), { completed: false, deferred: true })
+test('All work draws every row with finished and deferred work in place, a lane tab its own lane, and no toggle hides either (owner, 2026-09-27)', () => {
+  // Roadmap flow V2 kept the two toggles until the finished product had been
+  // seen; the owner took them out on 2026-09-27. Search and work type are the
+  // only filters left over a tab.
   let finished = 0
   for (const name of [...FIXTURES, 'demo-week2'] as const) {
     const items = itemsFor(name)
     finished += items.filter((i) => i.lane === 'Completed' || i.lane === 'Deferred').length
-    // Unpressed by anyone, All work is the whole row set.
     assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, NO_FOCUS)).sort(), ids(items).sort(), `${name}: All work filtered by lane`)
-    // Turned off, each toggle hides its own work and nothing else.
-    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false })).sort(), ids(items.filter((i) => i.lane !== 'Completed')).sort(), `${name}: Show completed off did not hide exactly the completed rows`)
-    assert.deepEqual(ids(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showDeferred: false })).sort(), ids(items.filter((i) => i.lane !== 'Deferred')).sort(), `${name}: Show deferred off did not hide exactly the deferred rows`)
-    // A section whose rows were all completed is not drawn with Show completed off.
-    const hidden = allWorkGroups(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false }), items)
-    for (const g of hidden) assert.ok(g.items.every((i) => i.lane !== 'Completed'), `${name}/${g.key}: a completed row is drawn with Show completed off`)
-    // Search and work type are still filters over it.
+    for (const tab of LANES) assert.deepEqual(ids(applyFocus(items, tab, NO_FOCUS)).sort(), ids(items.filter((i) => TAB_OF[i.lane] === tab)).sort(), `${name}/${tab}: a lane tab draws another lane`)
     for (const i of applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, workType: 'ca' })) assert.equal(i.workType, 'ca', `${name}/${i.id}: the Work type filter let another kind through`)
     assert.deepEqual(applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, search: 'zzzzz-not-a-title' }), [], `${name}: search matched something no title contains`)
   }
   assert.ok(finished > 0, 'no fixture has finished work, so this proves little')
-  // The controls say the state the board is drawn with, not the saved press alone.
+  assert.deepEqual(Object.keys(NO_FOCUS).sort(), ['search', 'workType'], 'a focus holds a control that is gone')
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.match(plan, /const shows = togglesOf\(focus, tab\)/, 'the toggles do not read the tab\'s default')
-  assert.match(plan, /aria-pressed=\{shows\.completed\}/)
-  assert.match(plan, /aria-pressed=\{shows\.deferred\}/)
+  assert.equal(/showCompleted|showDeferred|aria-pressed=\{shows\./.test(plan), false, 'the Plan still draws a Show completed or Show deferred toggle')
 })
 
 test('a step opened from a link or a tile stays on the tab that shows it, and otherwise opens on All work in its own section', () => {
@@ -633,11 +605,11 @@ test('a step opened from a link or a tile stays on the tab that shows it, and ot
   // On the tab that shows it: stay.
   assert.equal(followOpenStep(ready.id, applyFocus(items, 'ready', NO_FOCUS), items), null, 'a link to a Ready step moved the Ready tab')
   assert.equal(followOpenStep(held.id, applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items), null, 'a link moved All work')
-  assert.equal(followOpenStep(done.id, applyFocus(items, 'ready', { ...NO_FOCUS, showCompleted: true }), items), null, 'a completed step drawn after the Ready panel moved the tab')
+  assert.equal(followOpenStep(done.id, applyFocus(items, ALL_WORK_TAB, NO_FOCUS), items), null, 'a completed step, drawn in its section on All work, moved the view')
   // Not on it: All work, whatever lane the step is in.
   assert.equal(followOpenStep(held.id, applyFocus(items, 'ready', NO_FOCUS), items), ALL_WORK_TAB, 'a link to a waiting step kept Ready, which does not show it')
   assert.equal(followOpenStep(done.id, applyFocus(items, 'onHold', NO_FOCUS), items), ALL_WORK_TAB)
-  assert.equal(followOpenStep(done.id, applyFocus(items, ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false }), items), ALL_WORK_TAB, 'a completed step hidden by the toggle stayed hidden')
+  assert.equal(followOpenStep(done.id, applyFocus(items, 'ready', NO_FOCUS), items), ALL_WORK_TAB, 'a completed step linked from Ready stayed on Ready, which does not draw it')
   // There, with the focus cleared, the step is drawn in its own section, and
   // that section is open even where it is finished and would otherwise fold.
   for (const target of [held, done]) {
@@ -670,11 +642,9 @@ test('a step opened from a link or a tile stays on the tab that shows it, and ot
   assert.equal(groupClosed(section, held.id, released[pressKeyOf(ALL_WORK_TAB, section)], false), false, 'a link opened a step inside a section the person folded, out of sight')
   assert.equal(released[pressKeyOf(ALL_WORK_TAB, other)], true, 'a link unfolded a section that does not hold the step')
   assert.equal(released[pressKeyOf('ready', onReady)], true, 'a link unfolded a section under another tab')
-  // The same on a lane tab and in its aside: the press is let go under the view that draws the step.
+  // The same on a lane tab: the press is let go under the view that draws the step.
   const readyRow = onReady.items[0]
   assert.equal(releaseFor({ [pressKeyOf('ready', onReady)]: true }, readyRow.id, [['ready', onReady]])[pressKeyOf('ready', onReady)], undefined)
-  const aside = asideGroupsFor(applyFocus(items, 'ready', { ...NO_FOCUS, showCompleted: true })).find((g) => g.items.some((i) => i.id === done.id))!
-  assert.equal(releaseFor({ [pressKeyOf('aside', aside)]: true }, done.id, [['aside', aside]])[pressKeyOf('aside', aside)], undefined)
   // The Plan wires it: the rows the view draws decide, the switch goes to All
   // work with the focus cleared, and the page moves to the step. A link on the
   // view that draws it lets go of the fold over it, and the page moves to the
@@ -689,35 +659,28 @@ test('a step opened from a link or a tile stays on the tab that shows it, and ot
   assert.equal(plan.includes('const openTab'), false, 'a link still switches to the step\'s lane tab')
 })
 
-test('a step finished, deferred or moved while open keeps the tab the person is on, and presses the toggle that shows it', () => {
-  // Before roadmap flow V2, finishing the open step on a lane tab kept the
-  // person on that tab and pressed Show completed, so the step was drawn after
-  // the panel. Stage 1 sent the whole board to All work instead, with the
-  // search, the work type and every fold cleared, so someone working through
-  // Ready was taken off it after each completion. A link still follows
-  // followOpenStep; a lane change under the person does not.
+test('a step finished or deferred while open on a lane tab goes to All work with the search kept; one moved to another lane follows it', () => {
+  // Before 2026-09-27 finishing the open step on a lane tab pressed Show
+  // completed and drew it after the panel. The toggles went (owner): a lane tab
+  // draws its own lane, so a step that became Completed or Deferred is followed
+  // to All work, where it sits in its section, with the search and the work
+  // type kept. A link still follows followOpenStep; a lane change under the
+  // person does not clear their focus.
   const items = itemsFor('demo-week2')
   const ready = items.find((i) => i.lane === 'Ready')!
   assert.ok(ready, 'the premise: the Follow-up demo has a Ready row')
   const as = (lane: BoardItem['lane']): BoardItem[] => items.map((i) => (i.id === ready.id ? { ...i, lane } : i))
   const search = { ...NO_FOCUS, search: ready.title.slice(0, 4) }
-  // Finished on Ready: Ready stays, Show completed is pressed, the search stays, and the step is drawn after the panel.
-  const done = followLaneChange('Completed', 'ready', search)
-  assert.equal(done.tab, 'ready', 'finishing the open step took the person off Ready')
-  assert.equal(done.focus.showCompleted, true, 'the finished step is not shown')
-  assert.equal(done.focus.search, search.search, 'finishing a step cleared the search')
-  assert.ok(asideGroupsFor(applyFocus(as('Completed'), done.tab, done.focus)).some((g) => g.items.some((i) => i.id === ready.id)), 'the finished step is not drawn after the Ready panel')
-  // Deferred the same way, under its own toggle.
-  const deferred = followLaneChange('Deferred', 'ready', NO_FOCUS)
-  assert.deepEqual([deferred.tab, deferred.focus.showDeferred, deferred.focus.showCompleted], ['ready', true, null])
-  assert.ok(applyFocus(as('Deferred'), deferred.tab, deferred.focus).some((i) => i.id === ready.id))
+  for (const lane of ['Completed', 'Deferred'] as const) {
+    const moved = followLaneChange(lane, 'ready', search)
+    assert.deepEqual([moved.tab, moved.focus.search], [ALL_WORK_TAB, search.search], `${lane}: the step was not followed to All work with the search kept`)
+    assert.ok(applyFocus(as(lane), moved.tab, moved.focus).some((i) => i.id === ready.id), `${lane}: All work does not draw the step`)
+    // Already on All work: stay.
+    assert.equal(followLaneChange(lane, ALL_WORK_TAB, NO_FOCUS).tab, ALL_WORK_TAB)
+  }
   // Moved to another lane on a lane tab: that lane's tab, as before.
   assert.equal(followLaneChange('Up Next', 'ready', NO_FOCUS).tab, 'upNext')
   assert.equal(followLaneChange('On Hold', 'upNext', NO_FOCUS).tab, 'onHold')
-  // On All work with Show completed turned off, finishing the step presses it again and stays.
-  const off = followLaneChange('Completed', ALL_WORK_TAB, { ...NO_FOCUS, showCompleted: false })
-  assert.deepEqual([off.tab, off.focus.showCompleted], [ALL_WORK_TAB, true])
-  assert.ok(applyFocus(as('Completed'), off.tab, off.focus).some((i) => i.id === ready.id))
   // The Plan wires it: a change of lane alone, not from a link, keeps the view
   // where that draws the step, and goes to All work only where it cannot.
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
@@ -741,7 +704,7 @@ test('a step with no row on the board leaves the view alone: marked Doesn\'t app
   assert.ok(gone && held, 'the premise: the demo has Ready and waiting rows')
   const board = items.filter((i) => i.id !== gone.id)
   for (const tab of TABS) {
-    for (const f of [NO_FOCUS, { ...NO_FOCUS, search: gone.title.slice(0, 4) }, { ...NO_FOCUS, showCompleted: false, showDeferred: false }]) {
+    for (const f of [NO_FOCUS, { ...NO_FOCUS, search: gone.title.slice(0, 4) }, { ...NO_FOCUS, workType: 'ca' as const }]) {
       assert.equal(followOpenStep(gone.id, applyFocus(board, tab, f), board), null, `${tab}: a step with no row on the board moved the view`)
     }
   }
@@ -792,7 +755,7 @@ test('a header tile draws one list in section order: each section heading once, 
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(plan, /const groups = summaryFilter \? tileSections\(shown\)/, 'a tile does not draw the one list')
   assert.equal(plan.includes('LANES.flatMap('), false, 'a tile still draws the list lane by lane')
-  assert.match(plan, /const aside = summaryFilter \|\| laneTab === null \? \[\] : asideGroupsFor\(shown\)/, 'a tile still draws finished rows loose after the list')
+  assert.equal(plan.includes('asideGroupsFor'), false, 'a view still draws finished rows loose after the list')
 })
 
 test('a Completed or Deferred row is one compact line: number, title, its lane word and the day where one was recorded', () => {
@@ -855,8 +818,8 @@ test('the board vocabulary is one record, and All work is the leftmost tab and t
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /useState<BoardTab>\(DEFAULT_TAB\)/, 'the Plan opens on a tab of its own choosing')
   assert.deepEqual(Object.values(BOARD.lanes), ['Ready', 'Up Next', 'On Hold', 'Completed', 'Deferred', "Doesn't apply"])
   assert.deepEqual(Object.keys(BOARD.type), TYPE_ORDER, 'the work-type labels and the work-type order disagree')
-  assert.equal(BOARD.showCompleted, 'Show completed')
-  assert.equal(BOARD.showDeferred, 'Show deferred')
+  // The Show completed and Show deferred toggles went (owner, 2026-09-27).
+  assert.equal('showCompleted' in BOARD || 'showDeferred' in BOARD, false, 'the board still names a toggle that is gone')
   // The five zones are named: the group position leads, and the two on the
   // right say what they hold — Impact is a population and When is a date.
   assert.deepEqual(Object.values(BOARD.columns), ['#', 'State', 'Step', 'Impact', 'When'])

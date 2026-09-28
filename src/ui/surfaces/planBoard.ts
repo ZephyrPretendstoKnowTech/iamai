@@ -130,8 +130,6 @@ export const BOARD = {
   groupFinished: BOARD_WORDS.groupFinished,
   search: 'Search steps',
   searchPlaceholder: 'Search steps...',
-  showCompleted: 'Show completed',
-  showDeferred: 'Show deferred',
   workType: 'Work type',
   /** The Work type filter's "no filter" option. It says types, not work: the tab beside it named All work is a different control and a different answer. */
   allTypes: 'All types',
@@ -931,16 +929,15 @@ export function followOpenStep(open: string, shown: readonly Pick<BoardItem, 'id
 /**
  * Where the board goes when the open step's lane changes while the person
  * works on it — they finished it, deferred it or answered it — rather than a
- * link opening it. The person keeps the view they chose, as before roadmap
- * flow V2: a step that became Completed or Deferred is shown by pressing its
- * toggle, which draws it after a lane tab's panel, or in its section on All
- * work; one that moved to another lane is followed to that lane's tab. The
- * search and the work type stay. The Plan goes to All work (followOpenStep)
- * only where this view still does not draw the step. Pure.
+ * link opening it. A step that became Completed or Deferred is drawn only on
+ * All work, in its section (owner, 2026-09-27: the Show completed and Show
+ * deferred toggles went), so a lane tab gives way to All work; one that moved
+ * to another lane is followed to that lane's tab. The search and the work type
+ * stay. The Plan goes to All work with the focus cleared (followOpenStep) only
+ * where this view still does not draw the step. Pure.
  */
 export function followLaneChange(lane: Lane, tab: BoardTab, f: Focus): { tab: BoardTab; focus: Focus } {
-  if (lane === 'Completed') return { tab, focus: { ...f, showCompleted: true } }
-  if (lane === 'Deferred') return { tab, focus: { ...f, showDeferred: true } }
+  if (lane === 'Completed' || lane === 'Deferred') return { tab: ALL_WORK_TAB, focus: f }
   return { tab: tab === ALL_WORK_TAB ? tab : TAB_OF[lane] ?? tab, focus: f }
 }
 
@@ -958,8 +955,8 @@ export function groupClosed(g: BoardGroup, open: string | null, pressed: boolean
 
 /**
  * The key a person's fold of a drawn group is kept under: the view it is drawn
- * in (a tab, or `aside` for a lane tab's Completed and Deferred groups) and the
- * group, so folding a section under Ready does not fold it under On Hold.
+ * in (a tab) and the group, so folding a section under Ready does not fold it
+ * under On Hold.
  */
 export const pressKeyOf = (scope: string, g: Pick<BoardGroup, 'key'>): string => `${scope}:${g.key}`
 
@@ -980,7 +977,7 @@ export function releaseFor(pressed: Readonly<Record<string, boolean>>, open: str
 
 /** A rendered group: its heading, its summary and the row ids in it, in order. */
 export type BoardGroup = {
-  /** Stable key: `<lane tab>-<section>` on a lane tab, `allWork-<section>` on All work, `tile-<section>` in a header tile's list, and `complete` / `deferred` for a lane tab's aside. */
+  /** Stable key: `<lane tab>-<section>` on a lane tab, `allWork-<section>` on All work, and `tile-<section>` in a header tile's list. */
   key: string
   label: string
   /** A supporting group rather than the active lane. */
@@ -1004,25 +1001,9 @@ export type Focus = {
   search: string
   /** Work type as a filter, never a lane: null shows every kind. */
   workType: WorkType | null
-  /** Show completed as the person pressed it; null until they do, which is the tab's own default (togglesOf). */
-  showCompleted: boolean | null
-  /** Show deferred, the same way. */
-  showDeferred: boolean | null
 }
 
-export const NO_FOCUS: Focus = { search: '', workType: null, showCompleted: null, showDeferred: null }
-
-/**
- * Whether the two toggles show their work on a tab: the person's press where
- * there is one, else the tab's default. All work shows finished work in its
- * sections, compactly, until a toggle is turned off; a lane tab hides it until
- * one is pressed, and then draws it after the panel (owner, roadmap flow V2:
- * the toggles stay, and keep their behaviour on the lane tabs).
- */
-export function togglesOf(f: Focus, tab: BoardTab): { completed: boolean; deferred: boolean } {
-  const byDefault = tab === ALL_WORK_TAB
-  return { completed: f.showCompleted ?? byDefault, deferred: f.showDeferred ?? byDefault }
-}
+export const NO_FOCUS: Focus = { search: '', workType: null }
 
 /** True when any focus control is on, which is what an empty board has to explain. */
 export const focusActive = (f: Focus): boolean => f.search.trim() !== '' || f.workType !== null
@@ -1032,19 +1013,17 @@ export const focusActive = (f: Focus): boolean => f.search.trim() !== '' || f.wo
  *
  * Order is never touched: this filters and nothing else, so a step's place in
  * its lane is the engine's sequence whatever is typed in the search box.
- * Completed and Deferred work are shown only while their toggle is on
- * (togglesOf: on by default on All work, off on a lane tab) — a visibility
- * control and not a state change; the rows it reveals are the same rows, with
- * the same words, opening the same step.
+ * Completed and Deferred work are always drawn on All work, in their sections,
+ * and never on a lane tab, which is its own lane (owner, 2026-09-27: the plan
+ * reads in doing order with its finished steps in place, and the Show
+ * completed and Show deferred toggles went).
  */
 export function applyFocus(items: readonly BoardItem[], tab: BoardTab, f: Focus): BoardItem[] {
   const q = f.search.trim().toLowerCase()
-  const shows = togglesOf(f, tab)
   return items.filter((i) => {
     // All work is not a lane, so no lane filters it: it draws its sections
-    // whole. A lane tab keeps its own lane.
-    const own = TAB_OF[i.lane]
-    if (own === null ? !(i.lane === 'Completed' ? shows.completed : shows.deferred) : tab !== ALL_WORK_TAB && own !== tab) return false
+    // whole. A lane tab keeps its own lane, and Completed and Deferred are none.
+    if (tab !== ALL_WORK_TAB && TAB_OF[i.lane] !== tab) return false
     if (f.workType !== null && i.workType !== f.workType) return false
     if (q !== '' && !i.title.toLowerCase().includes(q)) return false
     return true
@@ -1078,8 +1057,8 @@ export function focusCounts(items: readonly BoardItem[]): { complete: number; de
  * in the row's own lane label (`On Hold · Baseline conflict`, laneLabelOf), so
  * the blocker headings this replaced were the second place that said it.
  *
- * A Completed or Deferred row is never inside a tab; `asideGroupsFor` draws
- * those, ungrouped, exactly as before. Pure.
+ * A Completed or Deferred row is never on a lane tab: All work draws it in its
+ * section. Pure.
  */
 export function groupsFor(tab: LaneTab, items: readonly BoardItem[], groups: readonly StepGroup[] = STEP_GROUPS): BoardGroup[] {
   return sectionsFrom(tab, items.filter((i) => TAB_OF[i.lane] === tab), BOARD.lanes[tab], groups)
@@ -1188,21 +1167,6 @@ export function nextInPlanOrder(id: string, board: readonly BoardItem[], groups:
   const order = allWorkGroups(board, board, groups).flatMap((g) => g.items.map((i) => i.id))
   const at = order.indexOf(id)
   return at < 0 ? null : order[at + 1] ?? null
-}
-
-/**
- * The Completed and Deferred groups the toggles revealed among the rows a focus
- * left on a LANE tab, drawn after the tab panel and never inside it (A6). All
- * work draws finished rows in their own sections instead. Pure.
- */
-export function asideGroupsFor(items: readonly BoardItem[]): BoardGroup[] {
-  const sorted = [...items].sort((a, b) => a.order - b.order)
-  const out: BoardGroup[] = []
-  const completed = sorted.filter((i) => i.lane === 'Completed')
-  if (completed.length > 0) out.push({ key: 'complete', label: BOARD.lanes.completed, secondary: true, closed: false, items: completed })
-  const deferred = sorted.filter((i) => i.lane === 'Deferred')
-  if (deferred.length > 0) out.push({ key: 'deferred', label: BOARD.lanes.deferred, secondary: true, closed: false, items: deferred })
-  return out
 }
 
 /**

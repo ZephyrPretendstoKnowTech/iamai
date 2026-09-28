@@ -19,7 +19,7 @@ import { notPeopleIds } from '../../derive/sets.ts'
 import { activePeopleIds } from '../../derive/population.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
-import { LANES, allWorkGroups, asideGroupsFor, boardOf, boardOrderOf, groupKeyOf, groupNumberOf, groupSummary, groupsFor, rowNumbersOf, sectionNumbersOf, tileSections } from './planBoard.ts'
+import { LANES, allWorkGroups, boardOf, boardOrderOf, groupKeyOf, groupNumberOf, groupSummary, groupsFor, rowNumbersOf, sectionNumbersOf, tileSections } from './planBoard.ts'
 import { STEP_GROUPS, groupOf } from '../../roadmap/stepGroups.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -201,8 +201,6 @@ test('the Plan numbers each section as the print and the exports do, on every vi
       assert.equal(n, printed.get(groupKeyOf(g)) ?? null, `${name}/${g.key}: the screen numbers the section ${n}, the print ${printed.get(groupKeyOf(g))}`)
       for (const i of g.items) assert.equal(order.numberOf(i.id)?.split('.')[0] ?? null, n === null ? null : String(n), `${name}/${i.id}: the exports number its section otherwise than the screen`)
     }
-    // A lane tab's Completed and Deferred groups gather many sections' rows: no section number.
-    for (const g of asideGroupsFor(items)) assert.equal(groupNumberOf(g, numbers), null, `${name}/${g.key}: the aside is numbered as a section`)
   }
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(screen, /const sectionNumbers = sectionNumbersOf\(items\)/, 'the Plan does not number its sections over the whole board')
