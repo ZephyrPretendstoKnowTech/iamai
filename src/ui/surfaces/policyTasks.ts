@@ -160,7 +160,9 @@ type ProcedureMember = {
   createName?: string
 }
 
-const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string>; policyOn: string }
+const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string>; policyOn: string; riskClear: string }
+/** The user-risk steps: a person report-only would have stopped stays risky until their risk is cleared (owner, 2026-09-28). */
+const USER_RISK = new Set([stepIdForGoal('user-risk'), stepIdForGoal('user-risk-medium')])
 
 /** The sections an update's body writes, and the conditions among them by their Graph keys. */
 function sectionsOfBody(body: Record<string, unknown>): { sections: Set<CorrectionSection>; conditions: Set<string> } {
@@ -339,8 +341,8 @@ const GETS_A_METHOD = new Set([stepIdForGoal('admins-phishing-resistant'), stepI
  * authentication, a report-only week that would have blocked someone, and a
  * readiness threshold. Empty where nothing holds it but the report-only week.
  */
-function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string; after: string }[] {
-  const out: { wait: string; after: string }[] = []
+function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string; after: string; named?: true }[] {
+  const out: { wait: string; after: string; named?: true }[] = []
   const gate = step.action.readinessGate
   const gateHolds = gate !== undefined && enforcementHeld(step)
   // The plan's own steps, by title. The campaign is what moves a readiness
@@ -364,7 +366,7 @@ function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string;
       const shown = ids.slice(0, NAMES_INLINE).map(input.nameOf)
       const names = list(ids.length > NAMES_INLINE ? [...shown, fillText(WAITS.more, { n: ids.length - NAMES_INLINE })] : shown)
       const one = ids.length === 1
-      out.push({ wait: fillText(WAITS[`${key}Named`], { names }), after: fillText(WAITS[`${key}NamedAfter${one ? 'One' : 'Many'}`], { names }) })
+      out.push({ wait: fillText(WAITS[`${key}Named`], { names }), after: fillText(WAITS[`${key}NamedAfter${one ? 'One' : 'Many'}`], { names }), named: true })
     } else if (failed.length === 0) out.push({ wait: WAITS[key], after: WAITS[`${key}After`] })
     // Otherwise every account report-only stopped is one the mail wait already names.
   }
@@ -545,7 +547,11 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const holds = waits.length > 0 || policyHold(step) === 'prerequisite-unmet' || SAFETY_HOLDS.has(reason ?? '')
   const turnOnHeld = holds && members.some((m) => !m.on) && (waits.length > 0 || input.contract.milestone.label !== '')
   const heldLine = waits.length > 0 ? fillText(app.plan.enforceOutstanding, { items: list(waits.map((w) => w.wait)) }) : input.contract.milestone.label
-  if (!createdOnStep) tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
+  // A user-risk step whose report-only week named someone waits on that person's
+  // risk, which nothing clears on its own: say how (owner, 2026-09-28; 5.9 could
+  // never finish on the owner's tenant).
+  const riskClear = turnOnHeld && USER_RISK.has(step.id) && waits.some((w) => w.named === true) ? PW.riskClear : null
+  if (!createdOnStep) tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine, ...(riskClear ? [riskClear] : [])] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
   // What the step's package says comes after the policy is On, in every state:
   // the PIM role settings that make role activation ask for the context.
   for (const after of input.extras?.after ?? []) if (after.steps.length > 0) tasks.push({ id: after.id, accountId: null, title: after.title, targetUpn: null, required: after.required, readinessKey: '', evidence: null, actionLabel: after.title, steps: after.steps })
@@ -571,7 +577,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
     const clean = stepEvidenceStrategy(step) !== 'configuration' && (state.lifecycle === 'ready-to-enforce' || (state.lifecycle === 'report-only' && ready?.kind === 'now' && (ready.failures ?? 0) === 0))
     const after = turnOnHeld && waits.length > 0 ? fillText(PW.card.after, { items: list(waits.map((w) => w.after)) }) : null
     if (milestone.kind === 'observe' && milestone.at) next.readinessTitle = fillText(PW.card.reportOnlyUntil, { date: shownDay(milestone.at) })
-    else if (clean || after !== null) next.readinessDirection = [clean ? blockedNoOneLine(ready) : null, after].filter((x): x is string => x !== null).join(' ')
+    else if (clean || after !== null) next.readinessDirection = [clean ? blockedNoOneLine(ready) : null, after, riskClear].filter((x): x is string => x !== null).join(' ')
   }
   // Every task of its own done while the step still waits (a policy already On
   // whose exclusions edit Configure Emergency Exclusions makes, or whose answer
