@@ -1933,22 +1933,23 @@ async function walkHome(url) {
     }
     if (header.tabs > 0) add('P0', `${label}: the signed-in navigation renders in the public header`)
   }
-  // The hero: the eyebrow, the outcome, the site line, the only two actions on
-  // the page, and the meta row of three claims.
+  // The hero: the eyebrow, the outcome, the site line and the only two actions
+  // on the page.
   const hero = await evaluate(`(() => { const h = document.querySelector('main.page .hero'); if (!h) return null; const w = ${WEIGHT}; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { eyebrow: tx(h.querySelector('p.eyebrow')), h1: tx(h.querySelector('h1')), line: tx(h.querySelector('p.site-line')), meta: [...h.querySelectorAll('p.meta span')].map(tx), buttons: [...h.querySelectorAll('.actions a.btn')].map((b) => ({ t: tx(b), w: w(b), href: b.getAttribute('href') })), display: Math.round(parseFloat(getComputedStyle(h.querySelector('h1')).fontSize)) } })()`)
   if (!hero) add('P0', `${label}: no hero`)
   else {
     if (hero.eyebrow !== HOME.eyebrow) add('P0', `${label}: the hero eyebrow reads "${hero.eyebrow}"; ${HOME.eyebrow}`)
     if (hero.h1 !== HOME.h1) add('P0', `${label}: the headline reads "${hero.h1}"; ${HOME.h1}`)
     if (hero.line !== HOME.siteLine) add('P0', `${label}: the site line reads "${hero.line}"; ${HOME.siteLine}`)
-    if (JSON.stringify(hero.meta) !== JSON.stringify(HOME.heroMeta)) add('P0', `${label}: the hero's meta row reads ${hero.meta.join(' · ') || 'nothing'}; ${HOME.heroMeta.join(' · ')}`)
+    // No meta row under the actions (owner, 2026-09-28: cut as fluff).
+    if (hero.meta.length > 0) add('P0', `${label}: the hero shows a meta row again: ${hero.meta.join(' · ')}`)
     // The pack's display size, rendered: 50px at 1280 (docs/design/approved/anatomy/home-v3.html).
     if (hero.display !== 50) add('P0', `${label}: the hero display renders at ${hero.display}px; the approved pack sets 50`)
     // The outcome comes first: the hero never names Conditional Access.
     const heroWords = `${hero.eyebrow} ${hero.h1} ${hero.line}`
     if (/Conditional Access/.test(heroWords)) add('P0', `${label}: the hero names Conditional Access before the baseline gives the term any context`)
     const wantHero = [
-      { t: HOME.open, w: 'primary', href: `/${TOOL_PATH}/#/connect` },
+      { t: HOME.connect, w: 'primary', href: `/${TOOL_PATH}/#/connect` },
       { t: HOME.demo, w: 'secondary', href: `/${TOOL_PATH}/?demo=1#/plan` },
     ]
     if (JSON.stringify(hero.buttons) !== JSON.stringify(wantHero)) add('P0', `${label}: the hero's actions are ${hero.buttons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ') || 'missing'}; ${wantHero.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ')}`)

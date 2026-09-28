@@ -12,10 +12,11 @@ Where things stand, where each fact lives and the binding owner decisions: `docs
 - Exclusions go through the exclusions group, never an emergency account by name.
 - The pinned baseline wins: policy steps render from `baselines/*.pinned.json` through the translator.
 - Design authority runs: product truth → the approved HTML packs in `docs/design/approved/`
-  (Home, Connect, Plan, MFA Readiness; `manifest.json` holds their hashes) → the brand skin in
-  `docs/design/brand-decisions.md`. The packs own anatomy, never copy or technical truth.
-  Production does not implement them yet; `docs/design/authority-reconciliation.md` says why,
-  and the mockups under `docs/design/` are superseded records of what was built.
+  (Home, Connect, Plan, MFA Readiness; `manifest.json` holds their hashes) → the brand contract in
+  `docs/brand/iamai-brand-contract.md`. The packs own anatomy, never copy or technical truth.
+  Production was restored onto the packs (tasks 031–041, recorded in `manifest.json`); where the
+  owner has since changed a surface, the change wins and `docs/STATUS.md` records it. The mockups
+  under `docs/design/` are superseded records of what was built.
 
 ## How to work
 - Before editing: open the files the task names, once. No repository survey, no reading tests or archive/. Grep only for a symbol a named file references.

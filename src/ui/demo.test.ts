@@ -409,8 +409,11 @@ test('the sample uses the pinned baseline, not a copy', () => {
 test('the demo banner says which sample scan is showing, as a two-segment switch', async () => {
   const { app } = await import('../content/content.ts')
   const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
-  assert.match(shell, /<span role="status">\{demoWeek2 \? SHELL\.demoBannerFollowUp : SHELL\.demoBanner\}<\/span>/)
-  assert.equal(app.shell.demoBannerFollowUp, "Sample data · a follow-up scan weeks later, after the sample's own technician did some of the work")
+  // No sentence on the bar (owner, 2026-09-28): the two scans and Leave the demo, and the
+  // follow-up scan's reason (F-017) as its button's hover hint.
+  assert.doesNotMatch(shell, /SHELL\.demoBanner/)
+  assert.match(shell, /aria-pressed=\{demoWeek2\} title=\{SHELL\.demoFollowUpHint\}/)
+  assert.equal((app.shell as unknown as { demoFollowUpHint: string }).demoFollowUpHint, 'The same sample, weeks later')
   const css = readFileSync('src/ui/app.css', 'utf8')
   const rule = (sel: string): string => css.slice(css.indexOf(`${sel} {`), css.indexOf('}', css.indexOf(`${sel} {`)))
   assert.match(rule('.demo-banner .demo-snapshots'), /border: 1px solid var\(--strong-line\);/)

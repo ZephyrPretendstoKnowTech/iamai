@@ -345,14 +345,10 @@ export function AppShell({
       </header>
       {isDemo() && (
         <p className="demo-banner">
-          {/* The sample-data fact is a sentence, not a colour: it reads the same
-              in a screen reader, in print's absence and at any width. It stands
-              on its own so the live region announces the sample and never the
-              selector's own labels every time a snapshot lands. */}
-          {/* On the follow-up scan the sentence says what changed and why, so Scan's
-              jump to it explains itself where the visitor is looking (F-017). */}
-          <span role="status">{demoWeek2 ? SHELL.demoBannerFollowUp : SHELL.demoBanner}</span>
-          {' · '}
+          {/* The bar is the two scans and the way out, with no sentence (owner,
+              2026-09-28): the sample's name, its scans and Leave the demo say it
+              is the sample. The follow-up scan's reason (F-017) is its button's
+              hover hint. */}
           {/* The progression: two synthetic scans, named. Pressing one changes
               the facts the app derives from (ui/actions.ts showDemoSnapshot) and
               nothing else. `aria-pressed` carries which one is showing, so the
@@ -362,7 +358,7 @@ export function AppShell({
             <button type="button" className="text-control" aria-pressed={!demoWeek2} onClick={() => showDemoSnapshot(false)}>
               {SHELL.demoSnapshotInitial}
             </button>
-            <button type="button" className="text-control" aria-pressed={demoWeek2} onClick={() => showDemoSnapshot(true)}>
+            <button type="button" className="text-control" aria-pressed={demoWeek2} title={SHELL.demoFollowUpHint} onClick={() => showDemoSnapshot(true)}>
               {SHELL.demoSnapshotFollowUp}
             </button>
           </span>

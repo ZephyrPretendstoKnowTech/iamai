@@ -618,7 +618,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   if (!(await waitFor(`/Try it with sample data/.test(document.body ? document.body.innerText : '')`, 30000))) throw new Error('Connect never offered "Try it with sample data"')
   await evaluate(`(() => { const b = [...document.querySelectorAll('main.page a, main.page button')].find((x) => /Try it with sample data/.test(x.textContent)); if (b) b.click(); return !!b })()`)
-  if (!(await waitFor(`location.hash === '#/plan' && /Sample data/.test(document.body.innerText) && document.querySelectorAll('main.page .plan-row').length > 0`, 30000))) throw new Error('the demo plan never drew')
+  if (!(await waitFor(`location.hash === '#/plan' && document.querySelector('.demo-banner') !== null && document.querySelectorAll('main.page .plan-row').length > 0`, 30000))) throw new Error('the demo plan never drew')
   await sleep(600)
   if ((await shownSnapshot()) !== 'Initial scan') throw new Error(`the demo opened on "${await shownSnapshot()}", not the Initial scan`)
   const initialRows = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((r) => r.textContent.trim()).join(' ~ ')`)

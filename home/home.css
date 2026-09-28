@@ -221,21 +221,12 @@ main.page a[href] {
 .hero .actions {
   margin: 24px 0 0;
 }
-.hero .meta {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin: 15px 0 0;
-  max-width: none;
-  color: var(--quiet-text);
-  font-size: var(--t-1);
-}
 
 /* ------------------------------------------------------------------- shot
    The product, shown once under the hero (pack v3, OWN-B1): the sample
-   tenant's Plan at the content width, framed as a panel, with one quiet
-   caption. The picture is in the page's theme: two images, one shown. It
-   links to the sample. */
+   tenant's Plan at the content width, framed as a panel, with no caption
+   (owner, 2026-09-28). The picture is in the page's theme: two images, one
+   shown. It links to the sample. */
 .shot {
   margin: 0 0 54px;
 }
@@ -254,11 +245,6 @@ main.page a[href] {
   display: block;
   width: 100%;
   height: auto;
-}
-.shot figcaption {
-  margin-top: 10px;
-  color: var(--quiet-text);
-  font-size: var(--t-1);
 }
 .shot .shot-dark {
   display: none;

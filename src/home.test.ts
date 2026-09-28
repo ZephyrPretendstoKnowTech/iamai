@@ -105,7 +105,11 @@ test('the public claims are the true ones: read-only, browser-local, no server, 
   assert.doesNotMatch(said, /privacy first|secure by design|your data is safe|bank.grade|military.grade|\b(ISO ?27001|SOC ?2|GDPR compliant|HIPAA|certified|uptime|SLA|partner of|trusted by)\b/i, said)
   const work = WORK.map((b) => `${b.verb} ${b.text}`).join(' ')
   assert.doesNotMatch(work, /\b(applies|applying|apply|remediates|enforces|deploys|rolls out|fixes) (it|them|the|your|a) /i, work)
-  assert.doesNotMatch(JSON.stringify(H.heroMeta), /guarantee|certified|automatically/i)
+  // The hero promises the plan, never an outcome the product disclaims (README: IAMAI does
+  // not guarantee that nobody is locked out; the pre-launch wording review, 2026-09-28).
+  const hero = [H.eyebrow, H.h1, H.siteLine].join(' ')
+  assert.doesNotMatch(hero, /guarantee|certified|automatically|without locking anyone out|\bproven\b|changes nothing/i, hero)
+  assert.equal('heroMeta' in H, false, 'the hero meta row was cut (owner, 2026-09-28)')
   const baseline = [H.baselineName, H.baseline, H.baselineGoal, H.baselineNote].join(' ')
   for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP']) assert.ok(baseline.includes(fact) && html.includes(esc(fact)), `the rail names ${fact}`)
   assert.doesNotMatch(baseline, /Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie|approved by Microsoft|partnership/i, baseline)
@@ -118,6 +122,9 @@ test('every link into the planner is a real route, and the build publishes home 
   const into = links(html).filter((l) => l.href.startsWith('/{{TOOL_PATH}}/'))
   // The picture under the hero links to the sample as the hero's second button does (OWN-B1).
   assert.deepEqual(into.map((l) => l.href), [HOW_HREF, PRODUCT_ENTRY, PRODUCT_ENTRY, DEMO_HREF, DEMO_HREF, PRODUCT_ENTRY])
+  // The hero's button says what happens next; the header and the rail keep the product's name (owner, 2026-09-28).
+  assert.deepEqual(into.filter((l) => l.href === PRODUCT_ENTRY).map((l) => l.text), [H.open, H.connect, H.open])
+  assert.equal(H.connect, 'Connect your tenant')
   const routes = readFileSync('src/ui/shell/routes.ts', 'utf8')
   for (const hash of ['connect', 'how', 'plan']) assert.ok(routes.includes(`'${hash}'`), `#/${hash} is a planner route`)
   assert.equal(PRODUCT_ENTRY, '/{{TOOL_PATH}}/#/connect', 'the product entry is Connect, the first step of the product')
@@ -158,8 +165,9 @@ test('Home shows the product once under the hero: the sample Plan in the page\'s
   assert.ok(figure.includes('<a href="/{{TOOL_PATH}}/?demo=1#/plan">'), 'the picture links to the sample')
   assert.match(figure, /<img class="shot-dark" src="\/plan-dark\.png"/)
   assert.match(figure, /<img class="shot-light" src="\/plan-light\.png"/)
-  assert.ok(figure.includes(`<figcaption>${String(H.shotCaption)}</figcaption>`))
-  assert.equal(H.shotCaption, 'The plan IAMAI writes for the sample tenant.')
+  // No caption: the picture says what it is (owner, 2026-09-28).
+  assert.equal(figure.includes('<figcaption'), false, 'the picture carries a caption')
+  assert.equal('shotCaption' in H, false)
   // Both pictures ship with the page, and one shows per theme.
   const files = readdirSync(home)
   assert.ok(files.includes('plan-dark.png') && files.includes('plan-light.png'), 'the pictures are not in home/')

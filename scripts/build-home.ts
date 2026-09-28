@@ -5,14 +5,15 @@
 // The composition below is the owner's approved Home design,
 // docs/design/approved/anatomy/home-v3.html, recorded in
 // docs/design/approved/manifest.json. That file owns the anatomy — the public
-// header, the hero and its meta row, the two-column product section with its
+// header, the hero, the two-column product section with its
 // side rail, the Reads / Compares / Plans rows, the label-and-explanation
 // catches, the trust row, About and the footer, and the 760 and 560
 // breakpoints. It does NOT own the words (docs/design/content.json) or the
 // technical truth (what IAMAI reads, what it may not do): where the pack's
 // placeholder copy and production's own accurate sentence disagree,
 // production's sentence wins and the pack's shape keeps it
-// (docs/design/authority-reconciliation.md).
+// (docs/design/approved/manifest.json). The owner cut the pack's hero meta row and
+// the picture's caption on 2026-09-28 (docs/STATUS.md); the rest is the pack's.
 //
 // The home page wears the same palette, type scale and fonts as the planner
 // (theme.css from the tokens), and every sentence it shows is a string in
@@ -85,9 +86,9 @@ type HomeContent = {
   siteLine: string
   open: string
   demo: string
-  heroMeta: string[]
+  /** The hero's primary button (owner, 2026-09-28); the header and the rail keep `open`. */
+  connect: string
   shotAlt: string
-  shotCaption: string
   workLabel: string
   workHeading: string
   workLead: string
@@ -249,30 +250,26 @@ export function renderHomeHtml(): string {
     </header>
 
     <main class="page">
-      <!-- The outcome, what IAMAI does about it, the two ways in, and the three
-           claims the trust section below spends the rest of the page proving. -->
+      <!-- The outcome, what IAMAI does about it, and the two ways in. -->
       <div class="hero">
         <p class="eyebrow">${esc(h.eyebrow)}</p>
         <h1>${esc(h.h1)}</h1>
         <p class="site-line">${esc(h.siteLine)}</p>
         <p class="actions">
-          ${button(h.open, PRODUCT_ENTRY, 'primary')}
+          ${button(h.connect, PRODUCT_ENTRY, 'primary')}
           ${button(h.demo, DEMO_HREF, 'secondary')}
-        </p>
-        <p class="meta">
-          ${h.heroMeta.map((m) => `<span>${esc(m)}</span>`).join('\n          ')}
         </p>
       </div>
 
       <!-- The product, shown once (pack v3, OWN-B1): the sample tenant's Plan in
            the page's theme, captured from the demo by scripts/home-shot.mjs, and
-           linking to the sample. -->
+           linking to the sample. No caption: the picture says what it is (owner,
+           2026-09-28). -->
       <figure class="shot">
         <a href="${DEMO_HREF}">
           <img class="shot-dark" src="/plan-dark.png" alt="${esc(h.shotAlt)}" width="1280" height="820" loading="lazy" />
           <img class="shot-light" src="/plan-light.png" alt="${esc(h.shotAlt)}" width="1280" height="820" loading="lazy" />
         </a>
-        <figcaption>${esc(h.shotCaption)}</figcaption>
       </figure>
 
       <!-- What IAMAI does, and beside it the standard it is doing it against.

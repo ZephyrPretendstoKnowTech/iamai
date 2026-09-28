@@ -1071,17 +1071,18 @@ try {
   const demoErrBase = consoleErrors.length
   // Enter the demo by the link a visitor clicks, not by a crafted URL.
   await clickText('/Try it with sample data/')
-  check('Demo: entering lands on the plan under the sample-data banner', await waitFor(`location.hash === '#/plan' && /Sample data/.test(document.body.innerText)`))
+  check('Demo: entering lands on the plan under the demo bar', await waitFor(`location.hash === '#/plan' && document.querySelector('.demo-banner') !== null`))
   await sleep(600)
   let demoText = await text()
   const demoDay1Header = await progressOf()
-  check('Demo: the banner says nothing is from a real tenant and offers to leave', /Sample data . nothing here is from a real tenant/.test(demoText) && /Leave the demo/.test(demoText))
+  // The bar is the two scans and the way out, with no sentence (owner, 2026-09-28).
+  check('Demo: the bar offers the two scans and Leave the demo, with no sentence', await evaluate(`(() => { const b = document.querySelector('.demo-banner'); const t = b ? b.innerText.replace(/\\s+/g, ' ').trim() : ''; return /Initial scan/.test(t) && /Follow-up scan/.test(t) && /Leave the demo/.test(t) && !/Sample data|real tenant/.test(t) })()`))
   // Three branches, and the held one has to name what holds it: a plan whose
   // policies wait on a safety object nobody has chosen is the ordinary first
   // visit, and 'cannot finish until' with nothing after it is a hole.
   check('Demo: the plan header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, In report-only=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(demoDay1Header), demoDay1Header)
   check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => ${DEMO_CHUNK}.test(e.name))`))
-  check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
+  check('Demo: the header carries the demo bar, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && (await evaluate(`document.querySelector('.demo-banner') !== null`)))
   // RUN-CONTEXT-B decision 10 said a row draws no reason line, because "the
   // lane label is the row's reason". That premise stopped being true in
   // 8f440021: `laneLabelOf` appends the lane tail only on Ready, and
@@ -1274,7 +1275,7 @@ try {
   // "in place" count rises (prompt 50.1 item 5) — the fix a decisions-only record
   // makes possible: the ratchet no longer pins day-one statuses across the scan.
   await demoGo('plan')
-  await waitFor(`/Sample data/.test(document.body.innerText)`)
+  await waitFor(`document.querySelector('.demo-banner') !== null`)
   await sleep(400)
   // The pressed button in the banner's selector names the snapshot on screen.
   const shownSnapshot = () => evaluate(`((document.querySelector('.demo-banner .demo-snapshots button[aria-pressed="true"]') || {}).textContent || '').trim()`)
@@ -1571,7 +1572,7 @@ try {
 
   // Leave the demo: back to the signed-out app, no banner (item 12).
   await clickText('/Leave the demo/', '.demo-banner')
-  check('Demo: Leave returns to Connect with the banner gone', (await waitFor(`location.hash === '#/connect'`)) && !/Sample data/.test(await text()))
+  check('Demo: Leave returns to Connect with the bar gone', (await waitFor(`location.hash === '#/connect'`)) && (await evaluate(`document.querySelector('.demo-banner') === null`)))
 
   const realAfter = await realKeys()
   check(

@@ -1813,27 +1813,23 @@
       "siteLine": "A policy can look right and still cause problems. IAMAI checks who has the required sign-in methods, whether the available records show they use them, and which exclusions or outside accounts need a closer look. Then it helps you plan the changes.",
       "open": "Open IAMAI",
       "demo": "Try it with sample data",
-      "heroMeta": [
-        "Free public preview",
-        "You review and make the changes"
-      ],
+      "connect": "Connect your tenant",
       "shotAlt": "The sample tenant's plan in IAMAI Planner: what is ready now, the next step, and the first section's steps with their dates.",
-      "shotCaption": "The plan IAMAI writes for the sample tenant.",
       "workLabel": "What it does",
-      "workHeading": "See what needs doing, and what needs to happen first.",
-      "workLead": "Start with the tenant you have. IAMAI compares it with the Defense in Depth baseline, shows the gaps it can assess, and puts the work in order.",
+      "workHeading": "From your tenant to the baseline, one step at a time.",
+      "workLead": "IAMAI compares your tenant with the Defense in Depth baseline and orders the work so each policy waits until what it depends on is ready.",
       "work": [
         {
-          "verb": "Check",
-          "text": "Review policies, accounts, groups and the sign-in evidence Microsoft makes available to this tenant."
+          "verb": "Reads",
+          "text": "After one admin consent, a Global Reader sign-in is enough. IAMAI reads your policies, people, sign-in methods and up to 30 days of interactive sign-ins."
         },
         {
-          "verb": "Understand",
-          "text": "See what already meets the baseline, what needs attention, and who a change could affect."
+          "verb": "Compares",
+          "text": "Each baseline policy against yours, setting by setting. The name doesn't matter; the settings do."
         },
         {
-          "verb": "Prepare",
-          "text": "Work through the prerequisites, review the instructions, and test changes before enforcing them."
+          "verb": "Plans",
+          "text": "A dated plan: emergency access first, report-only first wherever Microsoft evaluates it, and who each change could affect."
         }
       ],
       "baselineLabel": "Baseline",
@@ -1842,34 +1838,34 @@
       "baselineGoal": "It covers MFA, administrator access, devices, sessions and more. IAMAI helps you work through the parts that apply to your tenant and prepare for changes that could affect people’s access.",
       "baselineNote": "You can inspect the baseline version IAMAI uses. Where IAMAI cannot assess a control, the plan identifies the review you need to carry out.",
       "catchesLabel": "What it catches",
-      "catchesHeading": "A few things worth checking before you deploy.",
+      "catchesHeading": "What can lock people out, found before you turn a policy on.",
       "catches": [
         {
-          "label": "Sign-in methods",
-          "text": "Someone has registered a strong method, but the available records do not show them using it."
-        },
-        {
           "label": "Emergency access",
-          "text": "A proposed policy may reach the accounts you rely on to recover access."
+          "text": "A policy that would reach the accounts you use to get back in. The plan excludes them through one group, and each scan checks the group still holds them."
         },
         {
-          "label": "Exclusions",
-          "text": "Accounts in an exclusion group need a review of why they are still exempt."
+          "label": "Sign-in methods",
+          "text": "People whose only method a policy won’t accept, or who haven’t used the MFA they registered in the last 30 days."
         },
         {
-          "label": "Outside accounts",
-          "text": "Guests may need different preparation or follow-up before a change applies to them."
+          "label": "Service and shared accounts",
+          "text": "Accounts that look like scanners, service mailboxes or meeting-room devices, suggested from their names, licences and sign-ins, so you decide how each is handled before MFA reaches it."
         },
         {
-          "label": "Shared accounts",
-          "text": "A meeting-room or service account may need attention before new sign-in requirements take effect."
+          "label": "Legacy authentication",
+          "text": "Accounts that recent sign-ins show still using IMAP, POP, SMTP AUTH or ActiveSync, named before you block legacy authentication."
+        },
+        {
+          "label": "Report-only results",
+          "text": "After a policy’s report-only period, the next scan names anyone it would have stopped, and its turn-on waits for them."
         }
       ],
       "trustLabel": "What it does with your tenant",
       "trustHeading": "Your tenant stays under your control.",
       "trust": [
         {
-          "title": "IAMAI does not change your tenant",
+          "title": "IAMAI is read-only",
           "body": "You can review the permissions before connecting. Approving them adds one enterprise application to the tenant, which you can delete. IAMAI reads the tenant to build the plan; you decide which changes to make and carry them out yourself."
         },
         {
@@ -1930,9 +1926,8 @@
         "forgetSaveFirst": "Save a plan file first",
         "forgetCancel": "Cancel",
         "forgetYes": "Forget {tenant}",
-        "demoBanner": "Sample data · nothing here is from a real tenant",
-        "$commentDemoBannerFollowUp": "F-017 (owner, 2026-09-27): Scan in the demo moves to the sample's follow-up scan, where steps are done and answers given that the visitor never did. The banner's announced sentence says so while that scan shows.",
-        "demoBannerFollowUp": "Sample data · a follow-up scan weeks later, after the sample's own technician did some of the work",
+        "$commentDemoFollowUpHint": "The demo bar is the two scans and Leave the demo, with no sentence (owner, 2026-09-28: 'Sample data · nothing here is from a real tenant' and its follow-up variant cut). The follow-up scan's reason, which F-017 put in the sentence, is the Follow-up scan button's hover hint.",
+        "demoFollowUpHint": "The same sample, weeks later",
         "demoSnapshots": "Sample snapshot",
         "demoSnapshotInitial": "Initial scan",
         "demoSnapshotFollowUp": "Follow-up scan",

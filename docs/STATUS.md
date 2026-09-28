@@ -27,7 +27,7 @@ what was promised and never done.
 | Contributing, CI and review rules | `CONTRIBUTING.md` |
 | Permissions, storage, exports, reporting a vulnerability | `SECURITY.md` |
 | Every word the product shows | `docs/design/content.json` |
-| Design authority | `docs/design/approved/` (hashes in `manifest.json`), then `docs/design/brand-decisions.md`; `docs/design/authority-reconciliation.md` says what production follows |
+| Design authority | `docs/design/approved/` (the packs in `anatomy/`, their hashes and what production follows in `manifest.json`), then the brand contract `docs/brand/iamai-brand-contract.md`; owner changes made since are in the decisions below |
 | The baseline | `baselines/*.pinned.json` with its index and interpretation; `docs/baselines/` |
 | The step standard | `docs/plans/roadmap-flow/intent.md` (the seven questions), `step-template.md` |
 | The v1.0 plan and its design decisions | `docs/plans/roadmap-flow/v1-plan.md` |
