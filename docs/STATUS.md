@@ -7,13 +7,12 @@ Everything else is either a working document it links to, or history in
 
 ## Live
 
-- `main` at c02de2fd (Round 4), deployed 2026-09-27: https://getiamai.com (Home) and
-  https://getiamai.com/planner/ (the tool).
-- Waiting for the owner's review: branch `night/2026-09-27` (the pre-launch night:
-  cleanup, the Plan without its Show completed and Show deferred toggles, public docs
-  corrected, superseded docs archived; then the morning of 2026-09-28: the On line, the
-  Inforcer step on the template, the way out on user-risk steps, the tenant guard, and
-  Home's words). Nothing on it is live until the owner says so.
+- `main` at f0c82ea3, deployed 2026-09-28 and audited live: https://getiamai.com (Home)
+  and https://getiamai.com/planner/ (the tool). It carries the pre-launch night (the Plan
+  without its Show completed and Show deferred toggles, public docs corrected, superseded
+  docs archived) and the morning of 2026-09-28 (Home's plan-first headline and share
+  picture, the On line, the Inforcer step on the template, the way out on user-risk
+  steps, the tenant guard), after four review rounds.
 
 ## Launch
 
