@@ -446,7 +446,17 @@ export type ReadinessContext = {
   methodsUnavailable?: boolean
   passkey: PasskeyPolicy
   /** Emergency Access Step 3's intended models; `applied` where the tenant's allow list already equals them. */
-  step3: { models: readonly { name: string; aaguid: string }[]; applied: boolean }
+  step3: {
+    models: readonly { name: string; aaguid: string }[]
+    applied: boolean
+    /**
+     * Which held passkeys the planned settings stop, per person, as the Plan's own
+     * projection reads them (roadmap/passkeyCompatibility.ts affectedPasskeysByProposedChange):
+     * each person's own profile, the allow list the plan keeps, the passkey types. A key
+     * id (or model where it has none) per account; accounts it could not judge.
+     */
+    stops?: { stopped: ReadonlyMap<string, ReadonlySet<string>>; unjudged: ReadonlySet<string> }
+  }
   modelNames: ReadonlyMap<string, string>
   /** Whether security-info registration is limited to trusted locations or managed devices. */
   registration: 'open' | 'trustedOnly' | 'unknown'
@@ -818,7 +828,14 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       forms.add(passkeyForm(m, reg ?? null))
       if (allowedNow !== 'no') usableForms.add(passkeyForm(m, reg ?? null))
     }
-    const afterStep3: Verdict | null = cls !== 'passkey' || ctx.step3.applied || step3.size === 0 ? null : aaguid === null ? 'unknown' : step3.has(aaguid) ? 'yes' : 'no'
+    // One verdict with the Plan's card (review, 2026-09-28): from its per-person
+    // projection where the context carries it, for a key usable today (the projection
+    // judges only those); else by the plan's model list.
+    const stops = ctx.step3.stops
+    const account = input.userId?.toLowerCase() ?? null
+    const afterStep3: Verdict | null = cls !== 'passkey' || ctx.step3.applied ? null
+      : stops && account !== null && allowedNow !== 'no' ? (stops.unjudged.has(account) ? 'unknown' : (stops.stopped.get(account)?.has((m?.id ?? aaguid ?? '').toLowerCase()) ? 'no' : 'yes'))
+      : step3.size === 0 ? null : aaguid === null ? 'unknown' : step3.has(aaguid) ? 'yes' : 'no'
     const last = latestOf(cls)
     const model = cls === 'platformCredential' ? (ctx.modelNames.get(PLATFORM_CREDENTIAL_AAGUID) ?? null) : aaguid ? (ctx.modelNames.get(aaguid) ?? m?.model ?? null) : (m?.model ?? null)
     // The same model name on another AAGUID (other firmware): the approved list names this model, and still does not allow this key.

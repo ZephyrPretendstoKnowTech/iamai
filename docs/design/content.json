@@ -1567,7 +1567,7 @@
         },
         "step3": {
           "yes": "Allowed by Configure Passkey Authentication",
-          "no": "Not on Configure Passkey Authentication’s approved list: stops working once it is applied",
+          "no": "Stops working once Configure Passkey Authentication is applied",
           "unknown": "Model not reported"
         },
         "never": "Never seen in a sign-in",

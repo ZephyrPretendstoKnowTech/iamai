@@ -595,3 +595,20 @@ test('a row already told to replace its key carries no second warning (review of
   const row = { readiness: { automated: false, next: { kind: 'none' }, recommended: { kind: 'replaceKey' }, credentials: [{ cls: 'passkey', allowedNow: 'yes', afterStep3: 'no' }] } } as unknown as ReadinessRow
   assert.equal(rowNote(row), '')
 })
+
+test('on passkey profiles, a leftover top-level allow list does not keep a key the person\'s own profile stops (review of F-075)', () => {
+  // Review, 2026-09-28: a tenant-wide list of kept models called a key "allowed" that the
+  // person's own profile would stop: in profile mode the top-level allow list applies to
+  // nobody, and Configure Passkey Authentication does not keep it. The verdict is now the
+  // Plan's per-person projection.
+  const f = structuredClone(fixture('demo'))
+  const words = (pages as unknown as { readiness: { notes: { keyStops: string } } }).readiness
+  const flagged = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => rowNote(r) === words.notes.keyStops)!
+  assert.ok(flagged, 'the premise: someone\'s only key is off the plan\'s list')
+  const key = flagged.readiness!.credentials.find((c) => c.cls === 'passkey' && c.afterStep3 === 'no')!
+  for (const m of f.snapshot.authMethods[flagged.user.id] ?? []) if ((m as { aaGuid?: string }).aaGuid?.toLowerCase() === key.aaguid) (m as { passkeyType?: string }).passkeyType = 'deviceBound'
+  const unrestricted = { id: 'p1', name: 'p1', passkeyTypes: 'deviceBound', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: [] } }
+  f.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, defaultPasskeyProfile: 'p1', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [key.aaguid] }, includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['p1'] }], excludeTargets: [], passkeyProfiles: [unrestricted] }] }] } as typeof f.snapshot.config.authMethodsPolicy
+  const same = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.user.id === flagged.user.id)!
+  assert.equal(rowNote(same), words.notes.keyStops, 'a key the person\'s own profile stops is shown as kept')
+})

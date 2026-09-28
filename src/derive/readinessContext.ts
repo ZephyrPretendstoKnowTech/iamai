@@ -7,8 +7,8 @@
 // Pure: no DOM, no network.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { assignedPasskeyProfiles, passkeyReadingOf, PASSKEY_DEFAULT_MODELS } from '../roadmap/passkeySettings.ts'
-import { approvedPasskeyModels } from '../roadmap/emergencyJourney.ts'
+import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels, PASSKEY_DEFAULT_MODELS } from '../roadmap/passkeySettings.ts'
+import { affectedPasskeysByProposedChange } from '../roadmap/passkeyCompatibility.ts'
 import type { Fido2Configuration } from '../roadmap/passkeySettings.ts'
 import { passkeyProfilesFor, passkeyTargetsReach, usesPasskeyProfiles } from '../roadmap/passkeyCompatibility.ts'
 import type { GroupMembers } from '../coverage/population.ts'
@@ -186,11 +186,15 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     if (!p) people.set(userId, (p = personPasskeyPolicy(reading.current, passkey, userId, groups)))
     return p
   }
-  // The models Configure Passkey Authentication allows once applied: the plan's own and
-  // those the tenant's allow list already holds, which it keeps. One list with the Plan's
-  // (roadmap/emergencyJourney.ts approvedPasskeyModels): MFA Readiness read the plan's
-  // alone, and told someone their kept key would stop working (review, 2026-09-28).
-  const models = approvedPasskeyModels(snapshot, (mapping ?? undefined) as MappingState)
+  const models = requiredModels((mapping && 'passkeyApprovedModels' in mapping ? mapping : undefined) as MappingState | undefined)
+  // Whether a held key stops once Configure Passkey Authentication is applied is the
+  // Plan's per-person reading (review, 2026-09-28): the plan's model list alone called a
+  // key the tenant's allow list keeps "stops working", and a tenant-wide list called a
+  // key another person's profile keeps "allowed". Each key by its id, else its model.
+  const projection = affectedPasskeysByProposedChange(snapshot, (mapping ?? undefined) as MappingState | undefined, groups)
+  const stopped = new Map<string, Set<string>>()
+  for (const user of projection.users) stopped.set(user.accountId.toLowerCase(), new Set(user.methods.map((m) => (m.methodId ?? m.aaguid ?? '').toLowerCase())))
+  const stops = { stopped, unjudged: new Set(projection.unassessable.map((id) => id.toLowerCase())) }
   // Step 3 is in place exactly when Emergency Access Step 3 reads it so (one reading, roadmap/passkeySettings.ts),
   // which counts the extra models the operator accepted there.
   const applied = reading.state === 'inPlace'
@@ -214,7 +218,7 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     signInsUnavailable: source?.status === 'disabled',
     methodsUnavailable: methodListsUnread(snapshot),
     passkey,
-    step3: { models, applied },
+    step3: { models, applied, stops },
     modelNames,
     registration: registrationRestriction(snapshot),
     deviceOwners,
