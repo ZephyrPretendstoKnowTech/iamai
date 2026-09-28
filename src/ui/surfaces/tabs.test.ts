@@ -8,7 +8,7 @@ import { readyEvidence } from '../../roadmap/fixtures/readyEvidence.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { readinessTable } from './inventoryTables.ts'
-import { deviceChips, methodsLine, nextCell, roleWord, rowCells, stateTitle } from './readinessCells.ts'
+import { deviceChips, keyStopsNote, methodsLine, nextCell, roleWord, rowCells, stateTitle } from './readinessCells.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
@@ -44,7 +44,8 @@ test('MFA Readiness as CSV writes the role, the devices, the methods, the state 
       assert.equal(table.rows[i][4], methodsLine(r), `${name} row ${i}: the methods, with the note the screen draws under them`)
       if (r.state !== null) assert.equal(table.rows[i][5], stateTitle(r.state), `${name} row ${i}: the state word`)
       else assert.match(String(table.rows[i][5]), /\S/, `${name} row ${i}: an uncounted account says why`)
-      assert.equal(table.rows[i][6], nextCell(r), `${name} row ${i}: the next step`)
+      // The next step, and the warning the row draws under it where the only key stops at Configure Passkey Authentication (F-075).
+      assert.equal(table.rows[i][6], [nextCell(r), keyStopsNote(r)].filter((x) => x !== '').join(' '), `${name} row ${i}: the next step`)
       assert.deepEqual(table.rows[i].slice(2), rowCells(r), `${name} row ${i}: one set of cells`)
     })
   }

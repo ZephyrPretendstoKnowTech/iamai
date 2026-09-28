@@ -15,7 +15,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { signInsNeedP1 } from '../../derive/readinessContext.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
-import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, computersSeen, leadLine, subDevicesTitle, notCountedWhy, needsActionWords, groupWhy } from './readinessCells.ts'
+import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, rowNote, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, computersSeen, leadLine, subDevicesTitle, notCountedWhy, needsActionWords, groupWhy } from './readinessCells.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
@@ -557,4 +557,20 @@ test('opened from Prepare Your Team for MFA, the page shows the people the step 
   // The people the page then lists are the step's own: every one of them is a row here.
   const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
   assert.deepEqual(missing.filter((id) => !view.rows.some((row) => row.user.id === id)), [])
+})
+
+test('a row whose only key stops at Configure Passkey Authentication says so under it and in the CSV (F-075)', () => {
+  // Owner, 2026-09-28: the sample's row told someone to sign in once with a passkey that
+  // stops working when Configure Passkey Authentication is applied; only the drawer said so,
+  // and it called the step "Step 3".
+  const f = fixture('demo')
+  const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows
+  const words = (pages as unknown as { readiness: { notes: { keyStops: string }; panel: { step3: { no: string } } } }).readiness
+  const flagged = rows.filter((r) => rowNote(r) === words.notes.keyStops)
+  assert.ok(flagged.length > 0, 'the premise: the sample has someone whose only key is off the approved list')
+  for (const r of flagged) {
+    assert.notEqual(r.readiness?.next?.kind, 'replaceKey', 'a row already asked to replace the key needs no second line')
+    assert.ok(rowCells(r)[4].endsWith(words.notes.keyStops), `the CSV's Next step leaves it out: ${rowCells(r)[4]}`)
+  }
+  assert.doesNotMatch(words.panel.step3.no, /Step 3/, 'the drawer names the step by its title')
 })

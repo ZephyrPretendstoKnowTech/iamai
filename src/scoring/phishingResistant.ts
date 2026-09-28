@@ -328,6 +328,17 @@ export type CredentialReading = {
 }
 
 export type UnknownReason = 'methods' | 'signIns' | 'notCovered'
+
+/**
+ * A person's only usable phishing-resistant method, where it is a passkey that stops
+ * working once Configure Passkey Authentication's settings are applied: the model is
+ * not on its approved list. One reading for the recommendation (replaceKey, once
+ * Ready) and for MFA Readiness's row note (F-075).
+ */
+export function onlyKeyThatStops(credentials: readonly CredentialReading[]): CredentialReading | null {
+  const usable = credentials.filter((c) => c.allowedNow !== 'no')
+  return usable.length === 1 && usable[0].cls === 'passkey' && usable[0].afterStep3 === 'no' ? usable[0] : null
+}
 export type BlockReason = 'passkeyOff' | 'authenticatorNotAllowed' | 'registrationLocation'
 
 /**
@@ -904,7 +915,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   }
 
   // A key that stops working under Step 3's settings, where it is the only usable method.
-  const onlyKey = usable.length === 1 && usable[0].cls === 'passkey' && usable[0].afterStep3 === 'no' ? usable[0] : null
+  const onlyKey = onlyKeyThatStops(credentials)
   const proven = devices.filter((d) => d.proof !== null)
   if (proven.length === 0) {
     // Until Step 3 is in place any passkey counts (owner decision): the key is confirmed

@@ -1523,6 +1523,7 @@
       },
       "notes": {
         "automated": "Looks like a script or service: confirm it as a service account.",
+        "keyStops": "This passkey stops working once Configure Passkey Authentication is applied: register an approved one first.",
         "onLeave": "No sign-in in 30 days"
       },
       "panel": {
@@ -1565,8 +1566,8 @@
           "unknown": "Settings not read"
         },
         "step3": {
-          "yes": "Allowed by Step 3",
-          "no": "Not on Step 3’s approved list: stops working once Step 3 is applied",
+          "yes": "Allowed by Configure Passkey Authentication",
+          "no": "Not on Configure Passkey Authentication’s approved list: stops working once it is applied",
           "unknown": "Model not reported"
         },
         "never": "Never seen in a sign-in",

@@ -10,7 +10,7 @@ import type { Explained, ReadinessRow, SubGroup } from '../../derive/mfaReadines
 import { devicesUnread } from '../../derive/mfaReadiness.ts'
 import type { Kind } from '../../derive/ladder.ts'
 import type { SetupCheck, SetupKey } from '../../derive/readinessSetup.ts'
-import { AUTHENTICATOR_AAGUIDS, isQualifying } from '../../scoring/phishingResistant.ts'
+import { AUTHENTICATOR_AAGUIDS, isQualifying, onlyKeyThatStops } from '../../scoring/phishingResistant.ts'
 import type { CredentialReading, DeviceReading, MethodClass, NextAction, Platform, ReadinessState, SignInOption } from '../../scoring/phishingResistant.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -58,7 +58,7 @@ type Words = {
     none: string; renewBy: string; renewByOn: string; seamless: string; setUp: string; restore: string; confirm: string; returnConfirm: string; guest: string; guestHasAuthenticator: string; addDevice: string; updateOs: string; confirmOn: string; replaceKey: string
     waitSetup: Record<string, string>; rescan: Record<string, string>
   }
-  notes: { automated: string; onLeave: string }
+  notes: { automated: string; onLeave: string; keyStops: string }
   panel: {
     noDevices: string
     noneRegistered: string
@@ -416,7 +416,19 @@ export function completedChecks(done: readonly SetupCheck[]): number {
 
 /** A note beside the next step: an account that looks automated. */
 export function rowNote(r: ReadinessRow): string {
-  return r.readiness?.automated ? T.notes.automated : ''
+  return r.readiness?.automated ? T.notes.automated : keyStopsNote(r)
+}
+
+/**
+ * Where the person's only usable method is a passkey Configure Passkey Authentication
+ * will stop, the row says so under it and in the CSV's Next step (F-075): it said to
+ * sign in once with that key, and only the drawer warned it would stop working. Not
+ * where the next step is already to replace it.
+ */
+export function keyStopsNote(r: ReadinessRow): string {
+  const readiness = r.readiness
+  if (!readiness || readiness.next?.kind === 'replaceKey') return ''
+  return onlyKeyThatStops(readiness.credentials) ? T.notes.keyStops : ''
 }
 
 export type PanelItem = { icon: 'computer' | 'phone' | 'key'; name: string; sub: string; facts: [string, string][] }
@@ -570,5 +582,5 @@ export function rowCells(r: ReadinessRow): string[] {
   const devices = [...shown.chips.map((c) => `${c.os}: ${c.word}`), ...quiet].join('; ')
   const state = r.state !== null ? stateTitle(r.state) : r.explained ? T.counted[r.explained] : r.kind !== 'person' ? (T.show[r.kind] ?? r.kind) : ''
   // The methods cell with the note the screen shows under it (methodsLine).
-  return [roleWord(r), devices, methodsLine(r), state, nextCell(r)]
+  return [roleWord(r), devices, methodsLine(r), state, [nextCell(r), keyStopsNote(r)].filter((x) => x !== '').join(' ')]
 }
