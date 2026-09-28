@@ -15,7 +15,8 @@ const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPack
 test('the public words make no predictive or blanket data claim, and the method disclosure says what IAMAI saves, without phone numbers', () => {
   {
     const home = pages.home
-    assert.match(String(home.h1), /before.*policy/i)
+    // The headline names the plan IAMAI writes (owner, 2026-09-28: the old one read as a What If check).
+    assert.match(String(home.h1), /rollout plan/i)
     assert.match(JSON.stringify(home), /method|exclu|sign-in/i)
     assert.match(JSON.stringify(home.trust), /browser/)
     const publicText = [JSON.stringify(pages.home), JSON.stringify(pages.connect), read('home/index.html'), read('README.md')].join('\n')

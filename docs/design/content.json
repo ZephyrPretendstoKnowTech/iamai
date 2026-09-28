@@ -1801,16 +1801,16 @@
     },
     "home": {
       "metaTitle": "IAMAI — Microsoft Entra Conditional Access planner",
-      "metaDescription": "Check who could be affected by your Microsoft Entra security changes. IAMAI reviews your tenant and helps you plan the work before you deploy.",
+      "metaDescription": "Turn a Conditional Access baseline into a dated rollout plan for your Microsoft Entra tenant: what to change, in what order, and who each change could affect.",
       "brand": "IAMAI",
       "navHow": "How it works",
       "navSource": {
         "text": "GitHub",
         "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
       },
-      "eyebrow": "Microsoft identity security",
-      "h1": "Know what needs attention before you change a policy.",
-      "siteLine": "A policy can look right and still cause problems. IAMAI checks who has the required sign-in methods, whether the available records show they use them, and which exclusions or outside accounts need a closer look. Then it helps you plan the changes.",
+      "eyebrow": "Microsoft Entra baseline planner",
+      "h1": "Turn a security baseline into a rollout plan for your tenant.",
+      "siteLine": "IAMAI reads your tenant, compares it with Jon Hope's Defense in Depth baseline, and writes a dated plan: what to change, in what order, and who each change could affect. It finds what could lock people out before you turn a policy on. Read-only, and it runs in your browser.",
       "open": "Open IAMAI",
       "demo": "Try it with sample data",
       "connect": "Connect your tenant",
