@@ -30,6 +30,8 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import { DEFAULT_SHOW, EXPLAINED, GROUP_ORDER, SHOW_KEYS, SUB_GROUP_AT, groupOpens, matchesElsewhere, readinessView, rowsShown, showKeyOf, shows, subGroupOpens, subGroupsOf } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow, ShowKey, SubGroup, SubGroupBy } from '../../derive/mfaReadiness.ts'
+import { personNextOf } from './personNext.ts'
+import { stepRegistersDevice } from '../../roadmap/evidenceStrategy.ts'
 import { remainingChecks, stepNextCheck, tenantSetupChecks } from '../../derive/readinessSetup.ts'
 import type { SetupCheck } from '../../derive/readinessSetup.ts'
 import { progressOf } from '../../derive/readinessProgress.ts'
@@ -115,7 +117,7 @@ const PANEL_ID = 'readiness-panel'
  * on them (`held`), the people it covers where it holds on nobody, or null where
  * this scan could not settle who.
  */
-type PlanContext = { title: string; stepId: string; ids: string[] | null; held: boolean; notReady?: boolean }
+type PlanContext = { title: string; stepId: string; ids: string[] | null; held: boolean; notReady?: boolean; registersDevice?: true }
 
 export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null }) {
   const [stepId, setStepId] = useState<string | null>(() => stepFromReadinessHash(window.location.hash))
@@ -137,7 +139,7 @@ export function MfaReadiness({ scan: lastScan, baseline }: { scan: { snapshot: T
   // "Open MFA Readiness" lands on the list it named (F-018); everyone it covers
   // once nobody is left.
   const notReady = !hold && step && step.status !== 'done' && (step.preparation?.missingIds.length ?? 0) > 0 ? step.preparation!.missingIds : null
-  const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (notReady ?? cohort ?? reached(step)?.ids ?? null), held: hold !== null, ...(notReady ? { notReady: true } : {}) } : null
+  const context: PlanContext | null = step && (hold || cohort || step.id === SETUP_STEP) ? { title: contentTitle(step), stepId: step.id, ids: hold ? hold.ids : (notReady ?? cohort ?? reached(step)?.ids ?? null), held: hold !== null, ...(notReady ? { notReady: true } : {}), ...(stepRegistersDevice(step) ? { registersDevice: true as const } : {}) } : null
   const stepIds = new Set(steps.map((s) => s.id))
   const guestStep = steps.find((s) => s.id === GUEST_STEP_ID) ?? null
   return <ReadinessPage snapshot={lastScan?.snapshot ?? null} context={context} planSteps={stepIds} guestStep={guestStep} />
@@ -160,6 +162,11 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
   const mapping = useAppliedMapping(snapshot)
   const again = useAction()
   const view = useMemo(() => (snapshot && mapping ? readinessView(snapshot, snapshot.asOf, mapping) : null), [snapshot, mapping])
+  // Opened from a step that asks for MFA to register a device, each person held by it
+  // reads the step's own next step, as its card states it (F-072): no method on the
+  // device being registered answers it. Everywhere else, the page's own.
+  const scopedIds = useMemo(() => new Set(context?.registersDevice ? context.ids ?? [] : []), [context])
+  const nextOf = (r: ReadinessRow): string => (snapshot && mapping && scopedIds.has(r.user.id) ? personNextOf(snapshot, snapshot.asOf, mapping, r.user.id, true) : nextCell(r))
   const checks = useMemo(() => (snapshot && view ? tenantSetupChecks(snapshot, view) : []), [snapshot, view])
   const progress = useMemo(() => (snapshot && view ? progressOf(view, snapshot) : null), [snapshot, view])
   const [query, setQuery] = useState('')
@@ -342,7 +349,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           {m.note && <span className="cell-note">{m.note}</span>}
         </div>
         <div className="next-step">
-          {nextCell(r)}
+          {nextOf(r)}
           {note && <span className="cell-note">{note}</span>}
         </div>
         <Button
@@ -470,7 +477,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
 
   const exportCsv = (): void => {
     const rows = view.rows.filter(matches)
-    exportDownload(READINESS_CSV, toCsv(T.csvColumns, rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, r.user.userPrincipalName ?? '', ...rowCells(r)])), 'text/csv', unredactedFrom('inventory-csv'))
+    exportDownload(READINESS_CSV, toCsv(T.csvColumns, rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, r.user.userPrincipalName ?? '', ...rowCells(r, nextOf(r))])), 'text/csv', unredactedFrom('inventory-csv'))
   }
 
   const source = snapshot.sources.signInEvidence
@@ -777,7 +784,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
           <section>
             <h3>{T.panel.next}</h3>
             <div className="todo">
-              <strong>{nextCell(openRow)}</strong>
+              <strong>{nextOf(openRow)}</strong>
               <p>{whyLine(openRow)}</p>
               {rowNote(openRow) && <p>{rowNote(openRow)}</p>}
             </div>

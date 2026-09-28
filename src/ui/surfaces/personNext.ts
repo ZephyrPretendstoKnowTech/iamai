@@ -48,7 +48,8 @@ export function readinessNextOf(snapshot: TenantSnapshot, now: string, mapping: 
     // A person the page could not place (Unknown) has no next step to hand over:
     // the card keeps its own line for them, never "the next scan retries".
     if (row.state === 'unknown') continue
-    const next = registersDevice && row.readiness && onTheDevice(row.readiness.next) ? passkey : nextCell(row)
+    // A guest keeps the guest rule: passkeys don't work for guests yet (F-072).
+    const next = registersDevice && !row.guest && row.readiness && onTheDevice(row.readiness.next) ? passkey : nextCell(row)
     if (next !== '') out.set(row.user.id, next)
   }
   byMapping.set(mapping, out)
@@ -63,8 +64,17 @@ export function readinessNextOf(snapshot: TenantSnapshot, now: string, mapping: 
  */
 export function personLines(ctx: StepVarContext, ids: readonly string[], opts: { registersDevice?: boolean } = {}): string[] {
   const line = PERSON
-  const next = readinessNextOf(ctx.snapshot, ctx.now, ctx.mapping, opts.registersDevice === true)
   const labels = personLabels(ctx.snapshot.users, { address: true })
-  const passkey = nextWords({ kind: 'setUp', option: 'authenticatorPasskey', os: null })
-  return ids.map((id) => fillText(line, { name: labels.get(id) ?? ctx.nameOf(id), next: next.get(id) ?? passkey }))
+  return ids.map((id) => fillText(line, { name: labels.get(id) ?? ctx.nameOf(id), next: personNextOf(ctx.snapshot, ctx.now, ctx.mapping, id, opts.registersDevice === true) }))
+}
+
+/**
+ * One person's next step as a step's card states it: MFA Readiness's words, or its
+ * passkey-in-Authenticator step where the page names none. MFA Readiness opened from a
+ * step reads this too, so the row says what the card said (F-072, owner 2026-09-28:
+ * Require MFA to Register a Device told Drew Singh to set up an Authenticator passkey,
+ * and the MFA Readiness it opened said Windows Hello).
+ */
+export function personNextOf(snapshot: TenantSnapshot, now: string, mapping: Pick<MappingState, 'breakGlassUserIds' | 'serviceAccountUserIds'>, id: string, registersDevice: boolean): string {
+  return readinessNextOf(snapshot, now, mapping, registersDevice).get(id) ?? nextWords({ kind: 'setUp', option: 'authenticatorPasskey', os: null })
 }

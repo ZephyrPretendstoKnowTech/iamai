@@ -575,12 +575,12 @@ export function railRemaining(remaining: readonly SetupCheck[], shownAbove: Setu
 }
 
 /** The CSV row, in the columns' order after the name: role, devices, methods, state, next step. */
-export function rowCells(r: ReadinessRow): string[] {
+export function rowCells(r: ReadinessRow, next: string = nextCell(r)): string[] {
   // Every chip the screen shows, the quiet ones included (no phone sign-ins, no sign-in in 30 days).
   const shown = deviceChips(r)
   const quiet = [...(shown.noPhone ? [T.chip.noPhone] : []), ...(shown.chips.length === 0 && r.state !== null && noDevicesWord(r) ? [noDevicesWord(r)] : [])]
   const devices = [...shown.chips.map((c) => `${c.os}: ${c.word}`), ...quiet].join('; ')
   const state = r.state !== null ? stateTitle(r.state) : r.explained ? T.counted[r.explained] : r.kind !== 'person' ? (T.show[r.kind] ?? r.kind) : ''
   // The methods cell with the note the screen shows under it (methodsLine).
-  return [roleWord(r), devices, methodsLine(r), state, [nextCell(r), keyStopsNote(r)].filter((x) => x !== '').join(' ')]
+  return [roleWord(r), devices, methodsLine(r), state, [next, keyStopsNote(r)].filter((x) => x !== '').join(' ')]
 }
