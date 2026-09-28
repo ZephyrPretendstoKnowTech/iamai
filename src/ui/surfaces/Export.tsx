@@ -389,7 +389,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
             <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {A.redactedLabel}
           </label>
           <p className="actions no-print">
-            <Button variant="secondary" onClick={() => exportDownload(exportName(`iamai-bundle${bundleRedacted ? '-redacted' : ''}.json`, bundleRedacted ? null : fileTenant), JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()), cleanup: cleanupViews, groups: data.groups, order }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
+            <Button variant="secondary" onClick={() => exportDownload(exportName(`iamai-bundle${bundleRedacted ? '-redacted' : ''}.json`, bundleRedacted ? null : fileTenant, bundleRedacted ? {} : { id: snapshot.tenantId }), JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()), cleanup: cleanupViews, groups: data.groups, order }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
               {buttons('bundle')[0]}
             </Button>
           </p>
