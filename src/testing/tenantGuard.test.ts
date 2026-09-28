@@ -35,6 +35,21 @@ test('the guard hits tenant and product addresses and fingerprinted values, and 
   assert.deepEqual(findingsIn('policy 12345678-9abc-4def-8123-456789abcdee', list), [], 'one character off is a different value')
 })
 
+// The owner's accounts sit at another onmicrosoft domain than TENANT_DOMAIN, and on
+// 2026-09-27 a committed doc named that tenant bare, with no address at all (security
+// audit S8). A fingerprinted domain or tenant name is a hit wherever it appears: an
+// address's domain, a bare domain, or the name alone as a word.
+test('a fingerprinted domain or tenant name is a hit as an address\'s domain, a bare domain or a word (S8)', () => {
+  const label = 'examplelabtenant'
+  const domain = `${label}.onmicrosoft.com`
+  const list = new Set([fingerprint(domain), fingerprint(label)])
+  assert.deepEqual(findingsIn(`sign in as breakglass@${domain.toUpperCase()}`, list), [{ line: 1, rule: 'fingerprint' }], 'an address at a fingerprinted domain passed')
+  assert.deepEqual(findingsIn(`Tenant: ${domain}`, list), [{ line: 1, rule: 'fingerprint' }], 'a bare fingerprinted domain passed')
+  assert.deepEqual(findingsIn(`**Tenant:** ${label.toUpperCase()} (redacted admin)`, list), [{ line: 1, rule: 'fingerprint' }], 'the tenant name alone passed')
+  // One hit per token, and neighbours that merely contain the name are not it.
+  assert.deepEqual(findingsIn(`${label}x and x${label} and contoso.onmicrosoft.com`, list), [])
+})
+
 test('the committed list holds hashes only, and the tracked tree is clean', () => {
   const list = loadFingerprints()
   assert.ok(list.size > 0)

@@ -5,8 +5,10 @@
 //
 // - Any address at the tenant's onmicrosoft.com domain fails.
 // - Any address at the product domain fails, except the public feedback address.
-// - Any GUID or email address whose SHA-256 (lower-cased, trimmed) is in
-//   scripts/tenant-fingerprints.json fails. The list holds hashes, so the guard
+// - Any GUID, email address, address domain, bare domain or word of six or more
+//   characters whose SHA-256 (lower-cased, trimmed) is in
+//   scripts/tenant-fingerprints.json fails, so a tenant's domain or name is caught
+//   standing alone as well as in an address. The list holds hashes, so the guard
 //   never publishes the values it blocks, and neither does its output: a finding
 //   names the file, line and rule, never the value.
 //
@@ -25,6 +27,12 @@ export const ALLOWED_ADDRESSES = ['feedback@getiamai.com']
 
 const GUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi
+// A domain or a tenant name standing alone: a fingerprinted one is a hit wherever it
+// appears, not only inside an address (security audit S8, 2026-09-27: a committed doc
+// named the owner's tenant bare). Emails are taken out of the line first so an address
+// is judged once, by its own rules.
+const DOMAIN = /(?<![a-z0-9@.-])[a-z0-9-]+(?:\.[a-z0-9-]+)+(?![a-z0-9-])/gi
+const WORD = /(?<![a-z0-9.@-])[a-z0-9][a-z0-9-]{5,}(?![a-z0-9.@-])/gi
 
 /**
  * The fingerprint of one value: SHA-256 of it trimmed and lower-cased.
@@ -52,9 +60,17 @@ export function findingsIn(text, fingerprints) {
       const domain = address.slice(address.lastIndexOf('@') + 1)
       if (domain === TENANT_DOMAIN || domain.endsWith(`.${TENANT_DOMAIN}`)) findings.push({ line, rule: 'tenant-domain' })
       else if ((domain === PRODUCT_DOMAIN || domain.endsWith(`.${PRODUCT_DOMAIN}`)) && !ALLOWED_ADDRESSES.includes(address)) findings.push({ line, rule: 'product-domain' })
-      else if (fingerprints.has(fingerprint(address))) findings.push({ line, rule: 'fingerprint' })
+      else if (fingerprints.has(fingerprint(address)) || fingerprints.has(fingerprint(domain))) findings.push({ line, rule: 'fingerprint' })
     }
     for (const [token] of content.matchAll(GUID)) {
+      if (fingerprints.has(fingerprint(token))) findings.push({ line, rule: 'fingerprint' })
+    }
+    if (fingerprints.size === 0) return
+    const rest = content.replace(EMAIL, ' ').replace(GUID, ' ')
+    for (const [token] of rest.matchAll(DOMAIN)) {
+      if (fingerprints.has(fingerprint(token))) findings.push({ line, rule: 'fingerprint' })
+    }
+    for (const [token] of rest.replace(DOMAIN, ' ').matchAll(WORD)) {
       if (fingerprints.has(fingerprint(token))) findings.push({ line, rule: 'fingerprint' })
     }
   })
