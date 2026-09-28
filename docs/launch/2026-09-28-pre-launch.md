@@ -103,6 +103,20 @@ Admin's risk, so the step can never finish (OWN-W5).
   unless its exact UPN is fingerprinted. Fix: fingerprint each address's domain too, and
   add that domain's hash (guard code only, not the product).
 
+- **The public repository page (your call; each is a GitHub setting or a deletion).**
+  The description, homepage and topics are right. Also:
+  - 37 branches are public. Most are stale: `release/*` (Sep 15),
+    `correction-batch-*`, `foundation-*`, `group-span-batch-1-1`,
+    `walk-readings-batch-1-1`, `visual-system`, `preview-continuation`, the older
+    `fix/*` and `claude/iamai-ux-audit-*`. Recommended: delete every branch not merged
+    into anything current (I'll list them for your yes).
+  - Pull request #7 "Foundation C" (Sep 5) is still open; that work landed another
+    way. Recommended: close it.
+  - Five Dependabot pull requests (React and React DOM, `@azure/msal-browser` 5.19 →
+    5.21, `@types/node`, the Vite React plugin). `npm audit` finds nothing. Recommended:
+    none the night before posting; take them after launch with CI.
+  - The wiki is on and unused. Recommended: turn it off.
+
 ### 5. The three Phase 4 suggestions (still waiting since 2026-09-26)
 
 - The lapsing person's reason line under their next step still describes today's state.
