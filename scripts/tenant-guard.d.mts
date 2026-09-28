@@ -12,3 +12,4 @@ export declare function findingsIn(text: string, fingerprints: ReadonlySet<strin
 export declare function loadFingerprints(cwd?: string): Set<string>
 export declare function scanTracked(cwd?: string): { file: string; line: number; rule: string }[]
 export declare function pathFindings(file: string, fingerprints: ReadonlySet<string>): { file: string; line: number; rule: string }[]
+export declare function maskedPath(file: string, fingerprints: ReadonlySet<string>): string

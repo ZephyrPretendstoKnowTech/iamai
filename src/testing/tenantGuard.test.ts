@@ -3,7 +3,7 @@
 // concatenation so this file does not itself carry one.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { ALLOWED_ADDRESSES, PRODUCT_DOMAIN, TENANT_DOMAIN, findingsIn, fingerprint, loadFingerprints, pathFindings, scanTracked } from '../../scripts/tenant-guard.mjs'
+import { ALLOWED_ADDRESSES, PRODUCT_DOMAIN, TENANT_DOMAIN, findingsIn, fingerprint, loadFingerprints, maskedPath, pathFindings, scanTracked } from '../../scripts/tenant-guard.mjs'
 
 const NONE: ReadonlySet<string> = new Set()
 
@@ -88,6 +88,9 @@ test('each rule catches on its own: a parent domain, a hyphenated name, a path',
   const byName = new Set([fingerprint(label)])
   assert.deepEqual(pathFindings(`docs/qa/${label}-scan.json`, byName), [{ file: 'docs/qa/<fingerprinted>', line: 0, rule: 'fingerprint (path)' }], 'a path finding is missing or names the value')
   assert.deepEqual(pathFindings('docs/qa/contoso-scan.json', byName), [])
+  // A finding inside a tenant-named file prints the same masked path (review, 2026-09-28).
+  assert.equal(maskedPath(`docs/qa/${label}-scan.json`, byName), 'docs/qa/<fingerprinted>')
+  assert.equal(maskedPath('docs/qa/contoso-scan.json', byName), 'docs/qa/contoso-scan.json')
 })
 
 test('the committed list holds hashes only, and the tracked tree is clean', () => {

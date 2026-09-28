@@ -117,9 +117,18 @@ export function loadFingerprints(cwd = process.cwd()) {
  */
 export function pathFindings(file, fingerprints) {
   const rules = [...new Set(findingsIn(file, fingerprints).map((f) => f.rule))]
-  if (rules.length === 0) return []
-  const shown = file.split('/').map((segment) => (findingsIn(segment, fingerprints).length > 0 ? '<fingerprinted>' : segment)).join('/')
-  return rules.map((rule) => ({ file: shown, line: 0, rule: `${rule} (path)` }))
+  return rules.map((rule) => ({ file: maskedPath(file, fingerprints), line: 0, rule: `${rule} (path)` }))
+}
+
+/**
+ * A tracked file's path as the guard prints it, for a path finding and for every
+ * finding in the file: each segment that holds a finding is replaced.
+ * @param {string} file
+ * @param {ReadonlySet<string>} fingerprints
+ * @returns {string}
+ */
+export function maskedPath(file, fingerprints) {
+  return file.split('/').map((segment) => (findingsIn(segment, fingerprints).length > 0 ? '<fingerprinted>' : segment)).join('/')
 }
 
 /**
@@ -141,7 +150,11 @@ export function scanTracked(cwd = process.cwd()) {
       continue // deleted in the working tree, or a submodule
     }
     if (bytes.includes(0)) continue // binary
-    for (const f of findingsIn(bytes.toString('utf8'), fingerprints)) found.push({ file, ...f })
+    const content = findingsIn(bytes.toString('utf8'), fingerprints)
+    if (content.length > 0) {
+      const shown = maskedPath(file, fingerprints)
+      for (const f of content) found.push({ file: shown, ...f })
+    }
   }
   return found
 }
