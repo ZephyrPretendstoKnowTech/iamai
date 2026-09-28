@@ -181,7 +181,8 @@ export const INVENTORY = {
     byClientApp: 'By client app',
     byProtocol: 'By protocol',
     byCountry: 'By country (distinct users)',
-    columns: { key: 'Value', count: 'Sign-ins', users: 'Users' },
+    // Each count table's first column says what it counts (F-127: the countries file's read "Value").
+    columns: { count: 'Sign-ins', users: 'Users', clientApp: 'Client app', protocol: 'Protocol', country: 'Country' },
     olderMethods: 'Older sign-in methods in use',
     usageColumns: { method: 'Method', people: 'People' },
     deviceCode: 'Device-code flow',

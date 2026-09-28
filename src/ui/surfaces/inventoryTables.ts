@@ -403,7 +403,7 @@ export function authMethodsModel(snapshot: TenantSnapshot, names: NameDirectory,
   return readOf(snapshot, 'authMethodsPolicy', {
     id: 'authentication',
     label: C.tabs.authentication,
-    csvName: 'iamai-auth-methods.csv',
+    csvName: 'iamai-authentication.csv',
     rows,
     rowKey: (r) => r.id,
     empty: A.empty,
@@ -507,7 +507,7 @@ export function peopleModel(snapshot: TenantSnapshot, names: NameDirectory, viab
   return readOf(snapshot, 'users', {
     id: 'people',
     label: C.tabs.people,
-    csvName: 'iamai-people.csv',
+    csvName: 'iamai-accounts.csv',
     rows,
     rowKey: (r) => r.user.id,
     empty: P.empty,
@@ -772,7 +772,7 @@ export function licencesModel(snapshot: TenantSnapshot): InventoryModel<LicenceR
   return readOf(snapshot, 'subscribedSkus', {
     id: 'licensing',
     label: C.tabs.licensing,
-    csvName: 'iamai-licences.csv',
+    csvName: 'iamai-licensing.csv',
     rows,
     rowKey: (r) => r.id,
     empty: W.licencesNone,
@@ -920,7 +920,7 @@ export function workloadsModel(snapshot: TenantSnapshot, mapping: MappingState |
 
 export type CountRow = { key: string; count: number }
 
-function countModel(id: string, label: string, csvName: string, data: Record<string, number>, header: string): InventoryModel<CountRow> {
+function countModel(id: string, label: string, csvName: string, data: Record<string, number>, header: string, keyHeader: string): InventoryModel<CountRow> {
   const S = C.signIns
   return {
     id,
@@ -929,7 +929,7 @@ function countModel(id: string, label: string, csvName: string, data: Record<str
     rows: Object.entries(data).map(([key, count]) => ({ key, count })),
     rowKey: (r) => r.key,
     columns: [
-      { key: 'key', header: S.columns.key, sort: (r) => r.key, cell: (r) => r.key },
+      { key: 'key', header: keyHeader, sort: (r) => r.key, cell: (r) => r.key },
       { key: 'count', header, sort: (r) => r.count, cell: (r) => r.count },
     ],
   }
@@ -954,10 +954,10 @@ export function signInModels(snapshot: TenantSnapshot, names: NameDirectory) {
     note: partlyReadLine(snapshot, 'signInEvidence'),
     /** A list of people as a row shows it: three names at most (the row budget), and never "nobody" over records not read. */
     people: (ids: string[]): string => (ids.length === 0 ? (complete ? S.nobody : W.noneSeen) : firstThree(ids.map(names.label))),
-    byClientApp: countModel('signInsByClientApp', S.byClientApp, 'iamai-signins-by-client-app.csv', agg?.byClientApp ?? {}, S.columns.count),
-    byProtocol: countModel('signInsByProtocol', S.byProtocol, 'iamai-signins-by-protocol.csv', Object.fromEntries(Object.entries(agg?.byProtocol ?? {}).map(([k, v]) => [protocolName(k), v])), S.columns.count),
+    byClientApp: countModel('signInsByClientApp', S.byClientApp, 'iamai-signins-by-client-app.csv', agg?.byClientApp ?? {}, S.columns.count, S.columns.clientApp),
+    byProtocol: countModel('signInsByProtocol', S.byProtocol, 'iamai-signins-by-protocol.csv', Object.fromEntries(Object.entries(agg?.byProtocol ?? {}).map(([k, v]) => [protocolName(k), v])), S.columns.count, S.columns.protocol),
     // A country by its name (mapping/countries.ts countryName), never its ISO code.
-    byCountry: { ...countModel('signins', C.tabs.signIns, 'iamai-signins-by-country.csv', Object.fromEntries(Object.entries(agg?.byCountry ?? {}).map(([k, v]) => [countryName(k), v])), S.columns.users), notRead },
+    byCountry: { ...countModel('signins', C.tabs.signIns, 'iamai-sign-in-countries.csv', Object.fromEntries(Object.entries(agg?.byCountry ?? {}).map(([k, v]) => [countryName(k), v])), S.columns.users, S.columns.country), notRead },
     olderMethods: usage
       ? ({
           id: 'olderMethods',

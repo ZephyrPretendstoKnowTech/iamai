@@ -5,8 +5,9 @@
 // builds no cell of its own. One table carries something besides the scan: the
 // Detected workloads table shows the answer saved in Direction beside the
 // scan's reading of each service.
-import { useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { exportName, tenantDisplayName } from '../exportGuard.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { sectionHasData } from '../../graph/collect/coreSections.ts'
 import { getGroupMembers, resolveObjects } from '../../graph/collect/onDemand.ts'
@@ -77,6 +78,9 @@ function Heading({ text, source }: { text: string; source: keyof typeof C.source
   )
 }
 
+/** The tenant a table's CSV is named for (F-047): read once by the page, used by every table's file name. */
+const TenantName = createContext<string | null>(null)
+
 /**
  * A model drawn as a table: every column's header, sort and CSV cell are the
  * model's; `render` only dresses a cell's words (a chip, a tooltip, a date
@@ -95,11 +99,12 @@ function ModelTable<R>({
   expand?: (r: R) => ReactNode
   initialSort?: { key: string; dir: 1 | -1 }
 }) {
+  const tenant = useContext(TenantName)
   const columns: Column<R>[] = model.columns.map((c) => ({ key: c.key, header: c.header, csv: c.cell, sortValue: c.sort, hidden: c.hidden, minWidth: c.minWidth, render: render[c.key] ?? ((r: R) => shownCell(c.cell(r))) }))
   return (
     <>
       {model.note && <p className="reason">{model.note}</p>}
-      <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={model.csvName} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} search={{ filter: (q) => rowsMatching(model, q), placeholder: app.inventory.searchPlaceholder, none: app.inventory.searchNone }} />
+      <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={exportName(model.csvName, tenant)} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} search={{ filter: (q) => rowsMatching(model, q), placeholder: app.inventory.searchPlaceholder, none: app.inventory.searchNone }} />
     </>
   )
 }
@@ -151,6 +156,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
   )
 
   return (
+    <TenantName.Provider value={tenantDisplayName(snapshot)}>
     <div>
       <Tabs
         tabs={[
@@ -167,6 +173,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
         ]}
       />
     </div>
+    </TenantName.Provider>
   )
 }
 

@@ -1426,7 +1426,7 @@
       ],
       "csvColumns": [
         "Person",
-        "Sign-in name",
+        "Sign-in address",
         "Role",
         "Devices seen",
         "Methods",

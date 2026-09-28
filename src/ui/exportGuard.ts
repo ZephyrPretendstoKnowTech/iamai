@@ -16,6 +16,7 @@
 // source and fails if any new call site reaches a browser export API directly.
 import { redactIdentifiers } from '../redact.ts'
 import { isDemo } from './demoMode.ts'
+import { calendarDay } from '../copy/dates.ts'
 import { app } from '../content/content.ts'
 import { foldIcsLine } from '../roadmap/ics.ts'
 import { requiredModels } from '../roadmap/passkeySettings.ts'
@@ -116,10 +117,41 @@ export function watermarkDemoFile(name: string, content: string): string {
   return `${notice}\n\n${content}`
 }
 
+/**
+ * A download's name with the tenant and the day in it: iamai-accounts-contoso-pty-ltd-2026-09-28.csv
+ * (F-047, owner 2026-09-28: two clients' exports on one afternoon saved as
+ * iamai-people.csv and iamai-people (1).csv, and neither said whose or when). The day is
+ * the display time zone's, as every date IAMAI shows. A masked export passes no tenant,
+ * so its name never carries what its content masks.
+ */
+export function exportName(base: string, tenant: string | null, nowIso: string = new Date().toISOString()): string {
+  const dot = base.lastIndexOf('.')
+  const stem = dot > 0 ? base.slice(0, dot) : base
+  const ext = dot > 0 ? base.slice(dot) : ''
+  const slug = (tenant ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '')
+  return `${stem}${slug !== '' ? `-${slug}` : ''}-${calendarDay(nowIso)}${ext}`
+}
+
+/** The tenant's display name as the scan read it, for a download's name: null where the scan has none. */
+export function tenantDisplayName(snapshot: { config: { organization?: { rows?: unknown[] } | null } }): string | null {
+  const name = (snapshot.config.organization?.rows?.[0] as { displayName?: unknown } | undefined)?.displayName
+  return typeof name === 'string' && name.trim() !== '' ? name : null
+}
+
+const BOM = String.fromCharCode(0xfeff)
+/**
+ * The bytes a CSV is saved as: a UTF-8 byte order mark first, so Excel on Windows
+ * opens the file as UTF-8 instead of mis-reading its dashes and apostrophes (F-127).
+ */
+export function csvFileBody(text: string): string {
+  return text.startsWith(BOM) ? text : `${BOM}${text}`
+}
+
 /** Save a file. The only place in the app that creates a download. */
 export function exportDownload(name: string, content: string, type: string, d: Disposition): void {
   const text = exportText(name, content, d)
-  const body = isDemo() ? watermarkDemoFile(name, text) : text
+  const marked = isDemo() ? watermarkDemoFile(name, text) : text
+  const body = /\.csv$/i.test(name) ? csvFileBody(marked) : marked
   const url = URL.createObjectURL(new Blob([body], { type }))
   const a = document.createElement('a')
   a.href = url

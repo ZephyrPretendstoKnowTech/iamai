@@ -51,7 +51,7 @@ import { useAppliedMapping, usePlanData } from './planData.ts'
 import { readinessHref, showFromReadinessHash, stepFromReadinessHash } from '../shell/routes.ts'
 import { Button } from '../components/index.ts'
 import { toCsv } from '../format.ts'
-import { exportDownload, unredactedFrom } from '../exportGuard.ts'
+import { exportDownload, exportName, tenantDisplayName, unredactedFrom } from '../exportGuard.ts'
 import { scan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
@@ -477,7 +477,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
 
   const exportCsv = (): void => {
     const rows = view.rows.filter(matches)
-    exportDownload(READINESS_CSV, toCsv(T.csvColumns, rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, r.user.userPrincipalName ?? '', ...rowCells(r, nextOf(r))])), 'text/csv', unredactedFrom('inventory-csv'))
+    exportDownload(exportName(READINESS_CSV, tenantDisplayName(snapshot)), toCsv(T.csvColumns, rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, r.user.userPrincipalName ?? '', ...rowCells(r, nextOf(r))])), 'text/csv', unredactedFrom('inventory-csv'))
   }
 
   const source = snapshot.sources.signInEvidence

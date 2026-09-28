@@ -43,3 +43,32 @@ test('ordinary values, a formula character mid-value, and RFC4180 quoting are le
   assert.equal(rows[1], `"'=a,b"`, rows[1])
   assert.equal(rows[2], `"say ""hi"""`, rows[2])
 })
+
+// F-047 and F-127 (owner, 2026-09-28): two clients' exports on one afternoon saved as
+// iamai-people.csv and iamai-people (1).csv, and Excel mis-read the dashes and blanks.
+test('a download names the tenant and the day, and a masked one names neither tenant nor what it masks', async () => {
+  const { exportName } = await import('./exportGuard.ts')
+  assert.equal(exportName('iamai-accounts.csv', 'Contoso Pty Ltd', '2026-09-28T02:00:00Z').replace(/\d{4}-\d{2}-\d{2}/, 'DAY'), 'iamai-accounts-contoso-pty-ltd-DAY.csv')
+  assert.equal(exportName('iamai-bundle-redacted.json', null, '2026-09-28').replace(/\d{4}-\d{2}-\d{2}/, 'DAY'), 'iamai-bundle-redacted-DAY.json')
+  assert.equal(exportName('iamai-plan.json', '  ', '2026-09-28'), 'iamai-plan-2026-09-28.json', 'no tenant name, no empty slug')
+})
+
+test('a CSV opens in Excel as UTF-8, and an empty cell the screen dashes is blank in the file', async () => {
+  const { csvFileBody } = await import('./exportGuard.ts')
+  const body = csvFileBody(toCsv(['Name', 'Roles'], [['Avery', '—'], ['Drew', 'Global Administrator']]))
+  assert.equal(body.charCodeAt(0), 0xfeff, 'no UTF-8 byte order mark')
+  assert.equal(csvFileBody(body), body, 'the mark once, not twice')
+  assert.equal(body.slice(1), 'Name,Roles\r\nAvery,\r\nDrew,Global Administrator')
+})
+
+test('the Export page\'s files are named as their buttons read, and the sign-in column is headed one way', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('./surfaces/inventoryTables.ts', import.meta.url), 'utf8')
+  for (const name of ['iamai-accounts.csv', 'iamai-authentication.csv', 'iamai-licensing.csv', 'iamai-sign-in-countries.csv']) assert.ok(src.includes(`'${name}'`), name)
+  for (const old of ['iamai-people.csv', 'iamai-auth-methods.csv', 'iamai-licences.csv', 'iamai-signins-by-country.csv']) assert.ok(!src.includes(`'${old}'`), old)
+  const { pages } = await import('../content/content.ts')
+  const readiness = (pages as unknown as { readiness: { csvColumns: string[] } }).readiness.csvColumns
+  const { INVENTORY } = await import('../copy/inventory.ts')
+  assert.equal(readiness[1], 'Sign-in address')
+  assert.ok(JSON.stringify(INVENTORY).includes('Sign-in address'), 'the accounts file heads its column another way')
+  assert.equal((INVENTORY.signIns.columns as Record<string, string>).country, 'Country')
+})

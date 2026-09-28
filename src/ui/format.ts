@@ -15,9 +15,14 @@ export { STALE_SCAN_DAYS, absolute, absoluteDate, dateRange, relative, relativeD
  */
 const FORMULA_LEAD = /^[=+\-@\t\r]/
 
+/** The dash a table shows in an empty cell. */
+const EMPTY_CELL = '—'
+
 export function toCsv(header: string[], rows: (string | number | null | undefined)[][]): string {
   const cell = (v: string | number | null | undefined): string => {
-    let s = v === null || v === undefined ? '' : String(v)
+    // A cell the screen fills with a dash for "nothing" is blank in a file: the
+    // inventory tables wrote "—" where MFA Readiness wrote nothing (F-127).
+    let s = v === null || v === undefined || v === EMPTY_CELL ? '' : String(v)
     // An apostrophe is what every spreadsheet reads as "this is text"; it is
     // not rendered in the cell.
     if (FORMULA_LEAD.test(s)) s = `'${s}`
