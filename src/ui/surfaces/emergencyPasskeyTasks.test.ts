@@ -357,9 +357,13 @@ test("1.3 names, before the Save, the accounts the Device-bound passkey type loc
   const tasks = emergencyPasskeyTasksOf(step, ctx).tasks
   const apply = tasks.find((t) => t.id === 'apply-passkey-settings')!.steps
   const prepare = tasks.find((t) => t.id === 'prepare-affected-passkeys')!.steps[0]
-  assert.match(apply[0], /^This step sets Passkey types to Device-bound, which stops the only passkey on 2 accounts/, `the Save names no one first: ${apply[0]}`)
-  assert.ok(apply.findIndex((l) => l.includes('Passkey types')) >= 0 && apply.indexOf(apply[0]) < apply.findIndex((l) => l.startsWith('Open')), 'the warning comes before the steps')
-  assert.ok(!apply.some((l) => /Key restrictions are not part of this change yet/.test(l)), 'the Save blames the withheld allow list')
-  assert.match(prepare, /stops the only passkey on 2 accounts/)
+  const warning = apply.findIndex((l) => l.startsWith('This step sets Passkey types to Device-bound, which stops the synced passkeys on 2 accounts'))
+  assert.ok(warning >= 0 && warning < apply.findIndex((l) => l.startsWith('Open')), `the Save names no one before its steps: ${apply.join(' | ')}`)
+  // The remedy works before the Save: another way in (never a device-bound passkey, which a synced-only profile refuses), and for an admin a phishing-resistant one.
+  assert.match(apply[warning], /give each another way to sign in \(for an administrator, another phishing-resistant method\)/)
+  assert.doesNotMatch(apply[warning], /device-bound passkey or|only passkey/)
+  // The allow list is still left out, and the Save still says so.
+  assert.ok(apply.some((l) => /^Key restrictions are not part of this change yet/.test(l)), 'the Save stopped saying the allow list is left out')
+  assert.match(prepare, /stops the synced passkeys on 2 accounts/)
   assert.doesNotMatch(prepare, /one the allow list would stop/, 'Prepare blames the allow list for a lockout the type change causes')
 })

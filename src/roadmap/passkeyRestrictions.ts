@@ -77,14 +77,15 @@ export function affectedByHandover(snapshot: TenantSnapshot, mapping: MappingSta
  * the Save.
  */
 export function lockedOutByHandover(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers | undefined, reading: PasskeyRestrictionReading): string[] {
+  // The allow list is withheld only while the planned change would lock someone out.
   if (reading.lockedOut.length === 0) return []
-  const locked = new Set(reading.lockedOut.map((id) => id.toLowerCase()))
   // Only where the handed-over change is known to stop the passkey: an account whose
-  // passkey IAMAI could not judge is not said to be stopped by the type.
+  // passkey IAMAI could not judge is not said to be stopped by the type. Not only accounts
+  // the whole plan locks out: the handed-over mix can lock out one it does not.
   const handed = affectedPasskeysByProposedChange(snapshot, mapping, groups ?? new Map(), { allowListWithheld: true })
   const unjudged = new Set(handed.unassessable.map((id) => id.toLowerCase()))
   const stopped = new Set(handed.users.map((u) => u.accountId.toLowerCase()).filter((id) => !unjudged.has(id)))
-  return passkeyRestrictionReading(snapshot, mapping, groups ?? new Map(), { allowListWithheld: true }).lockedOut.filter((id) => locked.has(id.toLowerCase()) && stopped.has(id.toLowerCase()))
+  return passkeyRestrictionReading(snapshot, mapping, groups ?? new Map(), { allowListWithheld: true }).lockedOut.filter((id) => stopped.has(id.toLowerCase()))
 }
 
 export function passkeyRestrictionReading(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers = new Map(), opts: { allowListWithheld?: boolean } = {}): PasskeyRestrictionReading {
