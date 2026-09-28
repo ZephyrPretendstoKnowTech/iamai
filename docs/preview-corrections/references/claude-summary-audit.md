@@ -2,7 +2,7 @@
 
 **Auditor:** Claude (automated browser testing)
 **Date:** September 13, 2026
-**Tenant:** contoso2 ([the tenant admin UPN, redacted] — Global Administrator)
+**Tenant:** [the owner's test tenant, redacted] ([the tenant admin UPN, redacted] — Global Administrator)
 **Baseline:** Jon Hope — Defense in Depth, 38 policies, pinned version
 **Theme tested:** Dark (primary), Light (partial)
 
