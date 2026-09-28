@@ -29,7 +29,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, pressKeyOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, asideGroupsFor, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, inputStepIds, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, togglesOf, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, pressKeyOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -327,7 +327,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
 
   // A lane tab's panel draws its own lane; the Completed and Deferred groups
   // the toggles reveal are drawn after it, never inside a tab.
-  const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
+  // Each place a question is asked, once (planBoard.ts inputStepIds).
+  const inputIds = inputStepIds(c.steps)
   // The In report-only tile counts what the row chip says (factOf): a policy held in report-only, its week over or not (F-003 review).
   const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && factOf(s) === CONTRACT.lifecycle['report-only']).map((s) => s.id))
   const summaryItems = summaryFilter === 'input' ? items.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? items.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? items.filter((i) => i.lane === 'Completed') : items
