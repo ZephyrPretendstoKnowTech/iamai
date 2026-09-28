@@ -203,6 +203,16 @@ Each is small. Recommended: yes to all three, after launch.
 
 ## Waits until after launch
 
+- **First: 1.3's passkey-type lockout (a safety item).** While 1.3 withholds the allow list,
+  it still hands over "Passkey types → Device-bound", which stops a synced-only account's
+  passkey, and it blames that lockout on the key restrictions it leaves out. Rare: it
+  needs a profile that allows synced passkeys and someone with nothing else. A warning was
+  built in Round 5 and taken out (owner, 2026-09-28) after five review rounds of edge
+  cases. The redesign: one reading of who the change as handed over locks out, read by
+  the card, Prepare and the Save alike; the allow list withheld only when it adds
+  lockouts beyond the type change; a warning before the Save whose remedy works then
+  (another way to sign in, for an administrator a phishing-resistant one; a synced-only
+  profile refuses a device-bound passkey until that Save).
 - **Round 5** (rounds document): the policy-matching pilot on 4.3, then Export's file
   names and CSVs (F-047, F-127), keyboard focus on filled buttons in light theme (F-079),
   F-075, F-036, F-062, F-035, OWN-W7, F-092, F-180, Inventory search.

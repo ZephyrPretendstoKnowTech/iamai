@@ -718,6 +718,14 @@ were presented and the owner approved all ten, and picked Connect's headline.
     bundle), the files are named as their buttons read, CSVs carry a UTF-8 mark with blank
     empty cells, and one header per field.
 
+**Reviews:** five workflow rounds over the round's diff, each finding checked by a refuting
+agent. Fixed: F-036's handed-over reading, MFA Readiness's key warning (it now needs both the
+plan's model list and the Plan's own projection to agree a key stops, and claims nothing
+otherwise), the device step's scoped page reading the card's own list, file names (no
+sign-in address, accents and non-Latin names), and the search's empty state. A 1.3
+passkey-type warning (owner's pick: warn, keep handing the type over) was built and then
+taken out (owner, 2026-09-28) after five rounds of edge cases; it is first after launch.
+
 **Next in line (verified, not approved yet):** F-079 (focus ring on filled buttons, light
 theme), versioned Home picture names, 3.8's "Follow {policy}" as a link, Inforcer's "add the
 app first" line, Review Overlapping Policies naming each policy once with real candidates
