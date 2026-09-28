@@ -50,6 +50,27 @@ test('a fingerprinted domain or tenant name is a hit as an address\'s domain, a 
   assert.deepEqual(findingsIn(`${label}x and x${label} and contoso.onmicrosoft.com`, list), [])
 })
 
+// Review, 2026-09-28: the forms the first S8 rules let through. Each is one finding.
+test('the tenant name or domain is caught before a full stop, inside another host, after @ or %40, and in a file name', () => {
+  const label = 'examplelabtenant'
+  const domain = `${label}.onmicrosoft.com`
+  const list = new Set([fingerprint(domain), fingerprint(label)])
+  for (const text of [
+    `Tenant is ${label}.`,
+    `${label}...`,
+    `https://portal.azure.com/#@${domain}/resource`,
+    `login_hint=admin%40${domain}`,
+    `https://${label}.sharepoint.com/sites/it`,
+    `https://${label}-my.sharepoint.com`,
+    `route to user@${label}.mail.onmicrosoft.com`,
+    `mail.${domain}`,
+    `saved ${label}.json`,
+    `ask @${label}`,
+    `${label}-lab`,
+    `${label}-scan.json`,
+  ]) assert.deepEqual(findingsIn(text, list), [{ line: 1, rule: 'fingerprint' }], text.replace(label, 'NAME'))
+})
+
 test('the committed list holds hashes only, and the tracked tree is clean', () => {
   const list = loadFingerprints()
   assert.ok(list.size > 0)
