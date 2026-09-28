@@ -54,6 +54,7 @@ import { factSentence } from './policyFact.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { everyoneGate, readinessFamilyOf } from '../../copy/reasons.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
+import { EVIDENCE_WINDOW_DAYS } from '../../graph/collect/constants.ts'
 
 /** The mail accounts' task words (docs/plans/step-redundancy-analysis.md finding 6; walk list 4.x item 36). */
 const MAIL = shared.mailDevices as unknown as { title: string; routeOne: string; routeMany: string; scan: string; action: string }
@@ -562,7 +563,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // A user-risk step whose report-only week named someone waits on that person's
   // risk, which nothing clears on its own: say how (owner, 2026-09-28; 5.9 could
   // never finish on the owner's tenant).
-  const riskClear = turnOnHeld && USER_RISK.has(step.id) && waits.some((w) => w.named === true) ? PW.riskClear : null
+  const riskClear = turnOnHeld && USER_RISK.has(step.id) && waits.some((w) => w.named === true) ? fillText(PW.riskClear, { days: String(EVIDENCE_WINDOW_DAYS) }) : null
   if (!createdOnStep) tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine, ...(riskClear ? [riskClear] : [])] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
   // What the step's package says comes after the policy is On, in every state:
   // the PIM role settings that make role activation ask for the context.

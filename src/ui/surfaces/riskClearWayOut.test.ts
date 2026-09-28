@@ -14,7 +14,11 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { shared } from '../../content/content.ts'
 
-const CLEAR = (shared as unknown as { procedure: { riskClear: string } }).procedure.riskClear
+import { fillText } from '../../content/render.ts'
+import { EVIDENCE_WINDOW_DAYS } from '../../graph/collect/constants.ts'
+
+const RAW = (shared as unknown as { procedure: { riskClear: string } }).procedure.riskClear
+const CLEAR = fillText(RAW, { days: String(EVIDENCE_WINDOW_DAYS) })
 
 // No fixture holds a user-risk policy in report-only, so the Follow-up sample's
 // report-only authentication-transfer block stands in: its turn-on waits on its
@@ -37,6 +41,14 @@ test('the way out is Microsoft Learn\'s: Risky users, Reset password or Confirm 
   assert.match(CLEAR, /Protection → Identity Protection → Risky users/)
   assert.match(CLEAR, /Reset password/)
   assert.match(CLEAR, /Confirm user safe/)
+})
+
+// Review, 2026-09-28: IAMAI reads no one's risk, only the sign-ins report-only would have
+// stopped, and counts those while the sign-in collection holds them. A scan right after
+// clearing the risk still names the person, so the line says how long the wait lasts.
+test('the way out says the stopped sign-ins count until they leave the collection, not that a scan clears them', () => {
+  assert.ok(CLEAR.includes(`still count until they are ${EVIDENCE_WINDOW_DAYS} days old`), CLEAR)
+  assert.doesNotMatch(CLEAR, /Then scan again/)
 })
 
 test('a user-risk step held by someone report-only would have stopped says how to clear their risk, on the task and its card', () => {
