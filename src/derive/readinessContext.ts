@@ -7,7 +7,8 @@
 // Pure: no DOM, no network.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { assignedPasskeyProfiles, passkeyReadingOf, requiredModels, PASSKEY_DEFAULT_MODELS } from '../roadmap/passkeySettings.ts'
+import { assignedPasskeyProfiles, passkeyReadingOf, PASSKEY_DEFAULT_MODELS } from '../roadmap/passkeySettings.ts'
+import { approvedPasskeyModels } from '../roadmap/emergencyJourney.ts'
 import type { Fido2Configuration } from '../roadmap/passkeySettings.ts'
 import { passkeyProfilesFor, passkeyTargetsReach, usesPasskeyProfiles } from '../roadmap/passkeyCompatibility.ts'
 import type { GroupMembers } from '../coverage/population.ts'
@@ -185,7 +186,11 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     if (!p) people.set(userId, (p = personPasskeyPolicy(reading.current, passkey, userId, groups)))
     return p
   }
-  const models = requiredModels((mapping && 'passkeyApprovedModels' in mapping ? mapping : undefined) as MappingState | undefined)
+  // The models Configure Passkey Authentication allows once applied: the plan's own and
+  // those the tenant's allow list already holds, which it keeps. One list with the Plan's
+  // (roadmap/emergencyJourney.ts approvedPasskeyModels): MFA Readiness read the plan's
+  // alone, and told someone their kept key would stop working (review, 2026-09-28).
+  const models = approvedPasskeyModels(snapshot, (mapping ?? undefined) as MappingState)
   // Step 3 is in place exactly when Emergency Access Step 3 reads it so (one reading, roadmap/passkeySettings.ts),
   // which counts the extra models the operator accepted there.
   const applied = reading.state === 'inPlace'

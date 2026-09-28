@@ -574,3 +574,24 @@ test('a row whose only key stops at Configure Passkey Authentication says so und
   }
   assert.doesNotMatch(words.panel.step3.no, /Step 3/, 'the drawer names the step by its title')
 })
+
+test('a key the tenant already allows, which Configure Passkey Authentication keeps, is not said to stop working (review of F-075)', () => {
+  // Review, 2026-09-28: MFA Readiness compared keys with the plan's own models only,
+  // while the planned settings keep every model the tenant's allow list already holds.
+  const f = structuredClone(fixture('demo'))
+  const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows
+  const words = (pages as unknown as { readiness: { notes: { keyStops: string } } }).readiness
+  const flagged = rows.find((r) => rowNote(r) === words.notes.keyStops)!
+  assert.ok(flagged, 'the premise: someone\'s only key is off the plan\'s list')
+  const key = flagged.readiness!.credentials.find((c) => c.cls === 'passkey' && c.afterStep3 === 'no')!
+  const rowsOf = (config: Record<string, unknown>) => { f.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [config] }] } as typeof f.snapshot.config.authMethodsPolicy; return readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows }
+  // The tenant already enforces an allow list holding that key's model (and not yet every model the plan asks for).
+  const kept = rowsOf({ id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, includeTargets: [{ id: 'all_users', targetType: 'group' }], excludeTargets: [], keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [key.aaguid] } })
+  const same = kept.find((r) => r.user.id === flagged.user.id)!
+  assert.notEqual(rowNote(same), words.notes.keyStops, 'a key the planned settings keep is said to stop working')
+})
+
+test('a row already told to replace its key carries no second warning (review of F-075)', () => {
+  const row = { readiness: { automated: false, next: { kind: 'none' }, recommended: { kind: 'replaceKey' }, credentials: [{ cls: 'passkey', allowedNow: 'yes', afterStep3: 'no' }] } } as unknown as ReadinessRow
+  assert.equal(rowNote(row), '')
+})

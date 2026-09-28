@@ -427,7 +427,7 @@ export function rowNote(r: ReadinessRow): string {
  */
 export function keyStopsNote(r: ReadinessRow): string {
   const readiness = r.readiness
-  if (!readiness || readiness.next?.kind === 'replaceKey') return ''
+  if (!readiness || readiness.next?.kind === 'replaceKey' || readiness.recommended?.kind === 'replaceKey') return ''
   return onlyKeyThatStops(readiness.credentials) ? T.notes.keyStops : ''
 }
 
