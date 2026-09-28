@@ -1530,6 +1530,8 @@
         "allowed": "Allowed",
         "lastConfirmed": "Last confirmed",
         "noneRegistered": "None registered yet.",
+        "$commentNoneNow": "F-140: beside a method that was removed, yet read as if there had never been one.",
+        "noneNow": "None registered now.",
         "noDevices": "No sign-in in the last 30 days.",
         "lastSeen": "Last seen {date}.",
         "trust": {

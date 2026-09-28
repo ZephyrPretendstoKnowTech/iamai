@@ -750,10 +750,10 @@ export function buildFixture(spec: Spec): Fixture {
     users,
     devices: hostile
       ? []
-      : ids.slice(0, Math.round(ids.length * (spec.intuneShare ?? 0.6))).map((owner, i) => ({ id: guid(seed, 3_000_000 + i), displayName: `DEVICE-${i}`, isCompliant: i % 3 !== 0, isManaged: i % 4 !== 0, trustType: spec.hybrid && i % 2 === 0 ? 'ServerAd' : 'AzureAd', ownerIds: [owner], operatingSystem: i % 5 === 0 ? 'iOS' : 'Windows', approximateLastSignIn: daysAgo(i % 40) })),
+      : ids.slice(0, Math.round(ids.length * (spec.intuneShare ?? 0.6))).map((owner, i) => ({ id: guid(seed, 3_000_000 + i), displayName: `DEVICE-${i}`, isCompliant: i % 3 !== 0, isManaged: i % 4 !== 0, trustType: spec.demo && i % 5 === 0 ? 'Workplace' : spec.hybrid && i % 2 === 0 ? 'ServerAd' : 'AzureAd', ownerIds: [owner], operatingSystem: i % 5 === 0 ? 'iOS' : 'Windows', approximateLastSignIn: daysAgo(i % 40) })),
     spActivity: [],
     authMethods: hostile ? Object.fromEntries(Object.keys(authMethods).map((k) => [k, 'unknown' as const])) : authMethods,
-    appSignInSummary: [{ appId: '00000003-0000-0ff1-ce00-000000000000', appDisplayName: 'Office 365 SharePoint Online', signInCount: spec.users * 12 }],
+    appSignInSummary: [{ appId: '00000003-0000-0ff1-ce00-000000000000', appDisplayName: 'Office 365 SharePoint Online', signInCount: spec.users * (spec.demo ? 6 : 12) }],
     signInEvidence: hostile ? {} : signInEvidence,
     mfaHistory,
     evidencePolicyResults: week2Results,
@@ -769,7 +769,23 @@ export function buildFixture(spec: Spec): Fixture {
     const compliantOwners = new Set<string>()
     for (const d of snapshot.devices) if (d.isCompliant === true) for (const o of d.ownerIds) compliantOwners.add(o)
     snapshot.scenarioEvidence = deriveScenarioEvidence(rows, compliantOwners)
+    // The sample agrees with itself where an expert looks (F-140, F-064): the
+    // legacy-authentication list Inventory and Identify Service and Shared
+    // Accounts read is the one its own sign-in rows show (Block Legacy
+    // Authentication reads those rows), and those clients are in the client-app
+    // breakdown, out of the same total.
+    if (spec.demo && snapshot.evidenceUsage && snapshot.evidenceAggregates) {
+      const legacy = snapshot.scenarioEvidence.legacyClients
+      snapshot.evidenceUsage.legacyAuth = { count: legacy.count, userIds: Object.keys(legacy.byPerson).sort(), byDetail: { ...legacy.detail } }
+      const clients: Record<string, number> = {}
+      for (const r of rows) if (r.clientAppUsed && legacy.byPerson[r.userId]) clients[r.clientAppUsed] = (clients[r.clientAppUsed] ?? 0) + 1
+      const moved = Object.values(clients).reduce((a, b) => a + b, 0)
+      const byClientApp = snapshot.evidenceAggregates.byClientApp
+      snapshot.evidenceAggregates.byClientApp = { ...byClientApp, Browser: (byClientApp.Browser ?? 0) - moved, ...clients }
+    }
   }
+  // A printer owns no computer (F-140): the sample's generated devices went to its account too.
+  if (printerId !== null) for (const d of snapshot.devices) d.ownerIds = d.ownerIds.filter((o) => o !== printerId)
 
   // The demo starts with no exclusions group and unconfirmed emergency-access
   // facts; its week-two twin has both done (prompt 50 Part 2 item 10, Part 4).

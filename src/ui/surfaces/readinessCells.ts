@@ -62,6 +62,7 @@ type Words = {
   panel: {
     noDevices: string
     noneRegistered: string
+    noneNow: string
     best: string
     now: string
     allowed: string
@@ -498,9 +499,9 @@ export function guestTrustWords(trust: GuestMfaTrust): string {
   return trust === 'on' ? G.trustOn : trust === 'off' ? G.trustOff : trust === 'notReported' ? G.trustNotReported : G.trustUnknown
 }
 
-/** The person panel's methods where none is listed: not read (the row says "Methods not read" too), or none registered. */
+/** The person panel's methods where none is listed: not read (the row says "Methods not read" too), none registered now where one was removed (F-140), or none registered. */
 export function panelNoMethods(r: ReadinessRow): string {
-  return r.methods === null ? T.methods.unread : T.panel.noneRegistered
+  return r.methods === null ? T.methods.unread : r.readiness?.next.kind === 'restore' ? T.panel.noneNow : T.panel.noneRegistered
 }
 
 /** Why the person stands where they do, one sentence. */

@@ -95,7 +95,8 @@ test('where the sign-in records or the method lists were not read, no row, panel
     const demo = fixture('demo')
     const none = readinessView(demo.snapshot, demo.snapshot.asOf, demo.mapping).rows.filter((r) => r.state === 'method' && r.methods !== null)
     assert.ok(none.length > 0)
-    for (const r of none) assert.equal(panelNoMethods(r), W.panel.noneRegistered, r.user.id)
+    // "yet" where they never had one; "now" where one was removed and is to be set up again (F-140).
+    for (const r of none) assert.equal(panelNoMethods(r), r.readiness?.next.kind === 'restore' ? (W.panel as unknown as { noneNow: string }).noneNow : W.panel.noneRegistered, r.user.id)
     assert.match(page(), /panelList\(panelMethods\(openRow\), panelNoMethods\(openRow\)\)/, 'the panel draws the one word')
   }
   {
