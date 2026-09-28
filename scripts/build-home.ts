@@ -3,7 +3,7 @@
 // approved composition restored by task 038).
 //
 // The composition below is the owner's approved Home design,
-// docs/design/approved/anatomy/home-v2.html, recorded in
+// docs/design/approved/anatomy/home-v3.html, recorded in
 // docs/design/approved/manifest.json. That file owns the anatomy — the public
 // header, the hero and its meta row, the two-column product section with its
 // side rail, the Reads / Compares / Plans rows, the label-and-explanation
@@ -86,6 +86,8 @@ type HomeContent = {
   open: string
   demo: string
   heroMeta: string[]
+  shotAlt: string
+  shotCaption: string
   workLabel: string
   workHeading: string
   workLead: string
@@ -261,6 +263,17 @@ export function renderHomeHtml(): string {
           ${h.heroMeta.map((m) => `<span>${esc(m)}</span>`).join('\n          ')}
         </p>
       </div>
+
+      <!-- The product, shown once (pack v3, OWN-B1): the sample tenant's Plan in
+           the page's theme, captured from the demo by scripts/home-shot.mjs, and
+           linking to the sample. -->
+      <figure class="shot">
+        <a href="${DEMO_HREF}">
+          <img class="shot-dark" src="/plan-dark.png" alt="${esc(h.shotAlt)}" width="1280" height="820" loading="lazy" />
+          <img class="shot-light" src="/plan-light.png" alt="${esc(h.shotAlt)}" width="1280" height="820" loading="lazy" />
+        </a>
+        <figcaption>${esc(h.shotCaption)}</figcaption>
+      </figure>
 
       <!-- What IAMAI does, and beside it the standard it is doing it against.
            The heading sits inside the wider column, not above both, so the

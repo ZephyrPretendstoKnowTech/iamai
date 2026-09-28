@@ -1813,6 +1813,8 @@
         "Free public preview",
         "You review and make the changes"
       ],
+      "shotAlt": "The sample tenant's plan in IAMAI Planner: what is ready now, the next step, and the first section's steps with their dates.",
+      "shotCaption": "The plan IAMAI writes for the sample tenant.",
       "workLabel": "What it does",
       "workHeading": "See what needs doing, and what needs to happen first.",
       "workLead": "Start with the tenant you have. IAMAI compares it with the Defense in Depth baseline, shows the gaps it can assess, and puts the work in order.",

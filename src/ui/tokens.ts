@@ -328,7 +328,7 @@ export const LINE_HEIGHT = { body: 1.5, heading: 1.25, display: 1.1 } as const
  * change when the page does.
  */
 export const ROUTE_WIDTHS = {
-  /** docs/design/approved/anatomy/home-v2.html — min(1040px, 100% - 40px). */
+  /** docs/design/approved/anatomy/home-v3.html — min(1040px, 100% - 40px). */
   home: 1040,
   /** docs/design/approved/anatomy/connect-v3.html — min(1040px, 100% - 40px). */
   connect: 1040,

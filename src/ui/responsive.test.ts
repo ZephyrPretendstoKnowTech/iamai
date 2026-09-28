@@ -44,7 +44,7 @@ const HOME_CSS = read('home/home.css')
 
 /** The authority for each surface's responsive model. MFA Readiness's is its v3 pack (prompt 62). */
 const PACKS = {
-  home: 'docs/design/approved/anatomy/home-v2.html',
+  home: 'docs/design/approved/anatomy/home-v3.html',
   connect: 'docs/design/approved/anatomy/connect-v3.html',
   plan: 'docs/design/approved/anatomy/plan-step-v1.html',
   mfa: 'docs/design/approved/anatomy/mfa-readiness-v3.html',

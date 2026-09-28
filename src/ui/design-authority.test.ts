@@ -40,6 +40,8 @@ const ARCHIVED = [
   'archive/design/iamai-mfa-readiness-final.html',
   'archive/design/iamai-mfa-readiness-approved-comparison-reference.html',
   'archive/design/mfa-readiness-v2.html',
+  // The Home pack v3 replaced on 2026-09-27 (OWN-B1).
+  'archive/design/home-v2.html',
 ] as const
 
 /**
@@ -58,10 +60,12 @@ const HISTORY = (path: string): boolean =>
  */
 const APPROVED = [
   {
+    // Approved by the owner on 2026-09-27 (OWN-B1): v2 with one image of the
+    // sample tenant's Plan under the hero. v2 is archived.
     surface: 'home',
-    file: 'home-v2.html',
-    sourceName: 'iamai-home-design-pack-v2.html',
-    sha256: '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50',
+    file: 'home-v3.html',
+    sourceName: 'home-v3.html (drafted for OWN-B1, approved by the owner 2026-09-27)',
+    sha256: 'abf8875fcfcd1ac269d2f7aa3f547192739cdc9287156de1b23ad254a2fba030',
   },
   {
     surface: 'connect',

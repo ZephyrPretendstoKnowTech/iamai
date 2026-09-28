@@ -72,7 +72,7 @@ const READ = `(el) => {
  */
 const SURFACES = {
   home: {
-    canonical: 'docs/design/approved/anatomy/home-v2.html',
+    canonical: 'docs/design/approved/anatomy/home-v3.html',
     route: { home: true },
     breakpoints: [760, 560],
     probes: [

@@ -116,7 +116,8 @@ test('the public claims are the true ones: read-only, browser-local, no server, 
 // every link into the planner is a real destination there.
 test('every link into the planner is a real route, and the build publishes home at / with the planner under the tool path', () => {
   const into = links(html).filter((l) => l.href.startsWith('/{{TOOL_PATH}}/'))
-  assert.deepEqual(into.map((l) => l.href), [HOW_HREF, PRODUCT_ENTRY, PRODUCT_ENTRY, DEMO_HREF, PRODUCT_ENTRY])
+  // The picture under the hero links to the sample as the hero's second button does (OWN-B1).
+  assert.deepEqual(into.map((l) => l.href), [HOW_HREF, PRODUCT_ENTRY, PRODUCT_ENTRY, DEMO_HREF, DEMO_HREF, PRODUCT_ENTRY])
   const routes = readFileSync('src/ui/shell/routes.ts', 'utf8')
   for (const hash of ['connect', 'how', 'plan']) assert.ok(routes.includes(`'${hash}'`), `#/${hash} is a planner route`)
   assert.equal(PRODUCT_ENTRY, '/{{TOOL_PATH}}/#/connect', 'the product entry is Connect, the first step of the product')
@@ -143,4 +144,26 @@ test('the built page links each stylesheet by its content hash, so a changed she
   assert.doesNotMatch(page, /href="\/(theme|home)\.css"|\{\{/, 'an unversioned link or an unsubstituted placeholder remains')
   assert.notEqual(versionedName('home.css', css), versionedName('home.css', `${css}\n.card { padding: 0; }\n`), 'a changed sheet is a new name')
   assert.throws(() => assembleHome(html, { 'other.css': '' }, TOOL_PATH), /does not link/)
+})
+
+// OWN-B1 (Home pack v3, owner 2026-09-27): the product, shown once under the
+// hero. The sample tenant's Plan in the page's theme, captured from the demo by
+// scripts/home-shot.mjs, linking to the sample, with its caption.
+test('Home shows the product once under the hero: the sample Plan in the page\'s theme, linking to the sample', () => {
+  const hero = html.indexOf('<div class="hero">')
+  const shot = html.indexOf('<figure class="shot">')
+  const band = html.indexOf('<section class="band')
+  assert.ok(hero >= 0 && hero < shot && shot < band, 'the picture sits between the hero and the first section')
+  const figure = html.slice(shot, html.indexOf('</figure>', shot))
+  assert.ok(figure.includes('<a href="/{{TOOL_PATH}}/?demo=1#/plan">'), 'the picture links to the sample')
+  assert.match(figure, /<img class="shot-dark" src="\/plan-dark\.png"/)
+  assert.match(figure, /<img class="shot-light" src="\/plan-light\.png"/)
+  assert.ok(figure.includes(`<figcaption>${String(H.shotCaption)}</figcaption>`))
+  assert.equal(H.shotCaption, 'The plan IAMAI writes for the sample tenant.')
+  // Both pictures ship with the page, and one shows per theme.
+  const files = readdirSync(home)
+  assert.ok(files.includes('plan-dark.png') && files.includes('plan-light.png'), 'the pictures are not in home/')
+  assert.match(css, /:root\[data-theme='dark'\] \.shot \.shot-dark \{\n\s+display: block;/)
+  assert.match(css, /:root\[data-theme='dark'\] \.shot \.shot-light \{\n\s+display: none;/)
+  assert.match(css, /\.shot \.shot-dark \{\n\s+display: none;/)
 })

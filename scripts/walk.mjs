@@ -1885,7 +1885,7 @@ function scanPlanFile() {
 // ---- the home page (task 016; the approved composition restored by task 038) ----
 //
 // These checks read the page that exists, and the page now implements Home's
-// design authority: docs/design/approved/anatomy/home-v2.html (manifest.json in that
+// design authority: docs/design/approved/anatomy/home-v3.html (manifest.json in that
 // folder). A later pack that moves the anatomy moves these checks with it.
 //
 // getiamai.com's front page, generated from pages.home by scripts/build-home.ts
@@ -1958,7 +1958,7 @@ async function walkHome(url) {
     if (hero.h1 !== HOME.h1) add('P0', `${label}: the headline reads "${hero.h1}"; ${HOME.h1}`)
     if (hero.line !== HOME.siteLine) add('P0', `${label}: the site line reads "${hero.line}"; ${HOME.siteLine}`)
     if (JSON.stringify(hero.meta) !== JSON.stringify(HOME.heroMeta)) add('P0', `${label}: the hero's meta row reads ${hero.meta.join(' · ') || 'nothing'}; ${HOME.heroMeta.join(' · ')}`)
-    // The pack's display size, rendered: 50px at 1280 (docs/design/approved/anatomy/home-v2.html).
+    // The pack's display size, rendered: 50px at 1280 (docs/design/approved/anatomy/home-v3.html).
     if (hero.display !== 50) add('P0', `${label}: the hero display renders at ${hero.display}px; the approved pack sets 50`)
     // The outcome comes first: the hero never names Conditional Access.
     const heroWords = `${hero.eyebrow} ${hero.h1} ${hero.line}`

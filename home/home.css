@@ -4,7 +4,7 @@
    from src/ui/tokens.ts; the design lint reads this file.
 
    What this file describes is the owner's approved Home,
-   docs/design/approved/home-v2.html (docs/design/approved/manifest.json): the
+   docs/design/approved/anatomy/home-v3.html (docs/design/approved/manifest.json): the
    1040px column, the public header, the hero with its meta row, the
    1.5fr/.8fr product section with its bordered side rail, the 78px steps, the
    160px catches, the trust row, About, the footer, and the 760 and 560
@@ -106,7 +106,7 @@ a {
    The public header: the lockup left, the public links right. It is lighter
    than the planner's shell — no tabs, no Account, no signed-in state — and it
    sits in the same 1040px column as the page, so its hairline ends where the
-   content does (docs/design/approved/home-v2.html `header`). */
+   content does (docs/design/approved/anatomy/home-v3.html `header`). */
 header.app {
   width: 100%;
   max-width: calc(var(--w-home) + 2 * var(--pad));
@@ -181,7 +181,7 @@ header.app .right .text-control:focus-visible {
 }
 
 /* The column the approved Home pack sets: min(1040px, 100% - 40px)
-   (docs/design/approved/home-v2.html, src/ui/tokens.ts ROUTE_WIDTHS.home). The
+   (docs/design/approved/anatomy/home-v3.html, src/ui/tokens.ts ROUTE_WIDTHS.home). The
    header, the page and the footer share it, so every hairline on the page ends
    at the same edge. */
 main.page {
@@ -229,6 +229,49 @@ main.page a[href] {
   max-width: none;
   color: var(--quiet-text);
   font-size: var(--t-1);
+}
+
+/* ------------------------------------------------------------------- shot
+   The product, shown once under the hero (pack v3, OWN-B1): the sample
+   tenant's Plan at the content width, framed as a panel, with one quiet
+   caption. The picture is in the page's theme: two images, one shown. It
+   links to the sample. */
+.shot {
+  margin: 0 0 54px;
+}
+.shot a {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+}
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.shot figcaption {
+  margin-top: 10px;
+  color: var(--quiet-text);
+  font-size: var(--t-1);
+}
+.shot .shot-dark {
+  display: none;
+}
+:root[data-theme='dark'] .shot .shot-dark {
+  display: block;
+}
+:root[data-theme='dark'] .shot .shot-light {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .shot .shot-dark {
+    display: block;
+  }
+  :root:not([data-theme]) .shot .shot-light {
+    display: none;
+  }
 }
 
 /* ---------------------------------------------------------------- sections
@@ -562,6 +605,9 @@ footer.app a {
   footer.app {
     padding-left: 12px;
     padding-right: 12px;
+  }
+  .shot {
+    margin-bottom: 40px;
   }
   header.app {
     gap: 12px;

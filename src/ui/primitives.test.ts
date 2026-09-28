@@ -27,7 +27,7 @@ const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n
 
 /** The four owner-approved packs, by surface. */
 const PACKS = {
-  home: 'docs/design/approved/anatomy/home-v2.html',
+  home: 'docs/design/approved/anatomy/home-v3.html',
   connect: 'docs/design/approved/anatomy/connect-v3.html',
   plan: 'docs/design/approved/anatomy/plan-step-v1.html',
   mfa: 'docs/design/approved/anatomy/mfa-readiness-v3.html',
