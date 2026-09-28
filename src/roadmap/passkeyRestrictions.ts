@@ -69,26 +69,8 @@ export function affectedByHandover(snapshot: TenantSnapshot, mapping: MappingSta
   return affectedPasskeysByProposedChange(snapshot, mapping, groups ?? new Map(), { allowListWithheld: true }).users
 }
 
-/**
- * Of the accounts the planned change would lock out, those the change as handed over
- * still locks out once the allow list is withheld: the planned passkey types (Device-bound)
- * stop their only passkey, and withholding the list does not help them (review,
- * 2026-09-28). The owner's call: keep handing the type change over, and name them before
- * the Save.
- */
-export function lockedOutByHandover(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers | undefined, reading: PasskeyRestrictionReading): string[] {
-  if (reading.lockedOut.length === 0) return []
-  const locked = new Set(reading.lockedOut.map((id) => id.toLowerCase()))
-  // Only where the handed-over change is known to stop the passkey: an account whose
-  // passkey IAMAI could not judge is not said to be stopped by the type.
-  const handed = affectedPasskeysByProposedChange(snapshot, mapping, groups ?? new Map(), { allowListWithheld: true })
-  const unjudged = new Set(handed.unassessable.map((id) => id.toLowerCase()))
-  const stopped = new Set(handed.users.map((u) => u.accountId.toLowerCase()).filter((id) => !unjudged.has(id)))
-  return passkeyRestrictionReading(snapshot, mapping, groups ?? new Map(), { allowListWithheld: true }).lockedOut.filter((id) => locked.has(id.toLowerCase()) && stopped.has(id.toLowerCase()))
-}
-
-export function passkeyRestrictionReading(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers = new Map(), opts: { allowListWithheld?: boolean } = {}): PasskeyRestrictionReading {
-  const affected = affectedPasskeysByProposedChange(snapshot, mapping, groups, opts)
+export function passkeyRestrictionReading(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers = new Map()): PasskeyRestrictionReading {
+  const affected = affectedPasskeysByProposedChange(snapshot, mapping, groups)
   const { usable } = methodAvailability(snapshot, { groupMembers: Object.fromEntries([...groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])) })
   const lockedOut: string[] = []
   const keeps: { accountId: string; method: MethodKind }[] = []

@@ -253,9 +253,6 @@
       "withheld": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey those accounts hold is one the allow list would stop, and none has another way in (for an administrator, another phishing-resistant method). Register an approved passkey for each, then scan again: the restrictions are offered once nobody would be locked out.",
       "withheldOne": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey that account holds is one the allow list would stop, and it has no other way in (for an administrator, another phishing-resistant method). Register an approved passkey for it, then scan again: the restrictions are offered once nobody would be locked out.",
       "withheldTask": "Key restrictions are not part of this change yet: {count} would be locked out by them. Prepare affected passkeys says who and what to do first.",
-      "$commentTypeLocks": "Where the passkey type this step hands over (Device-bound) stops someone's only passkey, withholding the allow list does not help them (review, 2026-09-28). The owner's call: keep handing the type change over, and name those accounts before the Save, on the Save task and in Prepare affected passkeys (roadmap/passkeyRestrictions.ts lockedOutByHandover).",
-      "typeLocks": "This step sets Passkey types to Device-bound, which stops the only passkey on {count} — {names}. Before you save, give each a device-bound passkey or another way to sign in.",
-      "typeLocksOne": "This step sets Passkey types to Device-bound, which stops the only passkey on {count} — {names}. Before you save, give that account a device-bound passkey or another way to sign in.",
       "keptMany": "another sign-in method ({methods})"
     },
     "changeRemoves": "This change removes {removed} from the policy's exclusions. If the policy is On, it applies to them as soon as you save.",
