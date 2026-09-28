@@ -36,7 +36,19 @@ Nothing here is live until the owner approves it. Where things stand overall:
   sample; neither is true);
 - 132 superseded docs and the old overnight runner moved to `archive/2026-09-27/`, and `docs/STATUS.md`
   as the one source of truth;
-- the Home pictures retaken (the old ones showed the two toggles).
+- the Home pictures retaken (the old ones showed the two toggles);
+- **a test fix `main` needs too.** CI (which runs in UTC) failed one Cleanup export test
+  after midnight UTC. It was date- and timezone-sensitive, and since Round 4 removed
+  "Est." it contradicted the approved rule that every open row shows a date. Test only;
+  it now passes in five time zones. Without it, CI on `main` is red whenever it runs in
+  UTC.
+
+**Checks:**
+- Full CI (typecheck, full unit suite, site build, browser smoke) is **green on the
+  branch** (run 36378193761, af06c198, 2026-09-28). The first run caught the test fix
+  above.
+- The full local suite, the pre-push check (including the smoke's new Plan checks) and
+  the tenant guard all pass.
 
 Recommended: **merge.** I push, wait for deploy, and audit it live.
 
@@ -168,6 +180,8 @@ Each is small. Recommended: yes to all three, after launch.
   discovery tool and refresh it the next time it is needed, not before launch.
 - **The approved reference `docs/design/approved/reference/iamai-plan-organization-final.html`**
   still draws the two toggles. The packs don't bind production, so leave it as history.
+- **Two old local worktrees** (`C:/Dev/IAMAI-validate`, `C:/Dev/IAMAI-walk`, both
+  detached). Recommended: remove (`git worktree remove`).
 - **Batch B4/B5** (compact tiles, disabled Copy, the channel filter, the sticky viewer,
   the conflict message). They never landed in September and the step design has moved
   past them. Recommended: drop.
