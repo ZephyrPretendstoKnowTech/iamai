@@ -219,6 +219,10 @@ test('Inventory search keeps the rows whose cells match, a sign-in name included
   const table = readFileSync(new URL('../components/DataTable.tsx', import.meta.url), 'utf8')
   assert.match(table, /const searching = search !== undefined && rows\.length > PAGE_SIZE/)
   assert.match(table, /sortRows\(rows\)\.map\(\(r\) => cols\.map/, 'the export writes the search\'s rows, not every row')
+  // With no match the table and its title stay, the line inside it; the box names the table it searches (review, 2026-09-28).
+  assert.doesNotMatch(table, /hidden=\{searching/)
+  assert.match(table, /aria-describedby=\{caption \? captionId : undefined\}/)
+  assert.match(table, /searching && sorted\.length === 0 && \(\s*<tr/)
   const words = app.inventory as unknown as { searchPlaceholder: string; searchNone: string }
   assert.ok(words.searchPlaceholder && words.searchNone)
 })

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from './Button.tsx'
 import { EmptyState } from './EmptyState.tsx'
@@ -74,6 +74,7 @@ export function DataTable<T>({
   const [page, setPage] = useState(0)
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const captionId = useId()
   const searching = search !== undefined && rows.length > PAGE_SIZE
   const visible = useMemo(() => (searching && query.trim() !== '' ? search.filter(query) : rows), [searching, search, query, rows])
   const shown = columns.filter((c) => !c.hidden)
@@ -145,6 +146,7 @@ export function DataTable<T>({
             type="search"
             placeholder={search.placeholder}
             aria-label={search.placeholder}
+            aria-describedby={caption ? captionId : undefined}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -153,10 +155,9 @@ export function DataTable<T>({
           />
         </div>
       )}
-      {searching && sorted.length === 0 && <p className="reason">{search.none}</p>}
-      <div className={`datatable-wrap${panel ? ' panel' : ''}`} ref={wrap} tabIndex={scrolls ? 0 : undefined} hidden={searching && sorted.length === 0}>
+      <div className={`datatable-wrap${panel ? ' panel' : ''}`} ref={wrap} tabIndex={scrolls ? 0 : undefined}>
         <table className={`datatable${stacked ? ' datatable-stacked' : ''}`} role={stacked ? 'table' : undefined}>
-          {caption && <caption>{caption}</caption>}
+          {caption && <caption id={captionId}>{caption}</caption>}
           <thead role={stacked ? 'rowgroup' : undefined}>
             <tr role={stacked ? 'row' : undefined}>
               {shown.map((c) => (
@@ -190,6 +191,12 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody role={stacked ? 'rowgroup' : undefined}>
+            {/* A search that matches nothing says so inside its own table, under its title (review, 2026-09-28). */}
+            {searching && sorted.length === 0 && (
+              <tr role={stacked ? 'row' : undefined}>
+                <td colSpan={shown.length} role={stacked ? 'cell' : undefined} className="reason">{search.none}</td>
+              </tr>
+            )}
             {slice.map((r) => {
               const k = rowKey(r)
               return (
