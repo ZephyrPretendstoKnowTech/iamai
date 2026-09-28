@@ -789,6 +789,9 @@ export function renderPages(): string {
         btn(H.open, true) +
         btn(H.demo) +
         `<p class="sub">${(H.heroMeta as string[]).map((m) => esc(m)).join(' · ')}</p>` +
+        // The picture of the sample's Plan under the hero (pack v3, OWN-B1): its alt text and caption.
+        `<p class="sub">[${esc(H.shotAlt)}]</p>` +
+        p(H.shotCaption, {}, 'sub') +
         h(H.workLabel) +
         `<h2>${esc(H.workHeading)}</h2>` +
         p(H.workLead, {}) +
