@@ -61,12 +61,12 @@ export type PasskeyRestrictionReading = {
  * card named one account whose passkey "loses access" while its task named another
  * as the one locked out). The card and the task read this one list.
  */
-export function affectedByHandover(affected: AffectedPasskeyProjection, reading: PasskeyRestrictionReading, beforeChange: boolean): AffectedPasskeyUser[] {
+export function affectedByHandover(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers | undefined, affected: AffectedPasskeyProjection, reading: PasskeyRestrictionReading, beforeChange: boolean): AffectedPasskeyUser[] {
   // Once the settings are in place the allow list is the tenant's, and it stops them.
   if (reading.lockedOut.length === 0 || !beforeChange) return affected.users
-  return affected.users
-    .map((user) => ({ ...user, methods: user.methods.filter((m) => m.reason !== 'modelRestricted') }))
-    .filter((user) => user.methods.length > 0)
+  // The change as handed over, not a guess from a passkey's reason: a passkey the
+  // storage-type change stops is still named (review, 2026-09-28).
+  return affectedPasskeysByProposedChange(snapshot, mapping, groups ?? new Map(), { allowListWithheld: true }).users
 }
 
 export function passkeyRestrictionReading(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers = new Map()): PasskeyRestrictionReading {

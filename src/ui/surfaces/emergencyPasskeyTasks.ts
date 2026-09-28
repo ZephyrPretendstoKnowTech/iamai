@@ -182,7 +182,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   // The accounts the change handed over stops, read as the Existing passkeys affected
   // card reads them (roadmap/passkeyRestrictions.ts affectedByHandover, F-036): a passkey
   // only the withheld allow list stops is not one of them.
-  const users = affectedByHandover(affected, restriction, reading.state !== 'inPlace')
+  const users = affectedByHandover(ctx.snapshot, ctx.mapping, ctx.groups, affected, restriction, reading.state !== 'inPlace')
   const affectedFacts = users.flatMap(user => user.methods.map(method => ({
     label: upnOf(ctx, user.accountId),
     value: `${method.displayName}${method.aaguid ? ` · ${method.aaguid}` : ''}${method.passkeyType ? ` · ${method.passkeyType}` : ''}${user.hasCompatibleAlternative ? ' · Compatible alternative registered' : ' · Replacement needed'}`,

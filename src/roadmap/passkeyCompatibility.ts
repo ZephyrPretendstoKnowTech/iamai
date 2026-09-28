@@ -102,6 +102,26 @@ export function passkeyProfilesFor(policy: Fido2Configuration, accountId: string
  * methods per key made the tenant-wide projection quadratic (about 1.7 s of the
  * large fixture's roadmap after e54f1590).
  */
+/**
+ * The planned settings as handed over while the allow list is withheld: every other
+ * setting as planned (passkey types, attestation), each key restriction the tenant's
+ * own, as Configure Passkey Authentication's task leaves them (emergencyPasskeyTasks.ts
+ * `restricts`). A profile the tenant does not have yet gets no restriction.
+ */
+function withTenantAllowList(target: Fido2Configuration, current: Fido2Configuration): Fido2Configuration {
+  const next = structuredClone(target)
+  next.keyRestrictions = structuredClone(current.keyRestrictions ?? null)
+  if (Array.isArray(next.passkeyProfiles)) {
+    const own = new Map((Array.isArray(current.passkeyProfiles) ? current.passkeyProfiles : []).map((p) => [String((p as Record<string, unknown>)?.id ?? '').toLowerCase(), p as Record<string, unknown>]))
+    next.passkeyProfiles = next.passkeyProfiles.map((raw) => {
+      const profile = raw as Record<string, unknown>
+      const from = own.get(String(profile?.id ?? '').toLowerCase())
+      return { ...profile, keyRestrictions: from ? structuredClone(from.keyRestrictions ?? null) : { isEnforced: false } }
+    })
+  }
+  return next
+}
+
 function oneKey(snapshot: TenantSnapshot, accountId: string, method: AuthMethodSummary): TenantSnapshot {
   return { ...snapshot, authMethods: { [accountId]: [method] } }
 }
@@ -234,10 +254,13 @@ export function recoveryPasskeyCandidateSet(snapshot: TenantSnapshot, accountId:
 }
 
 /** Registered methods that are usable now and not under the exact proposed target. */
-export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map()): AffectedPasskeyProjection {
+export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map(), opts: { allowListWithheld?: boolean } = {}): AffectedPasskeyProjection {
   const reading = passkeyReadingOf(snapshot, mapping)
   if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], unassessable: [], coverage: ['configuration'], stranded: [] }
-  const target = reading.resolution.target
+  // While an account would be locked out, the allow list is not handed over
+  // (roadmap/passkeyRestrictions.ts): the change is every other planned setting,
+  // with each key restriction left as the tenant has it (F-036).
+  const target = opts.allowListWithheld ? withTenantAllowList(reading.resolution.target, reading.current) : reading.resolution.target
   const users: AffectedPasskeyUser[] = []
   const unassessable = new Set<string>()
   const stranded = new Set<string>()

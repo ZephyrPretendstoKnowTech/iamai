@@ -306,7 +306,8 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   // named one account whose passkey "loses access" to the allow list the task withholds,
   // while the task named another as the one locked out.
   const locked = new Set(lockedOut.map((id) => id.toLowerCase()))
-  const users = affectedByHandover(affected, restrictionRead, reading.state !== 'inPlace').filter((user) => !locked.has(user.accountId.toLowerCase()))
+  const unjudged = new Set(affected.unassessable.map((id) => id.toLowerCase()))
+  const users = affectedByHandover(snapshot, mapping, groups, affected, restrictionRead, reading.state !== 'inPlace').filter((user) => !locked.has(user.accountId.toLowerCase()))
   // Applied, and every account whose passkey it stops keeps another way in: a fact, not work (net-new 4).
   const settled = reading.state === 'inPlace' && !users.length && lockedOut.length === 0
   // Applied, and it stopped no passkey: nothing to say about a change already
@@ -323,8 +324,10 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
         : affected.state === 'known'
           ? 'No existing passkey stops working under this change.'
           : fillText(settled ? LOCKED_OUT.accountsKeepAnother : ACCOUNTS_TO_PREPARE, { count: count(affected.stranded.length, 'account') }),
-    // A lockout the scan settled is a fail; one resting on a passkey it could not judge stays unknown, as before.
-    outcome: users.length || (lockedOut.length > 0 && affected.state === 'known') ? 'fail' : lockedOut.length === 0 && (affected.state === 'known' || settled) ? 'pass' : 'unknown',
+    // A lockout the scan settled is a fail; one resting on a passkey it could not judge
+    // stays unknown, as before. Settled per account: another account's unreadable
+    // passkey does not unsettle this one's (review, 2026-09-28).
+    outcome: users.length || lockedOut.some((id) => !unjudged.has(id.toLowerCase())) ? 'fail' : lockedOut.length === 0 && (affected.state === 'known' || settled) ? 'pass' : 'unknown',
     detail: '',
     items: users.flatMap(user => user.methods.map((method, index) => ({
       label: `Affected passkey ${index + 1}`, factLabel: `Affected passkey ${index + 1}`, accountId: user.accountId, subjectId: user.accountId, subjectLabel: accountLabel(snapshot, user.accountId),

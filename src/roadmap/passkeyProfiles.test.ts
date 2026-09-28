@@ -252,3 +252,24 @@ test('a passkey the scan cannot judge is reported as unjudged, never folded into
     assert.equal(projection.users.some((u) => u.accountId === id), false, `${id} is reported as provably affected and as unjudged`)
   }
 })
+
+test('with the allow list withheld, a passkey the storage-type change still stops is still named (review of F-036)', async () => {
+  // Review, 2026-09-28: the first fix dropped every passkey whose reason read
+  // "modelRestricted", but on a profile a synced key the planned Device-bound type
+  // stops reads the same. The change as handed over (every planned setting, the
+  // tenant's own allow list) is what decides it now.
+  const { passkeyRestrictionReading, affectedByHandover } = await import('./passkeyRestrictions.ts')
+  const f = structuredClone(fixture('demo'))
+  const synced = { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, defaultPasskeyProfile: 'p', includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['p'] }], excludeTargets: [], passkeyProfiles: [{ id: 'p', name: 'p', passkeyTypes: 'synced', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: [] } }] }
+  f.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [synced] }] } as typeof f.snapshot.config.authMethodsPolicy
+  f.snapshot.authMethods = Object.fromEntries(f.snapshot.users.map((u) => [u.id, []]))
+  const [a, b] = f.snapshot.users.filter((u) => u.accountEnabled !== false && u.userType === 'member').map((u) => u.id)
+  f.snapshot.authMethods[a] = [{ kind: 'fido2', id: 'ka', aaGuid: PASSKEY_TARGET_AAGUIDS[0], passkeyType: 'synced', attestationLevel: 'notAttested' }]
+  f.snapshot.authMethods[b] = [{ kind: 'fido2', id: 'kb', aaGuid: '11111111-2222-4333-8444-555555555555', passkeyType: 'synced', attestationLevel: 'notAttested' }]
+  const affected = affectedPasskeysByProposedChange(f.snapshot, f.mapping, f.groups)
+  const reading = passkeyRestrictionReading(f.snapshot, f.mapping, f.groups)
+  assert.ok(reading.lockedOut.length > 0, 'the premise: someone would be locked out, so the allow list is withheld')
+  assert.ok(affected.users.some((u) => u.accountId === a && u.methods.every((m) => m.reason === 'modelRestricted')), 'the premise: the type stop reads "modelRestricted"')
+  const handed = affectedByHandover(f.snapshot, f.mapping, f.groups, affected, reading, true).map((u) => u.accountId)
+  assert.ok(handed.includes(a) && handed.includes(b), `a synced passkey the Device-bound type stops was dropped: ${handed.join(', ')}`)
+})
