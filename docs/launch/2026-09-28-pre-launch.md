@@ -6,6 +6,38 @@ every step and page on both, a security audit (report only), and a repository cl
 Nothing here is live until the owner approves it. Where things stand overall:
 [docs/STATUS.md](../STATUS.md).
 
+## Done the morning of 2026-09-28 (owner's answers)
+
+On `night/2026-09-27`, not live until the owner has seen it ("Show me first"):
+- **2a, the On line (b).** Every correction of a policy that is On carries "This policy
+  is On: a saved change applies at the next sign-in." on the task, its card and the
+  script (`shared.procedure.policyOn`, new words).
+- **2b, Inforcer on the template (a).** The step draws the translator's procedure from
+  the pinned policy: the baseline name, the exclusions group by name, the Entra admin
+  center path, Report-only and a turn-on task. Its wait on Create or Correct Service
+  Accounts Group is the same as every all-users MFA step's (the engine's order, not the
+  step's). The app still reads "Inforcer (baseline name)": that label is deliberate, not
+  a claim about who owns the app.
+- **2c, the way out on 5.9 (a).** A user-risk step held by someone report-only would have
+  stopped says how to clear their risk, in Microsoft Learn's words
+  (`shared.procedure.riskClear`, new words).
+- **S8, the tenant guard.** It fingerprints each address's domain, bare domains and
+  names too, and holds the hashes of the tenant's `onmicrosoft` domain and name.
+- **The repository page.** 31 stale branches deleted (six kept as `archive/branch/*`
+  tags; how to restore each: [2026-09-28-branches.md](2026-09-28-branches.md)), pull
+  request #7 closed with a note, the wiki off.
+- **Home.** The owner's cuts ("Free public preview", "You review and make the changes",
+  the Plan picture's caption) and a rewrite toward what IAMAI does: compares the tenant
+  with the baseline, orders the work, and finds what can lock people out before a policy
+  is turned on. The primary button reads "Connect your tenant". The headline is still
+  being decided.
+- **The sample's bar.** Only the buttons and Leave the demo; the Follow-up button's
+  hover says "The same sample, weeks later".
+- `CLAUDE.md`: the design authority lines name the files that exist (the reconciliation
+  and brand-decisions files were deleted on 2026-09-09).
+
+Still the owner's: the Cloudflare headers (S1, S4, S7), and the push to `main`.
+
 ## What the night confirmed
 
 - **Every approved change holds.** Rounds 1–4 were walked in Chrome on the sample and on

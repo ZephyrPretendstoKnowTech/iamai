@@ -11,7 +11,9 @@ Everything else is either a working document it links to, or history in
   https://getiamai.com/planner/ (the tool).
 - Waiting for the owner's review: branch `night/2026-09-27` (the pre-launch night:
   cleanup, the Plan without its Show completed and Show deferred toggles, public docs
-  corrected, superseded docs archived). Nothing on it is live until the owner says so.
+  corrected, superseded docs archived; then the morning of 2026-09-28: the On line, the
+  Inforcer step on the template, the way out on user-risk steps, the tenant guard, and
+  Home's words). Nothing on it is live until the owner says so.
 
 ## Launch
 
@@ -88,6 +90,11 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   Show deferred toggles (2026-09-27, on the night branch).
 - Needs your input counts each question once. The Home image (pack v3) is regenerated
   every release: `npm run build:site && node scripts/home-shot.mjs` (2026-09-27).
+- Home says what IAMAI does in words the product backs, with no fluff: no "Free public
+  preview", no caption under the Plan picture; the primary button reads "Connect your
+  tenant". The sample's bar holds only its buttons and Leave the demo (2026-09-28).
+- A correction to a policy that is On says so; a user-risk step held by a person's risk
+  says how to clear it (2026-09-28).
 - Polish, not features. The polish research waits for v1.5 or v2 (2026-09-26).
 - Out of v1.0: Jon's AVD allowed-users block and WindowsAzureAD-BaselineScopes (their
   groups are unidentified); the ZTCA Admin Portal block stays hidden (2026-09-24).
