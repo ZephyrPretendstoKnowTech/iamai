@@ -106,3 +106,12 @@ test('with a member and a guest named, each gets their own way out and the wait 
   assert.equal(count(text, fillText(WORDS.riskClearGuest, { names: ctx.nameOf(other.id) })), 2, text)
   assert.equal(count(text, WAIT), 2, `the wait is repeated: ${text}`)
 })
+
+test('more than five from another organization: the first five by name and how many more, as the wait names them', () => {
+  const seven = (f.snapshot.users ?? []).filter((u) => u.accountEnabled !== false && u.userType === 'member').slice(0, 7).map((u) => u.id)
+  assert.equal(seven.length, 7, 'the premise: seven members to make guests')
+  const text = turnOnText(stepIdForGoal('user-risk'), seven, withGuests(...seven))
+  for (const name of seven.slice(0, 5).map((id) => ctx.nameOf(id))) assert.ok(text.includes(name), `${name} is not named: ${text}`)
+  assert.ok(!text.includes(ctx.nameOf(seven[5])) && !text.includes(ctx.nameOf(seven[6])), `more than five are named: ${text}`)
+  assert.match(text, /and 2 more to have it remediated there/)
+})

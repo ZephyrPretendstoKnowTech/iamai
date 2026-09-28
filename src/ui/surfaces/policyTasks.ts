@@ -117,7 +117,7 @@ export type PolicyProcedureInput = {
   extras?: PolicyProcedureExtras
   /** Whether the step hands over an announcement to send (its Email tab): only then does its card say when to announce. */
   announces?: boolean
-  /** Whether an account was invited from another organization (B2B: Graph sets externalUserState); its user risk is its home tenant's. */
+  /** Whether an account is from another organization (externalOf below: the plan's own reading); its user risk is its home tenant's. */
   externalOf?: (id: string) => boolean
 }
 
