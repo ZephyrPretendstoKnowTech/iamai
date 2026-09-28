@@ -689,6 +689,41 @@ A patch of the broad rule from 2026-09-25 exists as a starting point.
 4.4, then every policy step.
 
 
+## Round 5: built (branch `round-5`, 2026-09-28; not live)
+
+After the pre-launch push (f0c82ea3) and a fresh rating of about 86, the owner asked for
+"another 10 edits/suggestions". Seventeen candidates were verified at HEAD by a workflow; ten
+were presented and the owner approved all ten, and picked Connect's headline.
+
+**The ten, as approved and built:**
+1. **F-062** 7d1480b4: a roles correction says to change only the roles listed and leave
+   every other role, so nobody unticks Global Administrator from 4.3.
+2. **F-092** 9afdfd3c: Remove Emergency Accounts Excluded by Name waits for the security
+   rollout, like 8.1, instead of reading Ready a month out.
+3. **F-036** bdec6f1b: Configure Passkey Authentication's card and task name the same
+   account at risk (one reading, passkeyRestrictions.ts affectedByHandover).
+4. **F-075** 2df8db4b: MFA Readiness warns on the row and in the CSV when someone's only key
+   stops at Configure Passkey Authentication, and the drawer names the step.
+5. **F-035** 4beecceb: the guest policy's criteria name the guest type it leaves out; the AI
+   Info drops raw role keys.
+6. **OWN-W7** 779c328e: the "After making changes, select Scan" note stands only while a task
+   remains.
+7. **F-072** 1c825e5d: MFA Readiness opened from Require MFA to Register a Device says what
+   the step's card says (personNext.ts personNextOf); Prepare Your Team points to "the method
+   named beside them".
+8. **Home and Connect** b435f9d4: Home says the comparison once; Connect's headline is "Three
+   steps from your tenant to its rollout plan." (owner's pick).
+9. **Inventory search (F-139)** 5a90d429: one box over any table longer than a page.
+10. **F-047, F-127** d5227c95: every download names the tenant and the day (none on a masked
+    bundle), the files are named as their buttons read, CSVs carry a UTF-8 mark with blank
+    empty cells, and one header per field.
+
+**Next in line (verified, not approved yet):** F-079 (focus ring on filled buttons, light
+theme), versioned Home picture names, 3.8's "Follow {policy}" as a link, Inforcer's "add the
+app first" line, Review Overlapping Policies naming each policy once with real candidates
+only (M), one house spelling of "organization". The policy-matching pilot on 4.3 needs a round
+of its own.
+
 ## Round 5: candidates (end of Round 4, 2026-09-27)
 
 Not yet verified at HEAD or live: step 2 of the prompt does that before planning.
