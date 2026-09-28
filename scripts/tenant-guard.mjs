@@ -8,11 +8,13 @@
 // - Any GUID, email address, address domain, domain, hyphenated name or run of six
 //   or more letters and digits whose SHA-256 (lower-cased, trimmed) is in
 //   scripts/tenant-fingerprints.json fails, so a tenant's domain or name is caught
-//   standing alone as well as in an address: before a full stop, inside another
-//   host (NAME.sharepoint.com, mail.NAME.onmicrosoft.com), after an @ or a %40, in
-//   a file name. A tracked file's path is read the same way. The list holds hashes,
-//   so the guard never publishes the values it blocks, and neither does its
-//   output: a finding names the file, line and rule, never the value.
+//   standing alone as well as in an address: a listed domain inside a longer host
+//   (mail.DOMAIN), after an @ or a %40; a listed name of six or more letters and
+//   digits before a full stop, inside another host (NAME.sharepoint.com), in a file
+//   name. A shorter name is caught only as part of a listed domain. A tracked file's
+//   path is read the same way. The list holds hashes, so the guard never publishes
+//   the values it blocks, and neither does its output: a finding names the file (a
+//   path's matching segments replaced), line and rule, never the value.
 //
 // Run by CI (Type and unit checks) and by `npm run verify`. The rules are a pure
 // function so src/testing/tenantGuard.test.ts can prove them.
@@ -107,6 +109,20 @@ export function loadFingerprints(cwd = process.cwd()) {
 }
 
 /**
+ * The findings in a tracked file's path, one per rule. The path it reports has every
+ * segment that holds a finding replaced, so the output never names the value either.
+ * @param {string} file
+ * @param {ReadonlySet<string>} fingerprints
+ * @returns {{ file: string, line: number, rule: string }[]}
+ */
+export function pathFindings(file, fingerprints) {
+  const rules = [...new Set(findingsIn(file, fingerprints).map((f) => f.rule))]
+  if (rules.length === 0) return []
+  const shown = file.split('/').map((segment) => (findingsIn(segment, fingerprints).length > 0 ? '<fingerprinted>' : segment)).join('/')
+  return rules.map((rule) => ({ file: shown, line: 0, rule: `${rule} (path)` }))
+}
+
+/**
  * Every finding across the tracked files, binaries skipped.
  * @param {string} [cwd]
  * @returns {{ file: string, line: number, rule: string }[]}
@@ -117,7 +133,7 @@ export function scanTracked(cwd = process.cwd()) {
   /** @type {{ file: string, line: number, rule: string }[]} */
   const found = []
   for (const file of files) {
-    for (const f of findingsIn(file, fingerprints)) found.push({ file, line: 0, rule: `${f.rule} (path)` })
+    found.push(...pathFindings(file, fingerprints))
     let bytes
     try {
       bytes = readFileSync(path.join(cwd, file))

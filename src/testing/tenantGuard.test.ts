@@ -3,7 +3,7 @@
 // concatenation so this file does not itself carry one.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { ALLOWED_ADDRESSES, PRODUCT_DOMAIN, TENANT_DOMAIN, findingsIn, fingerprint, loadFingerprints, scanTracked } from '../../scripts/tenant-guard.mjs'
+import { ALLOWED_ADDRESSES, PRODUCT_DOMAIN, TENANT_DOMAIN, findingsIn, fingerprint, loadFingerprints, pathFindings, scanTracked } from '../../scripts/tenant-guard.mjs'
 
 const NONE: ReadonlySet<string> = new Set()
 
@@ -69,6 +69,25 @@ test('the tenant name or domain is caught before a full stop, inside another hos
     `${label}-lab`,
     `${label}-scan.json`,
   ]) assert.deepEqual(findingsIn(text, list), [{ line: 1, rule: 'fingerprint' }], text.replace(label, 'NAME'))
+})
+
+// Review, 2026-09-28: the cases above are all caught by the bare name, so each rule is
+// also proved alone: a listed domain whose name is too short to be a word, a listed
+// hyphenated name, and a path, reported without the value.
+test('each rule catches on its own: a parent domain, a hyphenated name, a path', () => {
+  const short = 'abc.onmicrosoft.com'
+  const onlyDomain = new Set([fingerprint(short)])
+  for (const text of [`mail.${short}`, `#@${short}/x`, `hint=a%40${short}`, `Tenant: ${short}.`]) {
+    assert.deepEqual(findingsIn(text, onlyDomain), [{ line: 1, rule: 'fingerprint' }], text)
+  }
+  assert.deepEqual(findingsIn('abc.sharepoint.com and abc', onlyDomain), [], 'a name under six characters is caught only as its listed domain')
+  const hyphenated = new Set([fingerprint('ab-cd')])
+  assert.deepEqual(findingsIn('owner of ab-cd, not ab-cde', hyphenated), [{ line: 1, rule: 'fingerprint' }], 'a listed hyphenated name passed')
+  assert.deepEqual(findingsIn('ab-cde only', hyphenated), [])
+  const label = 'examplelabtenant'
+  const byName = new Set([fingerprint(label)])
+  assert.deepEqual(pathFindings(`docs/qa/${label}-scan.json`, byName), [{ file: 'docs/qa/<fingerprinted>', line: 0, rule: 'fingerprint (path)' }], 'a path finding is missing or names the value')
+  assert.deepEqual(pathFindings('docs/qa/contoso-scan.json', byName), [])
 })
 
 test('the committed list holds hashes only, and the tracked tree is clean', () => {
