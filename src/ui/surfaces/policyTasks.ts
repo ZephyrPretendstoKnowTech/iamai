@@ -160,7 +160,7 @@ type ProcedureMember = {
   createName?: string
 }
 
-const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string> }
+const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string>; policyOn: string }
 
 /** The sections an update's body writes, and the conditions among them by their Graph keys. */
 function sectionsOfBody(body: Record<string, unknown>): { sections: Set<CorrectionSection>; conditions: Set<string> } {
@@ -521,7 +521,11 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const exclusionsGroup = ctx.exclusionsGroupId ? ctx.nameOf(ctx.exclusionsGroupId) : ''
   const exclusionsFirst = (m: ProcedureMember): boolean => m.exclusionsFirst === true && exclusionsStep !== '' && exclusionsGroup !== ''
   const firstLine = fillText(PROCEDURE.afterExclusions, { step: exclusionsStep, group: exclusionsGroup })
-  if (correct.length > 0) tasks.push({ ...task('correct', 'correct', correct.flatMap((m) => [...(exclusionsFirst(m) ? [firstLine] : []), ...correctionLines(m.name, m.correction)]), true), corrections: correct.map((m) => ({ name: m.name, settings: m.correction, ...(exclusionsFirst(m) ? { after: fillText(PW.card.afterExclusions, { step: exclusionsStep, group: exclusionsGroup }) } : {}) })) })
+  // A correction to a policy that is already On takes effect at the next sign-in,
+  // with no report-only week: its card, its task and its script say so (owner,
+  // 2026-09-28; 7.5 widened an enforced policy with nothing saying so).
+  const onLine = PW.policyOn
+  if (correct.length > 0) tasks.push({ ...task('correct', 'correct', correct.flatMap((m) => [...(exclusionsFirst(m) ? [firstLine] : []), ...(m.on ? [onLine] : []), ...correctionLines(m.name, m.correction)]), true), corrections: correct.map((m) => ({ name: m.name, settings: m.correction, ...(exclusionsFirst(m) ? { after: fillText(PW.card.afterExclusions, { step: exclusionsStep, group: exclusionsGroup }) } : {}), ...(m.on ? { on: onLine } : {}) })) })
   // The turn-on is the same task in every state, but while the plan's own
   // prerequisites hold it (roadmap/enforceWaits.ts: the recovery test not
   // recorded, security defaults still on) it hands over no instruction that
@@ -589,7 +593,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // In doing order: the accounts move before the turn-on that waits for them.
   const at = tasks.findIndex((t) => t.id === 'turn-on')
   const ordered = mail === null ? tasks : at < 0 ? [...tasks, mail] : [...tasks.slice(0, at), mail, ...tasks.slice(at)]
-  return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}), ...(correct.some(exclusionsFirst) ? { exclusionsFirst: firstLine } : {}) }
+  return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}), ...(correct.some(exclusionsFirst) ? { exclusionsFirst: firstLine } : {}), ...(correct.some((m) => m.on) ? { policyOn: onLine } : {}) }
 }
 
 /**
@@ -1023,7 +1027,7 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   const corrections = correcting ? projected!.tasks.find((t) => t.id === 'correct')?.corrections ?? [] : []
   const corrected: EmergencySubjectTile[] = corrections.map((c, i) => {
     const fields = [...new Set(c.settings.map(correctionSectionOf).filter((f): f is string => f !== null).map((f) => f.toLowerCase()))]
-    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: [...c.settings.map(cardLineOf), ...(c.after ? [c.after] : [])].join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
+    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: [...c.settings.map(cardLineOf), ...(c.after ? [c.after] : []), ...(c.on ? [c.on] : [])].join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
   })
   const rest = [...readiness.tiles.filter((tile) => corrected.length === 0 || tile.key !== 'drift').map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
   // One sentence, said once. The policy card's sentence is the contract's one

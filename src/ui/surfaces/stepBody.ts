@@ -737,12 +737,13 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
       const title = checks[0].replace(/:$/, '')
       procedure.tasks.push({ id: 'workflow-check', accountId: null, title, targetUpn: null, required: false, readinessKey: '', evidence: null, actionLabel: title, steps: checks.slice(1).map((line) => line.replace(/^\d+\.\s+/, '')) })
     }
-    // A correction that waits for Configure Emergency Exclusions says so first in the script too (F-001).
-    const first = procedure.exclusionsFirst
-    const ps = first ? artifacts.find((a) => a.id === 'ps') : undefined
-    if (first && ps) {
+    // A correction that waits for Configure Emergency Exclusions (F-001), or that
+    // changes a policy already On (owner, 2026-09-28), says so first in the script too.
+    const firsts = [procedure.exclusionsFirst, procedure.policyOn].filter((l): l is string => typeof l === 'string' && l !== '')
+    const ps = firsts.length > 0 ? artifacts.find((a) => a.id === 'ps') : undefined
+    if (ps) {
       const original = ps.text
-      ps.text = () => `# ${first}\n${original()}`
+      ps.text = () => `${firsts.map((l) => `# ${l}`).join('\n')}\n${original()}`
     }
   }
   // Every other step that carries work draws the Emergency Access task anatomy
