@@ -479,12 +479,20 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // where a step of the plan makes it: "exclude **CA - Trusted - Head office**".
   // A reference only the baseline's author or a person's mapping can settle has
   // no name to give, and the step says what it waits on instead.
-  // An application the tenant adds itself, which no step of the plan makes (Require
-  // MFA for Inforcer Access: the Inforcer application), is named by its id as the
-  // baseline names it, so the step draws the template's procedure like every other
-  // policy step (owner, 2026-09-28; it fell back to its package's old words).
+  // An application the policy includes, which the tenant adds itself and no step of
+  // the plan makes (Require MFA for Inforcer Access: the Inforcer application), is
+  // named as the baseline names it, so the step draws the template's procedure like
+  // every other policy step (owner, 2026-09-28; it fell back to its package's old
+  // words). Only an included application: a missing exclusion, user or group still
+  // holds the step, since building it without the carve-out is what the hold prevents.
   const missing = step.action.missing ?? []
-  if (missing.some((m) => m.decision === true || m.unreadable === true || (m.stepId !== null && !OBJECT_OF_STEP[m.stepId]))) return null
+  const includedApps = new Set((step.action.resolution?.policies ?? []).flatMap((op) => {
+    // The pending body still holds what the submit body leaves out until it exists.
+    const apps = ((op.pending ?? op.intent ?? op.body).conditions as { applications?: { includeApplications?: unknown[] } } | undefined)?.applications?.includeApplications ?? []
+    return apps.filter((a): a is string => typeof a === 'string').map((a) => a.toLowerCase())
+  }))
+  const unmadeApp = (m: { token: string; stepId: string | null }): boolean => m.stepId === null && includedApps.has(m.token.toLowerCase())
+  if (missing.some((m) => m.decision === true || m.unreadable === true || (m.stepId === null ? !unmadeApp(m) : !OBJECT_OF_STEP[m.stepId]))) return null
   const pendingName = new Map(missing.flatMap((m) => {
     const key = m.stepId ? OBJECT_OF_STEP[m.stepId] : undefined
     return key ? [[m.token.toLowerCase(), input.proposed[key]] as const] : []

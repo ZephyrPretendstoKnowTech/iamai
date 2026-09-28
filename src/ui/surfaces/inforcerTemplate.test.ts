@@ -41,6 +41,17 @@ test('its Completion Criteria name the policy, never the step title', () => {
   assert.equal(done[0], 'IAMAI sees IAC - APP - inforcer - RequireMFA On.', `the first line does not name the policy: ${done[0]}`)
 })
 
+test('only an included application passes: any other missing object no step makes keeps the step off the template', () => {
+  // Review, 2026-09-28: an exclusion the tenant lacks, drawn as "exclude X", builds the
+  // policy without its carve-out, which is what holding the step prevents.
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const base = r.steps.find((s) => s.id === 's-goal-inforcer-mfa')!
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  const step = { ...base, action: { ...base.action, missing: [{ token: '00000000-0000-0000-0000-000000000099', stepId: null }] } } as typeof base
+  assert.deepEqual(stepBodyOf(step, ctx).emergencyAccountTasks?.tasks.map((t) => t.id), ['policy-procedure'], 'a missing object the policy does not include as an application drew the template procedure')
+})
+
 test('a missing object that waits on a decision keeps its step off the template', () => {
   const { step, tasks } = tasksOf('mid', 's-goal-service-accounts-trusted-network')
   assert.ok((step.action.missing ?? []).some((m) => m.decision === true), 'the premise: a missing object waits on a decision')
