@@ -40,9 +40,18 @@ On `night/2026-09-27`, not live until the owner has seen it ("Show me first"):
   the old mark and line) is drawn from it by `scripts/og-image.mjs`.
 - **A review of the morning's code** found three things, all fixed above: the guard's
   gaps, the way out promising a scan would clear the wait, and the Inforcer gate
-  admitting any missing object. Four small ones wait (below).
+  admitting any missing object. A second, multi-agent review of the whole branch
+  found two more claims the product must not make, both fixed: the way out said to
+  Confirm user safe "if the sign-ins were theirs", which could clear a real compromise
+  (it now keeps Confirm user safe for detections that are false positives, as
+  Microsoft Learn does), and Home's Plans line promised report-only first for every
+  change (it now says new policies; a correction to a policy that is On applies at the
+  next sign-in). The full suite caught two more: the Inforcer step names the app with
+  its ID again, and the sample's bar announces a change of scan to a screen reader.
+  Three small ones wait (below).
 - **The sample's bar.** Only the buttons and Leave the demo; the Follow-up button's
-  hover says "The same sample, weeks later".
+  hover says "The same sample, weeks later", and a screen reader hears it when the
+  follow-up lands.
 - `CLAUDE.md`: the design authority lines name the files that exist (the reconciliation
   and brand-decisions files were deleted on 2026-09-09).
 
@@ -213,8 +222,6 @@ Each is small. Recommended: yes to all three, after launch.
     is the "create the service principal if it's missing" item under Promised.
   - The all-users MFA steps wait on Create or Correct Service Accounts Group, but their
     create task names only the exclusions group. They are created in Report-only.
-  - The sample's bar no longer announces a change of scan to a screen reader (its
-    sentence was the announcement); the buttons still say which is pressed.
   - A step correcting two policies, one On and one not, would put the On line at the
     top of its whole script. No test tenant has one.
 - **The v1.1 list:** `docs/plans/roadmap-flow/v1.1-list.md`.
