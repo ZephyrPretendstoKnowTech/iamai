@@ -117,6 +117,8 @@ export type PolicyProcedureInput = {
   extras?: PolicyProcedureExtras
   /** Whether the step hands over an announcement to send (its Email tab): only then does its card say when to announce. */
   announces?: boolean
+  /** Whether an account was invited from another organization (B2B: Graph sets externalUserState); its user risk is its home tenant's. */
+  externalOf?: (id: string) => boolean
 }
 
 /**
@@ -161,7 +163,17 @@ type ProcedureMember = {
   createName?: string
 }
 
-const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string>; policyOn: string; riskClear: string }
+/**
+ * Whether an account was invited from another organization: Graph sets
+ * externalUserState on a B2B account (derive/smsRetirement.ts reads it the same way).
+ * Microsoft evaluates such an account's user risk in its home tenant.
+ */
+export function externalOf(ctx: { snapshot: { users?: readonly { id: string; externalUserState?: string | null }[] } }): (id: string) => boolean {
+  const external = new Set((ctx.snapshot.users ?? []).filter((u) => !!u.externalUserState).map((u) => u.id.toLowerCase()))
+  return (id) => external.has(id.toLowerCase())
+}
+
+const PW = PROCEDURE as unknown as { tasks: Record<string, string>; card: Record<string, string>; policyOn: string; riskClear: string; riskClearGuest: string }
 /** The user-risk steps: a person report-only would have stopped stays risky until their risk is cleared (owner, 2026-09-28). */
 const USER_RISK = new Set([stepIdForGoal('user-risk'), stepIdForGoal('user-risk-medium')])
 
@@ -342,8 +354,8 @@ const GETS_A_METHOD = new Set([stepIdForGoal('admins-phishing-resistant'), stepI
  * authentication, a report-only week that would have blocked someone, and a
  * readiness threshold. Empty where nothing holds it but the report-only week.
  */
-function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string; after: string; named?: true }[] {
-  const out: { wait: string; after: string; named?: true }[] = []
+function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string; after: string; named?: readonly string[] }[] {
+  const out: { wait: string; after: string; named?: readonly string[] }[] = []
   const gate = step.action.readinessGate
   const gateHolds = gate !== undefined && enforcementHeld(step)
   // The plan's own steps, by title. The campaign is what moves a readiness
@@ -367,7 +379,7 @@ function turnOnWaitsOf(step: Step, input: PolicyProcedureInput): { wait: string;
       const shown = ids.slice(0, NAMES_INLINE).map(input.nameOf)
       const names = list(ids.length > NAMES_INLINE ? [...shown, fillText(WAITS.more, { n: ids.length - NAMES_INLINE })] : shown)
       const one = ids.length === 1
-      out.push({ wait: fillText(WAITS[`${key}Named`], { names }), after: fillText(WAITS[`${key}NamedAfter${one ? 'One' : 'Many'}`], { names }), named: true })
+      out.push({ wait: fillText(WAITS[`${key}Named`], { names }), after: fillText(WAITS[`${key}NamedAfter${one ? 'One' : 'Many'}`], { names }), named: ids })
     } else if (failed.length === 0) out.push({ wait: WAITS[key], after: WAITS[`${key}After`] })
     // Otherwise every account report-only stopped is one the mail wait already names.
   }
@@ -562,9 +574,14 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const heldLine = waits.length > 0 ? fillText(app.plan.enforceOutstanding, { items: list(waits.map((w) => w.wait)) }) : input.contract.milestone.label
   // A user-risk step whose report-only week named someone waits on that person's
   // risk, which nothing clears on its own: say how (owner, 2026-09-28; 5.9 could
-  // never finish on the owner's tenant).
-  const riskClear = turnOnHeld && USER_RISK.has(step.id) && waits.some((w) => w.named === true) ? fillText(PW.riskClear, { days: String(EVIDENCE_WINDOW_DAYS) }) : null
-  if (!createdOnStep) tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine, ...(riskClear ? [riskClear] : [])] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
+  // never finish on the owner's tenant). A guest invited from another organization
+  // is not in this tenant's Risky users: their home tenant clears their risk.
+  const named = turnOnHeld && USER_RISK.has(step.id) ? waits.flatMap((w) => w.named ?? []) : []
+  const external = (id: string): boolean => input.externalOf?.(id) === true
+  const days = { days: String(EVIDENCE_WINDOW_DAYS) }
+  const riskLines = [...(named.some((id) => !external(id)) ? [fillText(PW.riskClear, days)] : []), ...(named.some(external) ? [fillText(PW.riskClearGuest, days)] : [])]
+  const riskClear = riskLines.length > 0 ? riskLines.join(' ') : null
+  if (!createdOnStep) tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine, ...riskLines] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
   // What the step's package says comes after the policy is On, in every state:
   // the PIM role settings that make role activation ask for the context.
   for (const after of input.extras?.after ?? []) if (after.steps.length > 0) tasks.push({ id: after.id, accountId: null, title: after.title, targetUpn: null, required: after.required, readinessKey: '', evidence: null, actionLabel: after.title, steps: after.steps })
