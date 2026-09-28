@@ -34,7 +34,7 @@ Nothing here is live until the owner approves it. Where things stand overall:
 - README and SECURITY.md: all seven Graph scopes (`Policy.Read.AuthenticationMethod` was
   missing), and how CI really runs (the README said every push runs CI and walks the
   sample; neither is true);
-- 139 superseded docs and prototypes moved to `archive/2026-09-27/`, and `docs/STATUS.md`
+- 132 superseded docs and the old overnight runner moved to `archive/2026-09-27/`, and `docs/STATUS.md`
   as the one source of truth;
 - the Home pictures retaken (the old ones showed the two toggles).
 
