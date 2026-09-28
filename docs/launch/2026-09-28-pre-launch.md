@@ -18,19 +18,29 @@ On `night/2026-09-27`, not live until the owner has seen it ("Show me first"):
   Accounts Group is the same as every all-users MFA step's (the engine's order, not the
   step's). The app still reads "Inforcer (baseline name)": that label is deliberate, not
   a claim about who owns the app.
+  Its Completion Criteria name the policy, not the step title. Only an application the
+  policy includes lets a step onto the template this way; any other missing object
+  still holds it.
 - **2c, the way out on 5.9 (a).** A user-risk step held by someone report-only would have
-  stopped says how to clear their risk, in Microsoft Learn's words
-  (`shared.procedure.riskClear`, new words).
-- **S8, the tenant guard.** It fingerprints each address's domain, bare domains and
-  names too, and holds the hashes of the tenant's `onmicrosoft` domain and name.
+  stopped says how to clear their risk, in Microsoft Learn's words, and how long the
+  wait lasts after that: IAMAI reads no one's risk, only the stopped sign-ins, and
+  counts them until they are 30 days old (`shared.procedure.riskClear`, new words).
+- **S8, the tenant guard.** It fingerprints each address's domain, every domain and
+  parent domain, hyphenated names, every run of six or more letters and digits, and
+  file paths, and holds the hashes of the tenant's `onmicrosoft` domain and name.
 - **The repository page.** 31 stale branches deleted (six kept as `archive/branch/*`
   tags; how to restore each: [2026-09-28-branches.md](2026-09-28-branches.md)), pull
   request #7 closed with a note, the wiki off.
 - **Home.** The owner's cuts ("Free public preview", "You review and make the changes",
   the Plan picture's caption) and a rewrite toward what IAMAI does: compares the tenant
   with the baseline, orders the work, and finds what can lock people out before a policy
-  is turned on. The primary button reads "Connect your tenant". The headline is still
-  being decided.
+  is turned on. The primary button reads "Connect your tenant". The headline names the
+  plan: "Turn a security baseline into a rollout plan for your tenant." (the old one
+  read as a What If check), and the picture a shared link shows (`home/og.png`, still
+  the old mark and line) is drawn from it by `scripts/og-image.mjs`.
+- **A review of the morning's code** found three things, all fixed above: the guard's
+  gaps, the way out promising a scan would clear the wait, and the Inforcer gate
+  admitting any missing object. Four small ones wait (below).
 - **The sample's bar.** Only the buttons and Leave the demo; the Follow-up button's
   hover says "The same sample, weeks later".
 - `CLAUDE.md`: the design authority lines name the files that exist (the reconciliation
@@ -173,6 +183,9 @@ Each is small. Recommended: yes to all three, after launch.
 
 - The Cloudflare headers (S1), if approved.
 - After the deploy: open getiamai.com in both themes and check the Plan picture.
+- Before posting, paste https://getiamai.com into LinkedIn's Post Inspector
+  (linkedin.com/post-inspector): it fetches the new share picture instead of one it may
+  have cached.
 - The post links to https://getiamai.com and https://getiamai.com/planner/?demo=1#/plan.
 
 ## Waits until after launch
@@ -194,6 +207,16 @@ Each is small. Recommended: yes to all three, after launch.
   - A returning visitor's stored sample can read 7 weeks while Connect says 5.
   - A tab once read "changed in another tab" right after a second tab signed in. Not
     reproduced in three tries.
+- **From the review of the morning's code (small):**
+  - Require MFA for Inforcer Access says nothing about adding the Inforcer application
+    first. IAMAI reads no service principals, so the app always reads as missing; this
+    is the "create the service principal if it's missing" item under Promised.
+  - The all-users MFA steps wait on Create or Correct Service Accounts Group, but their
+    create task names only the exclusions group. They are created in Report-only.
+  - The sample's bar no longer announces a change of scan to a screen reader (its
+    sentence was the announcement); the buttons still say which is pressed.
+  - A step correcting two policies, one On and one not, would put the On line at the
+    top of its whole script. No test tenant has one.
 - **The v1.1 list:** `docs/plans/roadmap-flow/v1.1-list.md`.
 - **Larger items:**
   - staggered turn-ons (OWN-D4), one list of deviations (F-009), a bulk path (F-192),
