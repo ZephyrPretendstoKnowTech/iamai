@@ -7,12 +7,10 @@ Everything else is either a working document it links to, or history in
 
 ## Live
 
-- `main` at f0c82ea3, deployed 2026-09-28 and audited live: https://getiamai.com (Home)
-  and https://getiamai.com/planner/ (the tool). It carries the pre-launch night (the Plan
-  without its Show completed and Show deferred toggles, public docs corrected, superseded
-  docs archived) and the morning of 2026-09-28 (Home's plan-first headline and share
-  picture, the On line, the Inforcer step on the template, the way out on user-risk
-  steps, the tenant guard), after four review rounds.
+- `main` at 750a2a00 (Round 5), deployed 2026-09-28 and audited live: https://getiamai.com
+  (Home) and https://getiamai.com/planner/ (the tool). Round 5 is the ten edits the owner
+  approved after the fresh rating (the rounds document has them), after five review rounds.
+  Before it, f0c82ea3 carried the pre-launch night and the morning of 2026-09-28.
 
 ## Launch
 
@@ -94,6 +92,9 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   tenant". The sample's bar holds only its buttons and Leave the demo (2026-09-28).
 - A correction to a policy that is On says so; a user-risk step held by a person's risk
   says how to clear it (2026-09-28).
+- 1.3's passkey-type lockout (a synced-only account stopped by the Device-bound type
+  while the allow list is withheld) ships unchanged for now and is first after launch; a
+  warning was built and taken out after five review rounds (2026-09-28).
 - Polish, not features. The polish research waits for v1.5 or v2 (2026-09-26).
 - Out of v1.0: Jon's AVD allowed-users block and WindowsAzureAD-BaselineScopes (their
   groups are unidentified); the ZTCA Admin Portal block stays hidden (2026-09-24).
