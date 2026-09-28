@@ -5,7 +5,7 @@ import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTas
 import { emergencyRegistrationVariants, yubiKeySteps } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { affectedByHandover, passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
+import { affectedByHandover, lockedOutByHandover, passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
 import type { PasskeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
 import { shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -179,6 +179,8 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   // whether any of them would keep no way to sign in (roadmap/passkeyRestrictions.ts).
   const restriction = passkeyRestrictionReading(ctx.snapshot, ctx.mapping, ctx.groups)
   const withheld = restriction.lockedOut.length > 0
+  // Who the change as handed over still locks out (its passkey type), and who only the withheld allow list would.
+  const split = withheld && reading.state !== 'inPlace' ? lockoutSplit(restriction, ctx) : { byType: [] as string[], allowOnly: restriction.lockedOut }
   // The accounts the change handed over stops, read as the Existing passkeys affected
   // card reads them (roadmap/passkeyRestrictions.ts affectedByHandover, F-036): a passkey
   // only the withheld allow list stops is not one of them.
@@ -266,7 +268,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       issueKeys: (step.configurationFindings ?? []).filter(finding => finding.key === 'protection').flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? []),
       // The changes are the tile's facts; the procedure applies each value at the point of action.
       readinessFacts: resolution ? (profileCorrections.length ? profileCorrections : protectionFields.flatMap(field => { const value = fieldAction(field, targetValue(field), modelNames).replace(/\*\*/g, ''); return value ? [{ label: fieldLabel(field), value }] : [] })) : [],
-      steps: [...(withheld && protectionFields.some(field => field === 'passkeyProfiles' || field.startsWith('keyRestrictions.')) ? [fillText(PR().withheldTask, { count: count(restriction.lockedOut.length, 'account') })] : []), 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...protectionSteps, 'Return to IAMAI and select **Scan to update the plan**.'],
+      steps: [...(split.allowOnly.length > 0 && protectionFields.some(field => field === 'passkeyProfiles' || field.startsWith('keyRestrictions.')) ? [fillText(PR().withheldTask, { count: count(split.allowOnly.length, 'account') })] : []), ...(split.byType.length > 0 ? [typeLocksSentence(split.byType, ctx)] : []), 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...protectionSteps, 'Return to IAMAI and select **Scan to update the plan**.'],
     },
   ]
   // The step opens on Prepare while it is the thing to do first: somebody would be
@@ -275,7 +277,7 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
   return { tasks, printAll: true, approvedModels: intendedModels, ...(prepareFirst ? { recommendedTaskId: 'prepare-affected-passkeys' } : {}) }
 }
 
-type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldOne: string; withheldTask: string; keptMany: string }
+type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldOne: string; withheldTask: string; typeLocks: string; typeLocksOne: string; keptMany: string }
 const PR = (): PasskeyRestrictionWords => (shared as unknown as { passkeyRestrictions: PasskeyRestrictionWords }).passkeyRestrictions
 
 /** Accounts by sign-in name, the first NAMES_INLINE of them, the rest counted. */
@@ -293,13 +295,33 @@ function namedAccounts(ids: readonly string[], ctx: StepVarContext): string {
  * D13), and said "before applying restrictions" still after they were applied
  * (Marcus D8).
  */
+/** The accounts the planned change would lock out, split by what does it: the passkey type as handed over, or the withheld allow list alone. */
+function lockoutSplit(r: PasskeyRestrictionReading, ctx: StepVarContext): { byType: string[]; allowOnly: string[] } {
+  const byType = lockedOutByHandover(ctx.snapshot, ctx.mapping, ctx.groups, r)
+  const typed = new Set(byType.map((id) => id.toLowerCase()))
+  return { byType, allowOnly: r.lockedOut.filter((id) => !typed.has(id.toLowerCase())) }
+}
+
+/** The warning before the Save: the passkey type it sets stops these accounts' only passkey. */
+function typeLocksSentence(ids: string[], ctx: StepVarContext): string {
+  return fillText(ids.length === 1 ? PR().typeLocksOne : PR().typeLocks, { count: count(ids.length, 'account'), names: namedAccounts(ids, ctx) })
+}
+
 export function strandedSentence(r: PasskeyRestrictionReading, ctx: StepVarContext, beforeChange: boolean): string {
   // Before the change, an account the list would lock out withholds it. After it
   // — the tenant applied the restrictions — "stay off for now" is not true, and
   // "each keeps …" is not true of an account with no other confirmed way in: the
   // step says to check each one now.
   if (r.lockedOut.length > 0 && !beforeChange) return fillText(PR().strandedAfterLocked, { count: count(r.stranded.length, 'account'), names: namedAccounts(r.stranded, ctx) })
-  if (r.lockedOut.length > 0) return fillText(r.lockedOut.length === 1 ? PR().withheldOne : PR().withheld, { count: count(r.lockedOut.length, 'account'), names: namedAccounts(r.lockedOut, ctx) })
+  if (r.lockedOut.length > 0) {
+    // The accounts the passkey-type change locks out are named for what does it; the rest,
+    // for the allow list that waits (review, 2026-09-28).
+    const { byType, allowOnly } = lockoutSplit(r, ctx)
+    return [
+      allowOnly.length > 0 ? fillText(allowOnly.length === 1 ? PR().withheldOne : PR().withheld, { count: count(allowOnly.length, 'account'), names: namedAccounts(allowOnly, ctx) }) : null,
+      byType.length > 0 ? typeLocksSentence(byType, ctx) : null,
+    ].filter((x): x is string => x !== null).join(' ')
+  }
   const methods = [...new Set(r.keeps.map(k => methodName(k.method === 'phone' ? 'mobilephone' : k.method)))]
   const kept = methods.length === 1 ? methods[0] : fillText(PR().keptMany, { methods: list(methods) })
   return fillText(beforeChange ? PR().stranded : PR().strandedAfter, { count: count(r.stranded.length, 'account'), names: namedAccounts(r.stranded, ctx), kept })

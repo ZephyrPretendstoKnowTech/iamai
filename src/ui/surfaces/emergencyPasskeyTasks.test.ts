@@ -340,3 +340,26 @@ test('1.3 is never Completed while an account the applied allow list locks out i
     assert.match(card.value, /keep another way in$/)
   }
 })
+
+test("1.3 names, before the Save, the accounts the Device-bound passkey type locks out, and does not blame the withheld allow list (review, owner 2026-09-28)", () => {
+  // A synced-only profile; two people whose only passkey is synced. Withholding the allow
+  // list does not help them: the Device-bound type this step still hands over stops it.
+  const f = structuredClone(fixture('demo'))
+  const synced = { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, defaultPasskeyProfile: 'p', includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['p'] }], excludeTargets: [], passkeyProfiles: [{ id: 'p', name: 'p', passkeyTypes: 'synced', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: [] } }] }
+  f.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [synced] }] } as typeof f.snapshot.config.authMethodsPolicy
+  f.snapshot.authMethods = Object.fromEntries(f.snapshot.users.map((u) => [u.id, []]))
+  const [a, b] = f.snapshot.users.filter((u) => u.accountEnabled !== false && u.userType === 'member').map((u) => u.id)
+  f.snapshot.authMethods[a] = [{ kind: 'fido2', id: 'ka', aaGuid: PASSKEY_TARGET_AAGUIDS[0], passkeyType: 'synced', attestationLevel: 'notAttested' }]
+  f.snapshot.authMethods[b] = [{ kind: 'fido2', id: 'kb', aaGuid: '11111111-2222-4333-8444-555555555555', passkeyType: 'synced', attestationLevel: 'notAttested' }]
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const step = r.steps.find((s) => s.id === 's-prereq-passkey-settings')!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const tasks = emergencyPasskeyTasksOf(step, ctx).tasks
+  const apply = tasks.find((t) => t.id === 'apply-passkey-settings')!.steps
+  const prepare = tasks.find((t) => t.id === 'prepare-affected-passkeys')!.steps[0]
+  assert.match(apply[0], /^This step sets Passkey types to Device-bound, which stops the only passkey on 2 accounts/, `the Save names no one first: ${apply[0]}`)
+  assert.ok(apply.findIndex((l) => l.includes('Passkey types')) >= 0 && apply.indexOf(apply[0]) < apply.findIndex((l) => l.startsWith('Open')), 'the warning comes before the steps')
+  assert.ok(!apply.some((l) => /Key restrictions are not part of this change yet/.test(l)), 'the Save blames the withheld allow list')
+  assert.match(prepare, /stops the only passkey on 2 accounts/)
+  assert.doesNotMatch(prepare, /one the allow list would stop/, 'Prepare blames the allow list for a lockout the type change causes')
+})
