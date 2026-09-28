@@ -37,7 +37,7 @@ import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
 import type { PackItem } from '../../roadmap/prompts.ts'
 import { importPlanRecords } from '../../graph/collect/cache.ts'
-import { REDACTED, exportClipboard, exportDownload, exportName, exportPrint, runbookRedaction, unredactedFrom } from '../exportGuard.ts'
+import { REDACTED, exportClipboard, exportDownload, exportName, exportPrint, runbookRedaction, tenantDisplayName, unredactedFrom } from '../exportGuard.ts'
 import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card, PageTip } from '../components/index.ts'
@@ -153,6 +153,9 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const { steps, schedule, coverage, viability, names } = c
   const nameOf = (id: string): string => names.label(id)
   const tenantName = (snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
+  // A file's name carries the tenant's name as the scan read it, never the sign-in the
+  // page falls back to: a masked runbook named for the admin's address (review, 2026-09-28).
+  const fileTenant = tenantDisplayName(snapshot)
   const planId = planIdFor(snapshot.tenantId)
   const operator = { userId: account.localAccountId, userPrincipalName: account.username }
   const copy = (id: string, text: string): void => {
@@ -177,7 +180,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     // The saved checkpoints travel (each Cleanup row's Done is one, E3), then this save's own.
     const file = buildPlanFile({ decisions: data.recordForExport ?? undefined, planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, order, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, confirmations: data.confirmations, startedAt: data.startedAt ?? undefined, signature: data.signature })
     // The person's own working state, to load back on this tenant: names in full (the card says so).
-    exportDownload(exportName('iamai-plan.json', tenantName), JSON.stringify(file, null, 2), 'application/json', unredactedFrom('plan-file'))
+    exportDownload(exportName('iamai-plan.json', fileTenant, { id: snapshot.tenantId }), JSON.stringify(file, null, 2), 'application/json', unredactedFrom('plan-file'))
   }
 
   const loadPlan = async (files: FileList | null): Promise<void> => {
@@ -327,7 +330,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.prompts[0]}>
           <p className="reason">{P.cards.prompts[1]}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(exportName('iamai-prompts.md', tenantName), promptPackMarkdown(getPack(), tenantName), 'text/markdown', runbookRedaction(data.mapping))}>
+            <Button variant="secondary" onClick={() => exportDownload(exportName('iamai-prompts.md', fileTenant), promptPackMarkdown(getPack(), tenantName), 'text/markdown', runbookRedaction(data.mapping))}>
               {buttons('prompts')[0]}
             </Button>
           </p>
@@ -358,7 +361,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.calendar[0]}>
           <p className="reason">{P.cards.calendar[1]}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(exportName('iamai-plan.ics', tenantName), buildIcs(steps, tenantName, planId, view, cleanupViews, order), 'text/calendar', runbookRedaction(data.mapping))}>
+            <Button variant="secondary" onClick={() => exportDownload(exportName('iamai-plan.ics', fileTenant), buildIcs(steps, tenantName, planId, view, cleanupViews, order), 'text/calendar', runbookRedaction(data.mapping))}>
               {buttons('calendar')[0]}
             </Button>
           </p>
@@ -372,7 +375,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           <p className="reason">{P.cards.csv[1]}</p>
           <p className="actions">
             {csvTables.map((t) => (
-              <Button key={t.id} variant="tertiary" onClick={() => exportDownload(exportName(t.csvName, tenantName), toCsv(t.header, t.rows), 'text/csv', unredactedFrom('inventory-csv'))}>
+              <Button key={t.id} variant="tertiary" onClick={() => exportDownload(exportName(t.csvName, fileTenant, { id: snapshot.tenantId }), toCsv(t.header, t.rows), 'text/csv', unredactedFrom('inventory-csv'))}>
                 {t.id === 'readiness' ? buttons('csv')[0] : fillText(A.csvTab, { label: t.label })}
               </Button>
             ))}
@@ -386,7 +389,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
             <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {A.redactedLabel}
           </label>
           <p className="actions no-print">
-            <Button variant="secondary" onClick={() => exportDownload(exportName(`iamai-bundle${bundleRedacted ? '-redacted' : ''}.json`, bundleRedacted ? null : tenantName), JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()), cleanup: cleanupViews, groups: data.groups, order }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
+            <Button variant="secondary" onClick={() => exportDownload(exportName(`iamai-bundle${bundleRedacted ? '-redacted' : ''}.json`, bundleRedacted ? null : fileTenant), JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()), cleanup: cleanupViews, groups: data.groups, order }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
               {buttons('bundle')[0]}
             </Button>
           </p>

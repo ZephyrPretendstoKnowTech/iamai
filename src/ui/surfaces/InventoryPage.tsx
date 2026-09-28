@@ -79,7 +79,7 @@ function Heading({ text, source }: { text: string; source: keyof typeof C.source
 }
 
 /** The tenant a table's CSV is named for (F-047): read once by the page, used by every table's file name. */
-const TenantName = createContext<string | null>(null)
+const TenantName = createContext<{ name: string | null; id: string } | null>(null)
 
 /**
  * A model drawn as a table: every column's header, sort and CSV cell are the
@@ -104,7 +104,7 @@ function ModelTable<R>({
   return (
     <>
       {model.note && <p className="reason">{model.note}</p>}
-      <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={exportName(model.csvName, tenant)} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} search={{ filter: (q) => rowsMatching(model, q), placeholder: app.inventory.searchPlaceholder, none: app.inventory.searchNone }} />
+      <DataTable panel rows={model.rows} columns={columns} rowKey={model.rowKey} csvName={exportName(model.csvName, tenant?.name ?? null, { id: tenant?.id })} empty={model.empty} caption={caption} expand={expand} initialSort={initialSort} search={{ filter: (q) => rowsMatching(model, q), placeholder: app.inventory.searchPlaceholder, none: app.inventory.searchNone }} />
     </>
   )
 }
@@ -156,7 +156,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
   )
 
   return (
-    <TenantName.Provider value={tenantDisplayName(snapshot)}>
+    <TenantName.Provider value={{ name: tenantDisplayName(snapshot), id: snapshot.tenantId }}>
     <div>
       <Tabs
         tabs={[

@@ -480,7 +480,7 @@ function ReadinessPage({ snapshot, context, planSteps, guestStep }: { snapshot: 
 
   const exportCsv = (): void => {
     const rows = view.rows.filter(matches)
-    exportDownload(exportName(READINESS_CSV, tenantDisplayName(snapshot)), toCsv(T.csvColumns, rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, r.user.userPrincipalName ?? '', ...rowCells(r, nextOf(r))])), 'text/csv', unredactedFrom('inventory-csv'))
+    exportDownload(exportName(READINESS_CSV, tenantDisplayName(snapshot), { id: snapshot.tenantId }), toCsv(T.csvColumns, rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, r.user.userPrincipalName ?? '', ...rowCells(r, nextOf(r))])), 'text/csv', unredactedFrom('inventory-csv'))
   }
 
   const source = snapshot.sources.signInEvidence

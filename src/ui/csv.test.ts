@@ -48,9 +48,14 @@ test('ordinary values, a formula character mid-value, and RFC4180 quoting are le
 // iamai-people.csv and iamai-people (1).csv, and Excel mis-read the dashes and blanks.
 test('a download names the tenant and the day, and a masked one names neither tenant nor what it masks', async () => {
   const { exportName } = await import('./exportGuard.ts')
-  assert.equal(exportName('iamai-accounts.csv', 'Contoso Pty Ltd', '2026-09-28T02:00:00Z').replace(/\d{4}-\d{2}-\d{2}/, 'DAY'), 'iamai-accounts-contoso-pty-ltd-DAY.csv')
-  assert.equal(exportName('iamai-bundle-redacted.json', null, '2026-09-28').replace(/\d{4}-\d{2}-\d{2}/, 'DAY'), 'iamai-bundle-redacted-DAY.json')
-  assert.equal(exportName('iamai-plan.json', '  ', '2026-09-28'), 'iamai-plan-2026-09-28.json', 'no tenant name, no empty slug')
+  assert.equal(exportName('iamai-accounts.csv', 'Contoso Pty Ltd', { now: '2026-09-28T02:00:00Z' }).replace(/\d{4}-\d{2}-\d{2}/, 'DAY'), 'iamai-accounts-contoso-pty-ltd-DAY.csv')
+  assert.equal(exportName('iamai-bundle-redacted.json', null, { now: '2026-09-28' }), 'iamai-bundle-redacted-2026-09-28.json')
+  assert.equal(exportName('iamai-plan.json', '  ', { now: '2026-09-28' }), 'iamai-plan-2026-09-28.json', 'no tenant name, no empty slug')
+  // Review, 2026-09-28: accents come off; a name with no Latin letters falls back to the tenant ID where the file may carry it.
+  assert.equal(exportName('iamai-accounts.csv', 'Société Générale', { now: '2026-09-28' }), 'iamai-accounts-societe-generale-2026-09-28.csv')
+  assert.equal(exportName('iamai-accounts.csv', 'Müller GmbH', { now: '2026-09-28' }), 'iamai-accounts-muller-gmbh-2026-09-28.csv')
+  assert.equal(exportName('iamai-accounts.csv', '株式会社', { id: '4a3b2c1d-0000-4000-8000-000000000000', now: '2026-09-28' }), 'iamai-accounts-4a3b2c1d-2026-09-28.csv')
+  assert.equal(exportName('iamai-plan.ics', '株式会社', { now: '2026-09-28' }), 'iamai-plan-2026-09-28.ics', 'a masked file gets no ID')
 })
 
 test('a CSV opens in Excel as UTF-8, and an empty cell the screen dashes is blank in the file', async () => {

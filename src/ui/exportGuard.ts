@@ -124,12 +124,17 @@ export function watermarkDemoFile(name: string, content: string): string {
  * the display time zone's, as every date IAMAI shows. A masked export passes no tenant,
  * so its name never carries what its content masks.
  */
-export function exportName(base: string, tenant: string | null, nowIso: string = new Date().toISOString()): string {
+export function exportName(base: string, tenant: string | null, opts: { id?: string | null; now?: string } = {}): string {
   const dot = base.lastIndexOf('.')
   const stem = dot > 0 ? base.slice(0, dot) : base
   const ext = dot > 0 ? base.slice(dot) : ''
-  const slug = (tenant ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '')
-  return `${stem}${slug !== '' ? `-${slug}` : ''}-${calendarDay(nowIso)}${ext}`
+  // Accents come off ("Société Générale" is societe-generale); a name with no Latin
+  // letters falls back to the tenant ID's first eight characters, on a file whose
+  // content carries the ID anyway (review, 2026-09-28: such names left no mark at all).
+  const plain = (tenant ?? '').normalize('NFKD').replace(/\p{M}/gu, '')
+  const named = plain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '')
+  const slug = named !== '' ? named : (opts.id ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8)
+  return `${stem}${slug !== '' ? `-${slug}` : ''}-${calendarDay(opts.now ?? new Date().toISOString())}${ext}`
 }
 
 /** The tenant's display name as the scan read it, for a download's name: null where the scan has none. */
