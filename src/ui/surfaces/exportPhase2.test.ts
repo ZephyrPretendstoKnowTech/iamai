@@ -160,9 +160,15 @@ test('the pack and the bundle say a Cleanup row\'s When as the board reads it, a
       const where = `${name}/${c.kind}`
       assert.equal(c.when, board, `${where}: the export's When is the board's`)
       assert.ok(pack[0].prompt.includes(`${c.title} (${board}).`), `${where}: the pack's block reads "${board}"`)
-      if (finish.held && !phaseRow.done) {
+      // While the plan cannot finish, a held row reads where the plan expects it, not its
+      // planned day. A Ready review row can be done now and keeps its own day (cleanupWhen's
+      // readyReview), so only a planned day the board does not show is forbidden. The day is
+      // formatted as the board formats it (its date part): the full timestamp moved a day with
+      // the time zone, and with "Est." gone the two readings met only under UTC (CI, 2026-09-28).
+      const planned = absoluteDate(phaseRow.day.slice(0, 10))
+      if (finish.held && !phaseRow.done && board !== planned) {
         undatedRows++
-        assert.ok(!pack[0].prompt.includes(`${c.title} (${absoluteDate(phaseRow.day)})`), `${where}: the pack dates a row the board holds`)
+        assert.ok(!pack[0].prompt.includes(`${c.title} (${planned})`), `${where}: the pack dates a row the board holds`)
         assert.equal(bundleRows.find((b) => b.kind === c.kind)?.day, null, `${where}: the bundle dates a row the board holds`)
       }
     }
