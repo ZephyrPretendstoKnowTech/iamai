@@ -25,6 +25,8 @@ import { isGroupMember } from '../../roadmap/stepGroups.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { count, list } from '../../copy/statements.ts'
 import { roleName } from '../../roles.ts'
+import { portalName } from '../../roadmap/portalLines.ts'
+import { ALL_GUEST_TYPES } from '../../roadmap/policyProcedure.ts'
 import { fillText } from '../../content/render.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -262,6 +264,13 @@ export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 
   // A few roles by name ("Global Administrator"); the baseline's long list counted ("46 admin roles").
   const roles = (ids: readonly string[]): string[] => (ids.length === 0 ? [] : ids.length > NAMED || ids.some((id) => roleName(id) === null) ? [W().adminRoles] : ids.map((id) => roleName(id) as string))
   const s = e.scope
+  // The guest types a policy leaves out, by the portal's names: "for guests except Core -
+  // Exclusions and guests" read as if the guest MFA policy exempted guests (F-035, owner
+  // 2026-09-28). Every type, or none named, is "guests" as before.
+  const guestTypesOf = (types: readonly string[]): string[] => {
+    const named = types.map((t) => portalName('guestType', t))
+    return types.length === 0 || types.length >= ALL_GUEST_TYPES.length || named.some((n) => n === null) ? [w.guests] : (named as string[])
+  }
   const who = [
     ...(s.allUsers ? [w.allUsers] : []),
     ...roles(s.roles.include),
@@ -273,7 +282,7 @@ export function policyFactOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 
     ...s.groups.exclude.map(name),
     ...accounts(s.users.exclude),
     ...roles(s.roles.exclude),
-    ...(s.guests.exclude !== null ? [w.guests] : []),
+    ...(s.guests.exclude !== null ? guestTypesOf(s.guests.exclude.types) : []),
   ]
   if (unresolved || who.length === 0) return null
   const whom = excluded.length > 2 ? fillText(w.exceptMore, { who: list(who), first: excluded[0], n: String(excluded.length - 1) }) : excluded.length > 0 ? fillText(w.except, { who: list(who), excluded: list(excluded) }) : list(who)

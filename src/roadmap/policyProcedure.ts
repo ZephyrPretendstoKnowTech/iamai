@@ -126,7 +126,7 @@ function guestWords(types: readonly string[] | null): string {
   return fill(PROCEDURE.guestTypes, { types: named.map((t) => bold(portalName('guestType', t) ?? t)).join(', ') })
 }
 /** The six guest or external user types, in the portal's order. */
-const ALL_GUEST_TYPES = ['internalGuest', 'b2bCollaborationGuest', 'b2bCollaborationMember', 'b2bDirectConnectUser', 'otherExternalUser', 'serviceProvider']
+export const ALL_GUEST_TYPES = ['internalGuest', 'b2bCollaborationGuest', 'b2bCollaborationMember', 'b2bDirectConnectUser', 'otherExternalUser', 'serviceProvider']
 
 /**
  * Who a policy includes. All users reaches every guest type, and Entra cannot

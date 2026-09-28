@@ -281,7 +281,9 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
       parts.push(m[2] === 'current.state' ? `${W.currentState}: ${stateWord(b[key] as string)}` : m[2] === 'current.id' ? `id ${b[key]}` : String(b[key]))
       roles.set(m[1], parts)
     }
-    for (const [role, parts] of roles) target.push(`${role}: ${parts.join('; ')}`)
+    // One member repeats the Policy name line above; a pair's members are told apart by
+    // their own names, never by the raw role key ("strong:", "browser:", F-035).
+    if (roles.size > 1) for (const parts of roles.values()) target.push(parts.join('; '))
   }
   const facts = target.filter((l): l is string => l !== null)
   section(S.intended, [...intended, ...(facts.length > 0 ? [`${W.target}:`, ...facts.map((l) => `- ${l}`)] : [])])
