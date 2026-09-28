@@ -1442,7 +1442,9 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     // Require MFA for Guests delivered between several policies: each guest type at
     // the baseline's grant for it, which none does alone (owner, 2026-09-25).
     if (step.goalId === 'guests-mfa' && together !== null) return [fillText(DONE_ON().doneOnGuests, { policy: together })]
-    return policyDoneWhen(step, fact, together ?? pair ?? tracked ?? String(ex.policyName ?? contentTitle(step)), mail)
+    // A step with no proposed name still names the one policy it writes (Require MFA
+    // for Inforcer Access on the sample: owner, 2026-09-28), never its own title.
+    return policyDoneWhen(step, fact, together ?? pair ?? tracked ?? String(ex.policyName ?? planned[0] ?? contentTitle(step)), mail)
   }
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).

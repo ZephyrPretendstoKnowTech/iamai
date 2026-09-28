@@ -2,7 +2,8 @@
 // for Inforcer Access: the Inforcer application), no longer takes the step off the
 // template: its Implementation Tasks are the translator's, drawn from the pinned
 // policy like every other policy step (owner, 2026-09-28; it fell back to its
-// package's old words). A missing object that waits on a decision still does.
+// package's old words), and its Completion Criteria name the policy, not the step.
+// A missing object that waits on a decision still takes its step off the template.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -29,6 +30,15 @@ test('the Inforcer step draws the template procedure from the pinned policy', ()
   assert.match(create, /exclude the group \*\*Core - Exclusions\*\*/, 'the exclusions group is not excluded')
   assert.match(create, /Require multifactor authentication/, "the grant is not the baseline's")
   assert.match(create, /\*\*Report-only\*\*/, 'the policy is not created in Report-only')
+})
+
+test('its Completion Criteria name the policy, never the step title', () => {
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === 's-goal-inforcer-mfa')!
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  const done = stepBodyOf(step, ctx).contract.doneWhen
+  assert.equal(done[0], 'IAMAI sees IAC - APP - inforcer - RequireMFA On.', `the first line does not name the policy: ${done[0]}`)
 })
 
 test('a missing object that waits on a decision keeps its step off the template', () => {
