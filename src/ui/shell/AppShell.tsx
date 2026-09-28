@@ -348,7 +348,11 @@ export function AppShell({
           {/* The bar is the two scans and the way out, with no sentence (owner,
               2026-09-28): the sample's name, its scans and Leave the demo say it
               is the sample. The follow-up scan's reason (F-017) is its button's
-              hover hint. */}
+              hover hint. A screen reader still hears which scan landed, from a
+              region no one sees, so Scan's jump to the follow-up explains itself
+              there too (review, 2026-09-28: cutting the sentence cut the
+              announcement). */}
+          <span className="sr-only" role="status">{demoWeek2 ? SHELL.demoFollowUpHint : SHELL.demoSnapshotInitial}</span>
           {/* The progression: two synthetic scans, named. Pressing one changes
               the facts the app derives from (ui/actions.ts showDemoSnapshot) and
               nothing else. `aria-pressed` carries which one is showing, so the
