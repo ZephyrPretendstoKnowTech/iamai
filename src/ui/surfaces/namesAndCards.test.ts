@@ -7,6 +7,8 @@ import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import { nameKey } from '../../baseline/discover.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
+import { heldLiveChange } from '../../roadmap/holds.ts'
+import { readFileSync } from 'node:fs'
 import { stepOperations } from './stepJson.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { stepExportView } from './stepExport.ts'
@@ -148,6 +150,35 @@ test('a policy typed by hand with hyphens for the baseline’s en dashes (or the
   const step = runFixture(f).steps.find((s) => s.id === 's-goal-block-device-code')!
   assert.deepEqual(step.tracking?.members?.map((m) => [m.policyId, m.matchedBy, m.plannedName ?? null]), [['p-typed-dashes', 'member-name', null]])
   assert.equal(nameKey(typed), nameKey(planned))
+})
+
+test('N-001: a held step whose tabs hand over a live change says first that it waits: the headline, a warning over every tab, and the first line of every copy but the JSON', () => {
+  // 5.1 is created On (owner, 2026-09-24) and waits on 90% readiness; its column
+  // read "Create the policy, turned on" and its script created it On, with the
+  // wait only in a line below.
+  const { r, ctx } = run('demo')
+  const step = r.steps.find((s) => s.id === 's-goal-register-info-protected')!
+  const reason = heldLiveChange(step)
+  assert.ok(reason !== null && /^when Modern MFA \+ TAP readiness reaches 90%/.test(reason), `the premise: 5.1 is held on readiness and created On: ${reason}`)
+  const body = stepBodyOf(step, ctx)
+  assert.equal(body.rail.headline, `Not yet: ${reason}`)
+  assert.equal(body.wait, `Not yet. Do this only ${reason}: it changes a live setting in the tenant.`)
+  // A prerequisite wait reads as a sentence, never "after: …".
+  const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+  assert.match(heldLiveChange(legacy) ?? '', /^after [^:]/)
+  // A held create in report-only denies nobody and keeps its words; so does a step nothing holds.
+  for (const s of r.steps.filter((x) => x.action?.resolution?.policies?.length)) {
+    const live = (s.action.resolution!.policies as { mode: string; body?: { state?: string }; target?: { state?: string } }[]).some((o) => (o.mode === 'update' ? o.target?.state : o.body?.state) === 'enabled')
+    if (!live) assert.equal(heldLiveChange(s), null, `${s.id}: no live change, no wait`)
+  }
+  const ready = runFixture(withFoundationSettled(fixture('demo'))).steps.find((s) => s.id === 's-goal-block-device-code')!
+  assert.equal(heldLiveChange(ready), null, 'a step nothing holds keeps its headline')
+  // The panel: the warning over every tab, in the preview and the expanded viewer; every copy but the JSON's leads with it.
+  const panel = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  assert.equal((panel.match(/\{wait !== null && <Callout kind="warning">\{wait\}<\/Callout>\}/g) ?? []).length, 2)
+  assert.match(panel, /copy\('implementation', withWait\(active\?\.text\(\) \?\? '', active\?\.id \?\? null\)\)/)
+  assert.match(panel, /copy\('emergency-task', withWait\(selectedTaskText, 'portal'\)\)/)
+  assert.match(panel, /channel === 'json' \? text : channel === 'ps' \? `# \$\{wait\}\\n\$\{text\}` : `\$\{wait\}\\n\\n\$\{text\}`/)
 })
 
 test('N-018: the baseline’s version of a line keeps the objects the step still waits on, so 6.3’s never reads as a block of every location', () => {

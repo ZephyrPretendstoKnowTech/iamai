@@ -39,7 +39,7 @@
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
 import { heldForReview, workflowReviewIsCurrent } from './lifecycle.ts'
-import { awaitsOwnObject, createHeldOnReadiness, enforcementHeld, isOpenPolicy, unavailableReason } from './operations.ts'
+import { awaitsOwnObject, createHeldOnReadiness, enforcementHeld, enforcesOnRun, isOpenPolicy, unavailableReason, validOperations } from './operations.ts'
 import { directionBlockerStep } from './directionAnswers.ts'
 import { stepCreatedOn } from './evidenceStrategy.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
@@ -85,6 +85,22 @@ export function waitsOnFoundation(step: Step): boolean {
 }
 
 export type Hold = { kind: HoldKind }
+
+/**
+ * The wait a held step's Implementation Tasks lead with (N-001; owner,
+ * 2026-09-28): the step is On Hold, and what its tabs hand over lands live — a
+ * policy created On, turned on, or corrected while On (operations.ts
+ * enforcesOnRun) — so the column's headline, a warning over every tab and the
+ * first line of every copy say first that it waits. The step's own wait
+ * (Step.blockedReason), '' where it names none; null where nothing holds the
+ * step or nothing it hands over lands live.
+ */
+export function heldLiveChange(step: Step): string | null {
+  if (!isOpenPolicy(step) || holdOf(step) === null) return null
+  if (!validOperations(step.action).some(enforcesOnRun)) return null
+  // "after: Prepare Emergency Access Accounts" reads "after Prepare Emergency Access Accounts" in a sentence.
+  return (step.blockedReason ?? '').replace(/^after:\s*/, 'after ')
+}
 
 /** What holds the step now, or null when nothing does. */
 export function holdOf(step: Step): Hold | null {

@@ -35,6 +35,7 @@ import { suggestCountries } from '../../mapping/countries.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
+import { heldLiveChange } from '../../roadmap/holds.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
 import { aiBriefingText, aiGroundingText } from './aiGrounding.ts'
 import type { TabItem } from '../components/index.ts'
@@ -790,8 +791,12 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const deferral = deferralOf(step)
   const deferredWords = deferral ? fillTextVerbatim(app.plan.deferredWhy, { date: absoluteDate(deferral.at) }, { reason: deferral.reason }) : null
   const railWords = (exclusions && emergencyAccountTasks && 'milestone' in emergencyAccountTasks ? emergencyAccountTasks.milestone : null) ?? ownRailWords
-  const rail = railOf(contract, { words: railWords, deferred: deferredWords, task: nextTask, instruction: railInstruction, leadDrawn })
   const W = CONTRACT.implementation
+  // A held step whose tabs hand over a live change says first that it waits, and on what (N-001).
+  const heldWait = heldLiveChange(step)
+  const wait = heldWait === null ? null : heldWait === '' ? W.waitOther : fillText(W.wait, { reason: heldWait })
+  const waitHeadline = heldWait === null ? null : heldWait === '' ? W.waitHeadlineOther : fillText(W.waitHeadline, { reason: heldWait })
+  const rail = railOf(contract, { words: railWords, deferred: deferredWords, task: nextTask, instruction: railInstruction, leadDrawn, wait: waitHeadline })
   // Guidance stays copyable. Concrete unresolved findings remain in Readiness.
   const previewNote = null as { lines: string[] } | null
   // A channel the package could not finish on its own (project.ts `degraded`) is
@@ -880,6 +885,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     ownSteps,
     instructed,
     rail,
+    wait,
     /** The step's own Tasks Remaining card words beyond its subject, filled (policyTasks.ts ownCardWordsOf). */
     ownCard: ownCardWordsOf(step, ex as Record<string, unknown>),
     eyebrow,

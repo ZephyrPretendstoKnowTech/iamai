@@ -260,6 +260,11 @@ type ContractWords = {
     ai: string
     email: string
     aiWarning: string
+    /** A held live change's wait (holds.ts heldLiveChange; N-001): over every tab and first in every copy, and the column's headline. */
+    wait: string
+    waitOther: string
+    waitHeadline: string
+    waitHeadlineOther: string
     /** The grounding every AI Info carries after the package's own words (aiGrounding.ts). */
     aiFacts: { heading: string; boundary: string; observed: string; members: string; existing: string; current: string; currentState: string; removedExclusions: string; target: string; targetName: string; includeUsers: string; includeRoles: string; excludeGroups: string; excludeUsers: string; locations: string; grant: string; strength: string; accounts: string; more: string; none: string }
     /** The session policy's excluded accounts where the resolved target excludes nobody (stepPackage.ts). */
@@ -3235,6 +3240,13 @@ export type RailWords = {
   instruction?: string | null
   /** Whether the step's Readiness bar draws the contract's one action (readinessLeadOf) on screen. */
   leadDrawn?: boolean
+  /**
+   * A held step's wait, where what its tabs hand over lands live (holds.ts
+   * heldLiveChange; N-001): it heads the column, ahead of the step's own words
+   * for its milestone, so the create or correction is never the headline while
+   * the step waits.
+   */
+  wait?: string | null
 }
 
 /**
@@ -3258,7 +3270,7 @@ export function railOf(c: StepContract, o: RailWords = {}): RailReading {
   const label = c.milestone.label
   const engineWords = FILLER.has(label.trim().replace(/[.:]$/, '')) || sentenceCount(label) > 1 ? null : label
   const days = [c.milestone.at, c.schedule?.at ?? null, c.scheduledOn].filter((d): d is string => d !== null).map(absoluteDate)
-  const headline = o.deferred ?? milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [o.words, drawn !== null && sentenceCount(drawn) <= 1 ? drawn : null, o.task, first, engineWords], days)
+  const headline = o.deferred ?? o.wait ?? milestoneHeadlineOf(l?.lane === 'Completed' ? l.label : null, [o.words, drawn !== null && sentenceCount(drawn) <= 1 ? drawn : null, o.task, first, engineWords], days)
   // The same words with or without their stop are the same sentence (the wait the rail names, walk list 4.x item 23).
   const same = (a: string, b: string): boolean => a.trim().replace(/[.]$/, '') === b.trim().replace(/[.]$/, '')
   const barLead = lead === null || same(headline, lead) ? null : first !== null && headline === first ? lead.slice(first.length).trim() || null : lead

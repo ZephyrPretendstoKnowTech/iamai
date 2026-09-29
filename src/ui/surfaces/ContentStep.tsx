@@ -310,7 +310,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit, enforceWaits })
-  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, emergencyAccountTasks, ownCard, prepareCard, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
+  const { cs, ex, laneView, contract, title, d, taskDecision, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, wait, eyebrow, artifacts, emergencyAccountTasks, ownCard, prepareCard, previewNote, notes, showImplementation, empty, sourceLine, learnUrl, ifWrong } = body
   const isPasskeySettings = step.id === 's-prereq-passkey-settings'
   const isEmergencyAccounts = step.id === 's-prereq-break-glass'
   // Which steps draw the task anatomy (the Tasks Remaining cards and the
@@ -598,6 +598,7 @@ export function ContentStep({
               onChooseTask={isTaskStep ? chooseEmergencyTask : null}
               taskPreferenceKey={isTaskStep ? emergencyTaskPreferenceKey : null}
               heading={taskHead?.implementation}
+              wait={wait}
             />
           )}
 
@@ -797,8 +798,14 @@ export function copyImplementationArtifact(text: string): Promise<boolean> {
   return exportClipboard(text, unredactedFrom('implementation-artifact'))
 }
 
-export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, emptyTaskText, heading }: {
+export function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied, printing, tasks, chosenChannel, onChooseChannel, chosenTaskId, onChooseTask, taskPreferenceKey, emptyTaskText, heading, wait = null }: {
   artifacts: Artifact[]
+  /**
+   * A held step's wait, where what its tabs hand over lands live (holds.ts
+   * heldLiveChange; N-001): a warning over every tab, and the first line of
+   * every copy, as a comment in PowerShell; the JSON copies as it is, valid.
+   */
+  wait?: string | null
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
   /** Unresolved values remain visible without preventing copying the guidance. */
@@ -882,10 +889,14 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
   const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null || learn !== null
   const copyable = active !== null && active.unavailable !== true
   // Copying guidance is available even when the planned operation needs review.
+  // The wait leads every copy of a held live change (N-001): a comment line in
+  // PowerShell, a first line in the Entra steps and AI Info; the JSON stays valid JSON.
+  const withWait = (text: string, channel: string | null): string =>
+    wait === null || text === '' || channel === 'json' ? text : channel === 'ps' ? `# ${wait}\n${text}` : `${wait}\n\n${text}`
   const copyReason = copyable ? W.copy : active?.unavailable ? active.text() : (preview?.lines.join(' ') ?? W.copy)
   const selectedTaskText = activeTask ? emergencyTaskText(activeTask, activeVariant) : active?.text() ?? ''
   const copyControl = tasks && tab === 'portal' ? (
-    <button type="button" className="icon-btn" aria-label="Copy task" title="Copy task" aria-disabled={!activeTask} onClick={() => activeTask && copy('emergency-task', selectedTaskText)}><Icon name={copied === 'emergency-task' ? 'check' : 'copy'} size={14} /></button>
+    <button type="button" className="icon-btn" aria-label="Copy task" title="Copy task" aria-disabled={!activeTask} onClick={() => activeTask && copy('emergency-task', withWait(selectedTaskText, 'portal'))}><Icon name={copied === 'emergency-task' ? 'check' : 'copy'} size={14} /></button>
   ) : (
     <button
       type="button"
@@ -895,7 +906,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
       aria-description={copyable ? undefined : copyReason}
       aria-disabled={!copyable}
       onClick={() => {
-        if (copyable) copy('implementation', active?.text() ?? '')
+        if (copyable) copy('implementation', withWait(active?.text() ?? '', active?.id ?? null))
       }}
     >
       <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
@@ -925,6 +936,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
             {/* AI Info is copied with the tenant's names and object ids in it, to paste into an
                 assistant outside the tenant: the warning stands over it, here and in the expanded
                 viewer (exportGuard.ts implementation-artifact; F-061). */}
+            {wait !== null && <Callout kind="warning">{wait}</Callout>}
             {tab === 'ai' && <Callout kind="warning">{W.aiWarning}</Callout>}
             {body('preview-text')}
           </div>
@@ -949,6 +961,7 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
           >
             {copied === 'copy-failed' && <p role="status">{W.copyFailed}</p>}
             {active?.note && <p className="impl-dialog-note">{active.note}</p>}
+            {wait !== null && <Callout kind="warning">{wait}</Callout>}
             {tab === 'ai' && <Callout kind="warning">{W.aiWarning}</Callout>}
             <div data-emergency-account-tasks={tasks && tab === 'portal' ? 'true' : undefined} {...onePanelProps(dialogBase, tab)}>{body('dialog-code', true)}</div>
           </StepDialog>

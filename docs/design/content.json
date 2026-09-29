@@ -2654,6 +2654,11 @@
             "$commentReference": "A finished step still draws its Implementation Tasks on purpose: with nothing needing doing, every change stays available to look up. They are typeset as commands, so on a step reading Completed a reader met three task blocks of eight, nine and ten imperative lines and took them for work that remained. Owner decision 2026-09-22 (option A): keep every word, change the default from \"do this\" to \"look this up\". A disclosure, closed, on a step the board reads Completed or Deferred, and never while printing - the printed plan carries every step whole.",
             "ai": "AI Info",
             "aiWarning": "Contains tenant context. Review before sharing with an external AI service.",
+            "$commentWait": "N-001 (owner, 2026-09-28): an On Hold step whose tabs hand over a live change (a policy created On, turned on, or corrected while On) says first that it waits, and on what: the headline of its action column, a warning over every tab, and the first line of everything a tab copies (a comment in PowerShell; never inside the JSON, which stays valid). {reason} is the step's own wait (Step.blockedReason), e.g. \"when Modern MFA + TAP readiness reaches 90% (now 27%)\".",
+            "wait": "Not yet. Do this only {reason}: it changes a live setting in the tenant.",
+            "waitOther": "Not yet. Do this only once this step is no longer On Hold: it changes a live setting in the tenant.",
+            "waitHeadline": "Not yet: {reason}",
+            "waitHeadlineOther": "Not yet: this step is On Hold",
             "aiFacts": {
               "$comment": "The briefing every AI Info carries (stepBody.ts, aiGrounding.ts): the shared opening, the package's own words for the state, then IAMAI's facts for the step in six sections, so an assistant needs no screen. Observations, saved choices, proposals and unknowns are kept apart; never confirmation that a change was made.",
               "heading": "IAMAI FACTS FOR THIS STEP",
