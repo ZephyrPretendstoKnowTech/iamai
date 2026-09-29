@@ -13,6 +13,7 @@ import type { FixtureName } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
+import { externalMethodsEnabled, goalMapInUse } from '../coverage/companions.ts'
 import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
 import { stepById } from '../content/content.ts'
 import { notLicensedRows } from './notLicensed.ts'
@@ -91,4 +92,28 @@ test('the list is derived from what the Plan draws, never a fixed set of policie
   assert.ok(!rows.some((r) => r.policy === userRisk.displayName), 'a Not licensed goal\'s policy is not listed again')
   // The baseline's policy that limits one emergency account is listed with the plan's own rule beside it.
   assert.match(rows.find((r) => r.policy === 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations')?.reason ?? '', /keeps emergency accounts out of every policy/)
+})
+
+test('each footer row names its own reason: agent blocks, the withheld Admin Portal, the unused EAM companion', () => {
+  const { rows } = planOf('demo')
+  const reasonOf = (re: RegExp): string => rows.find((r) => re.test(r.policy))?.reason ?? ''
+  assert.equal(reasonOf(/AGENT - BLOCK - HighRiskAgent/), 'Blocks AI agent identities. Needs Microsoft Entra Agent ID. Not in this release.')
+  assert.equal(reasonOf(/AGENT - BLOCK - NonTrustedAgents/), 'Blocks AI agent identities. Needs Microsoft Entra Agent ID. Not in this release.')
+  assert.equal(reasonOf(/ZTCA.*Admin Portal/), 'A lockdown switch that blocks the Microsoft admin portals. Kept out of this release.')
+})
+
+test('on a P2 tenant with no external MFA method, Jon\'s EAM High-Risk Users is listed, read from the same goal map the plan uses', () => {
+  for (const name of TENANTS) {
+    const f = { ...fixture(name), baseline: pinnedPackage() }
+    if (externalMethodsEnabled(f.snapshot) === true) continue
+    const run = runFixture(f)
+    const steps = customerPlanSteps(run.steps)
+    if (!steps.some((s) => s.goalId === 'user-risk')) continue
+    const rows = notInPlanRows(f.baseline.policies, steps, run.coverage, goalMapInUse(PINNED_GOAL_MAP, f.snapshot))
+    const eam = rows.find((r) => /\bEAM\b.*High-Risk/i.test(r.policy))
+    assert.ok(eam, `${name}: EAM High-Risk Users is listed`)
+    assert.match(eam.reason, /Only needed if you use one/)
+    return
+  }
+  assert.fail('the premise: a fixture draws the user-risk step without an external MFA method')
 })

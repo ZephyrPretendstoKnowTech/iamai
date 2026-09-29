@@ -24,7 +24,7 @@ import { notLicensedRows } from './notLicensed.ts'
 
 export type NotInPlanRow = { policy: string; reason: string; text: string }
 
-type Reason = 'riskyRegistration' | 'externalMfaRisk' | 'lockdown' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'generic'
+type Reason = 'agentBlock' | 'adminPortal' | 'externalMfaRisk' | 'lockdown' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'generic'
 type FooterCopy = { notInPlan: string; notInPlanRow: string; notInPlanReason: Record<Reason, string> }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
@@ -34,7 +34,8 @@ const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
  * or a step group's key (stepGroups.ts) for a group's title. First match wins.
  */
 const REASONS: { match: RegExp; reason: Reason; step?: string }[] = [
-  { match: /RiskyUsers\s*-\s*RegisterSecurityInfo/i, reason: 'riskyRegistration' },
+  { match: /IAC\s*-\s*AGENT\s*-\s*BLOCK/i, reason: 'agentBlock' },
+  { match: /\bZTCA\b.*Admin Portal/i, reason: 'adminPortal' },
   { match: /\bEAM\b.*High-Risk/i, reason: 'externalMfaRisk', step: 'user-risk' },
   { match: /\bZTCA\b.*\bAllApps\b/i, reason: 'lockdown' },
   { match: /MFA-Passkeys\s*-\s*ADM-Users/i, reason: 'adminGroupPasskeys', step: 'admins-phishing-resistant' },

@@ -1241,8 +1241,10 @@
         "notInPlanRow": "{policy}: {reason}",
         "notInPlanReason": {
           "$comment": "Why a baseline policy is in no step (derive/notInPlan.ts picks one by the policy's own name; a policy with no words of its own reads generic). {step} is a step's title from the content file, never its number, because the numbers move. Drafts from missing-seven.md, for the owner's eye.",
-          "$commentRiskyRegistration": "The P2 block on risky people registering security information: a standing control the plan does not build yet (a v1.1 step after the risk remediation steps).",
-          "riskyRegistration": "Blocks people flagged as risky from adding sign-in methods. Needs Entra ID P2. Not in this plan yet.",
+          "$commentAgentBlock": "Jon's two AGENT blocks (HighRiskAgent, NonTrustedAgents): they target AI agent identities, which need Microsoft Entra Agent ID; this release does not plan them.",
+          "agentBlock": "Blocks AI agent identities. Needs Microsoft Entra Agent ID. Not in this release.",
+          "$commentAdminPortal": "The ZTCA Admin Portal block, withheld from customer plans (customerPlanSteps.ts): a lockdown switch kept out of this release.",
+          "adminPortal": "A lockdown switch that blocks the Microsoft admin portals. Kept out of this release.",
           "$commentExternalMfaRisk": "The external authentication methods companion of the high-risk remediation policy, scoped to the external MFA group. {step} is the high-risk remediation step's title.",
           "externalMfaRisk": "A version of {step} for people who sign in with an external MFA provider such as Duo. Only needed if you use one.",
           "$commentLockdown": "The two ZTCA AllApps blocks: incident-response kill switches, created ahead and never switched on (the lockdown kit, v1.1).",
