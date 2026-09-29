@@ -96,14 +96,18 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
       case 'locationsExcludeTrusted': {
         // A trusted-network block: it applies at every location and carves out the
         // trusted network (the pinned SharePoint and AVD blocks exclude AllTrusted,
-        // the service-accounts block the author's trusted IP location). A Countries
-        // block carves out allowed countries and is the countries goal's, however it
-        // blocks: it read as Restrict SharePoint and OneDrive, Completed (owner,
-        // 2026-09-28). A block that carves out a location beside the trusted network
-        // is still the goal's policy, one that confines it to fewer sign-ins
-        // (narrowerConditions), so the step corrects it and never creates a second.
+        // the service-accounts block the author's trusted IP location). A policy
+        // that names a country location is the countries goal's alone, whatever
+        // else it carves out: a Countries block read as Restrict SharePoint and
+        // OneDrive, Completed, and beside AllTrusted it read as coverage the step
+        // might retire (owner, 2026-09-28). A block that carves out another location
+        // beside the trusted network (a partner site, an IP location not marked
+        // trusted) is still the goal's policy, one that confines it to fewer sign-ins
+        // (narrowerConditions): the step corrects it in place where it is of the
+        // goal's own scope, and creates the baseline's block where it is not.
         const l = f.locations
         if (l === null || l.include.size !== 1 || ![...l.include].every((x) => /^all$/i.test(x))) return false
+        if (l.countries.size > 0) return false
         if (![...l.exclude].some((x) => l.trusted.has(x.toLowerCase()))) return false
         break
       }
@@ -367,10 +371,11 @@ export function narrowerApps(f: PolicyFacts, reference: PolicyFacts): boolean {
  * `trustedNetworkGoal`: the goal is a trusted-network block (its signature carves
  * out the trusted network, locationsExcludeTrusted). Where its reference carves out
  * the trusted network and nothing else, a policy that also carves out a location
- * that is not the trusted network (a partner site, a country) applies at fewer
- * locations: it is the goal's policy with a locations difference to correct or
- * accept, never delivered. Only these goals read it: other references that exclude
- * AllTrusted are judged as before.
+ * that is not the trusted network (a partner site, an IP location not marked
+ * trusted) applies at fewer locations: it is the goal's policy with a locations
+ * difference to correct or accept, never delivered. A policy that names a country
+ * location is never one of these goals' policies (locationsExcludeTrusted). Only
+ * these goals read it: other references that exclude AllTrusted are judged as before.
  */
 export function narrowerConditions(f: PolicyFacts, reference: PolicyFacts, trustedNetworkGoal = false): string[] {
   const out: string[] = []

@@ -46,6 +46,7 @@ import {
   reportOnlyStatement,
   structuralPartialStatement,
   unknownStatement,
+  unknownLocationsStatement,
   belowBaselineStatement,
 } from '../copy/statements.ts'
 
@@ -351,6 +352,12 @@ function recordedReference(goalId: string, raw: unknown, reference: PolicyFacts,
   return answered === raw ? reference : policyFacts(answered, input.strengths)
 }
 
+/** A policy whose location condition names a location that is neither the trusted network nor a country location. */
+function namesUnexplainedLocation(f: PolicyFacts): boolean {
+  const l = f.locations
+  return l !== null && [...l.include, ...l.exclude].some((x) => !/^all$/i.test(x) && !l.trusted.has(x.toLowerCase()) && !l.countries.has(x.toLowerCase()))
+}
+
 function confirmedExclusions(mapping: NonNullable<CoverageInput['mapping']>): AssumedExclusions {
   return {
     groups: new Map(Object.entries(mapping.exclusionGroups ?? {})),
@@ -496,6 +503,17 @@ function evaluateGoal(
   // that defines another catalogue goal (risk, flows, legacy clients) is the
   // signature's to read, so that policy never becomes this goal's candidate.
   const candidates = tenantFacts.filter((f) => matchesSignature(f, impl.signature) && populationReach(f, impl.expectedWho.kind) !== 'none')
+  // The countries goal on a scan that did not read the named locations. A live
+  // policy of the goal's shape that names a location nothing here explains may be
+  // the tenant's Countries block, or a block outside an office nobody marked
+  // trusted in the plan. It is neither a candidate (the step never widens a policy
+  // it cannot place to All users) nor proof the goal is missing (no second
+  // Countries policy beside the tenant's own): the goal is unknown until a scan
+  // reads the named locations (Foundation A: unknown is not absent).
+  const locationsUnsettled = 'locationsNameCountries' in impl.signature && input.snapshot.config.namedLocations?.status !== 'ok'
+    ? tenantFacts.filter((f) => (f.state === 'enabled' || f.state === 'enabledForReportingButNotEnforced') && !candidates.includes(f) && namesUnexplainedLocation(f)
+      && matchesSignature(f, Object.fromEntries(Object.entries(impl.signature).filter(([k]) => k !== 'locationsNameCountries'))) && populationReach(f, impl.expectedWho.kind) !== 'none')
+    : []
   // An all-users goal asks about guest kinds only where a policy of its own says
   // something about them — excludes guests, or includes some kinds or some
   // tenants. Policies that reach people by name, group or role make no statement
@@ -827,6 +845,10 @@ function evaluateGoal(
   )
     status = 'partial'
   else status = 'absent'
+  if (status !== 'enforced' && locationsUnsettled.length > 0) {
+    status = 'unknown'
+    base.locationsUnread = locationsUnsettled.map((f) => f.name)
+  }
 
   // What falls short is the finding only where the goal is not delivered.
   if (status !== 'enforced') {
@@ -1074,7 +1096,7 @@ function buildStatement(
     return inPlaceStatement(goal.name, base.satisfaction?.policyNames ?? strongNames, breakGlass, allBreakGlass.size, breakGlassMissing) + chosen + est
   }
   if (status === 'absent') return missingStatement(goal.name, null, baselineMatches[0]?.name ?? null)
-  if (status === 'unknown') return unknownStatement(goal.name) + est
+  if (status === 'unknown') return (base.locationsUnread ? unknownLocationsStatement(goal.name) : unknownStatement(goal.name)) + est
   if (status === 'not-applicable' || status === 'licence-limited') return `**${goal.name}**.`
   if (status === 'below-baseline') {
     const below = base.reasons.find((r) => r.belowBaseline)

@@ -85,7 +85,7 @@ test('the day a step was first found complete is kept by the plan record and rea
   // The Plan's record writes them: what this scan found complete, over what the record held.
   const data = readFileSync('src/ui/surfaces/planData.ts', 'utf8')
   assert.match(data, /saved\?\.completedAt \?\? null/, 'the plan does not read the recorded days')
-  assert.match(data, /completedAt: completedDaysOf\(computed\.steps\)/, 'the plan record does not keep the days')
+  assert.match(data, /completedAt: completedDaysOf\(computed\.steps, saved\.completedAt \?\? null\)/, 'the plan record does not keep the days, or drops the day of a step this scan holds')
 })
 
 // ---- When: a date on every open row (owner decision, 2026-09-23) ----

@@ -169,9 +169,19 @@ export function recordCompletion(steps: readonly Step[], recorded: Readonly<Reco
   }
 }
 
-/** The completed days the plan record keeps (PlanDecisions.completedAt): every complete step's, from this scan's plan. */
-export function completedDaysOf(steps: readonly Step[]): Record<string, string> {
-  return Object.fromEntries(steps.flatMap((s) => (s.status === 'done' && typeof s.completedAt === 'string' ? [[s.id, s.completedAt]] : [])))
+/**
+ * The completed days the plan record keeps (PlanDecisions.completedAt): every
+ * complete step's, from this scan's plan; and, for a step this scan holds until
+ * it can read what decides it (an unverified evidence blocker, generate.ts), the
+ * day the record already kept. A goal this scan could not assess is not work
+ * undone, so the next scan that reads it completes on the day it first did.
+ */
+export function completedDaysOf(steps: readonly Step[], recorded: Readonly<Record<string, string>> | null = null): Record<string, string> {
+  return Object.fromEntries(steps.flatMap((s) => {
+    if (s.status === 'done') return typeof s.completedAt === 'string' ? [[s.id, s.completedAt]] : []
+    const kept = recorded?.[s.id]
+    return typeof kept === 'string' && kept !== '' && s.blockers.some((b) => b.kind === 'evidence' && b.unverified === true) ? [[s.id, kept]] : []
+  }))
 }
 
 // ---- Decisions-only record (prompt 50.1 item 1) ----

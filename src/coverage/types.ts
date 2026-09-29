@@ -300,6 +300,12 @@ export type GoalResult = {
   kindsDelivered?: Record<string, string[]>
   /** For a not-applicable goal: the applicability facet that switched it off, and why (a licence, or no sign-in activity). */
   applicability?: { facet: string; reason: string }
+  /**
+   * For a goal unknown because the scan did not read the named locations: the live
+   * policies of its shape that name a location nothing explains (coverage.ts
+   * evaluateGoal). The step holds until a scan reads them.
+   */
+  locationsUnread?: string[]
 }
 
 export type AssumedExclusions = {

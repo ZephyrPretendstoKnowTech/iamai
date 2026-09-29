@@ -2033,7 +2033,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         }
       }
       const groups = [...unread].map((g) => g.slice(0, 8))
-      blockers.push({ kind: 'evidence', label: 'unverified-exclusion', binding: BLOCKED_REASON.unverifiedExclusion(groups.length > 0 ? groups.join(', ') : '?'), unverified: true })
+      // Or a policy of the goal's shape names a location the scan has not read
+      // (coverage.ts locationsUnread): no create beside it, no update of it.
+      if ((result.locationsUnread ?? []).length > 0) blockers.push({ kind: 'evidence', label: 'named-locations-unread', binding: BLOCKED_REASON.namedLocationsUnread, unverified: true })
+      else blockers.push({ kind: 'evidence', label: 'unverified-exclusion', binding: BLOCKED_REASON.unverifiedExclusion(groups.length > 0 ? groups.join(', ') : '?'), unverified: true })
       state = { ...state, condition: conditionFor(blockers) }
     } else if (claimedPolicy() !== null && source && stepPolicies().length === 1 && (result.status === 'absent' || !result.candidates.some((c) => c.policyId === String(claimedPolicy()?.id)))) {
       // A live tenant policy carrying this step's plan tag, or the very name the

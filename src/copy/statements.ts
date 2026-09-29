@@ -126,6 +126,10 @@ export function unknownStatement(goal: string): string {
   return `${strong(goal)}: a group's members could not be read, so the people it covers could not be counted. Reported with what is known.`
 }
 
+export function unknownLocationsStatement(goal: string): string {
+  return `${strong(goal)}: a policy of its shape names a location this scan has not seen, so whether it is the goal's policy is not known yet. Reported with what is known.`
+}
+
 export function notApplicableStatement(goal: string, reason: string): string {
   return `${strong(goal)}: does not apply (${reason}).`
 }

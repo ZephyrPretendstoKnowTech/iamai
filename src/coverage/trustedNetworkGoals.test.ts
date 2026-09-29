@@ -19,6 +19,8 @@ import { CATALOGUE } from './coverage.ts'
 import { goalsMatching, matchesSignature } from './classify.ts'
 import { policyFacts } from './facts.ts'
 import { buildStrengthLookup } from './strength.ts'
+import { stepVars } from '../ui/surfaces/stepVars.ts'
+import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 
 const TRUSTED_GOALS = ['service-accounts-trusted-network', 'avd-trusted-network', 'sharepoint-trusted-network']
 const COUNTRY = 'c0c0c0c0-0000-4000-8000-00000000c0c0'
@@ -92,15 +94,27 @@ function demoWith(office: 'office' | 'remote', policies: (ex: string) => Record<
 const headOf = (f: Fixture): string => f.mapping.trustedLocationIds[0]
 const opsOf = (f: Fixture, goal: string, r = runFixture(f)) => (r.steps.find((s) => s.goalId === goal)?.action.resolution?.policies ?? []).map((p) => [p.mode, p.policyId ?? null] as const)
 
-test('a Countries block that also carves out AllTrusted credits no trusted-network goal, and no trusted-network step rewrites it', () => {
-  const f = demoWith('office', (ex) => [block('p-countries', ['All'], [COUNTRY, 'AllTrusted'], { includeUsers: ['All'], excludeGroups: [ex] })])
-  const r = runFixture(f)
-  for (const g of TRUSTED_GOALS) {
-    const c = r.coverage.results.find((x) => x.goal.id === g)!
-    assert.notEqual(c.status, 'enforced', `${g}: ${c.status}`)
-    const step = r.steps.find((s) => s.goalId === g)!
-    assert.notEqual(step.status, 'done', g)
-    assert.ok(!opsOf(f, g, r).some(([mode, id]) => mode === 'update' && id === 'p-countries'), `${g}: ${JSON.stringify(opsOf(f, g, r))}`)
+// Review of 453d250b: beside AllTrusted, the Countries block stayed a narrower
+// candidate of the three, and each step said the tenant "already covers this" with
+// it and to review whether it could be retired: the tenant's only Countries policy.
+test('a Countries block that also carves out the trusted network is no trusted-network goal’s policy, and no step names it as coverage', () => {
+  for (const also of [() => 'AllTrusted', headOf] as const) {
+    const f = demoWith('office', () => [])
+    const ex = (f.mapping.records[EXCLUSIONS_RECORD_KEY] as { resolvedId?: string }).resolvedId!
+    ;(f.snapshot.config.caPolicies!.rows as unknown[]).push(block('p-countries', ['All'], [COUNTRY, also(f)], { includeUsers: ['All'], excludeGroups: [ex] }))
+    const r = runFixture(f)
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+    for (const g of TRUSTED_GOALS) {
+      const c = r.coverage.results.find((x) => x.goal.id === g)!
+      assert.ok(!c.candidates.some((x) => x.policyId === 'p-countries'), `${g} (${also(f)}): the Countries block is a candidate`)
+      assert.notEqual(c.status, 'enforced', `${g}: ${c.status}`)
+      const step = r.steps.find((s) => s.goalId === g)!
+      assert.notEqual(step.status, 'done', g)
+      assert.ok(!opsOf(f, g, r).some(([, id]) => id === 'p-countries'), `${g}: ${JSON.stringify(opsOf(f, g, r))}`)
+      assert.ok(!step.deliveredBy.some((d) => d.startsWith('p-countries')), `${g}: ${JSON.stringify(step.deliveredBy)}`)
+      assert.deepEqual(stepVars(step, ctx).existingPolicies, [], `${g}: the step names the Countries block as coverage it might retire`)
+    }
+    assert.equal(r.coverage.results.find((x) => x.goal.id === 'geo-restriction')!.candidates.some((x) => x.policyId === 'p-countries'), true, 'the Countries block is not the countries goal’s')
   }
 })
 
@@ -139,12 +153,14 @@ test('a tenant’s own block that carves out the trusted network and a partner s
 })
 
 test('the Countries step never offers to rewrite the service-accounts block', () => {
-  for (const variant of ['trusted', 'picked, not yet trusted', 'named locations unread'] as const) {
+  for (const variant of ['marked trusted, not picked', 'picked, not yet trusted', 'named locations unread'] as const) {
     const f = demoWith('office', () => [])
     f.mapping = { ...f.mapping, allowedCountries: ['AU'], workCountriesConfirmed: true, wizardAnswered: { ...f.mapping.wizardAnswered, countries: true } }
     const saStep = runFixture(f).steps.find((s) => s.goalId === 'service-accounts-trusted-network')!
     ;(f.snapshot.config.caPolicies!.rows as unknown[]).push({ ...JSON.parse(saStep.action.json!), id: 'p-plan-sa', displayName: 'Service accounts outside the trusted network', state: 'enabled' })
     const head = (f.snapshot.config.namedLocations!.rows as { id: string; isTrusted?: boolean }[]).find((l) => l.id === headOf(f))!
+    // The tenant's own mark alone: the plan picked no office, so only the scan says the location is trusted.
+    if (variant === 'marked trusted, not picked') f.mapping = { ...f.mapping, trustedLocationIds: [] }
     if (variant === 'picked, not yet trusted') head.isTrusted = false
     if (variant === 'named locations unread') f.snapshot.config.namedLocations = { ...f.snapshot.config.namedLocations!, status: 'error' } as never
     const r = runFixture(f)
@@ -184,4 +200,67 @@ test('with an office and no trusted location yet, the SharePoint and AVD blocks 
     assert.notEqual(step.status, 'done', g)
     assert.ok(step.blockers.some((b) => b.kind === 'step' && b.stepId === PREREQ_STEP_ID.trustedLocation), `${g} does not wait on Define the Trusted Network: ${JSON.stringify(step.blockers)}`)
   }
+})
+
+// Review of 453d250b: each part of the reading, with a test of its own.
+
+test('an IP location the tenant marks trusted is the trusted network though the plan picked another office', () => {
+  const f = demoWith('office', () => [])
+  const branch = 'e3e3e3e3-0000-4000-8000-00000000e3e3'
+  ;(f.snapshot.config.namedLocations!.rows as unknown[]).push({ '@odata.type': '#microsoft.graph.ipNamedLocation', id: branch, displayName: 'Branch office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] })
+  const ex = (f.mapping.records[EXCLUSIONS_RECORD_KEY] as { resolvedId?: string }).resolvedId!
+  ;(f.snapshot.config.caPolicies!.rows as unknown[]).push(block('p-sa', ['All'], [branch], { includeGroups: [SERVICE_ACCOUNTS_GROUP], excludeGroups: [ex] }))
+  assert.ok(!f.mapping.trustedLocationIds.includes(branch), 'the premise: the plan did not pick the branch')
+  const r = runFixture(f)
+  assert.ok(r.coverage.results.find((x) => x.goal.id === 'service-accounts-trusted-network')!.candidates.some((c) => c.policyId === 'p-sa'), 'a block outside a location the tenant marks trusted is not the service-accounts block')
+})
+
+test('a block that applies only at one location is no trusted-network block, whatever it carves out', () => {
+  const f = demoWith('office', (ex) => [block('p-sp', [SHAREPOINT], ['AllTrusted'], { includeUsers: ['All'], excludeGroups: [ex] }, [PARTNER])])
+  const r = runFixture(f)
+  for (const g of TRUSTED_GOALS) assert.ok(!r.coverage.results.find((x) => x.goal.id === g)!.candidates.some((c) => c.policyId === 'p-sp'), g)
+})
+
+test('only the trusted-network goals read a carve-out beside the trusted network as narrower: a compliant-device policy that also spares a partner site is judged as before', () => {
+  const f = demoWith('office', (ex) => [{ ...block('p-device', ['All'], ['AllTrusted', PARTNER], { includeUsers: ['All'], excludeGroups: [ex] }), grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }])
+  const r = runFixture(f)
+  const own = r.coverage.results.find((x) => x.goal.id === 'require-managed-device')!.candidates.find((c) => c.policyId === 'p-device')
+  assert.ok(own, 'the premise: the policy is the compliant-device goal’s')
+  assert.ok(!own.caveats.includes('conditions-narrower'), `a compliant-device policy read as narrower for its partner carve-out: ${own.caveats}`)
+})
+
+test('a block that carves out only trusted locations, two of them, is not narrower', () => {
+  const f = demoWith('office', () => [])
+  const ex = (f.mapping.records[EXCLUSIONS_RECORD_KEY] as { resolvedId?: string }).resolvedId!
+  ;(f.snapshot.config.caPolicies!.rows as unknown[]).push(block('p-sp', [SHAREPOINT], ['AllTrusted', headOf(f)], { includeUsers: ['All'], excludeGroups: [ex] }))
+  const own = runFixture(f).coverage.results.find((x) => x.goal.id === 'sharepoint-trusted-network')!.candidates.find((c) => c.policyId === 'p-sp')
+  assert.ok(own, 'the premise: the block is the SharePoint goal’s')
+  assert.ok(!own.caveats.includes('conditions-narrower'), `AllTrusted beside the office read as narrower: ${own.caveats}`)
+})
+
+// Review of 453d250b: a scan that did not read the named locations read the
+// tenant's Countries block as no policy at all. The step reopened as a create of
+// a second Countries policy, and the plan record lost the day it was completed.
+test('a scan that did not read the named locations holds the Countries step, and keeps the day it was completed', () => {
+  const f = demoWith('office', (ex) => [block('p-countries', ['All'], [COUNTRY], { includeUsers: ['All'], excludeGroups: [ex] })])
+  const id = 's-goal-geo-restriction'
+  const earlier = '2026-08-20T09:00:00.000Z'
+  const first = runFixture({ ...f, completedAt: { [id]: earlier } }, {}, null, f.snapshot.asOf)
+  assert.equal(first.steps.find((s) => s.id === id)!.status, 'done', 'the premise: the Countries block completes the Countries step')
+  const record = completedDaysOf(first.steps)
+  assert.equal(record[id], earlier)
+  // The next scan could not read the named locations: its rows are there, but nothing it says about them is read.
+  const unread = structuredClone(f)
+  unread.snapshot.config.namedLocations = { ...unread.snapshot.config.namedLocations!, status: 'error' } as never
+  const second = runFixture({ ...unread, completedAt: record }, {}, null, unread.snapshot.asOf)
+  const held = second.steps.find((s) => s.id === id)!
+  assert.equal(second.coverage.results.find((x) => x.goal.id === 'geo-restriction')!.status, 'unknown', 'an unread scan read the Countries block as known')
+  assert.deepEqual(opsOf(unread, 'geo-restriction', second), [], 'the Countries step offers a create or an update on a scan that could not place the block')
+  assert.ok(held.blockers.some((b) => b.kind === 'evidence' && b.unverified === true), `the step does not hold for the named locations: ${JSON.stringify(held.blockers)}`)
+  const kept = completedDaysOf(second.steps, record)
+  assert.equal(kept[id], earlier, 'the plan record lost the day the Countries step was completed')
+  // The scan after that reads them again: the step is complete on its first day.
+  const third = runFixture({ ...f, completedAt: kept }, {}, null, f.snapshot.asOf).steps.find((s) => s.id === id)!
+  assert.equal(third.status, 'done')
+  assert.equal(third.completedAt, earlier, 'the Countries step completed on a new day')
 })

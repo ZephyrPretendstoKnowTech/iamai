@@ -1204,6 +1204,7 @@
         "manualCorrection": "until the policy is corrected by hand",
         "unverifiedExclusion": "until the group {group} can be read",
         "methodsPolicyUnread": "until the authentication methods policy can be read",
+        "namedLocationsUnread": "until the named locations can be read",
         "emergency": "until emergency access is provably out of scope",
         "passkeyProfiles": "until the passkey profile settings are reviewed",
         "passkeyBlockConflict": "until the block list entry for Microsoft Authenticator is reviewed",

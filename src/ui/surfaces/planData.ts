@@ -509,7 +509,7 @@ export function usePlanData(
       // (tracking.ts observationsOf).
       observations: observationsOf(computed.steps, saved.observations ?? null),
       // The day each step was first found complete, over what the record held (progress.ts recordCompletion).
-      completedAt: completedDaysOf(computed.steps),
+      completedAt: completedDaysOf(computed.steps, saved.completedAt ?? null),
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
     // The first scan that read security defaults on, kept from then on (progress.ts securityDefaultsSeenOnAtOf).

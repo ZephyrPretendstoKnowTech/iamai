@@ -56,7 +56,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string; mailAccounts: string; operator: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; namedLocationsUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string; mailAccounts: string; operator: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -98,6 +98,8 @@ export const BLOCKED_REASON = {
   unverifiedExclusion: (group: string): string => fillText(BLOCKED.unverifiedExclusion, { group }),
   /** The authentication methods policy this scan could not read (roadmap/passkeySettings.ts): the passkey settings cannot be compared until it can. */
   methodsPolicyUnread: BLOCKED.methodsPolicyUnread,
+  /** The named locations this scan could not read (coverage.ts locationsUnread): whether a policy naming one is the countries goal's is not known until they can be. */
+  namedLocationsUnread: BLOCKED.namedLocationsUnread,
   /** Passkey settings IAMAI cannot change without overwriting something (roadmap/passkeySettings.ts): a profile-based policy, a block list that blocks Authenticator, or a partial read. */
   passkeyProfiles: BLOCKED.passkeyProfiles,
   passkeyBlockConflict: BLOCKED.passkeyBlockConflict,
