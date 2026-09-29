@@ -3,6 +3,7 @@
 // Mark as done; Align Policy Names lists each policy to rename to the
 // baseline's own name, with no form, and a scan completes it.
 import { test } from 'node:test'
+import { heldBack } from '../../roadmap/cleanup.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
@@ -23,12 +24,12 @@ const demo = () => {
   const f = fixture('demo')
   const r = runFixture(f)
   const phase = r.schedule.cleanup!
+  // The alerting row, where it is drawn (held back for now: cleanup.ts WITHHELD_CLEANUP).
   const row = phase.rows.find((x) => x.kind === 'alerting')!
-  assert.ok(row, 'the premise: the demo has emergency accounts, so it has the alerting row')
   return { f, r, phase, row }
 }
 
-test('8.1 stays Ongoing Checks and Cleanup’s first step, after the security rollout, and holds nothing', () => {
+test('8.1 stays Ongoing Checks and Cleanup’s first step, after the security rollout, and holds nothing', { skip: heldBack('alerting') }, () => {
   // Owner, 2026-09-26: never moved into Establish Emergency Access.
   assert.equal(groupOf('cleanup-alerting')?.key, 'ongoing')
   assert.equal(membersOf('ongoing')[0], 'cleanup-alerting')
@@ -38,7 +39,7 @@ test('8.1 stays Ongoing Checks and Cleanup’s first step, after the security ro
   assert.equal(cleanupRowWho(phase, row), '2 accounts')
 })
 
-test('8.1 gives the real procedure: the query over the saved accounts’ object IDs and the account to test with, no hole', () => {
+test('8.1 gives the real procedure: the query over the saved accounts’ object IDs and the account to test with, no hole', { skip: heldBack('alerting') }, () => {
   const { f, phase } = demo()
   const steps = alertingSteps(phase)
   const text = steps.join('\n')
@@ -53,7 +54,7 @@ test('8.1 gives the real procedure: the query over the saved accounts’ object 
   assert.doesNotMatch(ai, /could not|cannot confirm|unknown/i)
 })
 
-test('8.1 completes on one Mark as done, with no test result or recipient, and its card says when', () => {
+test('8.1 completes on one Mark as done, with no test result or recipient, and its card says when', { skip: heldBack('alerting') }, () => {
   setDisplayTimeZone('UTC')
   try {
     const { f } = demo()
@@ -74,7 +75,7 @@ test('8.1 completes on one Mark as done, with no test result or recipient, and i
   assert.doesNotMatch(body, /Test Result|Alert Recipient|Save Test Result/, 'no workflow form')
 })
 
-test('8.1 exports the same procedure the step draws, and one completion line', () => {
+test('8.1 exports the same procedure the step draws, and one completion line', { skip: heldBack('alerting') }, () => {
   const { phase, row } = demo()
   const view = cleanupExportView(phase, row)!
   assert.deepEqual(view.whatToDo, alertingSteps(phase).map((l) => l.replace(/\*\*/g, '')))
@@ -169,7 +170,7 @@ test('8.2 leaves the plan once a scan finds every baseline name', () => {
   assert.equal(phase.rows.some((x) => x.kind === 'naming'), false)
 })
 
-test('8.1: a saved Failed test does not complete it, and a marked-done 8.1 exports no Workflow Check', () => {
+test('8.1: a saved Failed test does not complete it, and a marked-done 8.1 exports no Workflow Check', { skip: heldBack('alerting') }, () => {
   const { f } = demo()
   const at = f.snapshot.asOf
   const bg = f.mapping.breakGlassUserIds
@@ -182,7 +183,7 @@ test('8.1: a saved Failed test does not complete it, and a marked-done 8.1 expor
   assert.deepEqual(cleanupExportView(marked, row)!.manualEvidence, [])
 })
 
-test('8.1 reads Ready · Create once the rollout is done, and the drill takes no Ongoing day slot', () => {
+test('8.1 reads Ready · Create once the rollout is done, and the drill takes no Ongoing day slot', { skip: heldBack('alerting') }, () => {
   const { f, r } = demo()
   const board = boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
   const alerting = board.readings.get('cleanup-alerting')!
@@ -199,7 +200,7 @@ test('8.1 reads Ready · Create once the rollout is done, and the drill takes no
   assert.deepEqual([first(withEa).kind, first(withEa).day], ['alerting', first(without).day])
 })
 
-test('held 8.1: its rail names what it waits for, it offers no Mark as done until Ready, and it keeps the Scan note', () => {
+test('held 8.1: its rail names what it waits for, it offers no Mark as done until Ready, and it keeps the Scan note', { skip: heldBack('alerting') }, () => {
   // Owner, 2026-09-26. The body is JSX, which Node does not run here, so this
   // reads the source for the three conditions and the board for the wait.
   const { f, r } = demo()
@@ -215,7 +216,7 @@ test('held 8.1: its rail names what it waits for, it offers no Mark as done unti
   assert.doesNotMatch(cleanup, /alertingSubjects\(row\)\}[^>]*scanNote=\{false\}/)
 })
 
-test('Remove Emergency Accounts Excluded by Name waits for the security rollout, like 8.1 (F-092)', () => {
+test('Remove Emergency Accounts Excluded by Name waits for the security rollout, like 8.1 (F-092)', { skip: heldBack('namedExclusions') }, () => {
   // Owner, 2026-09-28: the sample read it Ready, a month out, at the bottom of the
   // Plan. Removing a by-name exclusion before the exclusions group is on that policy
   // leaves the emergency account exposed to it, so the row waits for the rollout.

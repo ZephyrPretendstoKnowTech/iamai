@@ -3,6 +3,7 @@
 // prompt pack and the grounding bundle list Cleanup under cleanup; the bundle
 // carries none of the v2 field names (rings, events).
 import { test } from 'node:test'
+import { WITHHELD_CLEANUP } from '../../roadmap/cleanup.ts'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -63,7 +64,7 @@ test("the print cover's step count is the Plan header's: the steps and the Clean
   assert.equal(stepFacts(r.steps, withDone, silent).done, counts.done + 1, 'a Cleanup row marked done is in place')
   // A legacy checkbox is retained, but completion requires a scoped alert test.
   const alerting = r.schedule.cleanup!.rows.find((x) => x.kind === 'alerting')
-  assert.ok(alerting && alerting.done === null, 'the fixture no longer has an undone alerting row')
+  assert.ok(WITHHELD_CLEANUP.has('alerting') || (alerting && alerting.done === null), 'the fixture no longer has an undone alerting row')
   const attested = { credentialStorage: true, signInMonitoring: true }
   const denied = { credentialStorage: true, signInMonitoring: false }
   assert.equal(stepFacts(r.steps, r.schedule.cleanup, attested).done, counts.done, 'a legacy monitoring checkbox does not establish a received test alert')

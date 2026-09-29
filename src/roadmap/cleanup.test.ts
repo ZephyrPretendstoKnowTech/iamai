@@ -17,8 +17,10 @@ const FULL: CleanupInputs = {
 test('Cleanup rows are present only when they have something to say, in order, with their lists and their prose; the recovery row always remains', () => {
   // a full tenant renders all four Cleanup rows in order, each with its lists
   {
-    const rows = cleanupRows(FULL)
+    // Every row, held back or not (WITHHELD_CLEANUP); a plan draws only the drill and the renames.
+    const rows = cleanupRows(FULL, new Set())
     assert.deepEqual(rows.map((r) => r.kind), ['alerting', 'drill', 'naming', 'consolidation'])
+    assert.deepEqual(cleanupRows(FULL).map((r) => r.kind), ['drill', 'naming'])
     assert.deepEqual(rows[0].lists, { emergencyAccountUpns: FULL.emergencyAccounts })
     assert.deepEqual(rows[2].lists, { renames: FULL.renames })
     assert.deepEqual(rows[3].lists, { overlaps: FULL.overlaps })
@@ -38,7 +40,7 @@ test('Cleanup rows are present only when they have something to say, in order, w
 
   // every Cleanup row has its prose in content.cleanup (no missing key)
   {
-    for (const r of cleanupRows({ ...FULL, hardening: ['A deferred check'], namedExclusions: ['Policy A (ID: p-1): Break Glass One'] })) {
+    for (const r of cleanupRows({ ...FULL, hardening: ['A deferred check'], namedExclusions: ['Policy A (ID: p-1): Break Glass One'] }, new Set())) {
       const entry = (cleanup as Record<string, unknown>)[r.kind]
       assert.ok(entry, `content.cleanup is missing the "${r.kind}" entry`)
     }
@@ -58,6 +60,6 @@ test('a policy that excludes an emergency account by name gets a Cleanup row nam
   assert.deepEqual(namedEmergencyExclusions([policy({ conditions: { users: { includeUsers: ['All'], excludeGroups: ['g-1'] } } })], ['bg-1'], nameOf), [], 'the group is not a name')
   assert.deepEqual(namedEmergencyExclusions(null, ['bg-1'], nameOf), [], 'a scan that did not read the policies lists none')
   // And the row is present only when there is one, in §5 order after hardening.
-  assert.deepEqual(cleanupRows({ ...FULL, namedExclusions: [] }).some((r) => r.kind === 'namedExclusions'), false)
-  assert.deepEqual(cleanupRows({ ...FULL, namedExclusions: ['Policy A (ID: p-1): Break Glass One'] }).map((r) => r.kind), ['alerting', 'drill', 'namedExclusions', 'naming', 'consolidation'])
+  assert.deepEqual(cleanupRows({ ...FULL, namedExclusions: [] }, new Set()).some((r) => r.kind === 'namedExclusions'), false)
+  assert.deepEqual(cleanupRows({ ...FULL, namedExclusions: ['Policy A (ID: p-1): Break Glass One'] }, new Set()).map((r) => r.kind), ['alerting', 'drill', 'namedExclusions', 'naming', 'consolidation'])
 })

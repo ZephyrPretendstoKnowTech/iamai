@@ -14,7 +14,8 @@ const policies = [
 ]
 const retained: CleanupCheckpoint = { at: now, date: now, cleanup: 'consolidation', outcome: 'passed', consolidationDecision: 'retain-both', retainedPolicyIds: ['a', 'b'], retainedPolicyBases: Object.fromEntries(policies.map(p => [p.id, JSON.stringify([p.state, replacementPolicyBasis(p)])])), rationale: 'Different account scopes', policyNames: { a: 'Staff MFA', b: 'Admin MFA' } }
 const organisation = { notInBaseline: [], notAssessed: [], consolidation: [], naming: { pattern: null, share: 0, outliers: [], prefix: null, separator: null, convention: null, unprefixed: [], names: [] }, microsoftManaged: [] }
-const input = { after: '2026-10-01T12:00:00Z', now, rhythm: null, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [], organisation, policies }
+// Every row on (cleanup.ts WITHHELD_CLEANUP): these tests are about the rows' own rules.
+const input = { after: '2026-10-01T12:00:00Z', now, rhythm: null, emergencyAccountIds: [], emergencyAccounts: [], emergencyAccountUpns: [], organisation, policies, withheld: new Set<never>() }
 
 test('Retain Both needs a rationale and the exact current configurations, and completes only the pair it reviewed', () => {
   // Retain Both requires rationale and exact current configurations, preserves renames and ignores unrelated policy changes

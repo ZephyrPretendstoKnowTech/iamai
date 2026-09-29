@@ -26,6 +26,7 @@ import { copyBoxes, datesLineFor, exportAnnouncementOf, whoEvidenceLines } from 
 import { createsNewPolicy } from './stepJson.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { WITHHELD_CLEANUP } from '../../roadmap/cleanup.ts'
 
 const DAY = 86_400_000
 const R = pages.readiness as unknown as { next: Record<string, string>; methodsInline: Record<string, string>; panel: { why: Record<string, string> }; seamlessLapsing: string }
@@ -163,7 +164,8 @@ test('the print says nothing about what IAMAI does not read (7.4, 5.5, 5.7)', ()
 })
 
 test('the coverage line never names the policy the step itself corrects, nor a Cleanup row that may not list it', () => {
-  assert.match(String(content.shared.existingCoverage), /Review Overlapping Policies \(Cleanup\)/)
+  // Review Overlapping Policies is held back for now (cleanup.ts WITHHELD_CLEANUP), so the line names no Cleanup row.
+  assert.doesNotMatch(String(content.shared.existingCoverage), /Review Overlapping Policies|Cleanup/)
   assert.doesNotMatch(String(content.shared.existingCoverage), /Consolidate/)
   // 4.3 on the demo's week two: its tasks correct the policy its goal is delivered by.
   const f = curatedFixture('demo-week2')
@@ -184,8 +186,8 @@ test('the coverage line never names the policy the step itself corrects, nor a C
       const existing = (stepVars(s, ctxOf(g, rg)).existingPolicies ?? []) as string[]
       const mine = (s.tracking?.members ?? []).map((m) => m.policyName ?? '').filter(Boolean)
       for (const d of existing) assert.ok(!mine.includes(policyName(d)),`${g.name}/${s.id}: ${d} is its own`)
-      // The line points to Review Overlapping Policies: the row is there, and lists them.
-      if (existing.length > 0) {
+      // Where Review Overlapping Policies is drawn, it lists them.
+      if (existing.length > 0 && !WITHHELD_CLEANUP.has('consolidation')) {
         const overlaps = rg.schedule.cleanup?.rows.find((x) => x.kind === 'consolidation')?.lists?.overlaps ?? []
         for (const d of existing) assert.ok(overlaps.some((o) => o.includes(policyName(d))), `${g.name}/${s.id}: Review Overlapping Policies does not list ${d}: ${JSON.stringify(overlaps)}`)
       }

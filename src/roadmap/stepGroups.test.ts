@@ -33,7 +33,8 @@ import { boardOf, chainStartOf } from '../ui/surfaces/planBoard.ts'
 import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
 
 /** Every kind roadmap/cleanup.ts can render, read from the module rather than restated. */
-const CLEANUP_KINDS = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'] }).map((r) => String(r.kind))
+// Held back or not (cleanup.ts WITHHELD_CLEANUP): a held-back row keeps its place in its group.
+const CLEANUP_KINDS = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'] }, new Set()).map((r) => String(r.kind))
 
 const pinnedPolicies = pinnedBaseline.policies as unknown as CaPolicy[]
 
@@ -175,7 +176,7 @@ test('every step is in exactly one group, no group lists a step the board can ne
     }
 
     // A cleanup- member names a row roadmap/cleanup.ts can build.
-    const kinds = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }).map((r) => String(r.kind))
+    const kinds = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }, new Set()).map((r) => String(r.kind))
     for (const id of listed.filter((m) => m.startsWith('cleanup-'))) {
       assert.ok(kinds.includes(id.slice('cleanup-'.length)), `${id}: not a CleanupKind roadmap/cleanup.ts renders`)
     }
@@ -435,7 +436,7 @@ test('every step the engine can build is listed by a section, so none reaches On
   // The countries location is not among them: since Stage 3 it is a task of the
   // countries policy (stepIds.ts OBJECT_TASK), and no tenant builds it as a step.
   const constants = [BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID.trustedLocation, PREREQ_STEP_ID.authStrength, PREREQ_STEP_ID.serviceAccountsGroup, SEPARATE_ADMIN_ACCOUNTS_STEP_ID, PASSKEY_SETTINGS_STEP_ID, OPERATOR_PASSKEY_STEP_ID]
-  const cleanup = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }).map((r) => `cleanup-${r.kind}`)
+  const cleanup = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }, new Set()).map((r) => `cleanup-${r.kind}`)
   // And whatever the tenants actually build.
   const built = SCENARIOS.flatMap((s) => runOf(s).steps.map((x) => x.id))
   assert.ok(goals.includes('s-goal-azure-management-mfa') && named.includes('s-goal-inforcer-mfa') && cleanup.includes('cleanup-namedExclusions'), 'the collection read nothing')

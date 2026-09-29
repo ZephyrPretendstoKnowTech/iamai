@@ -5,6 +5,7 @@
 // existingCoverage line rendered; the not-assessed row's note names the policy
 // and the reason.
 import { test } from 'node:test'
+import { heldBack } from './cleanup.ts'
 import { hiddenPolicy } from './workflows.ts'
 import assert from 'node:assert/strict'
 import { fixture, withReviewRow } from './fixtures/index.ts'
@@ -288,7 +289,7 @@ test('the recovery basis changes with what the emergency account\'s recovery dep
   }
 })
 
-test('the consolidation row exists whenever a step\'s existingCoverage line rendered, and names those policies', () => {
+test('the consolidation row exists whenever a step\'s existingCoverage line rendered, and names those policies', { skip: heldBack('consolidation') }, () => {
   let seen = false
   // The large fixture holds a compliant-device policy that partly covers its goal: the one step with existing coverage still to do.
   for (const name of ['demo', 'mid', 'large'] as const) {

@@ -9,8 +9,8 @@
 // person marked done carries its date (cleanupDone.ts).
 //
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
-import { cleanupRows } from './cleanup.ts'
-import type { CleanupRow } from './cleanup.ts'
+import { WITHHELD_CLEANUP, cleanupRows } from './cleanup.ts'
+import type { CleanupKind, CleanupRow } from './cleanup.ts'
 import { cleanupBasis, validCompletionDate, latestRecoveryTest, consolidationVerified, replacementPolicyBasis, isLegacyManualDrillRecord } from './cleanupDone.ts'
 import { BREAK_GLASS_DRILL_DAYS } from './constants.ts'
 import type { CleanupCheckpoint, CleanupDone } from './cleanupDone.ts'
@@ -88,6 +88,8 @@ export type CleanupPhaseInput = {
   /** The tenant's policies that exclude an emergency account by name, worded (cleanup.ts namedEmergencyExclusions). */
   namedExclusions?: string[]
   early?: string
+  /** The rows held back from plans (cleanup.ts WITHHELD_CLEANUP); a test of a held-back row passes an empty set. */
+  withheld?: ReadonlySet<CleanupKind>
 }
 
 /** The convention as a name shape ("Core - Scope - Action - Target"), or null below the agreement floor. */
@@ -144,10 +146,10 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     overlaps: [...overlaps.map(line => `${line}${policyRows.filter(p => line.includes(String(p.displayName))).map(p => `; ${p.displayName} (ID: ${p.id})`).join('')}`), ...comparisonLines],
     hardening: input.hardening ?? [],
     namedExclusions: input.namedExclusions ?? [],
-  })
+  }, input.withheld ?? WITHHELD_CLEANUP)
   // Intended retirement removes the overlap that originally created this row;
   // keep its recorded result visible and reassess the retained replacement.
-  if (!rows.some(r => r.kind === 'consolidation') && input.records?.some(r => r.cleanup === 'consolidation')) rows.push({ kind: 'consolidation', lists: { overlaps: [] } })
+  if (!(input.withheld ?? WITHHELD_CLEANUP).has('consolidation') && !rows.some(r => r.kind === 'consolidation') && input.records?.some(r => r.cleanup === 'consolidation')) rows.push({ kind: 'consolidation', lists: { overlaps: [] } })
   if (!rows.some(r => r.kind === 'hardening') && input.hardeningTracked) rows.push({ kind: 'hardening', lists: { hardening: [] } })
   if (rows.length === 0) return null
   const ctx = input.rhythm ? { rhythm: input.rhythm } : undefined

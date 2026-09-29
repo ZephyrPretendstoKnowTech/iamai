@@ -3,6 +3,7 @@
 // window, one working day per row, no notice, no rings; a Cleanup with nothing
 // to say does not exist; the header's finish is the end of the last phase.
 import { test } from 'node:test'
+import { WITHHELD_CLEANUP } from './cleanup.ts'
 import assert from 'node:assert/strict'
 import { allFixtures, curatedFixture, fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
@@ -24,9 +25,9 @@ test('recovery testing is scheduled early and on its own, and optional hygiene f
     assert.ok(c.rows.length >= 2)
     const kinds: string[] = c.rows.map((x) => x.kind)
     assert.deepEqual(kinds, ORDER.filter((k) => kinds.includes(k)), 'rows keep the §5 order')
-    assert.ok(kinds.includes('alerting') && kinds.includes('drill'), 'the emergency accounts give alerting and the drill')
+    assert.ok(kinds.includes('drill') && (WITHHELD_CLEANUP.has('alerting') || kinds.includes('alerting')), 'the emergency accounts give alerting (unless held back) and the drill')
     assert.equal(kinds.includes('notAssessed'), false, 'individual workflow reviews replace the catch-all')
-    assert.ok(c.rows.find(row => row.kind === 'alerting')!.day > r.schedule.targetEnd, 'alerting follows security rollout')
+    if (!WITHHELD_CLEANUP.has('alerting')) assert.ok(c.rows.find(row => row.kind === 'alerting')!.day > r.schedule.targetEnd, 'alerting follows security rollout')
     assert.ok(c.rows.find(row => row.kind === 'drill')!.day <= r.schedule.targetEnd, 'recovery testing is early')
     const ctx = r.schedule.rhythm ? { rhythm: r.schedule.rhythm } : undefined
     for (const [i, row] of c.rows.entries()) {
@@ -37,9 +38,11 @@ test('recovery testing is scheduled early and on its own, and optional hygiene f
     assert.equal(c.start, c.rows[0].day)
     assert.equal(c.end, [r.schedule.targetEnd, ...c.rows.map(row => row.day)].sort().at(-1))
     // The alert rule lists sign-in names; the drill lists accounts by name.
-    const alerting = c.rows.find((x) => x.kind === 'alerting')!
-    assert.equal(alerting.lists.emergencyAccountUpns.length, f.mapping.breakGlassUserIds.length)
-    for (const upn of alerting.lists.emergencyAccountUpns) assert.match(upn, /@/, 'a sign-in name, not a display name')
+    const alerting = c.rows.find((x) => x.kind === 'alerting')
+    if (!WITHHELD_CLEANUP.has('alerting')) {
+      assert.equal(alerting!.lists.emergencyAccountUpns.length, f.mapping.breakGlassUserIds.length)
+      for (const upn of alerting!.lists.emergencyAccountUpns) assert.match(upn, /@/, 'a sign-in name, not a display name')
+    }
     assert.deepEqual(c.accountIds, f.mapping.breakGlassUserIds)
   }
 

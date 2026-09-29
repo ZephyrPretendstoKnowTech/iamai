@@ -226,7 +226,8 @@ test('K1: every Cleanup row reaches the implementer\'s whole-plan prompt whole, 
     const f = fixture('demo')
     const r = runFixture(f, { mapping: f.mapping }, null, f.snapshot.asOf)
     const rows = cleanupExportViews(r.schedule.cleanup)
-    assert.ok(rows.length >= 3, 'the demo draws fewer Cleanup rows than this checks')
+    // The drill and Align Policy Names; the rest are held back for now (cleanup.ts WITHHELD_CLEANUP).
+    assert.ok(rows.length >= 2, 'the demo draws fewer Cleanup rows than this checks')
     const ctx = (s: Step): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[s.id] ?? null, naming: r.coverage.organisation.naming })
     const pack = promptPack({ view: (s: Step) => stepExportView(s, ctx(s)), tenant: 'Contoso', steps: r.steps, schedule: r.schedule, changeRecord: '', announcement: null, cleanup: rows })
     // The pack is the implementer's (owner, 2026-09-27): Explain this plan carries every row.

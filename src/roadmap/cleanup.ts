@@ -64,13 +64,27 @@ const ORDER: { kind: CleanupKind; present: (i: CleanupInputs) => boolean; lists:
 ]
 
 /**
+ * Held back from every plan for now (owner, 2026-09-28): Alert on Emergency
+ * Account Sign-ins, Remove Emergency Accounts Excluded by Name and Review
+ * Overlapping Policies are not finished enough to ship. Their code and any
+ * records stay; take a kind out of this set to bring its row back. A tenant's
+ * name exclusions and overlapping policies are left as they are meanwhile.
+ */
+export const WITHHELD_CLEANUP: ReadonlySet<CleanupKind> = new Set<CleanupKind>(['alerting', 'namedExclusions', 'consolidation'])
+
+/** For a test of a held-back row's own behaviour: why it is skipped while the row is held back, and false once it is back. */
+export function heldBack(kind: CleanupKind): string | false {
+  return WITHHELD_CLEANUP.has(kind) ? `the ${kind} row is held back from plans for now (roadmap/cleanup.ts WITHHELD_CLEANUP)` : false
+}
+
+/**
  * The Cleanup rows that are present, in render order. A row with nothing to say
  * does not appear (§5: a group with nothing in it does not render), so on a clean
  * tenant with no emergency accounts, no renames and no overlaps, Cleanup is the
  * drill alone.
  */
-export function cleanupRows(inputs: CleanupInputs): CleanupRow[] {
-  return ORDER.filter((e) => e.present(inputs)).map((e) => ({ kind: e.kind, lists: e.lists(inputs) }))
+export function cleanupRows(inputs: CleanupInputs, withheld: ReadonlySet<CleanupKind> = WITHHELD_CLEANUP): CleanupRow[] {
+  return ORDER.filter((e) => !withheld.has(e.kind) && e.present(inputs)).map((e) => ({ kind: e.kind, lists: e.lists(inputs) }))
 }
 
 /**
