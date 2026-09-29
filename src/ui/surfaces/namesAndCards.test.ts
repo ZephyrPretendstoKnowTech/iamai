@@ -150,6 +150,22 @@ test('a policy typed by hand with hyphens for the baseline’s en dashes (or the
   assert.equal(nameKey(typed), nameKey(planned))
 })
 
+test('N-018: the baseline’s version of a line keeps the objects the step still waits on, so 6.3’s never reads as a block of every location', () => {
+  // With Partner or MSP technicians = Yes (the suggestion), 6.3's line carried
+  // "the baseline's version: … include Any location." with the allowed-countries
+  // exclusion dropped, because the countries location does not exist yet.
+  for (const f of [withFoundationSettled(fixture('demo')), withFoundationSettled(fixture('getiamai'))]) {
+    const step = runFixture(f).steps.find((s) => s.id === 's-goal-geo-restriction')!
+    const ops = (step.action.resolution?.policies ?? []) as { pending?: Record<string, any>; body: Record<string, any>; baseline?: Record<string, any> }[]
+    for (const op of ops) {
+      if (!op.baseline) continue
+      const choice = (op.pending ?? op.body).conditions?.locations
+      assert.ok((choice?.excludeLocations ?? []).length > 0, `${f.name}: the premise: the choice excludes the allowed countries`)
+      assert.deepEqual(op.baseline.conditions?.locations, choice, `${f.name}: the baseline's version drops what the step waits on`)
+    }
+  }
+})
+
 test('a held create’s Threshold card says why the create waits, and an export says it once, before its procedure', () => {
   // Review, 2026-09-26: the export read the card's sentence under What to do and again under Before turn-on.
   const f = curatedFixture('demo')

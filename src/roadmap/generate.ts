@@ -645,7 +645,12 @@ export function buildCreateAction(
     for (const o of whole.omitted) if (!omitted.includes(o)) omitted.push(o)
     // A reference one member still waits on is pending for the step, whatever another member made of the answer.
     for (const [id, d] of p.resolved.decisions ?? []) if (!sourceReferences.has(id) || (d.answer === 'pending' && sourceReferences.get(id)!.answer !== 'pending')) sourceReferences.set(id, { id, kind: d.kind, answer: d.answer })
-    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved).policy : undefined
+    // The baseline's own version keeps the objects the step still waits on, as the
+    // step's own body does (`pending` below): without them the countries block's
+    // baseline line lost its allowed-countries exclusion and read as a block of
+    // every location (N-018).
+    const waitingOn = whole.missing.length > 0 ? new Set(whole.missing.map((m) => m.token.toLowerCase())) : null
+    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), waitingOn ? { ...p.resolved, keep: waitingOn } : p.resolved).policy : undefined
     const target = p.target ?? null
     // The same policy with the objects it waits on left in, and nothing else the
     // body leaves out, for the step's procedure to name (PolicyOperation.pending).
