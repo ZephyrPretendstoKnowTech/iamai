@@ -6,7 +6,7 @@
 // missing.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, withExternalMfa } from './fixtures/index.ts'
+import { fixture, withExternalMfa, withUnsettledGroups } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
@@ -38,9 +38,10 @@ function withDecisions(f: Fixture, decisions: Record<string, StepDecision>): Fix
   return { ...f, mapping: applyStepDecisions(f.mapping, decisions) }
 }
 
-// mid: the one sample with references still waiting on an answer (demo's exclude-only groups use the approved V1 assumption),
-// with an external MFA provider, so Jon's EAM population is one of them (Phase 2c, coverage/companions.ts).
-const base = withExternalMfa(fixture('mid'))
+// demo with two of Jon's groups unsettled again: his README at 8af3b118 settles every exclusion-only group
+// it names, so the broad group (62d67e66) and the travellers (cc7f9bb7) are unsettled here to have two
+// references to answer. (mid's only pinned reference left is the EAM population.)
+const base = withUnsettledGroups(withExternalMfa(fixture('demo')), ['62d67e66-2bc9-43cd-b00c-6326dae53d18', 'cc7f9bb7-425b-42fc-b025-311a1a3eb0f4'])
 const pending = sourceMappingsOf(runFixture(base).steps).sort((a, b) => Number(b.answer === 'pending') - Number(a.answer === 'pending'))
 const at = base.snapshot.asOf
 const group = [...base.groups.keys()].find((id) => !pending.some((r) => r.id.toLowerCase() === id.toLowerCase()))!
@@ -53,8 +54,7 @@ function onlyNaming(id: string): string[] {
 
 test('each reference is answered on its own: changing an answer replaces it in every policy that names it, and taking one back returns only its policies to waiting and keeps every unrelated decision', () => {
   assert.ok(pending.length >= 2, 'the premise: more than one reference is asked')
-  // a: the one reference still unanswered (Jon's EAM population, a target of his
-  // EAM policy); b: an exclusion the V1 assumption leaves out, answered anyway.
+  // a: one reference still unanswered; b: another, answered as left out.
   const [a, b] = pending
   assert.equal(a.answer, 'pending', 'the premise: one reference waits on an answer')
   const both = runFixture(withDecisions(base, { [SOURCE]: { answers: { [a.id]: MAP(group), [b.id]: OMIT() }, at } }))
@@ -112,9 +112,10 @@ test('each reference is answered on its own: changing an answer replaces it in e
  * use the approved V1 assumption and wait on nothing).
  */
 function demoWithTarget(): Fixture {
-  const demo = fixture('demo')
-  const LEGACY = '9eab445f-7f21-479a-85c9-29769512067e'
   const BROAD = '62d67e66-2bc9-43cd-b00c-6326dae53d18'
+  // Unsettled again: since Jon's README at 8af3b118 it is his own environment.
+  const demo = withUnsettledGroups(fixture('demo'), [BROAD])
+  const LEGACY = '9eab445f-7f21-479a-85c9-29769512067e'
   const legacy = structuredClone(demo.baseline.policies.find((p) => p.id === LEGACY)!) as unknown as { conditions: { users: Record<string, unknown> } }
   legacy.conditions.users.includeUsers = []
   legacy.conditions.users.includeGroups = [BROAD]

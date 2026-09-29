@@ -4,7 +4,7 @@
 Require the pinned baseline's MFA authentication strength when an in-scope user registers or joins a device in Microsoft Entra ID.
 
 ## Why this exists
-A password alone must not be enough to register an attacker-controlled device as a tenant device. The member of Jon Hope's baseline pinned at `90d9b890` for this goal targets the Microsoft Entra **Register or join devices** user action and requires an authentication strength that allows only Windows Hello for Business, FIDO2 security keys, certificate-based MFA and a one-time Temporary Access Pass. IAMAI resolves this tenant's own strength for that requirement.
+A password alone must not be enough to register an attacker-controlled device as a tenant device. The member of Jon Hope's baseline pinned at `8af3b118` for this goal targets the Microsoft Entra **Register or join devices** user action and requires an authentication strength that allows only Windows Hello for Business, FIDO2 security keys, certificate-based MFA and a one-time Temporary Access Pass. IAMAI resolves this tenant's own strength for that requirement.
 
 ## Applies when
 Show implementation only when IAMAI classifies this step as `missing`, `partial`, `reportOnly`, or `readyToEnforce` and all state-specific blockers are cleared.
@@ -31,7 +31,7 @@ Do not offer enforcement while a known device-registration or enrollment workflo
 If a required enrollment workflow cannot satisfy the pinned target and no already-approved exclusion covers it, do not invent a new exclusion. The exception or workflow change is an owner/security decision.
 
 ## Owner decisions
-- The build pins Jon Hope's baseline at `90d9b890c4b9af2ac4bc02d97c06bf8900064b4c`, and this package is authored against it. It was re-authored on 2026-09-11 from `8461e0f2fd10167bf034e7c20ed8ea293827d890`, where the member required the built-in Multifactor authentication strength.
+- The build pins Jon Hope's baseline at `8af3b118ad063121705beacf9c4b70709a38016b`, and this package is reviewed against it: the member is unchanged since `90d9b890c4b9af2ac4bc02d97c06bf8900064b4c` (re-pin, 2026-09-29). It was re-authored on 2026-09-11 from `8461e0f2fd10167bf034e7c20ed8ea293827d890`, where the member required the built-in Multifactor authentication strength.
 - The member now requires the author's custom strength. Its ID belongs to the author's tenant, so the package binds IAMAI's resolved tenant strength (`authStrength.target.id`, named by `authStrength.target.displayName`) and never names the source ID. Where the tenant has no strength for the requirement, the preparation step that creates one comes first.
 - The re-pinned member excludes one more source group. IAMAI asks the owner what it stands for, and `policy.target.excludeGroups` carries the answer.
 

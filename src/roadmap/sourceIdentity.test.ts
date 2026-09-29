@@ -242,14 +242,15 @@ test('a group of the author’s that nothing settles waits on a person’s answe
     // `authorOnly` is the one list whose entries are dropped from a body an
     // implementation channel carries and do not hold the step. Reaching it takes a
     // reading settled in this baseline's interpretation file with the evidence it
-    // rests on (`authorEnvironment`), and this baseline settles no such reading —
-    // so on the demo the list is empty everywhere, however many groups the author
-    // only ever excludes.
+    // rests on (`authorEnvironment`: since Jon's README at 8af3b118, the groups it
+    // names as his own), so on the demo every entry is one of those, and none is
+    // a group the interpretation leaves to a person.
+    const settled = new Set((interpretation as { references: { id: string; meaning: string }[] }).references.filter((x) => x.meaning === 'authorEnvironment').map((x) => x.id.toLowerCase()))
     const r = runFixture(fixture('demo-week2'))
     let steps = 0
     for (const step of r.steps) {
       steps += 1
-      assert.deepEqual(step.action.authorOnly ?? [], [], `${step.id} leaves out a source object nothing settles`)
+      assert.deepEqual((step.action.authorOnly ?? []).filter((id) => !settled.has(id.toLowerCase())), [], `${step.id} leaves out a source object nothing settles`)
     }
     assert.ok(steps > 10, `the sweep saw the whole plan (${steps})`)
   }
@@ -269,9 +270,11 @@ test('a group of the author’s that nothing settles waits on a person’s answe
     // Created On since Phase 2e, the readiness gate on everyone it covers is all that may still hold its create.
     assert.ok(implementationOffered(step) || unavailableReason(step) === 'readiness-unmet', `the policy can be written once the readings are settled (${unavailableReason(step)})`)
     const reported = step.action.authorOnly ?? []
-    assert.ok(reported.length >= 3, `and what it does without is named (${reported.length})`)
+    // Since Jon's README at 8af3b118 two of them are settled in the file itself (62d67e66, 2d25c298), and 5628ad67 is the exclusions group.
+    assert.ok(reported.length >= 2, `and what it does without is named (${reported.length})`)
+    const ownEnvironment = (interpretation as { references: { id: string; meaning: string }[] }).references.filter((x) => x.meaning === 'authorEnvironment').map((x) => x.id.toLowerCase())
     for (const id of reported) {
-      assert.ok(unsettledGroups().includes(id.toLowerCase()), `${id} is one of the settled readings, not a guess`)
+      assert.ok([...unsettledGroups(), ...ownEnvironment].includes(id.toLowerCase()), `${id} is one of the settled readings, not a guess`)
       for (const op of validOperations(step.action)) assert.doesNotMatch(JSON.stringify(op.body).toLowerCase(), new RegExp(id.toLowerCase()), `${step.id}: ${id} is in a body`)
     }
     assert.deepEqual((step.action.missing ?? []).filter((m) => m.unreadable), [], 'and nothing is waiting on them')

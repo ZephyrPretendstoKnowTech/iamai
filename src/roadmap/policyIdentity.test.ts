@@ -332,7 +332,10 @@ test('C01: a lone group-assigned policy that is not the all-users goal’s own i
 // is excluded, while its JSON and PowerShell target kept the tenant's resources.
 // The pinned all-users policy excludes it, so the target is the baseline's: the
 // update submits the exclusion, lists the change, and every channel carries it.
+// Since the re-pin to 8af3b118 the baseline's second exclusion, Microsoft Rights
+// Management Services, travels with it.
 const INTUNE_ENROLLMENT = 'd4ebce55-015a-49b5-a083-c84d1797ae8c'
+const RIGHTS_MANAGEMENT = '00000012-0000-0000-c000-000000000000'
 
 test('C01/C02 R1-F3: a lone staff group MFA policy is corrected to All users with the baseline’s Intune Enrollment exclusion, listed and carried in every channel', () => {
   for (const reversed of [false, true]) {
@@ -351,18 +354,18 @@ test('C01/C02 R1-F3: a lone staff group MFA policy is corrected to All users wit
     const update = ops[0]
     const applications = (update.body.conditions as { applications?: Record<string, unknown> }).applications
     assert.deepEqual(applications?.includeApplications, ['All'])
-    assert.deepEqual(applications?.excludeApplications, [INTUNE_ENROLLMENT], 'the update submits the baseline’s exclusion')
+    assert.deepEqual(applications?.excludeApplications, [RIGHTS_MANAGEMENT, INTUNE_ENROLLMENT], 'the update submits the baseline’s exclusions')
     assert.ok((step.action.changes ?? []).some((c) => c.field === 'Target resources'), 'and lists it as a change')
     const body = stepBodyOf(step, r.ctx)
-    for (const [id, carries] of [['portal', /Intune Enrollment/], ['ai', /Intune Enrollment/], ['json', new RegExp(INTUNE_ENROLLMENT)], ['ps', new RegExp(INTUNE_ENROLLMENT)]] as const) {
+    for (const [id, carries] of [['portal', [/Intune Enrollment/, /Rights Management Services/]], ['ai', [/Intune Enrollment/, /Rights Management Services/]], ['json', [new RegExp(INTUNE_ENROLLMENT), new RegExp(RIGHTS_MANAGEMENT)]], ['ps', [new RegExp(INTUNE_ENROLLMENT), new RegExp(RIGHTS_MANAGEMENT)]]] as const) {
       const artifact = body.artifacts.find((a) => a.id === id)
       assert.ok(artifact && !artifact.unavailable, `${id} is drawn`)
-      assert.match(artifact.text(), carries, `${id} carries the exclusion`)
+      for (const c of carries) assert.match(artifact.text(), c, `${id} carries the exclusion`)
     }
-    assert.match(stepExportView(step, r.ctx).whatToDo.join('\n'), /Under Target resources → Exclude, add Microsoft Intune Enrollment\./, 'the export names it too')
+    assert.match(stepExportView(step, r.ctx).whatToDo.join('\n'), /Under Target resources → Exclude, add Microsoft Rights Management Services and Microsoft Intune Enrollment\./, 'the export names them too')
   }
   // Where the tenant's policy already excludes it, the resources are not a change.
-  const r = groupRun({ reversed: false, names: GROUP_NAMES[0], staff: 'group', admins: null, staffApps: { includeApplications: ['All'], excludeApplications: [INTUNE_ENROLLMENT] } })
+  const r = groupRun({ reversed: false, names: GROUP_NAMES[0], staff: 'group', admins: null, staffApps: { includeApplications: ['All'], excludeApplications: [RIGHTS_MANAGEMENT, INTUNE_ENROLLMENT] } })
   const step = allUsersStep(r)
   assert.ok((step.action.resolution?.policies ?? []).some((o) => o.mode === 'update'), 'the premise: the staff policy is still corrected')
   assert.equal((step.action.changes ?? []).some((c) => c.field === 'Target resources'), false, 'no resources change is listed')

@@ -18,6 +18,8 @@ const B = 'c0100000-0000-4000-8000-000000000002'
 const MFA = { operator: 'OR', builtInControls: ['mfa'] }
 const EXO = '00000002-0000-0ff1-ce00-000000000000'
 const INTUNE_ENROLLMENT = 'd4ebce55-015a-49b5-a083-c84d1797ae8c'
+/** The baseline's other application exclusion on the all-users policy (kept since the re-pin to 8af3b118). */
+const RIGHTS_MANAGEMENT = '00000012-0000-0000-c000-000000000000'
 const GUESTS = { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } }
 const REMOVES = /^\d+\. Under (?:Users|Target resources) → Exclude, (?:add .+ and )?remove (.+)\.$/
 const UNTOUCHED = 'Change only the settings listed above; leave every other setting on this policy as it is.'
@@ -60,7 +62,7 @@ test('a correction that drops the tenant’s guest or external user exclusion, o
   {
     const { op, lines, nameOf } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [EXO] }))
     const apps = (op.body.conditions as { applications: { excludeApplications: string[] } }).applications
-    assert.deepEqual(apps.excludeApplications, [INTUNE_ENROLLMENT], 'the request carries the baseline\'s exclusion')
+    assert.deepEqual(apps.excludeApplications, [RIGHTS_MANAGEMENT, INTUNE_ENROLLMENT], 'the request carries the baseline\'s exclusions')
     assert.deepEqual(op.removes, { guestsOrExternalUsers: false, ids: [EXO] })
     const line = lines.find((l) => REMOVES.test(l))
     assert.ok(line, lines.join('\n'))
@@ -70,7 +72,7 @@ test('a correction that drops the tenant’s guest or external user exclusion, o
 })
 
 test('control: a correction that keeps every exclusion the tenant has removes nothing and says nothing', () => {
-  const { op, lines } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [INTUNE_ENROLLMENT] }))
+  const { op, lines } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [RIGHTS_MANAGEMENT, INTUNE_ENROLLMENT] }))
   assert.equal(op.removes, undefined)
   assert.ok(!lines.some((l) => REMOVES.test(l)), lines.join('\n'))
   assert.ok(lines.some((line) => /Keep the policy's current state/.test(line)))

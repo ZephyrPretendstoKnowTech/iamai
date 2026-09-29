@@ -2,7 +2,7 @@
   "version": 1,
   "owner": "Jhope188",
   "repo": "ConditionalAccessPolicies",
-  "settledAt": "2026-09-07",
+  "settledAt": "2026-09-29",
   "note": "IAMAI's reading of this author's own objects, settled against the author's export and the per-policy documentation published beside it. Not the author's export, and not a fact about any other baseline. See src/baseline/interpretation.ts.",
   "references": [
     {
@@ -99,72 +99,86 @@
     {
       "id": "62d67e66-2bc9-43cd-b00c-6326dae53d18",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "authorEnvironment",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Excluded from 23 policies of every kind (MFA, legacy authentication, device code, token protection, admin portal, sessions) and included by none, so its breadth says only that it is a standing exclusion. No README, policy body or naming guide entry binds this id to a purpose. It cannot be the service accounts: IAC - GLOBAL - BLOCK - Service Accounts includes 6612d6d7 and excludes this group. Breadth alone does not distinguish it from the break-glass group above, so it stays the author's own.",
+      "classification": "sourceOnly",
+      "evidence": "Excluded from 23 policies and included by none. Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names every other group in each of those policies' Users rows and lists one group fewer than the export, so this is a standing exclusion of the author's own tenant that his documented design does not carry. The README refresh (readme-refresh-2026-09-19.md section 5, call c) drops it: nothing names it and no step waits on it. The tenant's exceptions go through the exclusions group.",
       "includedIn": [],
-      "context": {}
+      "context": {},
+      "excludedFromAtLeast": 23,
+      "excludedFrom": []
     },
     {
       "id": "e663a7ce-daec-4062-88b8-5970bfec8019",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "authorEnvironment",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Excluded from 6 policies and included by none. No source artifact binds this id to a purpose. It cannot be the service accounts: IAC - GLOBAL - BLOCK - Service Accounts includes 6612d6d7 and excludes this group.",
+      "classification": "sourceOnly",
+      "evidence": "Excluded from 6 policies and included by none. Jon Hope's README (Updated/readme.md) at the pin 8af3b118 gives it conflicting names (GlobalExclusions on MFA-AllUsers, AllAdminUsers on Admin Portal) and no name on the other four, so it is the author's own tenant arrangement. The README refresh (section 5, call c) drops it; GlobalExclusions is not a second catch-all, and the tenant's exceptions go through the exclusions group.",
       "includedIn": [],
-      "context": {}
+      "context": {},
+      "excludedFromAtLeast": 6,
+      "excludedFrom": []
     },
     {
       "id": "9ee031a3-3551-4bc3-a81d-d6f0149ae329",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "authorEnvironment",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Excluded from the three AVD and SharePoint/OneDrive location policies and included by none. Their READMEs describe the location conditions and record only the break-glass exclusion; nothing names this group.",
+      "classification": "sourceOnly",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Intune-AUG-AVD-Prod-ExternalUsers on the AVD policies (on SharePoint, probably GuestExclusions): the author's own AVD external-user population. The README refresh maps it to the Direction answer D1 Azure Virtual Desktop, not to a tenant object IAMAI resolves, so the body goes without it.",
       "includedIn": [],
-      "context": {}
+      "context": {},
+      "excludedFromAtLeast": 3,
+      "excludedFrom": []
     },
     {
       "id": "902993ed-96f7-4af6-825c-510dfc97b258",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "authorEnvironment",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Excluded from one policy, IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers, and included by none. That policy's README describes an AVD access allowlist and names no group. Nothing here is about geography; the word \"Allowed\" in the policy's name is about AVD users.",
+      "classification": "sourceOnly",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Intune-AUG-AVD-Prod-Users: the author's own AVD allowlist on IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers. The README refresh maps it to the Direction answer D1 Azure Virtual Desktop, not to a tenant object IAMAI resolves, so the body goes without it.",
       "includedIn": [],
-      "context": {}
+      "context": {},
+      "excludedFromAtLeast": 1,
+      "excludedFrom": []
     },
     {
       "id": "5628ad67-f9d1-4495-abe3-99dc8f9074f1",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "exclusionsGroup",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Excluded from 5 policies (the risk-remediation set, the WindowsAzureAD baseline scopes policy and Device Registration) and included by none. The Device Registration README calls it only \"additional exclusion\". No source artifact names it.",
+      "classification": "knownSemantic",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names this id as SG-Entra-AUG-CAP-BreakglassAccounts and lists it first in every policy's Users row as the break-glass exclusion. It is excluded from 5 policies and included by none. The tenant's counterpart is the exclusions group (docs/baselines/jhope188-conditionalaccesspolicies/readme-refresh-2026-09-19.md).",
       "includedIn": [],
-      "context": {}
+      "context": {},
+      "excludedFromAtLeast": 5,
+      "excludedFrom": []
     },
     {
       "id": "2d25c298-555e-4f26-9984-90dfb7eae325",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "authorEnvironment",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Excluded from the two Intune device policies and included by none. The author's naming guide has a CA-DeviceExclusions concept, but no source artifact binds it to this id, and a device-exclusion group is not one IAMAI resolves to a tenant object.",
+      "classification": "sourceOnly",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Entra-ADG-CAP-DeviceExclusions on the two Intune device policies: the author's own devices that cannot meet the rule. The README refresh maps it to the Direction answer D3 Devices that can't meet the rule, not to a tenant object IAMAI resolves, so the body goes without it.",
       "includedIn": [],
-      "context": {}
+      "context": {},
+      "excludedFromAtLeast": 2,
+      "excludedFrom": []
     },
     {
       "id": "cc7f9bb7-425b-42fc-b025-311a1a3eb0f4",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "authorEnvironment",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Excluded from one policy, IAC - GLOBAL - BLOCK - Countries not Allowed, and included by none. Being excluded from a countries policy does not make a group the travelling users: 62d67e66 is excluded from the same policy and from 22 others. The README says only that the break-glass group is excluded.",
+      "classification": "sourceOnly",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Entra-AUG-CAP-TravelingUsers on IAC - GLOBAL - BLOCK - Countries not Allowed: the author's own travellers. The README refresh maps it to the Direction answer D4 Travel outside those countries, not to a tenant object IAMAI resolves, so the body goes without it.",
       "includedIn": [],
-      "context": {}
+      "context": {},
+      "excludedFromAtLeast": 1,
+      "excludedFrom": []
     },
     {
       "id": "8d0564e5-ab28-4283-9a94-9883c581adde",
@@ -172,7 +186,7 @@
       "meaning": "unknown",
       "basis": "documented",
       "classification": "decisionRequired",
-      "evidence": "Included by IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation and excluded from the non-EAM version of the same policy, so it is the population the author routes to external authentication. Its README names no group, and IAMAI holds no tenant object for that population.",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names this id as SG-Entra-AUG-MFA-AuthEAM, the population the author routes to external authentication, and the refresh maps it to the Direction answer D1 External authentication methods. It stays unknown: it is the only include of the EAM variant, so the body cannot go without it, and no meaning here answers it from a Direction answer.",
       "includedIn": [
         "bb6a814e-808a-467c-9475-06f89140ce99"
       ],
@@ -186,7 +200,7 @@
       "meaning": "unknown",
       "basis": "documented",
       "classification": "decisionRequired",
-      "evidence": "Included by IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration, so it is that policy's own registration pilot population. Its README names no group and IAMAI holds no tenant object for it.",
+      "evidence": "Included by IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration. Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names the policy's group Entra-AUG-MFA-AuthPasskey with a different id (bf1e4c1f), so this id is replaced in the author's tenant. The refresh (call c) leaves it to IAMAI's own registration package.",
       "includedIn": [
         "30a1edce-e832-456b-b2c5-4b1098d3a9b3"
       ],
@@ -200,7 +214,7 @@
       "meaning": "unknown",
       "basis": "documented",
       "classification": "decisionRequired",
-      "evidence": "Included by IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users, so it is that policy's own admin passkey population. Its README names no group and IAMAI holds no tenant object for it.",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Entra-DUG-Admins-AllAdminUsers, a dynamic group of all admins, and the refresh maps it to the admin roles. It stays unknown: it is the only include of IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users, so the body cannot go without it, and no meaning here substitutes admin roles for an included group. That policy implements no IAMAI goal, so no step waits on it.",
       "includedIn": [
         "a53c4c2b-b577-4d88-b64d-36b92f8f3ca0"
       ],
@@ -209,5 +223,5 @@
       }
     }
   ],
-  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted."
+  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted. Re-read 2026-09-29 against Jon's README at pin 8af3b118: the groups it names were settled (break-glass to the exclusions group; the author's own travellers, device, AVD and unnamed standing exclusions to authorEnvironment, their tenant side being Direction answers); the three include-only groups stay unknown because the body cannot go without its only target."
 }

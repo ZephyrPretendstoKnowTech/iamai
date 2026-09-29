@@ -1021,6 +1021,24 @@ export function asCuratedBaseline(pkg: BaselinePackage): BaselinePackage {
 }
 
 /**
+ * A policy as it read before the interpretation settled `ids`: their pinned
+ * tokens taken away, so each is a reference nothing settles again. Since Jon's
+ * README at 8af3b118 settled every exclusion-only group it names, the suites
+ * about how a person answers a reference use this to have one to answer.
+ */
+export function withoutTokens<P>(policy: P, ids: readonly string[]): P {
+  const drop = new Set(ids.map((id) => id.toLowerCase()))
+  const own = (policy as { placeholders?: Record<string, string> }).placeholders
+  if (!own) return policy
+  return { ...policy, placeholders: Object.fromEntries(Object.entries(own).filter(([id]) => !drop.has(id.toLowerCase()))) }
+}
+
+/** The fixture with `ids` unsettled in every pinned policy (`withoutTokens`). */
+export function withUnsettledGroups(f: Fixture, ids: readonly string[]): Fixture {
+  return { ...f, baseline: { ...f.baseline, policies: f.baseline.policies.map((p) => withoutTokens(p, ids)) } }
+}
+
+/**
  * A fixture on the curated baseline: the same tenant, with the source groups
  * this baseline has not settled read as the author's own environment
  * (`asCuratedBaseline`). What a suite about the policy lifecycle wants, and

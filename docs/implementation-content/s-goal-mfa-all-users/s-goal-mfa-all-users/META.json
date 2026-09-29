@@ -25,17 +25,25 @@
     "other": []
   },
   "baselineAuthority": {
-    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "pinCommit": "8af3b118ad063121705beacf9c4b70709a38016b",
     "reviewedMembers": {
-      "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4": "40f72c4c"
+      "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4": "79ce4680"
     },
     "memberStableId": "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4",
+    "reauthored": {
+      "on": "2026-09-29",
+      "from": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "changes": [
+        "conditions.applications.excludeApplications: the member also excludes Microsoft Rights Management Services (00000012-0000-0000-c000-000000000000). The author excluded it at 8461e0f2 too; the pin stripped it as an author-specific app until data/first-party-apps.json listed it as Microsoft first-party (re-pin to 8af3b118, 2026-09-29)."
+      ]
+    },
     "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - AllUsers",
     "sourceState": "enabledForReportingButNotEnforced",
     "canonicalSemantics": {
       "users": "All users with tenant-resolved canonical exclusions",
-      "resources": "All resources except Microsoft Intune Enrollment",
+      "resources": "All resources except Microsoft Intune Enrollment and Microsoft Rights Management Services",
       "excludedApplicationIds": [
+        "00000012-0000-0000-c000-000000000000",
         "d4ebce55-015a-49b5-a083-c84d1797ae8c"
       ],
       "clientAppTypes": [
@@ -46,7 +54,7 @@
       "riskConditions": "none",
       "authenticationFlows": "none"
     },
-    "currentMicrosoftDifference": "Microsoft current generic baseline guidance recommends All users + All resources with no app exclusions and the built-in Multifactor authentication strength. IAMAI preserves the retained pin instead: Intune Enrollment remains excluded and the grant remains built-in MFA because a separate pinned step governs enrollment reauthentication.",
+    "currentMicrosoftDifference": "Microsoft current generic baseline guidance recommends All users + All resources with no app exclusions and the built-in Multifactor authentication strength. IAMAI preserves the retained pin instead: Intune Enrollment and Microsoft Rights Management Services remain excluded and the grant remains built-in MFA because a separate pinned step governs enrollment reauthentication.",
     "rule": "Do not silently modernize the retained pin."
   },
   "requiredBindings": [

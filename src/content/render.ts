@@ -840,7 +840,7 @@ export function renderPages(): string {
           // Where the package came from and which revision of it is held: the
           // pinned package names both, an uploaded one can name neither.
           `<p class="sub">Jhope188/ConditionalAccessPolicies</p>` +
-          p(cx.baseline.sourceVersion, { commit: '90d9b89', date: 'Sep 8, 2026' }, 'sub') +
+          p(cx.baseline.sourceVersion, { commit: '8af3b11', date: 'Sep 29, 2026' }, 'sub') +
           p(cx.baseline.sourceUploaded, {}, 'sub') +
           // The author check that could not run says so, rather than reading as no update.
           p(cx.baseline.updateUnknown, {}, 'sub') +

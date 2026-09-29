@@ -179,10 +179,10 @@ const X_TENANT = (step: Step): string => String(step.action.resolution?.tenant.e
 
 test('1: the author’s four exclusion groups on one policy come to the tenant’s one exclusions group, once', () => {
   // Jon Hope's SharePoint block excludes three groups of his own and his
-  // exclusions group. One of those four is a reading this baseline settles
-  // (interpretation.ts: the break-glass group); the other three are his tenant's
-  // and nothing explains them, so they are not substituted with anything - they
-  // are left out, and reported as left out.
+  // exclusions group. One of those four is the break-glass group, the tenant's
+  // exclusions group; the other three are his tenant's own (his README at
+  // 8af3b118), so they are not substituted with anything - they are left out,
+  // and reported as left out.
   const source = authorPolicy('IAC - APP - BLOCK - SharePoint-OneDrive-NonTrustedLocations')
   const authorGroups = excludeGroupsOf(source as unknown as Record<string, unknown>)
   assert.equal(authorGroups.length, 4, 'the author names four groups')
@@ -193,15 +193,14 @@ test('1: the author’s four exclusion groups on one policy come to the tenant�
   // holds the tenant's one group, once, and no id out of the author's tenant.
   const impl = implementable(resolved.body, resolved)
   assert.deepEqual(excludeGroupsOf(impl.policy), [X])
-  // And the three the author's own tenant carved out hold the policy. Nothing
-  // here says who they are, so nothing can say who a copy of this policy made in
-  // another tenant would newly reach; they are reported as missing, each waiting
-  // on a person's Baseline mapping (no step of the plan), and none of them is
-  // the author's to leave out (`authorOnly` takes a settled reading and there is none).
+  // And the three the author's own tenant carved out hold nothing: Jon's README at
+  // 8af3b118 names them as his own environment (62d67e66, e663a7ce, and 9ee031a3
+  // his AVD external users), so the interpretation settles them as authorEnvironment
+  // and they are left out as the author's own, with no person asked.
   const others = authorGroups.filter((g) => g !== authorIdFor(source, 'exclusionsGroup')).sort()
-  assert.deepEqual(impl.missing, [], 'approved optional exclusion assumptions do not hold the policy')
-  assert.deepEqual(impl.omitted.map(id => id.toLowerCase()).sort(), others, 'the explicit V1 assumption omits only the unexplained exclusions')
-  assert.deepEqual(impl.authorOnly, [], 'and none of them is left out as the author’s own')
+  assert.deepEqual(impl.missing, [], 'the settled readings do not hold the policy')
+  assert.deepEqual(impl.authorOnly.map(id => id.toLowerCase()).sort(), others, 'the three are left out as the author’s own')
+  assert.deepEqual(impl.omitted, [], 'and none of them is a person’s answer or an assumption')
 })
 
 test('2 + 8: distinct resolved ids stay distinct, an unrelated policy’s includes and excludes are untouched, and no id crosses a collection', () => {

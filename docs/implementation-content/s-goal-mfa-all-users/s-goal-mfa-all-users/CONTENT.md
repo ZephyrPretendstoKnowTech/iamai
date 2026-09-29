@@ -1,7 +1,7 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Apply the IAMAI-resolved assignments exactly as the settings below them read; **All users** already covers guests. Exclude the resolved exclusions and nobody else. Target resources: **All resources**, excluding **Microsoft Intune Enrollment**. Leave the other conditions unconfigured; client apps remains All.
+3. Apply the IAMAI-resolved assignments exactly as the settings below them read; **All users** already covers guests. Exclude the resolved exclusions and nobody else. Target resources: **All resources**, excluding **Microsoft Intune Enrollment** and **Microsoft Rights Management Services**. Leave the other conditions unconfigured; client apps remains All.
 4. Grant: **Require multifactor authentication**. Do not substitute an authentication strength.
 5. Leave session controls unconfigured.
 6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.
@@ -19,7 +19,7 @@ This policy already exists. The correction changes only the settings IAMAI found
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.
-4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.
+4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment and Microsoft Rights Management Services. A separate step sets the requirement for Intune enrollment.
 5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.
 @@IAMAI-END
 
@@ -192,7 +192,7 @@ We are preparing an MFA requirement for work sign-ins. Please help affected staf
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"template"}
-{"tiles":[{"id":"scope","label":"Affected people","result":{{json:people.affected.count}},"line":"All users are targeted except the resolved exclusions. This is the population IAMAI resolved for this policy, not a prediction that every account will be prompted."},{"id":"readiness","label":"MFA readiness","result":{{json:evidence.mfaReadiness}},"line":"Review people without a usable method or observed MFA use. Check the policy's actual exclusions and resource scope."},{"id":"state","label":"Policy state","result":{{json:policy.current.state}},"line":"A missing or differing policy must reach the intended settings in Report-only before enforcement."}],"baselineNote":"The baseline excludes Microsoft Intune Enrollment and uses the built-in Require multifactor authentication grant."}
+{"tiles":[{"id":"scope","label":"Affected people","result":{{json:people.affected.count}},"line":"All users are targeted except the resolved exclusions. This is the population IAMAI resolved for this policy, not a prediction that every account will be prompted."},{"id":"readiness","label":"MFA readiness","result":{{json:evidence.mfaReadiness}},"line":"Review people without a usable method or observed MFA use. Check the policy's actual exclusions and resource scope."},{"id":"state","label":"Policy state","result":{{json:policy.current.state}},"line":"A missing or differing policy must reach the intended settings in Report-only before enforcement."}],"baselineNote":"The baseline excludes Microsoft Intune Enrollment and Microsoft Rights Management Services and uses the built-in Require multifactor authentication grant."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}

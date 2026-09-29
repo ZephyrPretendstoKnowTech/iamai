@@ -28,8 +28,10 @@ import type { Step } from '../roadmap/types.ts'
 const PINNED_POLICIES = pinnedJson.policies as unknown as CaPolicy[]
 const GA = '62e90394-69f5-4237-9190-012177145e10'
 const PR_STRENGTH = '00000000-0000-0000-0000-000000000004'
-/** Microsoft Intune Enrollment: the one application the pinned MFA-all-users policy leaves out. */
+/** Microsoft Intune Enrollment, one of the two applications the pinned MFA-all-users policy leaves out. */
 const INTUNE_ENROLMENT = 'd4ebce55-015a-49b5-a083-c84d1797ae8c'
+/** Microsoft Rights Management Services, the other: kept since the re-pin to 8af3b118 (data/first-party-apps.json lists it). */
+const RIGHTS_MANAGEMENT = '00000012-0000-0000-c000-000000000000'
 /** The author's four Microsoft first-party exclusions on the Admin Portal policy, which task 020 taught the pin to keep. */
 const ADMIN_PORTAL_APPS = [
   '00000002-0000-0000-c000-000000000000',
@@ -138,6 +140,7 @@ test('every application exclusion in the pinned source is inventoried and kept',
   assert.deepEqual(
     surviving,
     [
+      `IAC - GLOBAL - GRANT - MFA - AllUsers: ${RIGHTS_MANAGEMENT}`,
       `IAC - GLOBAL - GRANT - MFA - AllUsers: ${INTUNE_ENROLMENT}`,
       ...ADMIN_PORTAL_APPS.map((a) => `IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: ${a}`),
     ],
@@ -147,18 +150,20 @@ test('every application exclusion in the pinned source is inventoried and kept',
   // The exclusions the pin removed are recorded by policy and id, never dropped
   // without a record. Task 020 repaired the first-party registry and task 022's
   // re-pin is the first pin generated with it, so the author's four Admin Portal
-  // exclusions now survive and one strip is left: an application id IAMAI does
-  // not recognise, which is dropped because carrying somebody else's
-  // registration into another tenant is the thing this boundary exists to stop.
-  assert.equal(pinnedJson.stripped.length, 1, 'the pin-time strip list changed')
-  assert.equal(pinnedJson.stripped.filter((s) => s.startsWith('IAC - ZTCA - GLOBAL – BLOCK – Admin Portal:')).length, 0, 'an Admin Portal exclusion was stripped again')
-  assert.equal(pinnedJson.stripped.filter((s) => s.startsWith('IAC - GLOBAL - GRANT - MFA - AllUsers:')).length, 1)
+  // exclusions survive. The one strip left then was AllUsers' exclusion of
+  // Microsoft Rights Management Services, which the registry did not list; it
+  // is Microsoft's own, so the re-pin to 8af3b118 keeps it and nothing is
+  // stripped. An application id IAMAI does not recognise would still be dropped
+  // and recorded here, because carrying somebody else's registration into
+  // another tenant is the thing this boundary exists to stop.
+  assert.deepEqual(pinnedJson.stripped, [], 'the pin-time strip list changed')
 
   // Everything that survived is a Microsoft first-party application, so no
   // author-specific object reached the runtime; the validator that says so
   // still passes.
   const ids = new Set((firstParty as { apps: { appId: string }[] }).apps.map((a) => a.appId.toLowerCase()))
   assert.ok(ids.has(INTUNE_ENROLMENT), 'the surviving exclusion is not a first-party application')
+  assert.ok(ids.has(RIGHTS_MANAGEMENT), 'Rights Management Services survived the pin and is not a first-party application')
   for (const a of ADMIN_PORTAL_APPS) assert.ok(ids.has(a), `${a} survived the pin and is not a first-party application`)
   assert.deepEqual(runBaselineValidators(PINNED_POLICIES).filter((v) => v.id === 'app-01'), [], 'an author-specific application exclusion survived the pin')
 })

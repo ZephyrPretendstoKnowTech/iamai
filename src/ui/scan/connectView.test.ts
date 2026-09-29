@@ -72,14 +72,14 @@ test('tile 2, Baseline: the nested card carries name, size and version; the sour
     const pinned = baselineTile({
       name: 'Jon Hope — Defense in Depth',
       policyCount: 46,
-      pin: { repo: 'Jhope188/ConditionalAccessPolicies', url: 'https://github.com/Jhope188/ConditionalAccessPolicies', commit: '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c', readAt: '2026-09-08T04:02:40.518Z' },
+      pin: { repo: 'Jhope188/ConditionalAccessPolicies', url: 'https://github.com/Jhope188/ConditionalAccessPolicies', commit: '8af3b118ad063121705beacf9c4b70709a38016b', readAt: '2026-09-29T11:11:38.354Z' },
       loading: null,
       update: null,
       stepsFor,
     })
     assert.deepEqual(pinned.source?.link, { label: 'Jhope188/ConditionalAccessPolicies', url: 'https://github.com/Jhope188/ConditionalAccessPolicies' })
     // The date is the pin timestamp in the display zone, like every other date the product shows.
-    assert.equal(pinned.source?.version, `Commit 90d9b89, read from that repository on ${absoluteDate('2026-09-08T04:02:40.518Z')}.`)
+    assert.equal(pinned.source?.version, `Commit 8af3b11, read from that repository on ${absoluteDate('2026-09-29T11:11:38.354Z')}.`)
     assert.match(pinned.source?.version ?? '', /^Commit [0-9a-f]{7}, read from that repository on [A-Z][a-z]{2} \d+, \d{4}\.$/)
     // An uploaded package has no source IAMAI can name and no update it can watch
     // for, and the disclosure says exactly that rather than the pinned sentence.
@@ -149,7 +149,7 @@ test('tile 2, Baseline: the nested card carries name, size and version; the sour
   // network) folded into "no update": nothing seen, said over a read that failed.
   // The disclosure now says the check could not be made.
   {
-    const pin = { repo: 'Jhope188/ConditionalAccessPolicies', url: 'https://github.com/Jhope188/ConditionalAccessPolicies', commit: '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c', readAt: '2026-09-08T04:02:40.518Z' }
+    const pin = { repo: 'Jhope188/ConditionalAccessPolicies', url: 'https://github.com/Jhope188/ConditionalAccessPolicies', commit: '8af3b118ad063121705beacf9c4b70709a38016b', readAt: '2026-09-29T11:11:38.354Z' }
     const unknown = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 38, pin, loading: null, update: null, updateUnchecked: true, stepsFor })
     assert.equal(unknown.source?.unchecked, "The check for an update in the author's repository could not run just now, so IAMAI cannot say whether he has changed it since.")
     assert.equal(baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 38, pin, loading: null, update: null, stepsFor }).source?.unchecked, null, 'a check that ran says nothing more')

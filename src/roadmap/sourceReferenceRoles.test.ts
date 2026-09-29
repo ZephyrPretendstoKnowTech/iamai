@@ -10,7 +10,7 @@
 // it, and no author id ever becomes a tenant id.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { fixture, withoutTokens, withUnsettledGroups } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
@@ -34,8 +34,8 @@ const MAP = (id: string): string => answerTextFor(referenceOptions()[1], [id])
 const AT = '2026-09-11T00:00:00Z'
 
 // The pinned baseline's own references, one for each part a reference plays.
-// Excluded from five policies and included by none: the owner takes it as a second break-glass group
-// (2026-09-19), so it is left out unless a person maps it (sourceMappings.ts assumedAbsentSourceGroups).
+// Excluded from five policies and included by none: Jon's README at 8af3b118 names it his break-glass
+// group, so the interpretation settles it as the tenant's exclusions group; a person's answer still overrides it.
 const BROAD = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
 const PASSKEY_PILOT = '1178bb5d-4f19-4b69-b33b-44eb7f5b39c9' // the whole of who one policy reaches
 const ADMIN_PASSKEYS = '5f96c57d-380f-4872-97ff-cfd74ef1ac1a' // the whole of who another reaches
@@ -53,6 +53,8 @@ const LEGACY = '9eab445f-7f21-479a-85c9-29769512067e'
 // is his passkey pilot group, the shape these reference rules are read on (IAMAI
 // reads that policy as he confirmed it, baseline/authorCorrections.ts).
 const pkg = loadBaseline(pinnedFiles('published'))
+/** The pinned package with BROAD unsettled again, so it is a reference a person answers. */
+const UNSETTLED = (): unknown[] => pkg.policies.map((p) => withoutTokens(p, [BROAD]))
 const policyOf = (id: string): RawPolicy => {
   const p = pkg.policies.find((x) => x.id === id)
   assert.ok(p, `${id} is pinned`)
@@ -60,9 +62,9 @@ const policyOf = (id: string): RawPolicy => {
 }
 
 /** One pinned policy resolved for a tenant whose answers went through the real decision path. */
-function resolve(policy: RawPolicy, answers: Record<string, string>) {
+function resolve(policy: RawPolicy, answers: Record<string, string>, policies: readonly unknown[] = pkg.policies) {
   const mapping = applyStepDecisions(emptyMappingState('t'), { [SOURCE]: { answers, at: AT } })
-  const resolved = resolveTenantPolicy(policy, tenantObjectsOf(mapping, null, 'tenant-exclusions'), 'x', pkg.policies)
+  const resolved = resolveTenantPolicy(policy, tenantObjectsOf(mapping, null, 'tenant-exclusions'), 'x', policies as never)
   const whole = implementable(resolved.body, resolved)
   const conditions = whole.policy.conditions as { users: Record<string, unknown>; locations?: Record<string, unknown> }
   const waitsOn = (id: string) => whole.missing.find((m) => m.token.toLowerCase() === id)
@@ -70,20 +72,21 @@ function resolve(policy: RawPolicy, answers: Record<string, string>) {
 }
 
 test('an exception left out keeps the people it spared in scope, mapped it is the tenant’s group, and a reference that is also a target stands left out only as the exception', () => {
-  // Unanswered, the second break-glass group is left out as the owner decided; mapped, it is the tenant's group.
-  const assumed = resolve(policyOf(DEVICE_REGISTRATION), {})
-  assert.equal(assumed.waitsOn(BROAD), undefined, 'the owner’s assumption holds nothing')
-  assert.equal(assumed.text.includes(BROAD), false)
+  // Settled from Jon's README at 8af3b118, his break-glass group is the tenant's exclusions group, and nobody is asked.
+  const settled = resolve(policyOf(DEVICE_REGISTRATION), {})
+  assert.equal(settled.waitsOn(BROAD), undefined, 'the settled reading holds nothing')
+  assert.deepEqual(settled.users.excludeGroups, ['tenant-exclusions'], 'the tenant’s exclusions group stands where it stood')
+  assert.equal(JSON.stringify(settled.users).toLowerCase().includes(BROAD), false)
   // An exception the author also targets waits on the answer: the EAM population in High-Risk Users.
   const pending = resolve(policyOf(RISK), {})
   assert.deepEqual(pending.waitsOn(EAM), { token: pending.waitsOn(EAM)?.token, stepId: null, decision: true })
-  const omit = resolve(policyOf(DEVICE_REGISTRATION), { [BROAD]: OMIT() })
+  const omit = resolve(withoutTokens(policyOf(DEVICE_REGISTRATION), [BROAD]), { [BROAD]: OMIT() }, UNSETTLED())
   assert.equal(omit.waitsOn(BROAD), undefined, 'an exception left out holds nothing')
   assert.ok(omit.whole.omitted.map((x) => x.toLowerCase()).includes(BROAD), 'and is reported as the person’s answer')
   assert.equal(omit.resolved.decisions.get(BROAD)?.answer, 'omitted')
   assert.deepEqual(omit.users.includeUsers, ['All'], 'who the policy reaches is unchanged')
   assert.equal(omit.text.includes(BROAD), false)
-  const map = resolve(policyOf(DEVICE_REGISTRATION), { [BROAD]: MAP('tenant-group') })
+  const map = resolve(withoutTokens(policyOf(DEVICE_REGISTRATION), [BROAD]), { [BROAD]: MAP('tenant-group') }, UNSETTLED())
   assert.ok((map.users.excludeGroups as string[]).includes('tenant-group'), 'the tenant’s group is the exception')
   assert.equal(map.waitsOn(BROAD), undefined)
   assert.equal(map.text.includes(BROAD), false)
@@ -115,10 +118,10 @@ test('the whole of who or where a policy applies is never left out (the referenc
 
   // The only location a block names is never left out: a block without it would block everywhere.
   {
-    const omit = resolve(policyOf(COUNTRIES_NO_EXCLUSIONS), { [BLOCKED_COUNTRIES]: OMIT(), [BROAD]: OMIT() })
+    const omit = resolve(withoutTokens(policyOf(COUNTRIES_NO_EXCLUSIONS), [BROAD]), { [BLOCKED_COUNTRIES]: OMIT(), [BROAD]: OMIT() }, UNSETTLED())
     assert.ok(omit.waitsOn(BLOCKED_COUNTRIES)?.decision, JSON.stringify(omit.locations))
     assert.equal(omit.waitsOn(BROAD), undefined, 'the exception beside it still stands left out')
-    const map = resolve(policyOf(COUNTRIES_NO_EXCLUSIONS), { [BLOCKED_COUNTRIES]: MAP('tenant-location'), [BROAD]: OMIT() })
+    const map = resolve(withoutTokens(policyOf(COUNTRIES_NO_EXCLUSIONS), [BROAD]), { [BLOCKED_COUNTRIES]: MAP('tenant-location'), [BROAD]: OMIT() }, UNSETTLED())
     assert.deepEqual(map.locations?.includeLocations, ['tenant-location'])
     assert.equal(map.whole.missing.length, 0, JSON.stringify(map.whole.missing))
   }
@@ -148,8 +151,9 @@ const ctxOf = (f: Fixture, r: ReturnType<typeof runFixture>): StepVarContext => 
 
 test('on the plan, a reference left out where it is a policy’s whole target keeps the step asking, and only that policy waits', () => {
   // The demo, with the legacy-authentication block reaching the broad group instead of everyone: the group is then a target there and an exception everywhere else.
-  const base = fixture('demo')
-  const legacy = structuredClone(policyOf(LEGACY))
+  // The group unsettled again (it is Jon's break-glass group since 8af3b118), so it is one a person answers.
+  const base = withUnsettledGroups(fixture('demo'), [BROAD])
+  const legacy = structuredClone(withoutTokens(policyOf(LEGACY), [BROAD]))
   const users = (legacy.conditions as { users: Record<string, unknown> }).users
   users.includeUsers = []
   users.includeGroups = [BROAD]

@@ -38,6 +38,7 @@
     { "appId": "00000002-0000-0000-c000-000000000000", "displayName": "Windows Azure Active Directory", "category": "platform", "inOffice365Bundle": false },
     { "appId": "0000000c-0000-0000-c000-000000000000", "displayName": "Microsoft App Access Panel", "category": "platform", "inOffice365Bundle": false },
     { "appId": "1b912ec3-a9dd-4c4d-a53e-76aa7adb28d7", "displayName": "AADReporting", "category": "platform", "inOffice365Bundle": false },
-    { "appId": "8c59ead7-d703-4a27-9e55-c96a0054c8d2", "displayName": "My Profile", "category": "platform", "inOffice365Bundle": false }
+    { "appId": "8c59ead7-d703-4a27-9e55-c96a0054c8d2", "displayName": "My Profile", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "00000012-0000-0000-c000-000000000000", "displayName": "Microsoft Rights Management Services", "category": "platform", "inOffice365Bundle": false }
   ]
 }

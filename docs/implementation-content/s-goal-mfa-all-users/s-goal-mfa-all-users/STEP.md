@@ -1,7 +1,7 @@
 # Require MFA for Everyone
 
 ## Goal
-Require multifactor authentication for the pinned baseline's intended all-user scope while preserving the baseline's deliberate Intune Enrollment exception and the tenant's canonical emergency/service exclusions.
+Require multifactor authentication for the pinned baseline's intended all-user scope while preserving the baseline's deliberate Intune Enrollment and Rights Management Services exceptions and the tenant's canonical emergency/service exclusions.
 
 ## Why this exists
 A password alone must not be sufficient for ordinary access. This is the broad MFA floor beneath stronger admin, risk, registration, and device controls.
@@ -27,7 +27,7 @@ Current matching policy ID/state, semantic mismatches, canonical exclusion ident
 ## Target state
 Pinned member `a66e8427-e5e7-4072-bfd1-7e99db7a7dc4` defines the destination:
 - Users: All users, with IAMAI-resolved canonical exclusions.
-- Resources: All resources, excluding Microsoft Intune Enrollment (`d4ebce55-015a-49b5-a083-c84d1797ae8c`).
+- Resources: All resources, excluding Microsoft Intune Enrollment (`d4ebce55-015a-49b5-a083-c84d1797ae8c`) and Microsoft Rights Management Services (`00000012-0000-0000-c000-000000000000`).
 - Client apps: all.
 - No risk, platform, location, device, authentication-flow, user-action, or authentication-context condition.
 - Grant: built-in `mfa`, operator OR.
@@ -41,7 +41,7 @@ Population, exclusions, resource exclusion, client app scope, absence of extra c
 Preserve the retained baseline semantics even where current Microsoft generic guidance differs. Preserve tenant-resolved canonical exclusions and use the existing stable policy identity for corrections.
 
 ## Do not do
-- Do not remove the Intune Enrollment exclusion simply because Microsoft's generic MFA template now recommends no app exclusions; the retained baseline owns this package and has a separate enrollment step.
+- Do not remove the Intune Enrollment or Rights Management Services exclusion simply because Microsoft's generic MFA template now recommends no app exclusions; the retained baseline owns this package and has a separate enrollment step.
 - Do not replace built-in MFA with an authentication strength unless the baseline is deliberately re-pinned.
 - Do not add named-user exceptions for holdouts.
 - Do not create a duplicate policy to avoid correcting the resolved one.

@@ -14,7 +14,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import interpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
-import { fixture, withExternalMfa } from './fixtures/index.ts'
+import { fixture, withExternalMfa, withUnsettledGroups } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { implementationOffered, operationsOf, unavailableReason } from './operations.ts'
@@ -63,7 +63,10 @@ test('every interpretation record says what adopting its reference takes, and it
   assert.ok(read.references.length > 10)
   for (const r of read.references) assert.equal(r.classification, classificationFor(r.meaning), `${r.id} is classified against its meaning`)
   const decisions = read.references.filter((r) => r.classification === 'decisionRequired').map((r) => r.id)
-  for (const id of [BROAD, COUNTRIES_ONLY]) assert.ok(decisions.includes(id), `${id} needs a person's answer`)
+  assert.ok(decisions.includes(EAM), 'the EAM population, the only include of its policy, needs a person’s answer')
+  // Jon's README at 8af3b118 names these, so nobody is asked: his own environment, and his break-glass group.
+  for (const id of [BROAD, COUNTRIES_ONLY]) assert.equal(read.references.find((r) => r.id === id)?.classification, 'sourceOnly', `${id} is the author's own`)
+  assert.equal(read.references.find((r) => r.id === SECOND_BREAK_GLASS)?.meaning, 'exclusionsGroup', 'the second break-glass group is the exclusions group')
   assert.equal(read.references.find((r) => r.id === EXCLUSIONS)?.classification, 'knownSemantic', 'the exclusions group is a known reading')
   // A record that leaves the classification out, or contradicts its meaning, is refused rather than read.
   const raw = structuredClone(interpretation) as { references: Record<string, unknown>[] }
@@ -74,7 +77,7 @@ test('every interpretation record says what adopting its reference takes, and it
   assert.throws(() => readInterpretation(wrong), /classified/)
 })
 
-test('the known exclusions reference resolves to the tenant’s group; an unread one waits on the mapping, never on a step', () => {
+test('the known exclusions reference resolves to the tenant’s group; a group the author’s README names waits on nothing', () => {
   const pkg = pinnedPackage()
   const policy = pkg.policies.find((p) => p.id === DEVICE_REGISTRATION)
   assert.ok(policy, 'the pinned Device Registration policy')
@@ -82,16 +85,15 @@ test('the known exclusions reference resolves to the tenant’s group; an unread
   const resolved = resolveTenantPolicy(policy as never, tenant, 'device-registration-mfa', pkg.policies)
   const excluded = (resolved.body.conditions as { users: { excludeGroups: string[] } }).users.excludeGroups.map((g) => g.toLowerCase())
   assert.ok(excluded.includes('tenant-exclusions'), 'the exclusions group is the tenant’s')
-  assert.equal(resolved.decisions.get(BROAD)?.answer, 'omitted', 'approved optional exclusion defaults absent')
-  assert.equal(resolved.unresolved.has(BROAD), true, 'and it is unresolved')
-  assert.equal(resolved.unresolved.get(BROAD), null, 'with no step of the plan to answer it: the mapping does')
+  // Settled from Jon's README at 8af3b118: the broad group is his own environment, left out with nothing to answer.
+  assert.equal(resolved.decisions.get(BROAD), undefined, 'nobody is asked about it')
+  assert.equal(resolved.authorOnly.has(BROAD), true, 'it is left out on the settled reading')
   const whole = implementable(resolved.body, resolved)
-  const waiting = whole.missing.find((m) => m.token.toLowerCase() === BROAD)
-  assert.equal(waiting, undefined)
-  assert.equal(resolved.decisions.get(SECOND_BREAK_GLASS)?.answer, 'omitted', 'the second break-glass group is left out, as the owner decided')
+  assert.equal(whole.missing.some((m) => m.token.toLowerCase() === BROAD), false)
+  assert.equal(resolved.decisions.get(SECOND_BREAK_GLASS), undefined, 'the second break-glass group is not asked either')
   assert.equal(whole.missing.some(m => m.token.toLowerCase() === SECOND_BREAK_GLASS), false)
   assert.equal(whole.missing.some((m) => m.unreadable), false, 'nothing is left waiting on a reading nobody can give')
-  assert.equal(JSON.stringify(whole.policy).toLowerCase().includes(BROAD), false, 'and the author’s id is in no body')
+  assert.equal(JSON.stringify((whole.policy as { conditions: unknown }).conditions).toLowerCase().includes(BROAD), false, 'and the author’s id is in no condition')
 })
 
 test('S4: each policy naming an unmapped reference is On Hold with the reason, and its blocker states the role', () => {
@@ -144,7 +146,8 @@ test('S4: each policy naming an unmapped reference is On Hold with the reason, a
 })
 
 test('S4: the Baseline mappings surface lists each unresolved reference with its policies and role, and never as "Group N"', () => {
-  const f = fixture('demo')
+  // Two settled groups unsettled again, so the demo has references to ask (Jon's README at 8af3b118 settles every exclusion it names).
+  const f = withUnsettledGroups(fixture('demo'), [BROAD, COUNTRIES_ONLY])
   const r = runFixture(f)
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x) }
   const rows = mappingRowsOf(r.steps, ctx)
@@ -169,7 +172,7 @@ test('S4: the Baseline mappings surface lists each unresolved reference with its
 })
 
 test('a reference answered as none needed is left out, reported and holds nothing, and answers that reference only', () => {
-  const f = fixture('demo')
+  const f = withUnsettledGroups(fixture('demo'), [BROAD])
   const omit = answered(f, () => referenceOptions()[0])
   const r = runFixture(omit)
   const legacy = stepOf(r.steps, LEGACY)
@@ -181,7 +184,7 @@ test('a reference answered as none needed is left out, reported and holds nothin
 
   // An answer for one reference answers that reference only.
   {
-    const f = fixture('demo')
+    const f = withUnsettledGroups(fixture('demo'), [BROAD])
     const one = answered(f, () => referenceOptions()[0], [BROAD])
     const r = runFixture(one)
     assert.equal((stepOf(r.steps, LEGACY).action.missing ?? []).some((m) => m.decision), false, 'the policy naming only that group waits on nothing')

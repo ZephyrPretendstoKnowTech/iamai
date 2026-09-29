@@ -10,9 +10,9 @@
   ],
   "owner": "Jhope188",
   "repo": "ConditionalAccessPolicies",
-  "commit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+  "commit": "8af3b118ad063121705beacf9c4b70709a38016b",
   "label": "Jon Hope — Defense in Depth",
-  "generatedAt": "2026-09-25T03:59:18.156Z",
+  "generatedAt": "2026-09-29T11:48:24.048Z",
   "files": [
     ".vscode/tasks.json",
     "Documents/readme.md",
@@ -135,5 +135,5 @@
     "Updated/Policies/Test/IAC - APP - SESSION - O365 - Timeoutsettings.json",
     "Updated/readme.md"
   ],
-  "attribution": "Policies and documentation © Jhope188 (Jhope188/ConditionalAccessPolicies). Fetched live from GitHub at commit 90d9b89; not redistributed by IAMAI."
+  "attribution": "Policies and documentation © Jhope188 (Jhope188/ConditionalAccessPolicies). Fetched live from GitHub at commit 8af3b11; not redistributed by IAMAI."
 }

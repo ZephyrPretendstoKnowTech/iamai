@@ -59,14 +59,17 @@ test('retained foundational rows re-evaluate and dormant Keep completes the step
   assert.ok(!after.steps.some(s => /s-review-baseline-iac-agent-block/.test(s.id)))
 })
 
-test('source assumptions omit optional exclusions, the second break-glass group among them, never AVD allowed users or include targets, and an update over one asks to remove the tenant’s own exclusions', () => {
-  const group = '62d67e66-2bc9-43cd-b00c-6326dae53d18'
-  // The owner takes 5628ad67 as a second break-glass group (2026-09-19): the exclusions group every plan policy excludes stands where it stood.
-  const emergency = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
-  const policy = { displayName: 'Example', conditions: { users: { includeUsers: ['All'], excludeGroups: [group, emergency] } } }
-  assert.deepEqual(assumedAbsentSourceGroups(policy, [policy]), [group, emergency])
+test('source assumptions omit optional exclusions the interpretation leaves unsettled, never a settled group, AVD allowed users or include targets, and an update over one asks to remove the tenant’s own exclusions', () => {
+  // Two groups the interpretation still leaves to a person (decisionRequired at 8af3b118).
+  const group = '1178bb5d-4f19-4b69-b33b-44eb7f5b39c9'
+  const other = '8d0564e5-ab28-4283-9a94-9883c581adde'
+  // Settled from Jon's README at 8af3b118: 5628ad67 is his break-glass group (the tenant's
+  // exclusions group stands for it) and 62d67e66 his own environment. Neither is an assumption.
+  const settled = ['62d67e66-2bc9-43cd-b00c-6326dae53d18', '5628ad67-f9d1-4495-abe3-99dc8f9074f1']
+  const policy = { displayName: 'Example', conditions: { users: { includeUsers: ['All'], excludeGroups: [group, other, ...settled] } } }
+  assert.deepEqual(assumedAbsentSourceGroups(policy, [policy]), [group, other])
   assert.deepEqual(assumedAbsentSourceGroups({ ...policy, displayName: 'IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers' }, [policy]), [])
-  assert.deepEqual(assumedAbsentSourceGroups(policy, [policy, { conditions: { users: { includeGroups: [group] } } }]), [emergency])
+  assert.deepEqual(assumedAbsentSourceGroups(policy, [policy, { conditions: { users: { includeGroups: [group] } } }]), [other])
 
   // Updating a source with an assumed absent group asks to remove the tenant's own
   // exclusions (owner, 2026-09-26: every exclusion the plan does not have is asked

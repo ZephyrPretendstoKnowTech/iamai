@@ -1,6 +1,6 @@
 {
-  "commit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
-  "generatedAt": "2026-09-25T03:59:18.156Z",
+  "commit": "8af3b118ad063121705beacf9c4b70709a38016b",
+  "generatedAt": "2026-09-29T11:48:24.048Z",
   "policies": [
     {
       "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
@@ -145,6 +145,9 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "authorEnvironment",
+        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -197,6 +200,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -289,6 +293,9 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "authorEnvironment",
+        "902993ed-96f7-4af6-825c-510dfc97b258": "authorEnvironment",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -345,6 +352,8 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "authorEnvironment",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -395,6 +404,8 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -444,6 +455,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -501,6 +513,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -676,6 +689,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
@@ -687,6 +701,7 @@
       "conditions": {
         "applications": {
           "excludeApplications": [
+            "00000012-0000-0000-c000-000000000000",
             "d4ebce55-015a-49b5-a083-c84d1797ae8c"
           ],
           "includeApplications": [
@@ -726,6 +741,8 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -900,6 +917,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
@@ -970,6 +988,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
@@ -1032,6 +1051,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
@@ -1092,6 +1112,7 @@
         }
       },
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1139,6 +1160,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1194,7 +1216,9 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "cc7f9bb7-425b-42fc-b025-311a1a3eb0f4": "authorEnvironment",
         "1d421232-4f10-4436-9883-27d9bd3f64cd": "allowedCountries"
       }
     },
@@ -1247,6 +1271,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1303,6 +1328,8 @@
       "sessionControls": null,
       "placeholders": {
         "6612d6d7-12c8-4cbd-8ad5-7460ae2a6579": "serviceAccountsGroup",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "0403d368-f07f-4e4c-b75d-aa169d5b6683": "trustedLocation"
       }
@@ -1400,6 +1427,7 @@
         }
       },
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1451,6 +1479,7 @@
         }
       },
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1507,6 +1536,8 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "2d25c298-555e-4f26-9984-90dfb7eae325": "authorEnvironment",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1570,7 +1601,10 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "2d25c298-555e-4f26-9984-90dfb7eae325": "authorEnvironment",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
@@ -1741,7 +1775,8 @@
         }
       },
       "placeholders": {
-        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "exclusionsGroup"
       }
     },
     {
@@ -1881,6 +1916,7 @@
         }
       },
       "placeholders": {
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
@@ -2001,6 +2037,7 @@
       "sessionControls": null,
       "placeholders": {
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
@@ -2118,6 +2155,8 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -2184,6 +2223,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -2231,13 +2271,13 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     }
   ],
-  "stripped": [
-    "IAC - GLOBAL - GRANT - MFA - AllUsers: 00000012-0000-0000-c000-000000000000"
-  ],
+  "stripped": [],
   "goalMap": {
     "mfa-all-users": [
       "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4"

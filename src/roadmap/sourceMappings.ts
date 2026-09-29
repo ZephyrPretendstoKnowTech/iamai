@@ -15,11 +15,10 @@ const UNEXPLAINED_GROUPS = new Set(interpretation.references.filter(r => r.kind 
 /** Approved V1 assumption for unexplained optional source exclusions only.
  * These are source IDs, never existing tenant exclusions. The AVD allow-list's
  * excluded groups define who can use the service and cannot be guessed away.
- * 5628ad67 is one of them: the owner takes it as a second break-glass group
- * (2026-09-19, applied 2026-09-24), and the exclusions group every policy the
- * plan writes already excludes (resolvePolicy.ts) stands where it stood. It had
- * held Require MFA to Register a Device and Reset Passwords for Medium-Risk
- * Users on a Baseline mappings question.
+ * A group the interpretation settles is not one of them: since the author's
+ * README at 8af3b118, 5628ad67 is his break-glass group and resolves to the
+ * tenant's exclusions group (resolvePolicy.ts), and 62d67e66 and e663a7ce are
+ * his own environment and are left out on that reading.
  */
 export function assumedAbsentSourceGroups(policy: Record<string, unknown>, policies: readonly unknown[]): string[] {
   if (/AVD.*AllowedAVDUsers/i.test(String(policy.displayName ?? ''))) return []

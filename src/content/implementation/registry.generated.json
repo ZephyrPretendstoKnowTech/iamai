@@ -5618,7 +5618,7 @@
           }
         ],
         "baselineAuthority": {
-          "pinCommit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+          "pinCommit": "8af3b118ad063121705beacf9c4b70709a38016b",
           "reviewedMembers": {
             "aeb49474-5250-4b65-8b0a-56c47127ee0f": "75f2c295"
           },
@@ -8892,17 +8892,25 @@
           }
         ],
         "baselineAuthority": {
-          "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "pinCommit": "8af3b118ad063121705beacf9c4b70709a38016b",
           "reviewedMembers": {
-            "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4": "40f72c4c"
+            "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4": "79ce4680"
           },
           "memberStableId": "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4",
+          "reauthored": {
+            "on": "2026-09-29",
+            "from": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+            "changes": [
+              "conditions.applications.excludeApplications: the member also excludes Microsoft Rights Management Services (00000012-0000-0000-c000-000000000000). The author excluded it at 8461e0f2 too; the pin stripped it as an author-specific app until data/first-party-apps.json listed it as Microsoft first-party (re-pin to 8af3b118, 2026-09-29)."
+            ]
+          },
           "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - AllUsers",
           "sourceState": "enabledForReportingButNotEnforced",
           "canonicalSemantics": {
             "users": "All users with tenant-resolved canonical exclusions",
-            "resources": "All resources except Microsoft Intune Enrollment",
+            "resources": "All resources except Microsoft Intune Enrollment and Microsoft Rights Management Services",
             "excludedApplicationIds": [
+              "00000012-0000-0000-c000-000000000000",
               "d4ebce55-015a-49b5-a083-c84d1797ae8c"
             ],
             "clientAppTypes": [
@@ -8913,7 +8921,7 @@
             "riskConditions": "none",
             "authenticationFlows": "none"
           },
-          "currentMicrosoftDifference": "Microsoft current generic baseline guidance recommends All users + All resources with no app exclusions and the built-in Multifactor authentication strength. IAMAI preserves the retained pin instead: Intune Enrollment remains excluded and the grant remains built-in MFA because a separate pinned step governs enrollment reauthentication.",
+          "currentMicrosoftDifference": "Microsoft current generic baseline guidance recommends All users + All resources with no app exclusions and the built-in Multifactor authentication strength. IAMAI preserves the retained pin instead: Intune Enrollment and Microsoft Rights Management Services remain excluded and the grant remains built-in MFA because a separate pinned step governs enrollment reauthentication.",
           "rule": "Do not silently modernize the retained pin."
         }
       },
@@ -8928,7 +8936,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the IAMAI-resolved assignments exactly as the settings below them read; **All users** already covers guests. Exclude the resolved exclusions and nobody else. Target resources: **All resources**, excluding **Microsoft Intune Enrollment**. Leave the other conditions unconfigured; client apps remains All.\n4. Grant: **Require multifactor authentication**. Do not substitute an authentication strength.\n5. Leave session controls unconfigured.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.\n7. Re-open the created policy, compare it to the IAMAI target, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Apply the IAMAI-resolved assignments exactly as the settings below them read; **All users** already covers guests. Exclude the resolved exclusions and nobody else. Target resources: **All resources**, excluding **Microsoft Intune Enrollment** and **Microsoft Rights Management Services**. Leave the other conditions unconfigured; client apps remains All.\n4. Grant: **Require multifactor authentication**. Do not substitute an authentication strength.\n5. Leave session controls unconfigured.\n6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it. Do not choose **On** here: a policy created On applies to everyone it covers from the moment you save, before anyone has seen who it would have stopped — the failure this plan exists to prevent. The script for this step can only create in Report-only.\n7. Re-open the created policy, compare it to the IAMAI target, then rescan.\n"
         },
         "entra.correct-open": {
           "meta": {
@@ -8952,7 +8960,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.\n4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment. A separate step sets the requirement for Intune enrollment.\n5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.\n"
+          "text": "3. Users → Include: the population the resolved settings below name; **All users** already covers guests. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in Configure Emergency Exclusions.\n4. Target resources → Include: All resources. Exclude: Microsoft Intune Enrollment and Microsoft Rights Management Services. A separate step sets the requirement for Intune enrollment.\n5. Conditions: leave user risk, sign-in risk, device platforms, locations and authentication flows unconfigured. Client apps remains All.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -9267,7 +9275,7 @@
             "format": "json-template",
             "kind": "template"
           },
-          "text": "{\n  \"tiles\": [],\n  \"baselineNote\": \"The baseline excludes Microsoft Intune Enrollment and uses the built-in Require multifactor authentication grant.\"\n}\n"
+          "text": "{\n  \"tiles\": [],\n  \"baselineNote\": \"The baseline excludes Microsoft Intune Enrollment and Microsoft Rights Management Services and uses the built-in Require multifactor authentication grant.\"\n}\n"
         },
         "troubleshooting.model": {
           "meta": {
@@ -23143,7 +23151,7 @@
     "s-check-dormant-accounts": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23155,7 +23163,7 @@
     "s-check-separate-admin-accounts": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23167,7 +23175,7 @@
     "s-goal-admin-portals-protected": {
       "status": "reviewNeeded",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [
         "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e"
@@ -23181,7 +23189,7 @@
     "s-goal-admin-session": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "04b969aa-3e98-4e0f-8b32-2319b199b56a"
       ],
@@ -23195,7 +23203,7 @@
     "s-goal-admins-phishing-resistant": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce"
       ],
@@ -23209,7 +23217,7 @@
     "s-goal-azure-management-mfa": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23221,7 +23229,7 @@
     "s-goal-block-auth-transfer": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "fa005ec2-4940-49c8-b4e7-b58e66ef481c"
       ],
@@ -23235,7 +23243,7 @@
     "s-goal-block-device-code": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "8b42eda3-6917-4ab4-afb2-e32c37520f9b"
       ],
@@ -23249,7 +23257,7 @@
     "s-goal-block-legacy-auth": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "9eab445f-7f21-479a-85c9-29769512067e"
       ],
@@ -23263,7 +23271,7 @@
     "s-goal-block-unsupported-platforms": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "9e21fa64-8d9a-4e62-81da-9abce8859a0c"
       ],
@@ -23276,8 +23284,8 @@
     },
     "s-goal-device-registration-mfa": {
       "status": "current",
-      "reviewedPin": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "reviewedPin": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "aeb49474-5250-4b65-8b0a-56c47127ee0f"
       ],
@@ -23291,7 +23299,7 @@
     "s-goal-geo-restriction": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5"
       ],
@@ -23305,7 +23313,7 @@
     "s-goal-guests-mfa": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "e0fabad3-bd0f-42e4-a901-51ef7ab8889c",
         "f25f94e0-98b6-41be-b9d6-68cb781004a4"
@@ -23320,7 +23328,7 @@
     "s-goal-inforcer-mfa": {
       "status": "current",
       "reviewedPin": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "1d3a7677-a723-4c56-924c-2e1dc63df105"
       ],
@@ -23334,7 +23342,7 @@
     "s-goal-intune-enrollment-reauth": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime"
       ],
@@ -23349,8 +23357,8 @@
     },
     "s-goal-mfa-all-users": {
       "status": "current",
-      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "reviewedPin": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4"
       ],
@@ -23364,7 +23372,7 @@
     "s-goal-mobile-app-protection": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23376,7 +23384,7 @@
     "s-goal-pim-activation-reauth": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "a6b3b754-9079-48f0-abb2-9e79b2f41095"
       ],
@@ -23390,7 +23398,7 @@
     "s-goal-register-info-protected": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23402,7 +23410,7 @@
     "s-goal-require-managed-device": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "660ab461-0de5-4b00-baea-ec7325280f60"
       ],
@@ -23416,7 +23424,7 @@
     "s-goal-service-accounts-trusted-network": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "99eabebd-877c-4800-aa15-d389b8767760"
       ],
@@ -23430,7 +23438,7 @@
     "s-goal-session-lifetime": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "ea9459a9-91b6-4d2b-b929-03781ac81d54"
       ],
@@ -23444,7 +23452,7 @@
     "s-goal-sign-in-risk": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "53a8df0b-4658-4835-ace2-100b5d287aac"
       ],
@@ -23458,7 +23466,7 @@
     "s-goal-sign-in-risk-medium": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc"
       ],
@@ -23472,7 +23480,7 @@
     "s-goal-token-protection": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "8bb25c6a-ed35-4556-bed4-b3aaa14e192b"
       ],
@@ -23486,7 +23494,7 @@
     "s-goal-unmanaged-browser": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23498,7 +23506,7 @@
     "s-goal-user-risk": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "544cd9ef-5e37-4568-9ad8-b8e151be1814"
       ],
@@ -23514,7 +23522,7 @@
     "s-goal-user-risk-medium": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "7475b373-0544-4ee8-8827-cff35009136d"
       ],
@@ -23528,7 +23536,7 @@
     "s-goal-workload-identity-block": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [
         "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP"
       ],
@@ -23544,7 +23552,7 @@
     "s-ladder-operator-passkey": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23556,7 +23564,7 @@
     "s-prereq-allowed-countries": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23568,7 +23576,7 @@
     "s-prereq-auth-strength": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23580,7 +23588,7 @@
     "s-prereq-break-glass": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23592,7 +23600,7 @@
     "s-prereq-device-plan": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23604,7 +23612,7 @@
     "s-prereq-exclusion-group": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23616,7 +23624,7 @@
     "s-prereq-passkey-settings": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23628,7 +23636,7 @@
     "s-prereq-per-user-mfa": {
       "status": "current",
       "reviewedPin": null,
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23640,7 +23648,7 @@
     "s-prereq-security-defaults": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23652,7 +23660,7 @@
     "s-prereq-service-accounts-group": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23664,7 +23672,7 @@
     "s-prereq-trusted-location": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23676,7 +23684,7 @@
     "s-verify-mfa": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
       "unchanged": [],
       "changed": [],
       "removed": [],
