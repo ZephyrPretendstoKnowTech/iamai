@@ -172,6 +172,21 @@ function guestsMemberA(displayName: string, exclusions: string | null): Record<s
   }
 }
 
+/**
+ * Two tenant policies that each carry this plan's tag for the guest pair's first
+ * half: nothing tells which one is that half, so the step does not guess. A
+ * policy under any other name is no longer a guess at all: the tenant's own
+ * policies are never matched to a half by what they do (owner, 2026-09-28), and
+ * the half with no policy of its own is created.
+ */
+function taggedTwice(exclusions: string | null): Record<string, unknown>[] {
+  const f = fixture('demo-week2')
+  const key = runFixture(f).steps.find((s) => s.goalId === 'guests-mfa')?.action.pairMembers?.[0]?.key
+  assert.ok(key, 'the premise: the pair keys its halves')
+  const tag = `[IAMAI:${f.planId}:s-goal-guests-mfa:${key}]`
+  return ['p-guests-a', 'p-guests-b'].map((id, i) => ({ ...guestsMemberA(`Guest policy ${i + 1}`, exclusions), id, description: tag }))
+}
+
 /** The exclusions group the step's own resolution used. */
 const X_TENANT = (step: Step): string => String(step.action.resolution?.tenant.exclusionsGroupId)
 
@@ -487,23 +502,29 @@ test('portal, JSON, PowerShell and download carry the one resolved body, with th
   let checked = 0
   for (const { step, portal } of rows) {
     if (!jsonOffered(step)) continue
-    const body = policyJson(step) as Record<string, unknown>
+    // One body, or a pair's two (Require MFA for Guests creates both of the baseline's), each checked on its own.
+    const json = policyJson(step) as Record<string, unknown> | Record<string, unknown>[]
+    const bodies = Array.isArray(json) ? json : [json]
     // A bounded patch is not a whole policy. The update that enforces a policy
     // already deployed in report-only submits the one field it controls and
     // nothing else — that is Foundation A's patch semantics and the reason the
     // tenant's own settings survive it — so it carries no user scope to check.
     // Where a body does scope users, the exclusions group is in it exactly once;
     // where it does not, no channel may name a group the body never mentions.
-    const scoped = ((body.conditions ?? {}) as Record<string, unknown>).users !== undefined
-    const groups = excludeGroupsOf(body)
-    assert.equal(groups.filter((g) => g === exclusionsGroupId).length, scoped ? 1 : 0, `${step.id}: excludeGroups names the exclusions group once, and only where the body scopes users`)
-    assert.equal(new Set(groups).size, groups.length, `${step.id}: no duplicate group id`)
-    if (portal) assert.equal(portal.join('\n').split(groupName).length - 1, scoped ? 1 : 0, `${step.id}: the portal lines name ${groupName} once, and only where the body scopes users`)
+    let scopedBodies = 0
+    for (const body of bodies) {
+      const scoped = ((body.conditions ?? {}) as Record<string, unknown>).users !== undefined
+      if (scoped) scopedBodies += 1
+      const groups = excludeGroupsOf(body)
+      assert.equal(groups.filter((g) => g === exclusionsGroupId).length, scoped ? 1 : 0, `${step.id}: excludeGroups names the exclusions group once, and only where the body scopes users`)
+      assert.equal(new Set(groups).size, groups.length, `${step.id}: no duplicate group id`)
+    }
+    if (portal) assert.equal(portal.join('\n').split(groupName).length - 1, scopedBodies, `${step.id}: the portal lines name ${groupName} once per body, and only where the body scopes users`)
     const ps = powershellFor(stepOperations(step))
-    const heredoc = ps.slice(ps.indexOf("@'\n") + 3, ps.indexOf("\n'@"))
-    assert.deepEqual(JSON.parse(heredoc), body, `${step.id}: the PowerShell body is the JSON body`)
-    assert.equal(ps.split(exclusionsGroupId).length - 1, scoped ? 1 : 0, `${step.id}: the PowerShell names the exclusions group once, and only where the body scopes users`)
-    assert.equal(policyJsonText(step), JSON.stringify(body, null, 2), `${step.id}: the download is the JSON tab's body`)
+    const heredocs = [...ps.matchAll(/@'\n([\s\S]*?)\n'@/g)].map((m) => JSON.parse(m[1]) as unknown)
+    assert.deepEqual(heredocs, bodies, `${step.id}: the PowerShell bodies are the JSON bodies`)
+    assert.equal(ps.split(exclusionsGroupId).length - 1, scopedBodies, `${step.id}: the PowerShell names the exclusions group once per body, and only where the body scopes users`)
+    assert.equal(policyJsonText(step), JSON.stringify(json, null, 2), `${step.id}: the download is the JSON tab's body`)
     checked += 1
   }
   // Three on demo-week2 since Phase 2: its team is remote (2d) and its User Action creates wait on readiness (2e).
@@ -754,7 +775,7 @@ test('a partly-built pair is one update and one create, each on its own policy, 
 test('an unmatched pair is withheld rather than guessed, and it and a contradictory baseline carry a next action and no rollout', () => {
   const f = fixture('demo-week2')
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
-  const pair = withTenantPolicies([guestsMemberA('Some other name entirely', exclusions)])
+  const pair = withTenantPolicies(taggedTwice(exclusions))
   const cases: { label: string; step: Step; ctx: StepVarContext; says: RegExp }[] = [
     { label: 'unmatched pair', step: pair.of('guests-mfa').step, ctx: pair.ctx, says: /cannot match it to the two baseline policies/ },
   ]
@@ -783,7 +804,7 @@ test('an unmatched pair is withheld rather than guessed, and it and a contradict
   {
     const f = fixture('demo-week2')
     const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
-    const { of } = withTenantPolicies([guestsMemberA('Some other name entirely', exclusions)])
+    const { of } = withTenantPolicies(taggedTwice(exclusions))
     const { step, portal } = of('guests-mfa')
     assert.equal(step.action.unmatchedPair, true, 'the plan says it cannot match the pair')
     assert.equal(step.action.json, null, 'nothing executable')

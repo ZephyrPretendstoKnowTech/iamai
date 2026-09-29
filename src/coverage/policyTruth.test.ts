@@ -434,19 +434,20 @@ function withStrongGuestPolicy(f: Fixture): Fixture {
   return g
 }
 
-test('audit, guests: the guest policy is named on the coverage, the step and the history; with no guests, a policy excluding guests does not put the step In place, and a guest policy does', () => {
+test('audit, guests: the guest policy is named on the coverage and kept beside the baseline’s two, never credited as them; with no guests, a policy excluding guests does not put the goal In place, and a guest policy does', () => {
   const run = runFixture(withStrongGuestPolicy(fixture('demo-week2')))
   const r = resultOf(run, 'guests-mfa')
   assert.equal(r.verdict, 'inPlace')
   const own = r.candidates.find((c) => c.policyId === r.satisfaction?.sufficientId)
   assert.ok(own?.ownScope, 'the named policy is scoped to guests')
   const step = goalStep(run, 'guests-mfa')
-  assert.equal(step.state.lifecycle, 'enforced')
-  // The guest policy in place finishes it: no step asks for a workflow record (owner, 2026-09-25).
-  assert.equal(step.status, 'done', 'the guest policy in place does not finish the step')
-  assert.equal(step.manualReview, undefined)
-  assert.equal(step.satisfiedBy?.sufficient, own.policyName)
-  assert.ok(step.deliveredBy.some(name => name.includes(own.policyName)))
+  // The tenant's own guest policy delivers the goal, and is still never credited as the
+  // baseline's two (owner, 2026-09-29): the step creates both in Report-only, and the
+  // tenant's policy is named as existing coverage beside them, never an operation's target.
+  assert.deepEqual((step.action.resolution?.policies ?? []).map((o) => [o.mode, o.policyId ?? null]), [['create', null], ['create', null]])
+  assert.notEqual(step.status, 'done', 'the tenant’s guest policy finished the baseline’s two')
+  assert.equal(step.manualReview, undefined, 'no step asks for a workflow record (owner, 2026-09-25)')
+  assert.ok(step.deliveredBy.some((name) => name.includes(own.policyName)), 'named as existing coverage')
   for (const other of r.candidates.filter((c) => c.policyId !== own.policyId)) {
     assert.equal(step.history.some((h) => (h.note ?? '').includes(other.policyName)), false, `history names ${other.policyName}`)
   }
@@ -486,11 +487,11 @@ test('audit, guests: the guest policy is named on the coverage, the step and the
   assert.equal(g1.verdict, 'inPlace')
   assert.deepEqual(g1.satisfaction?.policyIds, [guestId])
   const s1 = goalStep(withGuestPolicy, 'guests-mfa')
-  assert.equal(s1.state.lifecycle, 'enforced')
-  // With no guest to test with, the policy On completes the step (owner, 2026-09-24, 5.3).
-  assert.equal(s1.status, 'done', 'a guest policy On with no guest account completes the step')
+  // With no guest to test with the goal is in place, and the baseline's two are still
+  // the ones the step builds (owner, 2026-09-28; it completed the step, 2026-09-24).
+  assert.deepEqual((s1.action.resolution?.policies ?? []).map((o) => o.mode), ['create', 'create'])
+  assert.notEqual(s1.status, 'done')
   assert.equal(s1.manualReview, undefined)
-  assert.equal(s1.satisfiedBy?.sufficient, rowsOf(base).find((p) => p.id === guestId)?.displayName)
 })
 
 test('demo week two: its token-protection policy switched On without the Cloud PC filter delivers the goal and is still not the plan\'s policy', () => {

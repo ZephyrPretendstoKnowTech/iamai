@@ -120,7 +120,8 @@ test('a user-action policy being corrected stays off Create the Policies in Repo
 
 test('review fixes: a pair member’s create keeps its own name; named waits never run into the next; mail accounts are named once', () => {
   {
-    // Demo-week2 credits Mixed-Guests and writes B2B-Guest; once B2B-Guest exists in Report-only, its correction's create names B2B-Guest.
+    // Demo-week2 creates both of the baseline's guest policies (owner, 2026-09-28); once B2B-Guest exists in Report-only,
+    // each half's create names its own half, never the step's name (Mixed-Guests) for B2B-Guest.
     const f = structuredClone(fixture('demo-week2'))
     const plan = runFixture(f).steps.find((s) => s.id === 's-goal-guests-mfa')!
     const op = plan.action.resolution!.policies.find((o) => o.sourceName === 'IAC - GLOBAL - GRANT - MFA - B2B-Guest')
@@ -130,7 +131,7 @@ test('review fixes: a pair member’s create keeps its own name; named waits nev
     const step = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
     const create = stepBodyOf(step, ctxOf(f, r)).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
     const names = (create?.steps ?? []).filter((l) => l.startsWith('Name:'))
-    assert.ok(names.length > 0 && names.every((l) => l.includes('B2B-Guest')), names.join(' | '))
+    assert.deepEqual(names, ['Name: **IAC - GLOBAL - GRANT - MFA - Mixed-Guests**.', 'Name: **IAC - GLOBAL - GRANT - MFA - B2B-Guest**.'], names.join(' | '))
   }
   {
     const f = fixture('demo-week2')

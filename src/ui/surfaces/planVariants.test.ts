@@ -410,7 +410,6 @@ const INVENTORY: string[] = [
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
   'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // hostile/s-check-separate-admin-accounts
   'check · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // demo/s-ladder-operator-passkey
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // demo/s-goal-guests-mfa
   'policy · create · not-deployed · needs-decision · open · do:decide · track · no-implementation · no-found · fix · one-policy · who-known', // demo/s-goal-geo-restriction
   'policy · create · not-deployed · needs-decision · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo+unanswered/s-goal-geo-restriction
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · members · who-known', // demo+no-ca/s-goal-guests-mfa
@@ -433,7 +432,8 @@ const INVENTORY: string[] = [
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-block-auth-transfer
   'policy · create · enforced · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-block-legacy-auth
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-admin-session
-  'policy · adjust · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-guests-mfa
+  'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · members · who-known', // demo-week2+settled/s-goal-guests-mfa (both of Jon's guest policies created, owner 2026-09-29)
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · members · who-known', // demo/s-goal-guests-mfa (both of Jon's guest policies created, owner 2026-09-29)
   'policy · create · not-deployed · healthy · open · do:deploy · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-geo-restriction
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-require-managed-device
   'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-token-protection

@@ -31,9 +31,18 @@ function bodyOf(f: Fixture, mapping: MappingState, id: string) {
 }
 
 test('the guest policy\'s Completion Criteria name the guest type it leaves out, never "guests except … and guests"', () => {
-  const f = fixture('demo-week2')
-  assert.ok(f.decisions, 'the premise: the Follow-up scan carries the partner answer')
-  const done = bodyOf(f, applied(f, f.decisions), 's-goal-guests-mfa').contract.doneWhen.join(' ')
+  const f0 = fixture('demo-week2')
+  assert.ok(f0.decisions, 'the premise: the Follow-up scan carries the partner answer')
+  const mapping = applied(f0, f0.decisions)
+  // The step creates both of the baseline's guest policies (owner, 2026-09-28); with
+  // Mixed-Guests already built by its name, the one it writes is B2B-Guest, the policy
+  // the partner answer takes service providers out of.
+  const plan = runFixture({ ...f0, mapping }, { mapping }).steps.find((s) => s.id === 's-goal-guests-mfa')!
+  const mixed = plan.action.resolution!.policies.find((o) => o.sourceName === 'IAC - GLOBAL - GRANT - MFA - Mixed-Guests')
+  assert.ok(mixed?.mode === 'create', 'the premise: the step creates Mixed-Guests')
+  const f = structuredClone(f0)
+  ;(f.snapshot.config.caPolicies.rows as unknown[]).push({ ...structuredClone(mixed.body), id: 'built-mixed', description: '', state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
+  const done = bodyOf(f, mapping, 's-goal-guests-mfa').contract.doneWhen.join(' ')
   assert.doesNotMatch(done, /except [^.]*\band guests\b/, done)
   assert.match(done, /Service provider users/, `the excluded type is not named: ${done}`)
 })
