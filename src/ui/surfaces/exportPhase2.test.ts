@@ -466,6 +466,22 @@ test('a masked calendar gives one account one placeholder, and one placeholder o
   }
 })
 
+// N-047. The card promised "Every scheduled step", but until Emergency Access and
+// Direction are settled every policy step is held and the calendar books none of
+// them (owner decision 2, 2026-09-22). The card says what the file holds.
+test('the calendar card says it holds the work you can start now, and policy changes join once Emergency Access and the answers are done', () => {
+  const card = (pages.export as unknown as { cards: { calendar: [string, string, string] } }).cards.calendar[1]
+  assert.doesNotMatch(card, /Every scheduled step/)
+  assert.match(card, /The work you can start now/)
+  assert.match(card, /Policy changes join the calendar once Emergency Access and your answers are done/)
+  const policyEvents = (f: Fixture): number => {
+    const p = exportPage(f)
+    return (buildIcs(p.r.steps, 'Tenant', 'plan-n047', p.view, p.cleanup).match(/UID:plan-n047-s-goal-/g) ?? []).length
+  }
+  assert.equal(policyEvents(fixture('demo')), 0, 'the fresh demo books a policy step before its foundation is settled')
+  assert.ok(policyEvents(withFoundationSettled(fixture('demo'))) > 0, 'with the foundation settled, policy steps join the calendar')
+})
+
 test('the calendar and prompt cards say the file masks sign-in addresses and IDs and keeps names', () => {
   const cards = (pages.export as unknown as { cards: Record<'calendar' | 'prompts', [string, string, string]> }).cards
   for (const card of [cards.calendar[1], cards.prompts[1]]) assert.match(card, /sign-in addresses and object IDs are masked; names are not\./, card)
