@@ -556,6 +556,10 @@ test('Step 4: on the demo a policy waiting only on a Direction answer is undated
   // Where every held step waits unplaced there is none to state (forecast.ts
   // settleForecast): approved, week two's held steps are all unplaced now that
   // Intune enrollment's sign-in loop, which had a place, is cleared by Require
-  // MFA for everyone on All resources (7.3).
-  assert.equal(approved.r.schedule.estimate, null, 'approved, every held step waits unplaced, so the plan states no drawn estimate')
+  // MFA for everyone on All resources (7.3). Since 2026-09-29 Require
+  // Phishing-Resistant MFA for Basic Sign-ins is held on readiness with its
+  // report-only creation placed, so the drawn estimate stands.
+  const placedHeld = approved.r.steps.filter((s) => isHeld(s) && (approved.r.schedule.placement?.placed[s.id] !== undefined || approved.r.schedule.waveOf[s.id] !== undefined)).map((s) => s.id)
+  assert.ok(placedHeld.includes('s-goal-directory-baseline-scopes-mfa'), `a held step with a place: ${placedHeld.join(', ')}`)
+  assert.notEqual(approved.r.schedule.estimate, null, 'a held step has a place, so the plan states its drawn estimate')
 })

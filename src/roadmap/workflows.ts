@@ -17,12 +17,13 @@ import { SERVICE_KEYS, answeredReasonOf } from './directionAnswers.ts'
 /** Incomplete pinned definitions retained in source, hidden for the V1 journey. */
 export const HIDDEN_AGENT_POLICY = /IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i
 /**
- * Jon's AVD allow-list block and WindowsAzureAD-BaselineScopes each depend on a
- * group his baseline never identifies (the allowed desktop users; the excluded
- * group): hidden from every surface for v1.0 (owner, 2026-09-24, decision 2;
- * docs/plans/roadmap-flow/v1.1-list.md).
+ * Jon's AVD allow-list block depends on a group his baseline never identifies
+ * (the allowed desktop users): hidden from every surface for v1.0 (owner,
+ * 2026-09-24, decision 2; docs/plans/roadmap-flow/v1.1-list.md).
+ * WindowsAzureAD-BaselineScopes is a plan step since the owner approved it
+ * (2026-09-29): its excluded group is the break-glass group, the exclusions group.
  */
-export const HIDDEN_V1_POLICY = /AVD.*AllowedAVDUsers|WindowsAzureAD-BaselineScopes/i
+export const HIDDEN_V1_POLICY = /AVD.*AllowedAVDUsers/i
 /** A pinned policy no surface draws in v1.0. */
 export const hiddenPolicy = (name: string): boolean => HIDDEN_AGENT_POLICY.test(name) || HIDDEN_V1_POLICY.test(name)
 const W = workflowWords

@@ -19,7 +19,7 @@ import { strengthNameIn } from './operations.ts'
 const W = engine.readiness
 const CAPS = (app as { inventory: { caps: Record<string, string> } }).inventory.caps
 
-const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected'])
+const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'directory-baseline-scopes-mfa', 'azure-management-mfa', 'admin-portals-protected'])
 // Risk policies act on the sign-ins Identity Protection flags, so their
 // evidence is usage, like a block's (prompt 47 item 6).
 const RISK_GOALS = new Set(['sign-in-risk', 'user-risk', 'sign-in-risk-medium', 'user-risk-medium'])

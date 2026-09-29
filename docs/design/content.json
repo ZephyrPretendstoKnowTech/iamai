@@ -6883,6 +6883,63 @@
       "aiFocus": "Explain that registering or joining a device asks for a method the authentication strength accepts that is not on that device, and what answers instead: a phone passkey for a new computer, a Temporary Access Pass for a new phone."
     },
     {
+      "id": "directory-baseline-scopes-mfa",
+      "brief": {
+        "matters": "Apps that ask only to read someone's basic profile, such as Visual Studio Code, the Azure CLI or a simple web app, otherwise skip the checks other apps meet.",
+        "notice": "Signing in to those apps asks for a passkey, Windows Hello or a Temporary Access Pass. Outlook, Teams and SharePoint don't change."
+      },
+      "kind": "policy",
+      "$comment": "Owner, 2026-09-29: Jon's IAC - GLOBAL - GRANT - MFA - WindowsAzureAD-BaselineScopes, hidden for v1.0, is a plan step after Require MFA to Register a Device.",
+      "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+      "changeLine": null,
+      "why": "Microsoft treats a sign-in whose app asks only for basic profile access (openid, profile, email, User.Read and similar) as access to Windows Azure Active Directory. This policy targets that resource, so those sign-ins need the same strong method as the rest; an app that asks for anything more is not affected by it.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-enforcement-resource-exclusions",
+        "checkedOn": "2026-09-29"
+      },
+      "who": {
+        "lead": "{active} active people",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}"
+      ],
+      "ifWrong": "{policyIfWrong}",
+      "comms": null,
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "Once this is on, anyone without a method the authentication strength accepts cannot sign in to an app that asks only for basic profile access until IT issues them a Temporary Access Pass.",
+            "applies": "always"
+          },
+          {
+            "text": "Windows Azure Active Directory cannot be picked in the portal's resource list, so create this policy from the PowerShell or JSON tab, which names it by its application id.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "A person asked for a passkey or Windows Hello when opening a developer tool or a simple web app: that is this policy. Issue a Temporary Access Pass if they have no such method yet."
+        ],
+        "manager": "Apps that only read someone's basic profile now need the same strong sign-in as everything else.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso Pty Ltd",
+        "active": 3,
+        "policyName": "Core - Require - Strong authentication for basic sign-ins",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain which sign-ins the policy reaches: only those whose app asks for basic profile access alone, which Microsoft maps to Windows Azure Active Directory. Do not say it changes Outlook, Teams or SharePoint, and do not tell the person to pick Windows Azure Active Directory in the portal's resource list."
+    },
+    {
       "id": "token-protection",
       "brief": {
         "matters": "Attackers increasingly steal the signed-in session itself, which gets past MFA.",

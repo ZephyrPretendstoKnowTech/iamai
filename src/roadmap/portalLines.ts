@@ -187,6 +187,11 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   return parts.join(' ')
 }
 
+/** Windows Azure Active Directory (Azure AD Graph): the resource baseline-scope sign-ins are evaluated against. */
+export const WINDOWS_AZURE_AD = '00000002-0000-0000-c000-000000000000'
+/** What the portal procedure says where the policy targets Windows Azure Active Directory. */
+export const DIRECTORY_NOT_SELECTABLE = 'Target resources → Resources → Windows Azure Active Directory cannot be picked from Select resources, so create this policy with the PowerShell or JSON tab, which targets it by its application id. Microsoft’s portal route tags the app with a custom security attribute and filters on it, which makes a different policy from this one.'
+
 /** The `Target resources → …` line. */
 function resourcesLine(f: PolicyFacts, ctx: PortalContext): string | null {
   const a = f.apps
@@ -200,6 +205,12 @@ function resourcesLine(f: PolicyFacts, ctx: PortalContext): string | null {
     const excluded = [...a.excludedIds].filter((id) => !/^none$/i.test(id))
     return excluded.length > 0 ? `Target resources → Resources → All resources; Exclude: ${excluded.map((id) => ctx.nameOf(id)).join(', ')}` : 'Target resources → Resources → All resources'
   }
+  // Windows Azure Active Directory is not individually selectable in the
+  // portal's resource picker (Microsoft Learn, concept-conditional-access-cloud-apps,
+  // "Conditional Access for ALL resources"); the portal reaches it only through a
+  // custom security attribute filter, which writes a different policy. The
+  // PowerShell and JSON tabs name it by id, exactly as the baseline does.
+  if ([...a.ids].some((id) => lc(id) === WINDOWS_AZURE_AD)) return DIRECTORY_NOT_SELECTABLE
   const selected: string[] = []
   if (a.office365) selected.push('Office 365')
   if (a.adminPortals) selected.push('Microsoft Admin Portals')
