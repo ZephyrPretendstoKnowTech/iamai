@@ -8,7 +8,7 @@ import { everyoneGate } from '../../copy/reasons.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { stepById } from '../../content/content.ts'
-import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer, withAllUsersTrustedBlock } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { directoryEvidenceFromGroups, exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
@@ -317,12 +317,13 @@ test('a readiness the scan could read names no blind source', () => {
 // A step named for one group, offering to create a policy that reaches every
 // user in the tenant. "Require MFA for Guests", on a tenant with one guest,
 // offered the baseline's all-users MFA policy under the name "MFA for guests and
-// external users"; `mid` has the same shape one goal along, where a step named
-// for service accounts would create the baseline's global country block applied
-// to all 285 people. A signature reads the control a policy asks for and never
-// who it asks it of, and until now nothing said so.
+// external users"; a package whose block outside the trusted network is assigned
+// to All users has the same shape one goal along, where a step named for service
+// accounts would create that block applied to all 285 people of `mid`. A
+// signature reads the control a policy asks for and never who it asks it of, and
+// until now nothing said so.
 test('a step whose create reaches further than its own name says so before it is created', () => {
-  const f = fixture('mid')
+  const f = withAllUsersTrustedBlock(fixture('mid'))
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const step = r.steps.find((s) => s.id === 's-goal-service-accounts-trusted-network')!
   assert.equal(step.action.widerThan, 'serviceAccounts', 'the premise: this step creates an all-users policy')

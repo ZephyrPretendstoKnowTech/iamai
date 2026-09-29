@@ -93,9 +93,28 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
       case 'flowsInclude':
         if (!(value as string[]).every((t) => f.flows.has(t))) return false
         break
-      case 'locationsPresent':
-        if (f.locations === null || f.locations.include.size === 0) return false
+      case 'locationsExcludeTrusted': {
+        // A trusted-network block: it applies at every location and carves out the
+        // trusted network (the pinned SharePoint and AVD blocks exclude AllTrusted,
+        // the service-accounts block the author's trusted IP location). A Countries
+        // block carves out allowed countries and is the countries goal's, however it
+        // blocks: it read as Restrict SharePoint and OneDrive, Completed (owner,
+        // 2026-09-28). A block that carves out a location beside the trusted network
+        // is still the goal's policy, one that confines it to fewer sign-ins
+        // (narrowerConditions), so the step corrects it and never creates a second.
+        const l = f.locations
+        if (l === null || l.include.size !== 1 || ![...l.include].every((x) => /^all$/i.test(x))) return false
+        if (![...l.exclude].some((x) => l.trusted.has(x.toLowerCase()))) return false
         break
+      }
+      case 'locationsNameCountries': {
+        // The countries goal: the condition includes or excludes a country location.
+        // A block outside the trusted network, or outside a location nothing says is
+        // a country, is never the countries goal's policy to widen to All users.
+        const l = f.locations
+        if (l === null || ![...l.include, ...l.exclude].some((x) => l.countries.has(x.toLowerCase()))) return false
+        break
+      }
       case 'rolesIntersectCoreAdmins':
         if (![...f.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))) return false
         break
@@ -293,6 +312,8 @@ const within = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean => [...
 const locationsNarrow = (f: PolicyFacts): boolean => f.locations !== null && (f.locations.exclude.size > 0 || [...f.locations.include].some((l) => !/^all$/i.test(l)))
 const platformsNarrow = (f: PolicyFacts): boolean => f.platforms !== null && (f.platforms.exclude.size > 0 || [...f.platforms.include].some((p) => !/^all$/i.test(p)))
 const clientAppsNarrow = (f: PolicyFacts): boolean => f.clientApps.size > 0 && !f.clientApps.has('all')
+/** A policy whose location condition carves out the trusted network and nothing else. */
+const carvesOutOnlyTrusted = (f: PolicyFacts): boolean => f.locations !== null && f.locations.exclude.size > 0 && [...f.locations.exclude].every((x) => f.locations?.trusted.has(x.toLowerCase()))
 
 /**
  * True when a tenant policy targets fewer resources than the goal's reference
@@ -342,10 +363,19 @@ export function narrowerApps(f: PolicyFacts, reference: PolicyFacts): boolean {
  * where the reference carries a location condition the goal's own signature
  * reads the tenant's; where it carries none, any location condition narrows.
  * A condition IAMAI cannot read is never read as absent.
+ *
+ * `trustedNetworkGoal`: the goal is a trusted-network block (its signature carves
+ * out the trusted network, locationsExcludeTrusted). Where its reference carves out
+ * the trusted network and nothing else, a policy that also carves out a location
+ * that is not the trusted network (a partner site, a country) applies at fewer
+ * locations: it is the goal's policy with a locations difference to correct or
+ * accept, never delivered. Only these goals read it: other references that exclude
+ * AllTrusted are judged as before.
  */
-export function narrowerConditions(f: PolicyFacts, reference: PolicyFacts): string[] {
+export function narrowerConditions(f: PolicyFacts, reference: PolicyFacts, trustedNetworkGoal = false): string[] {
   const out: string[] = []
   if (locationsNarrow(f) && !locationsNarrow(reference)) out.push('locations')
+  else if (trustedNetworkGoal && f.locations !== null && carvesOutOnlyTrusted(reference) && [...f.locations.exclude].some((x) => !f.locations?.trusted.has(x.toLowerCase()))) out.push('locations')
   if (platformsNarrow(f)) {
     const include = lowerSet(f.platforms?.include ?? [])
     const broadEnough =

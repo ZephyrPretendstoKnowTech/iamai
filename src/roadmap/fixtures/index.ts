@@ -1103,6 +1103,31 @@ export function withExternalMfa(f: Fixture): Fixture {
   return g
 }
 
+/**
+ * The fixture with one more synthetic-package policy: an all-users block outside
+ * the author's trusted network that also carves out a source group nothing
+ * settles. It is the service-accounts goal's policy by its shape, so that step
+ * creates a policy that reaches everyone in the tenant, and it waits on a
+ * decision about the group. Only a fixture on the synthetic package reads it (mid).
+ */
+export function withAllUsersTrustedBlock(f: Fixture): Fixture {
+  const g = structuredClone(f)
+  const policies = g.baseline.policies as unknown as Record<string, unknown>[]
+  const bg = Object.entries((policies[0]?.placeholders ?? {}) as Record<string, string>).find(([, t]) => t === 'exclusionsGroup')?.[0]
+  if (bg === undefined) throw new Error(`${f.name}: withAllUsersTrustedBlock needs the synthetic package`)
+  const office = '0000beef-0000-4000-8000-00000000be0f'
+  const unsettled = '0000beef-0000-4000-8000-00000000be0e'
+  policies.push({
+    id: '0000beef-0000-4000-8000-00000000be01',
+    displayName: 'IAC - GLOBAL - BLOCK - OutsideTrustedNetwork',
+    state: 'enabled',
+    placeholders: { [bg]: 'exclusionsGroup', [office]: 'trustedLocation' },
+    conditions: { users: { includeUsers: ['All'], excludeGroups: [bg, unsettled] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: [office] } },
+    grantControls: { operator: 'OR', builtInControls: ['block'] },
+  })
+  return g
+}
+
 /** Every fixture on its curated baseline, for a sweep that needs a policy to be writable at all. */
 export function allCuratedFixtures(): Fixture[] {
   return allFixtures().map((f) => ({ ...f, baseline: asCuratedBaseline(f.baseline) }))
@@ -1129,7 +1154,9 @@ export function syntheticBaseline(seed: string): BaselinePackage {
     pol(13, 'IAC - ADMINS - GRANT - PhishingResistant', { conditions: { users: { includeRoles: [GA], excludeGroups: [bg] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'AND', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } } }),
     pol(14, 'IAC - GUESTS - GRANT - MFA', { conditions: { users: { includeUsers: ['GuestsOrExternalUsers'], excludeGroups: [bg] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] } }),
     pol(15, 'IAC - DEVICES - GRANT - CompliantOffice', { conditions: { users: { includeUsers: ['All'], excludeGroups: [bg] }, applications: { includeApplications: ['Office365'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['compliantDevice', 'domainJoinedDevice'] } }),
-    pol(16, 'IAC - GLOBAL - BLOCK - Countries', { conditions: { users: { includeUsers: ['All'], excludeGroups: [bg] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: [g(20)] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }),
+    // Its location is the author's allowed countries, settled as the pin settles
+    // Jon's (placeholders): what makes it the countries goal's policy.
+    pol(16, 'IAC - GLOBAL - BLOCK - Countries', { placeholders: { ...placeholders, [g(20)]: 'allowedCountries' }, conditions: { users: { includeUsers: ['All'], excludeGroups: [bg] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: [g(20)] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }),
     pol(17, 'IAC - SESSIONS - Browser persistence', { grantControls: undefined, sessionControls: { persistentBrowser: { isEnabled: true, mode: 'never' }, signInFrequency: { isEnabled: true, value: 12, type: 'hours' } } }),
   ]
   return {

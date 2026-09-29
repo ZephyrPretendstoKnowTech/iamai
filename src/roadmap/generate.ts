@@ -2299,10 +2299,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // dependency is the same fact the body already reports and never a second
       // reading of which goals happen to use a strength.
       if ((action.missing ?? []).some((m) => m.stepId === strengthStepId) && steps.some((x) => x.id === strengthStepId)) blockByStep(strengthStepId, 'create-object')      // The service-accounts block names the group and the trusted network (E9): it waits on both.
-      if (goal.id === SERVICE_ACCOUNTS_TRUSTED_GOAL) {
-        if (steps.some((s) => s.id === saStepId)) blockByStep(saStepId, 'create-object')
-        if (steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
-      }
+      if (goal.id === SERVICE_ACCOUNTS_TRUSTED_GOAL && steps.some((s) => s.id === saStepId)) blockByStep(saStepId, 'create-object')
+      // Every block outside the trusted network waits on the trusted network: with
+      // no trusted location, carving out AllTrusted carves out nothing, and turning
+      // the SharePoint or AVD block on blocks everyone (owner, 2026-09-28).
+      if (TRUSTED_NETWORK_ONLY_GOALS.has(goal.id) && steps.some((s) => s.id === locStepId && s.status !== 'done' && s.doesntApply == null) && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
     }
 
     // The baseline's own contradiction, read from this run's goal map

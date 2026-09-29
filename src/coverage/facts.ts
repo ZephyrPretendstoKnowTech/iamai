@@ -3,7 +3,7 @@
 // tenant returns, so one parser serves both.
 import { strengthTier } from './strength.ts'
 import type { StrengthLookup } from './strength.ts'
-import type { PolicyFacts } from './types.ts'
+import type { LocationKinds, PolicyFacts } from './types.ts'
 
 const set = (v: unknown): Set<string> =>
   new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
@@ -44,7 +44,37 @@ function guestTenantsOf(users: Record<string, unknown>): 'all' | 'named' | 'unkn
   return 'unknown'
 }
 
-export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoftManaged = false): PolicyFacts {
+/** Graph's own word for every trusted network, and the goal template's token for this tenant's. */
+const TRUSTED_LOCATION_WORDS = new Set(['alltrusted', '{trustedlocations}'])
+/** The goal template's token for this tenant's allowed-countries location. */
+const COUNTRY_LOCATION_WORDS = new Set(['{allowedcountrieslocation}'])
+const NO_LOCATION_KINDS: LocationKinds = { trusted: new Set(), countries: new Set() }
+
+/**
+ * Which of a policy's location ids, lower case, are the trusted network and which
+ * are country locations. Trusted: Graph's AllTrusted, the template's
+ * `{trustedLocations}`, a tenant location the caller says is trusted, or a
+ * baseline author's location the policy's own `placeholders` settle as
+ * `trustedLocation`. Country: the template's `{allowedCountriesLocation}`, a
+ * tenant country location, or an author's location settled as `allowedCountries`.
+ * Nothing else is either: an id nothing explains is neither.
+ */
+function locationKindsAmong(ids: Iterable<string>, placeholders: unknown, tenant: LocationKinds): { trusted: Set<string>; countries: Set<string> } {
+  const settled = (token: string): Set<string> => new Set(Object.entries((placeholders ?? {}) as Record<string, unknown>).filter(([, t]) => t === token).map(([id]) => id.toLowerCase()))
+  const pinnedTrusted = settled('trustedLocation')
+  const pinnedCountries = settled('allowedCountries')
+  const all = [...ids].map((l) => l.toLowerCase())
+  return {
+    trusted: new Set(all.filter((l) => TRUSTED_LOCATION_WORDS.has(l) || tenant.trusted.has(l) || pinnedTrusted.has(l))),
+    countries: new Set(all.filter((l) => COUNTRY_LOCATION_WORDS.has(l) || tenant.countries.has(l) || pinnedCountries.has(l))),
+  }
+}
+
+/**
+ * `locationKinds`: what the tenant's named locations are (lower-case ids), for a
+ * tenant policy; a baseline policy's come from its own placeholders.
+ */
+export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoftManaged = false, locationKinds: LocationKinds = NO_LOCATION_KINDS): PolicyFacts {
   const p = raw as Record<string, unknown>
   const c = (p.conditions ?? {}) as Record<string, unknown>
   const users = (c.users ?? {}) as Record<string, unknown>
@@ -141,7 +171,11 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
       ? { include: set(platforms.includePlatforms), exclude: set(platforms.excludePlatforms) }
       : null,
     locations: locations
-      ? { include: set(locations.includeLocations), exclude: set(locations.excludeLocations) }
+      ? {
+          include: set(locations.includeLocations),
+          exclude: set(locations.excludeLocations),
+          ...locationKindsAmong([...set(locations.includeLocations), ...set(locations.excludeLocations)], p.placeholders, locationKinds),
+        }
       : null,
     flows: authFlows && typeof authFlows.transferMethods === 'string'
       ? new Set(authFlows.transferMethods.split(',').map((t) => t.trim()).filter(Boolean))

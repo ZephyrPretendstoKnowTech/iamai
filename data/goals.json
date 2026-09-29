@@ -652,7 +652,7 @@
           "tier": "p1",
           "kind": "ca",
           "signature": {
-            "locationsPresent": true,
+            "locationsNameCountries": true,
             "grantBlock": true,
             "appsAll": true,
             "clientAppsAll": true,
@@ -1991,7 +1991,7 @@
           "tier": "p1",
           "kind": "ca",
           "signature": {
-            "locationsPresent": true,
+            "locationsExcludeTrusted": true,
             "grantBlock": true,
             "appsAll": true,
             "clientAppsAll": true,
@@ -2140,7 +2140,7 @@
               "9cdead84-a844-4324-93f2-b2e6bb768d07",
               "0af06dc6-e4b5-4f28-818e-e78e62d137a5"
             ],
-            "locationsPresent": true,
+            "locationsExcludeTrusted": true,
             "grantBlock": true,
             "clientAppsAll": true,
             "noFlows": true,
@@ -2219,7 +2219,7 @@
             "appsIdsInclude": [
               "00000003-0000-0ff1-ce00-000000000000"
             ],
-            "locationsPresent": true,
+            "locationsExcludeTrusted": true,
             "grantBlock": true,
             "clientAppsAll": true,
             "noFlows": true,

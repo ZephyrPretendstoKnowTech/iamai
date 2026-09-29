@@ -385,9 +385,12 @@ test('9 + 13: valid break-glass answers keep the emergency-access step standing 
 })
 
 test('11 + 12: the geo policy’s allowlist style is chosen by data with NoExclusions dropped, and with no matching tenant location it creates the allowed-countries location as its own first task', () => {
+  // The author's country location is settled as the pin settles Jon's (its
+  // placeholders): a location nothing says is a country is no countries policy's.
   const geo = (displayName: string, locations: { includeLocations: string[]; excludeLocations: string[] }) =>
     mkPolicy({
       displayName,
+      placeholders: Object.fromEntries([...locations.includeLocations, ...locations.excludeLocations].filter((l) => l !== 'All').map((l) => [l, 'allowedCountries'])),
       conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations },
       grantControls: { operator: 'OR', builtInControls: ['block'] },
     })
@@ -413,6 +416,7 @@ test('11 + 12: the geo policy’s allowlist style is chosen by data with NoExclu
   {
     const allow = mkPolicy({
       displayName: 'Countries - allow list',
+      placeholders: { 'loc-allowed': 'allowedCountries' },
       conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: ['loc-allowed'] } },
       grantControls: { operator: 'OR', builtInControls: ['block'] },
     })

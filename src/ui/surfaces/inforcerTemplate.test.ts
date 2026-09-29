@@ -6,13 +6,14 @@
 // A missing object that waits on a decision still takes its step off the template.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, withAllUsersTrustedBlock } from '../../roadmap/fixtures/index.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 
-function tasksOf(name: string, stepId: string) {
-  const f = fixture(name as never)
+function tasksOf(name: string, stepId: string, shape: (f: Fixture) => Fixture = (f) => f) {
+  const f = shape(fixture(name as never))
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === stepId)
   assert.ok(step, `the premise: ${name} has ${stepId}`)
@@ -53,7 +54,8 @@ test('only an included application passes: any other missing object no step make
 })
 
 test('a missing object that waits on a decision keeps its step off the template', () => {
-  const { step, tasks } = tasksOf('mid', 's-goal-service-accounts-trusted-network')
+  // mid's package with an all-users block outside the trusted network that carves out a group nothing settles.
+  const { step, tasks } = tasksOf('mid', 's-goal-service-accounts-trusted-network', withAllUsersTrustedBlock)
   assert.ok((step.action.missing ?? []).some((m) => m.decision === true), 'the premise: a missing object waits on a decision')
   assert.deepEqual(tasks?.map((t) => t.id), ['policy-procedure'], 'a step waiting on a decision drew the template procedure')
 })

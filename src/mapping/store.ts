@@ -46,6 +46,9 @@ export function toCoverageMapping(state: MappingState, exclusionsGroupId: string
     exclusionsGroupId,
     // The service-accounts group's accounts, shared-device ones included (derive/sets.ts serviceAccountIdsOf).
     serviceAccountUsers: serviceAccountIdsOf(state),
+    // The office network the plan picked: the trusted network its service-accounts
+    // block carves out, marked trusted in the tenant or not yet (coverage.ts tenantLocationKinds).
+    trustedLocationIds: [...(state.trustedLocationIds ?? [])],
     // The recorded answers the step's policy is built from, so coverage judges a
     // policy against the baseline as they narrowed it (coverage.ts recordedReference).
     ...(state.questionAnswers !== undefined ? { questionAnswers: { ...state.questionAnswers } } : {}),

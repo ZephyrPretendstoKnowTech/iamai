@@ -404,7 +404,6 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // small+unanswered/s-goal-inforcer-mfa
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // getiamai/s-prereq-break-glass
   'check · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // getiamai/s-check-separate-admin-accounts
-  'policy · create · not-deployed · blocked · set-aside · do:restore · no-track · no-implementation · found · fix · one-policy · who-known', // mid/s-goal-service-accounts-trusted-network
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // large+unanswered/s-goal-require-managed-device
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // messy/s-prereq-exclusion-group
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // messy/s-goal-admins-phishing-resistant

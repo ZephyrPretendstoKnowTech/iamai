@@ -22,6 +22,7 @@ import { organisationReport } from './organisation.ts'
 import { gapClauseOf, gapSentenceOf, verdictOf } from './verdict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { capabilityLicence } from '../graph/collect/registry.ts'
+import { trustedIpLocations } from '../roadmap/directionAnswers.ts'
 import type {
   AssumedExclusions,
   CandidateContribution,
@@ -29,6 +30,7 @@ import type {
   Floor,
   Goal,
   GoalResult,
+  LocationKinds,
   NotAssessed,
   PolicyFacts,
   Reason,
@@ -129,6 +131,13 @@ export type CoverageInput = {
     /** The confirmed service accounts: the population of a goal that targets them (E9). */
     serviceAccountUsers?: string[]
     /**
+     * The office network the plan picked (MappingState.trustedLocationIds): the
+     * locations the service-accounts step carves out. They are the trusted network
+     * whether or not the tenant has marked them trusted yet, so the step's own
+     * policy is always its own goal's (tenantLocationKinds).
+     */
+    trustedLocationIds?: string[]
+    /**
      * The person's recorded answers (MappingState.questionAnswers), the same ones
      * the step's policy is built from (roadmap/deviations.ts applyDeviations). A
      * policy is judged for where it applies against the baseline as those answers
@@ -146,11 +155,34 @@ export type CoverageInput = {
   goalMap?: GoalMap
 }
 
+/**
+ * What the tenant's named locations are, read once for its policies' facts. The
+ * trusted network: the IP locations the tenant marks trusted (the reading Define
+ * the Trusted Network uses, directionAnswers.ts trustedIpLocations) and the office
+ * network the plan picked. The country locations: the scan's country named
+ * locations. Where named locations were not read, only what the plan names: no
+ * location becomes a country location on a scan that could not say so.
+ */
+function tenantLocationKinds(snapshot: TenantSnapshot, mapping: CoverageInput['mapping']): LocationKinds {
+  const trusted = new Set([...(trustedIpLocations(snapshot) ?? []).map((l) => l.id), ...(mapping?.trustedLocationIds ?? [])].map((id) => id.toLowerCase()))
+  const locations = snapshot.config.namedLocations
+  const countries = new Set(
+    locations?.status === 'ok'
+      ? (locations.rows ?? [])
+          .map((raw) => raw as { id?: unknown; '@odata.type'?: unknown })
+          .filter((l) => typeof l.id === 'string' && String(l['@odata.type'] ?? '').includes('countryNamedLocation'))
+          .map((l) => (l.id as string).toLowerCase())
+      : [],
+  )
+  return { trusted, countries }
+}
+
 export function computeCoverage(input: CoverageInput): CoverageReport {
   const { snapshot } = input
 
+  const locationKinds = tenantLocationKinds(snapshot, input.mapping)
   const tenantFacts = input.tenantPolicies.map((p) =>
-    policyFacts(p, input.strengths, snapshot.microsoftManagedPolicyIds.includes(String((p as { id?: string }).id ?? ''))),
+    policyFacts(p, input.strengths, snapshot.microsoftManagedPolicyIds.includes(String((p as { id?: string }).id ?? '')), locationKinds),
   )
   const baselineFacts = input.baselinePolicies.map((p) => policyFacts(p, input.strengths))
 
@@ -503,6 +535,8 @@ function evaluateGoal(
   const exclusionHits: { id: string; kind: string; userIds: Set<string> }[] = []
   /** The conditions a candidate narrows the baseline by that a recorded answer chose, by policy id. */
   const narrowedByAnswer = new Map<string, string[]>()
+  /** A trusted-network block's goal: a carve-out beside the trusted network confines its policy (classify.ts narrowerConditions). */
+  const trustedNetworkGoal = 'locationsExcludeTrusted' in impl.signature
 
   for (const c of candidates) {
     const caveats: string[] = []
@@ -519,10 +553,10 @@ function evaluateGoal(
     // recorded answers narrowed it, and the exclusions group the goal's own policy
     // carves out and this one does not. Where it is narrower than the baseline
     // only as far as an answer records, the statement still names that narrowing.
-    const conditions = narrowerConditions(c, recorded)
+    const conditions = narrowerConditions(c, recorded, trustedNetworkGoal)
     if (conditions.length > 0) caveats.push('conditions-narrower')
     else if (recorded !== reference) {
-      const chosen = narrowerConditions(c, reference)
+      const chosen = narrowerConditions(c, reference, trustedNetworkGoal)
       if (chosen.length > 0) narrowedByAnswer.set(c.id, chosen)
     }
     const lacksExclusion = requiresExclusion && exclusionsGroupKey !== undefined &&!(exclusionsGroupKey !== null && [...c.whoNot.groups].some((g) => g.toLowerCase() === exclusionsGroupKey))

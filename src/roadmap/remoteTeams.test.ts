@@ -11,6 +11,7 @@ import { runFixture } from './fixtures/run.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { answerKey } from './answers.ts'
 import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, answeredReasonOf, directionMilestoneAction } from './directionAnswers.ts'
+import { EXCLUSIONS_RECORD_KEY } from '../mapping/safetyChoice.ts'
 
 const BLOCKS = ['s-goal-service-accounts-trusted-network', 's-goal-avd-trusted-network', 's-goal-sharepoint-trusted-network']
 
@@ -74,4 +75,25 @@ test('with an office, each block is a step to do', () => {
     assert.ok(s, `${id} is on the plan`)
     assert.equal(s.doesntApply ?? null, null, `${id}: ${s.doesntApply}`)
   }
+})
+
+// Owner, 2026-09-28: with everyone remote and a Countries block in the tenant,
+// Restrict SharePoint and OneDrive read Completed. The Countries block is the
+// countries goal's alone, so the three blocks read Doesn't apply by the answer
+// and the Countries step is the one it completes.
+test('everyone remote, with a Countries block: the three blocks read Doesn’t apply and the Countries step is complete', () => {
+  const f = withOffice('remote')
+  const country = 'c0c0c0c0-0000-4000-8000-00000000c0c0'
+  const ex = (f.mapping.records[EXCLUSIONS_RECORD_KEY] as { resolvedId?: string } | undefined)?.resolvedId
+  ;(f.snapshot.config.namedLocations!.rows as unknown[]).push({ '@odata.type': '#microsoft.graph.countryNamedLocation', id: country, displayName: 'Allowed countries', countriesAndRegions: ['AU'], countryLookupMethod: 'clientIpAddress', includeUnknownCountriesAndRegions: false })
+  ;(f.snapshot.config.caPolicies!.rows as unknown[]).push({ id: 'p-countries', displayName: 'Block - Countries not allowed', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [ex] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: [country] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } })
+  const r = runFixture(f)
+  const reason = answeredReasonOf('officeNetwork', 'remote')
+  for (const id of BLOCKS) {
+    const s = r.steps.find((x) => x.id === id)
+    assert.ok(s, `${id} stays as a row`)
+    assert.notEqual(s.status, 'done', `${id} read Completed from the Countries block`)
+    assert.equal(s.doesntApply, reason, id)
+  }
+  assert.equal(r.steps.find((x) => x.goalId === 'geo-restriction')?.status, 'done', 'the Countries block does not complete the Countries step')
 })

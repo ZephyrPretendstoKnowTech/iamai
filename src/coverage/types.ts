@@ -39,7 +39,11 @@ export type PolicyFacts = {
   }
   clientApps: Set<string>
   platforms: { include: Set<string>; exclude: Set<string> } | null
-  locations: { include: Set<string>; exclude: Set<string> } | null
+  /**
+   * `trusted` and `countries`: the ids among include and exclude, lower case, that
+   * are the trusted network and that are country locations (facts.ts locationKindsAmong).
+   */
+  locations: { include: Set<string>; exclude: Set<string>; trusted: Set<string>; countries: Set<string> } | null
   flows: Set<string>
   signInRisk: Set<string>
   userRisk: Set<string>
@@ -70,6 +74,13 @@ export type PolicyFacts = {
     appEnforced: boolean
   }
 }
+
+/**
+ * What the tenant's own named locations are, lower-case ids (coverage.ts
+ * tenantLocationKinds): the trusted network, and the country locations. A
+ * baseline policy's are read from its own placeholders instead.
+ */
+export type LocationKinds = { trusted: ReadonlySet<string>; countries: ReadonlySet<string> }
 
 export type GrantFloor =
   | 'mfa'
