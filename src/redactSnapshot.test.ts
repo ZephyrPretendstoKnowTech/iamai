@@ -146,6 +146,20 @@ test('redactText: readable placeholders, longest name first, any case, metachara
     assert.equal(redactText('The situation is critical.', v), 'The situation is critical.')
   }
 
+  // except the organisation's own name, which identifies the tenant however short
+  // (security audit, 2026-09-29): masked as a whole word in its own case
+  {
+    const snap = { users: [{ displayName: 'Al' }], devices: [], appSignInSummary: [], config: { groups: { rows: [{ displayName: 'IT' }] }, organization: { rows: [{ displayName: 'QXZ' }] } } } as unknown as TenantSnapshot
+    const v = tenantVocabulary(snap)
+    assert.equal(redactText("IAMAI cannot prove this policy leaves QXZ's emergency access accounts out.", v), "IAMAI cannot prove this policy leaves [the organisation 1]'s emergency access accounts out.")
+    assert.equal(redactText('qxz QXZA AQXZ QXZ_1', v), 'qxz QXZA AQXZ QXZ_1', 'another case, or the letters inside another word, stay')
+    assert.equal(redactText('IT admins and Al', v), 'IT admins and Al', 'a short group or person name stays exempt')
+    for (const org of ['X', '3M']) {
+      const one = tenantVocabulary({ users: [], devices: [], appSignInSummary: [], config: { organization: { rows: [{ displayName: org }] } } } as unknown as TenantSnapshot)
+      assert.equal(redactText(`Plan for ${org}.`, one), 'Plan for [the organisation 1].', org)
+    }
+  }
+
   // redaction is not applied when it is not asked for
   {
     // The vocabulary is empty for an unredacted export; the identifier regexes

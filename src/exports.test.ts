@@ -75,3 +75,21 @@ test('the calendar export carries titles, dates and the runbook, never a sign-in
   assert.deepEqual(contains(delivered, upns), [])
   assert.ok(!ics.includes(tenantId))
 })
+
+// Security audit, 2026-09-29: names shorter than four letters were never masked,
+// the organisation's own included, so a tenant named with an acronym stayed in
+// the masked bundle wherever step prose names the tenant ("…names an object QXZ
+// does not have yet", nine times on the messy fixture).
+test('the redacted grounding bundle masks the organisation\'s name however short it is', () => {
+  const m = structuredClone(fixture('messy'))
+  const org = (m.snapshot.config.organization?.rows ?? [])[0] as { displayName?: string } | undefined
+  assert.ok(org, 'the fixture names its organisation')
+  org.displayName = 'QXZ'
+  const r = runFixture(m)
+  const mNameOf = (id: string) => m.snapshot.users.find((u) => u.id === id)?.displayName ?? id
+  const view = (s: Parameters<typeof stepExportView>[0]) => stepExportView(s, { snapshot: m.snapshot, mapping: m.mapping, nameOf: mNameOf, signature: 'IT', operatorId: null, now: m.snapshot.asOf })
+  const unmasked = JSON.stringify(groundingBundle({ view, tenant: 'QXZ', snapshot: m.snapshot, coverage: r.coverage, steps: r.steps, schedule: r.schedule, redacted: false, generated: '2026-08-28' }))
+  assert.ok(/\bQXZ\b/.test(unmasked), 'the step prose names the organisation')
+  const bundle = JSON.stringify(groundingBundle({ view, tenant: 'QXZ', snapshot: m.snapshot, coverage: r.coverage, steps: r.steps, schedule: r.schedule, redacted: true, generated: '2026-08-28' }))
+  assert.deepEqual(bundle.match(/.{0,40}\bQXZ\b.{0,20}/g) ?? [], [])
+})

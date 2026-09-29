@@ -24,3 +24,27 @@ test('the masked calendar and prompts file carry no guest address', () => {
     assert.match(out, /upn-1@redacted/)
   }
 })
+
+// Security audit, 2026-09-29: the pattern stopped at '!', '^' and '~', which
+// Entra allows in a sign-in name, and at the other characters an email address
+// (and so a guest's name before #EXT#) may hold. 'john!smith@contoso.com' came
+// out 'john!upn-1@redacted': the start of the address stayed in a masked file.
+test('a sign-in address is masked whole, whatever character Entra or an email address allows before the @', () => {
+  for (const local of ['john!smith', 'jane~doe', 'a^b', "o'brien", 'a#b', 'a$b', 'a%b', 'a&b', 'a*b', 'a+b', 'a-b', 'a/b', 'a=b', 'a?b', 'a_b', 'a`b', 'a{b}', 'a|b', 'a.b', '0123']) {
+    assert.equal(redactIdentifiers(`Owner: ${local}@contoso.com.`), 'Owner: upn-1@redacted.', local)
+  }
+  assert.equal(redactIdentifiers("Owner: a!#$%&'*+-/=?^_`{|}~.9@contoso.com"), 'Owner: upn-1@redacted', 'every character at once')
+  // Markdown and prose that wrap an address keep their wrapping, and the address keeps one placeholder.
+  assert.equal(
+    redactIdentifiers("**jane~doe@contoso.com**, `jane~doe@contoso.com`, 'jane~doe@contoso.com' and {jane~doe@contoso.com}"),
+    "**upn-1@redacted**, `upn-1@redacted`, 'upn-1@redacted' and {upn-1@redacted}",
+  )
+  // The masked calendar and prompts file.
+  const d = runbookRedaction(null)
+  const ics = exportText('iamai-plan.ics', ['BEGIN:VCALENDAR', 'DESCRIPTION:Emergency access: sample.person~bg1@corp.example and john!smith@corp.example', 'END:VCALENDAR'].join('\r\n'), d)
+  const md = exportText('iamai-prompts.md', 'Emergency access: **sample.person~bg1@corp.example**, a^b@corp.example', d)
+  for (const out of [ics, md]) {
+    assert.ok(!/sample|person|john|smith|a\^b|corp\.example/.test(out.replace(/\r\n[ \t]/g, '')), out)
+    assert.match(out, /upn-1@redacted/)
+  }
+})

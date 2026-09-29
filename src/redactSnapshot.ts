@@ -21,7 +21,11 @@
 import type { TenantSnapshot } from './graph/collect/types.ts'
 import { redactIdentifiers } from './redact.ts'
 
-/** What a redacted value is replaced with, by what it was. */
+/**
+ * What a redacted value is replaced with, by what it was: lower case, matched in
+ * any case; a name shorter than MIN_LENGTH is kept in its own case and matched
+ * only in it.
+ */
 export type Vocabulary = Map<string, string>
 
 const CLASS_LABEL = {
@@ -50,6 +54,16 @@ export type NameClass = keyof typeof CLASS_LABEL
  */
 const MIN_LENGTH = 4
 
+/**
+ * Masked however short. The organisation's own name identifies the tenant
+ * whatever its length (an acronym such as "QXZ"), and step prose carries it
+ * wherever {tenant} is bound (security audit, 2026-09-29). A short one is
+ * matched as a whole word in its own case, so "QXZ" never rewrites "qxz" or the
+ * letters inside another word. A short group or person name ("IT", "MFA") stays
+ * exempt: it names nothing on its own and is a word the prose uses.
+ */
+const ANY_LENGTH: ReadonlySet<NameClass> = new Set(['organisation', 'domain'])
+
 const rows = (snapshot: TenantSnapshot, key: string): Record<string, unknown>[] => {
   const section = (snapshot.config as Record<string, { rows?: unknown[] } | undefined>)[key]
   return ((section?.rows ?? []) as Record<string, unknown>[]).filter((r) => r && typeof r === 'object')
@@ -58,8 +72,10 @@ const rows = (snapshot: TenantSnapshot, key: string): Record<string, unknown>[] 
 const add = (v: Vocabulary, counts: Map<NameClass, number>, cls: NameClass, raw: unknown): void => {
   if (typeof raw !== 'string') return
   const value = raw.trim()
-  if (value.length < MIN_LENGTH) return
-  const key = value.toLowerCase()
+  if (value.length === 0) return
+  const short = value.length < MIN_LENGTH
+  if (short && !ANY_LENGTH.has(cls)) return
+  const key = short ? value : value.toLowerCase()
   if (v.has(key)) return
   const n = (counts.get(cls) ?? 0) + 1
   counts.set(cls, n)
@@ -130,9 +146,9 @@ export function redactText(text: string, vocabulary: Vocabulary): string {
   for (const [name, placeholder] of vocabulary) {
     // Case-insensitive: Graph returns the casing whoever typed it used, and the
     // same name reaches different artifacts through different code paths
-    // (audit redact-10).
+    // (audit redact-10). A short name is matched in its own case (ANY_LENGTH).
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, (m) => `\\${m}`)
-    out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'giu'), (match, offset: number, source: string) => {
+    out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, name.length < MIN_LENGTH ? 'gu' : 'giu'), (match, offset: number, source: string) => {
       const countWord = /department|job title|office/.test(placeholder) && /^people$|^person$|^users?$|^accounts?$|^devices?$/i.test(match)
       return countWord && /\d+\s+$/.test(source.slice(0, offset)) ? match : placeholder
     })
