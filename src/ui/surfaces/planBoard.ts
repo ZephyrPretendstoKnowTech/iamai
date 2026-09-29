@@ -107,6 +107,13 @@ export const TABS: readonly BoardTab[] = [ALL_WORK_TAB, ...LANES]
 /** The tab the Plan opens on: All work, the whole plan in section order. */
 export const DEFAULT_TAB: BoardTab = ALL_WORK_TAB
 
+/**
+ * The tab a header tile leaves selected: All work, for a tile and for "Show the
+ * full plan" alike. A tile filters the whole plan, so no lane tab stays lit over
+ * rows it does not hold, and "Show the full plan" shows all of it (N-005).
+ */
+export const TILE_TAB: BoardTab = ALL_WORK_TAB
+
 /** The tab a lane is drawn under; Completed and Deferred are toggles, not tabs. */
 export const TAB_OF: Readonly<Record<Lane, LaneTab | null>> = { Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: null, Deferred: null }
 

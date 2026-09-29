@@ -29,7 +29,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, inputStepIds, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, pressKeyOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TILE_TAB, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, inputStepIds, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, pressKeyOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -432,7 +432,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const licenceLine = conditionalAccessLicenceLine(scan.snapshot)
   // A tile closes the open step, and the address with it, as openStep does: a link to that step (the Next line) then opens it again.
   // A tile closes the open step as a place of its own, so Back reopens it (F-051), and the address with it, so the Next link opens that step again.
-  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({}); if (open !== null) visitStep(window.history, null); else if (stepFromPlanHash(window.location.hash) !== null) window.history.replaceState(null, '', '#/plan'); setOpen(null) }
+  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setTab(TILE_TAB); setFocus(NO_FOCUS); setToggled({}); if (open !== null) visitStep(window.history, null); else if (stepFromPlanHash(window.location.hash) !== null) window.history.replaceState(null, '', '#/plan'); setOpen(null) }
   const deferredCount = items.filter((i) => i.lane === 'Deferred').length
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string; select?: () => void }[] = [
     { key: 'ready', label: summary.ready, value: counts.lanes.ready, select: () => { selectSummary(null); setTab('ready') } },

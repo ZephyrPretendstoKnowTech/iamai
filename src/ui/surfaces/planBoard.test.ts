@@ -32,6 +32,7 @@ import {
   NO_FOCUS,
   SUBSTATUS_WORD,
   TAB_OF,
+  TILE_TAB,
   TYPE_ORDER,
   WHEN,
   applyFocus,
@@ -144,6 +145,17 @@ test('the three tabs draw exactly the rows of the three lanes between them, and 
     const expected = ids(items.filter((i) => TAB_OF[i.lane] !== null)).sort()
     assert.deepEqual([...seen].sort(), expected, `${name}: the tabs do not show the same rows as the row set`)
   }
+})
+
+test('N-005: a header tile, and "Show the full plan", leave All work selected, so the full plan is every row', () => {
+  // Plan.tsx selectSummary sets TILE_TAB with every tile and with "Show the full plan".
+  assert.equal(TILE_TAB, ALL_WORK_TAB)
+  for (const name of FIXTURES) {
+    const items = itemsFor(name)
+    assert.deepEqual(ids(applyFocus(items, TILE_TAB, NO_FOCUS)), ids(items), `${name}: "Show the full plan" hides rows`)
+  }
+  const src = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8')
+  assert.match(src, /const selectSummary = [^\n]*setTab\(TILE_TAB\)/, 'selectSummary no longer resets the tab')
 })
 
 test('Completed and Deferred rows are drawn on All work in their own sections, and never on a lane tab (owner, 2026-09-27)', () => {
