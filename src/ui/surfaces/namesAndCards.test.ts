@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
+import { nameKey } from '../../baseline/discover.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { stepOperations } from './stepJson.ts'
 import { stepBodyOf } from './stepBody.ts'
@@ -129,6 +130,24 @@ test('an untagged policy switched off under the name IAMAI proposed before is st
   const step = runFixture(f).steps.find((s) => s.id === 's-goal-block-device-code')!
   assert.deepEqual(step.tracking?.members?.map((m) => [m.policyId, m.matchedBy]), [['p-built-before', 'member-name']])
   assert.equal(unavailableReason(step as never), 'switched-off')
+})
+
+test('a policy typed by hand with hyphens for the baseline’s en dashes (or the other way) is the step’s own, and nothing asks to rename it (owner, 2026-09-28)', () => {
+  // Entra keeps the character typed: the baseline's names mix – and -, and a
+  // person typing the name gets hyphens. The plan read that as another policy
+  // and asked for the baseline's name.
+  const f = withFoundationSettled({ ...structuredClone(fixture('getiamai')), baseline: pinnedPackage() })
+  const step0 = runFixture(f).steps.find((s) => s.id === 's-goal-block-device-code')!
+  const create = stepOperations(step0).find((o) => o.mode === 'create')!
+  const planned = (create.body as { displayName: string }).displayName
+  const typed = planned.replace(/[-–]/g, (c) => (c === '-' ? '–' : '-'))
+  assert.notEqual(typed, planned, 'the premise: the typed name differs only in its dashes')
+  const body: Record<string, unknown> = { ...(structuredClone(create.body) as Record<string, unknown>), displayName: typed, state: 'disabled', id: 'p-typed-dashes' }
+  delete body.description
+  ;(f.snapshot.config.caPolicies.rows as unknown[]).push(body)
+  const step = runFixture(f).steps.find((s) => s.id === 's-goal-block-device-code')!
+  assert.deepEqual(step.tracking?.members?.map((m) => [m.policyId, m.matchedBy, m.plannedName ?? null]), [['p-typed-dashes', 'member-name', null]])
+  assert.equal(nameKey(typed), nameKey(planned))
 })
 
 test('a held create’s Threshold card says why the create waits, and an export says it once, before its procedure', () => {

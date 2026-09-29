@@ -34,11 +34,15 @@ export function shouldSkip(path: string): string | null {
   return null;
 }
 
-/** Normalized name key: case, whitespace, and dash variants collapsed. */
+/**
+ * Normalized name key: case, whitespace, and dash variants collapsed. The one
+ * policy-name comparison: a hyphen typed for the baseline's en dash, or spacing
+ * around a dash, names the same policy (owner, 2026-09-28).
+ */
 export function nameKey(displayName: string): string {
   return displayName
     .toLowerCase()
-    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
     .replace(/\s+/g, " ")
     .replace(/\s*-\s*/g, "-")
     .trim();

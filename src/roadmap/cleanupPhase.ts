@@ -22,6 +22,7 @@ import type { TenantRhythm } from './rhythm.ts'
 import type { OrganisationReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { proposeName, usable } from './convention.ts'
+import { nameKey } from '../baseline/discover.ts'
 
 export type CleanupPhase = {
   /** The first Cleanup day: the working day after the last enforcement window. */
@@ -208,7 +209,7 @@ export type Rename = { id: string; from: string; to: string }
  * earlier rename takes, is none: two policies never share one.
  */
 export function renamesOf(steps: readonly Step[], tenantNames: readonly string[] = []): Rename[] {
-  const key = (n: string): string => n.trim().replace(/[\u2010-\u2015\u2212]/g, '-').toLowerCase()
+  const key = nameKey
   const live = steps.filter((s) => s.status !== 'skipped' && !s.doesntApply && !s.state.setAside)
   const owned = live.flatMap((s) => {
     const updates = new Set((s.action.resolution?.policies ?? []).filter((o) => o.mode === 'update' && o.policyId).map((o) => String(o.policyId).toLowerCase()))

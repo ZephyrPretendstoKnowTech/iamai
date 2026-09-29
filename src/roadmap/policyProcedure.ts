@@ -28,6 +28,7 @@ import { UNNAMED } from '../names.ts'
 import { GRANT_LABEL, portalName } from './portalLines.ts'
 import { differencePieces } from './differences.ts'
 import { sameDimension } from './observation.ts'
+import { nameKey } from '../baseline/discover.ts'
 
 type Words = Record<string, string> & {
   conditions: Record<string, string>
@@ -411,7 +412,7 @@ export function correctionSettings(current: Record<string, unknown>, target: Rec
   const was = facts(current)
   const now = facts(target)
   const out: string[] = []
-  if (sections.has('name') && typeof target.displayName === 'string' && target.displayName !== '' && target.displayName !== current.displayName) out.push(fill(PROCEDURE.name, { name: target.displayName }))
+  if (sections.has('name') && typeof target.displayName === 'string' && target.displayName !== '' && nameKey(target.displayName) !== nameKey(String(current.displayName ?? ''))) out.push(fill(PROCEDURE.name, { name: target.displayName }))
   if (sections.has('users')) out.push(...usersCorrection(was, now, ctx))
   if (sections.has('resources')) out.push(...resourcesCorrection(was, now, ctx))
   if (sections.has('conditions')) out.push(...conditionsCorrection(was, now, ctx, conditionKeys))

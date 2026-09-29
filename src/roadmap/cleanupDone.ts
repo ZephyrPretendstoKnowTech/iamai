@@ -11,6 +11,7 @@ import type { RecoverySignInCandidate } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { operatorExclusionsDecision } from '../mapping/safetyChoice.ts'
+import { nameKey } from '../baseline/discover.ts'
 import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
 import { requiredModels } from './passkeySettings.ts'
 import { passkeyReadingOf } from './passkeySettings.ts'
@@ -528,6 +529,6 @@ export function namingVerified(record: CleanupCheckpoint | undefined, policies: 
   const rows = policies as Record<string, unknown>[]
   return record.namingChanges.every(change => {
     const same = rows.find(p => p.id === change.id)
-    return same?.displayName === change.to && !rows.some(p => p.id !== change.id && String(p.displayName).trim().toLowerCase() === change.to.trim().toLowerCase())
+    return typeof same?.displayName === 'string' && nameKey(same.displayName) === nameKey(change.to) && !rows.some(p => p.id !== change.id && nameKey(String(p.displayName)) === nameKey(change.to))
   })
 }

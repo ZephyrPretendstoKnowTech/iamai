@@ -14,7 +14,7 @@ import { settlePimSettings } from './pimSettings.ts'
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
 import type { CaPolicy } from '../baseline/types.ts'
-import { docFor } from '../baseline/index.ts'
+import { docFor, nameKey } from '../baseline/index.ts'
 import { referenceUsage } from '../baseline/interpretation.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, guestKindsReached, matchesSignature } from '../coverage/classify.ts'
@@ -1339,7 +1339,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // 55): the step corrects that one rather than asking for a second strength
       // of the same name.
       const same = ((snapshot.config.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown; policyType?: unknown }[])
-        .find((r) => typeof r.id === 'string' && r.policyType !== 'builtIn' && typeof r.displayName === 'string' && r.displayName.trim().toLowerCase() === name.trim().toLowerCase())
+        .find((r) => typeof r.id === 'string' && r.policyType !== 'builtIn' && typeof r.displayName === 'string' && nameKey(r.displayName) === nameKey(name))
       if (same) s.strengthToCorrect = { id: same.id as string, name: (same.displayName as string).trim() }
     }
     steps.push(s)
@@ -2167,8 +2167,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // Or the name IAMAI gave that member before it used the baseline's (a
         // policy built then), as claimedPolicy reads the goal's one policy.
         const earlier = proposedPolicyName(goal, naming)
-        const earlierName = new Map(changing.map((p, i) => [p.sourceKey, (i === 0 ? earlier : policyPairNames(earlier, p.sourceName, naming ?? null).b).trim().toLowerCase()]))
-        const namesOf = (m: StepPolicyInput): string[] => [String(m.displayName ?? '').trim().toLowerCase(), earlierName.get(m.sourceKey) ?? ''].filter((n) => n !== '')
+        const earlierName = new Map(changing.map((p, i) => [p.sourceKey, nameKey(i === 0 ? earlier : policyPairNames(earlier, p.sourceName, naming ?? null).b)]))
+        const namesOf = (m: StepPolicyInput): string[] => [nameKey(String(m.displayName ?? '')), earlierName.get(m.sourceKey) ?? ''].filter((n) => n !== '')
         // What the tenant's own policies already do is credited (owner decision 8,
         // 2026-09-25): a member every one of whose guest kinds an enabled policy
         // delivers at that member's floor (coverage `kindsDelivered`) is in place,
@@ -2190,7 +2190,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const partlyCredited = credits.some((c) => c !== null) && credits.some((c) => c === null)
         const creditedMembers: Action['creditedMembers'] = !partlyCredited ? undefined : pair.flatMap((m, i) => (credits[i] ? [{ name: String(m.displayName ?? m.sourceName), policyIds: credits[i]!, policyNames: credits[i]!.map((id) => String(((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]).find((p) => String(p.id) === id)?.displayName ?? id)), kinds: [...(guestKindsReached(stepSources.find((s) => s.key === m.sourceKey)!.facts) as Set<string>)] }] : []))
         const members = partlyCredited ? pair.filter((_, i) => credits[i] === null) : pair
-        const byName = new Map((snapshot.config.caPolicies?.rows ?? []).map((p) => [String((p as RawPolicy).displayName ?? '').trim().toLowerCase(), p as RawPolicy]))
+        const byName = new Map((snapshot.config.caPolicies?.rows ?? []).map((p) => [nameKey(String((p as RawPolicy).displayName ?? '')), p as RawPolicy]))
         const matched = members.map((m) => namesOf(m).map((n) => byName.get(n)).find((row) => row !== undefined) ?? null)
         const ids = matched.filter((p): p is RawPolicy => p !== null).map((p) => String(p.id))
         const ambiguous = !partlyCredited && (matched.every((p) => p === null) || new Set(ids).size !== ids.length)

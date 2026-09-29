@@ -24,6 +24,7 @@ import { holdOf, isHeld } from './holds.ts'
 import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicies } from './generate.ts'
+import { nameKey as baselineNameKey } from '../baseline/discover.ts'
 import { inBaselineConflict } from './baselineConflict.ts'
 import { observationDaysFor } from './schedule.ts'
 import { readyBasis, readyWhen } from '../derive/readyWhen.ts'
@@ -183,7 +184,8 @@ const policiesRead = (snapshot: TenantSnapshot): boolean => {
   return status === 'ok' || status === 'partial'
 }
 
-const nameKey = (v: string | null | undefined): string => String(v ?? '').trim().toLowerCase()
+/** A tenant policy's name as the plan compares it (baseline/discover.ts nameKey): dashes, spacing and capitals aside. */
+const nameKey = (v: string | null | undefined): string => baselineNameKey(String(v ?? ''))
 
 // ---- the step's required policy members ----
 
@@ -1139,7 +1141,7 @@ export function trackExecution(
         // name may differ from the plan (owner, 2026-09-25), and the step says so.
         ...(() => {
           const planned = plannedNameOf(step, m, sole)
-          return policyRow && planned && planned.trim() !== String(policyRow.displayName ?? '').trim() ? { plannedName: planned } : {}
+          return policyRow && planned && nameKey(planned) !== nameKey(policyRow.displayName) ? { plannedName: planned } : {}
         })(),
         matchedBy: m.matchedBy,
         ambiguous: m.ambiguous,
