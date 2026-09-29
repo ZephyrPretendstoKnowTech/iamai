@@ -2851,7 +2851,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // brings a report-only or weaker policy up to the baseline still names the
         // enforced overlaps it makes redundant — never the policy it changes.
         if (existing?.contribution === 'strong') return []
-        const strong = result.candidates.filter((c) => c.contribution === 'strong' && c.policyId !== existing?.policyId)
+        // A policy that reaches beyond the goal and applies here only under
+        // narrower conditions is not made redundant by this step (an all-apps
+        // block with a partner carve-out beside Restrict SharePoint and OneDrive):
+        // it is never named as coverage the baseline's version supersedes.
+        const strong = result.candidates.filter((c) => c.contribution === 'strong' && c.policyId !== existing?.policyId && !(!c.ownScope && c.caveats.includes('conditions-narrower')))
         const own = strong.filter((c) => c.ownScope)
         return (own.length > 0 ? own : strong).map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`)
       })(),

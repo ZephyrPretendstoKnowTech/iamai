@@ -118,6 +118,31 @@ test('a Countries block that also carves out the trusted network is no trusted-n
   }
 })
 
+// Same review: an all-apps block for everyone that carves out the trusted network
+// and a partner site applies here only under narrower conditions and reaches
+// beyond SharePoint, AVD and the service accounts, so a step of theirs never
+// makes it redundant and never names it as coverage to retire.
+test('an all-apps block with a partner carve-out is never named as coverage the trusted-network steps supersede', () => {
+  const f = demoWith('office', () => [])
+  const ex = (f.mapping.records[EXCLUSIONS_RECORD_KEY] as { resolvedId?: string }).resolvedId!
+  ;(f.snapshot.config.caPolicies!.rows as unknown[]).push(block('p-ztca', ['All'], ['AllTrusted', PARTNER], { includeUsers: ['All'], excludeGroups: [ex] }))
+  const r = runFixture(f)
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
+  let seen = 0
+  for (const g of TRUSTED_GOALS) {
+    const c = r.coverage.results.find((x) => x.goal.id === g)!
+    const cand = c.candidates.find((x) => x.policyId === 'p-ztca')
+    if (cand) {
+      seen++
+      assert.ok(!cand.ownScope && cand.caveats.includes('conditions-narrower'), `${g}: the premise: a wider, narrower candidate: ${JSON.stringify(cand)}`)
+    }
+    const step = r.steps.find((s) => s.goalId === g)!
+    assert.ok(!step.deliveredBy.some((d) => d.startsWith('p-ztca')), `${g}: ${JSON.stringify(step.deliveredBy)}`)
+    assert.deepEqual(stepVars(step, ctx).existingPolicies, [], `${g}: the step names the all-apps block as coverage it might retire`)
+  }
+  assert.ok(seen > 0, 'the premise: the all-apps block is a candidate of a trusted-network goal')
+})
+
 test('the plan’s own office network is the trusted network before the tenant marks it trusted', () => {
   const sa = (exclude: (f: Fixture) => string) => (f: Fixture, ex: string) => block('p-sa', ['All'], [exclude(f)], { includeGroups: [SERVICE_ACCOUNTS_GROUP], excludeGroups: [ex] })
   const candidates = (f: Fixture) => runFixture(f).coverage.results.find((x) => x.goal.id === 'service-accounts-trusted-network')!.candidates.map((c) => c.policyId)
