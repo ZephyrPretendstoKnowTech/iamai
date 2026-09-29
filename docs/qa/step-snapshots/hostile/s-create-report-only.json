@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
-  "rail": "6 policies to create in Report-only",
+  "rail": "7 policies to create in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,6 +15,10 @@
   "tiles": [
     {
       "label": "Require Phishing-Resistant MFA for Admins",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Require Phishing-Resistant MFA for Basic Sign-ins",
       "state": "Create in Report-only"
     },
     {

@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "after: Confirm What You Use",
+  "reason": null,
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Create the policies in Report-only",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,16 +14,17 @@
   ],
   "tiles": [
     {
+      "label": "Threshold",
+      "state": "10 of 29 people have a method it accepts"
+    },
+    {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
     }
   ],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Sep 7, 2026"
 }

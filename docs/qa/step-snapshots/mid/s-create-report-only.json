@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
-  "rail": "10 policies to create in Report-only",
+  "rail": "11 policies to create in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -13,6 +13,10 @@
     "Completion Criteria"
   ],
   "tiles": [
+    {
+      "label": "Require Phishing-Resistant MFA for Basic Sign-ins",
+      "state": "Create in Report-only"
+    },
     {
       "label": "Require MFA at Every Role Activation",
       "state": "Create in Report-only"
