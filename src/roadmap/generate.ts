@@ -160,7 +160,7 @@ const REGISTER_SECURITY_INFO = 'urn:user:registersecurityinfo'
  * device, and registering a sign-in method, both ask for a method a guest cannot
  * hold in this tenant. The policies still cover whom the baseline says.
  */
-const NO_GUEST_READINESS: ReadonlySet<string> = new Set(['device-registration-mfa', 'register-info-protected'])
+const NO_GUEST_READINESS: ReadonlySet<string> = new Set(['device-registration-mfa', 'register-info-protected', 'directory-baseline-scopes-mfa'])
 /**
  * The two resources IAMAI names by their own identifier: Graph's own
  * `MicrosoftAdminPortals` target (coverage/facts.ts reads the same string) and
@@ -2231,6 +2231,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         action = { ...action, nothingOwed: { gaps: result.reasons.filter((r) => !r.expected && r.kind === 'conditions-narrower').map((r) => r.detail) } }
       }
       if (action.kind === 'create') namingNote = uniqueName(planName, stepId)
+      // No policy of the goal's own to change (only another goal's, weaker, stands
+      // for it: an all-resources MFA policy for Require Phishing-Resistant MFA for
+      // Basic Sign-ins): the step creates the baseline's policy, and reads as a
+      // create, so 3.8 creates it in Report-only like any other.
+      if (action.kind === 'create' && existing === null && !ambiguousTarget) kind = 'create'
     }
 
     // No usable, owner-confirmed exclusions group, and the goal's own policy needs

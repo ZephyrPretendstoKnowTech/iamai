@@ -2323,6 +2323,9 @@
     "device-registration-mfa": [
       "aeb49474-5250-4b65-8b0a-56c47127ee0f"
     ],
+    "directory-baseline-scopes-mfa": [
+      "ab659968-2e8a-4448-9710-d930aada3499"
+    ],
     "token-protection": [
       "8bb25c6a-ed35-4556-bed4-b3aaa14e192b"
     ],

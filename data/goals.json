@@ -1385,6 +1385,76 @@
       ]
     },
     {
+      "id": "directory-baseline-scopes-mfa",
+      "name": "Sign-ins that ask only for basic profile access require a strong method",
+      "shortName": "Basic sign-ins",
+      "description": "Sign-ins whose app asks only for baseline scopes (openid, profile, email, User.Read and the like), which Microsoft maps to Windows Azure Active Directory, require the baseline's authentication strength.",
+      "phase": 5,
+      "domain": "Identity",
+      "securityValue": 3,
+      "baseEffort": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "appsIdsInclude": [
+              "00000002-0000-0000-c000-000000000000"
+            ],
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true,
+            "grantHasAuthControl": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "directoryBaselineScopes",
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Strong authentication for basic sign-ins",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "00000002-0000-0000-c000-000000000000"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000002"
+              }
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-enforcement-resource-exclusions",
+      "tldr": "Apps that ask only for a basic profile still meet the strong-method gate.",
+      "cis": []
+    },
+    {
       "id": "token-protection",
       "name": "Windows desktop sessions require token protection",
       "shortName": "Token protection",

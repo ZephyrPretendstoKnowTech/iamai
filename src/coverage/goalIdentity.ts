@@ -36,6 +36,9 @@ export const APP_SCOPED_GOALS: Readonly<Record<string, readonly string[]>> = {
   'inforcer-mfa': ['708861da-226e-4d65-a57a-24128df64524'],
   'avd-trusted-network': ['9cdead84-a844-4324-93f2-b2e6bb768d07', '0af06dc6-e4b5-4f28-818e-e78e62d137a5'],
   'sharepoint-trusted-network': ['00000003-0000-0ff1-ce00-000000000000'],
+  // Windows Azure Active Directory: the resource Microsoft maps baseline-scope
+  // sign-ins to (Learn, concept-enforcement-resource-exclusions; owner 2026-09-29).
+  'directory-baseline-scopes-mfa': ['00000002-0000-0000-c000-000000000000'],
 }
 /** True when the policy's applications are exactly the goal's own, nothing wider. */
 export function scopedToGoalApps(goalId: string, apps: { all: boolean; ids: ReadonlySet<string> }): boolean {
@@ -106,6 +109,7 @@ function appsClass(f: PolicyFacts): string {
   if (sameIds(a.ids, APP_SCOPED_GOALS['inforcer-mfa'])) return 'inforcer'
   if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['avd-trusted-network'])) return 'avd'
   if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['sharepoint-trusted-network'])) return 'sharepoint'
+  if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['directory-baseline-scopes-mfa'])) return 'directoryBaselineScopes'
   if (a.adminPortals) return 'adminPortals'
   if ([...a.ids].some((id) => AZURE_MGMT_APP_IDS.has(id))) return 'azureManagement'
   if (a.userActions.size > 0) return 'userAction'
