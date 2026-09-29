@@ -6,24 +6,29 @@
 
 /**
  * A sign-in address. Before the @, every character Entra allows in a sign-in
- * name (A-Z a-z 0-9 ' . - _ ! # ^ ~) and every other character an email address
- * may hold (RFC 5322: ! # $ % & ' * + - / = ? ^ _ ` { | } ~), because a guest's
- * name carries the guest's own email before #EXT# (jane_contoso.com#EXT#@tenant…,
- * F-195). A character missing here ended the match early and left the start of
- * the address in a "masked" file (security audit, 2026-09-29).
+ * name (A-Z a-z 0-9 ' . - _ ! # ^ ~; '#' also carries a guest's #EXT#,
+ * jane_contoso.com#EXT#@tenant…, F-195), and the '+' and '%' a guest's own email
+ * keeps. A character missing here ended the match early and left the start of
+ * the address in a "masked" file ('john!smith' came out 'john!upn-1', security
+ * audit, 2026-09-29). The other characters RFC 5322 allows (/ = ? & * | { } ` $)
+ * are not Entra's, and they are what separates an address from a key, a path or
+ * another address ('upn=', '/users/', 'a@x.com/b@x.com'): taken in, they went
+ * into the placeholder and gave one address a placeholder per prefix (security
+ * review, 2026-09-29). So they end the address.
  */
-const ADDRESS = /[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
+const ADDRESS = /[A-Za-z0-9.!#%'+^_~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
 
 /**
  * How long the run of characters that opens a matched address is, where the
- * text closes that run right after it: **…**, `…`, '…', {…}. That run is the
- * text's wrapping, kept outside the placeholder, so markdown still reads and the
- * address has one placeholder however it is wrapped.
+ * text closes that run right after it: '…', __…__. Those characters may stand
+ * in a sign-in name, so the match takes them; closed right after the address,
+ * they are the text's wrapping, kept outside the placeholder, so the address has
+ * one placeholder however it is wrapped.
  */
 function wrapperLength(match: string, after: string): number {
   const lead = /^[^A-Za-z0-9@]*/.exec(match)![0]
   for (let n = lead.length; n > 0; n--) {
-    const close = [...lead.slice(0, n)].reverse().map((c) => (c === '{' ? '}' : c)).join('')
+    const close = [...lead.slice(0, n)].reverse().join('')
     if (after.startsWith(close)) return n
   }
   return 0
