@@ -142,6 +142,9 @@ test('an enforced policy finishes on what the scan reads, with no workflow recor
   for (const p of f.snapshot.config.caPolicies.rows as { conditions?: { users?: { includeUsers?: string[] } }; grantControls?: unknown }[]) {
     if (p.conditions?.users?.includeUsers?.includes('GuestsOrExternalUsers')) p.grantControls = { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } }
   }
+  // The baseline's two guest policies, built and On (owner, 2026-09-28: the tenant's own guest policy is never credited as them).
+  const first = runFixture(f).steps.find(s => s.id === 's-goal-guests-mfa')!
+  for (const o of first.action.resolution?.policies ?? []) if (o.mode === 'create') (f.snapshot.config.caPolicies.rows as unknown[]).push({ ...structuredClone(o.body), id: `built-${o.memberKey}`, state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
   const result = runFixture(f)
   const guests = result.steps.find(s => s.id === 's-goal-guests-mfa')!
   assert.equal(guests.state.lifecycle, 'enforced', 'the premise: deployment remains observable')

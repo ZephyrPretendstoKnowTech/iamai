@@ -140,14 +140,18 @@ test('the service-provider exclusion is on both policies, in the JSON and on the
     const step = r.steps.find((s) => s.goalId === goalId)
     const step0 = r0.steps.find((s) => s.goalId === goalId)
     assert.ok(step && step0, `${goalId}: on the plan`)
+    // One body, or the pair's two (Require MFA for Guests creates both of the baseline's).
+    const bodiesOf = (json: string): unknown[] => { const parsed = JSON.parse(json) as unknown; return Array.isArray(parsed) ? parsed : [parsed] }
     if (step.action.json) {
-      const body = JSON.parse(step.action.json) as { conditions: { users: { includeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string }; excludeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string } } } }
-      assert.equal(body.conditions.users.excludeGuestsOrExternalUsers?.guestOrExternalUserTypes, 'serviceProvider', `${goalId}: the JSON excludes service providers`)
-      assert.doesNotMatch(body.conditions.users.includeGuestsOrExternalUsers?.guestOrExternalUserTypes ?? '', /serviceProvider/, `${goalId}: the JSON no longer includes them`)
+      for (const body of bodiesOf(step.action.json) as { conditions: { users: { includeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string }; excludeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string } } } }[]) {
+        assert.equal(body.conditions.users.excludeGuestsOrExternalUsers?.guestOrExternalUserTypes, 'serviceProvider', `${goalId}: the JSON excludes service providers`)
+        assert.doesNotMatch(body.conditions.users.includeGuestsOrExternalUsers?.guestOrExternalUserTypes ?? '', /serviceProvider/, `${goalId}: the JSON no longer includes them`)
+      }
     }
     if (step0.action.json) {
-      const body0 = JSON.parse(step0.action.json) as { conditions: { users: { excludeGuestsOrExternalUsers?: unknown } } }
-      assert.equal(body0.conditions.users.excludeGuestsOrExternalUsers, undefined, `${goalId}: unanswered, the baseline's users stand`)
+      for (const body0 of bodiesOf(step0.action.json) as { conditions: { users: { excludeGuestsOrExternalUsers?: unknown } } }[]) {
+        assert.equal(body0.conditions.users.excludeGuestsOrExternalUsers, undefined, `${goalId}: unanswered, the baseline's users stand`)
+      }
     }
     // The instructions are offered only when the policy names nothing this
     // tenant lacks — the same condition as the JSON, the PowerShell and the

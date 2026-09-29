@@ -226,17 +226,17 @@ test('the calendar books a Cleanup row only where its export view is dated', () 
 test('an export carries the portal channel the opened step draws: the guest pair the tenant half-delivers creates only the half it lacks', () => {
   const p = exportPage(fixture('demo'))
   const step = p.r.steps.find((s) => s.id === 's-goal-guests-mfa')!
-  // The demo's own guest policies deliver one of the baseline's two (owner
-  // decision 8, 2026-09-25): the step writes the other, and names what it credits.
-  assert.equal((step.action.creditedMembers ?? []).length, 1, 'the premise: one member is credited')
-  assert.equal((step.action.resolution?.policies ?? []).length, 1, 'and one is written')
+  // The demo's own guest policies are never credited as one of Jon's two (owner,
+  // 2026-09-29): the step creates both, in Report-only beside them.
+  assert.deepEqual((step.action.pairMembers ?? []).map((h) => h.policyId), [null, null], 'the premise: the tenant has neither half')
+  assert.equal((step.action.resolution?.policies ?? []).length, 2, 'and both are written')
   const v = p.view(step)
   const screenPortal = stepBodyOf(step, p.ctxOf(step), { lane: laneViewFor(step, p.board) }).artifacts.find((a) => a.id === 'portal')!
   // The export writes the procedure plain: the create's lines, without the bold
   // the screen draws and without its task headings.
   const plainLine = (l: string): string => l.replace(/^\d+\. /, '').replace(/\*\*/g, '').trim()
   const screenText = screenPortal.text()
-  const createLines = screenText.slice(0, screenText.indexOf('**Turn the policy on**')).split('\n').filter((l) => l.trim() !== '' && !/^\*\*[^*]+\*\*$/.test(l.trim())).map(plainLine)
+  const createLines = screenText.slice(0, screenText.search(/\*\*Turn the polic(?:y|ies) on\*\*/)).split('\n').filter((l) => l.trim() !== '' && !/^\*\*[^*]+\*\*$/.test(l.trim())).map(plainLine)
   assert.ok(createLines.length > 3, 'the premise: the screen draws the create')
   const exported = v.whatToDo.map(plainLine)
   for (const line of createLines) assert.ok(exported.includes(line), `the export drops the screen's create line "${line}"`)

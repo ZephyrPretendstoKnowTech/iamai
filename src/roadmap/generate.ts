@@ -17,7 +17,7 @@ import type { CaPolicy } from '../baseline/types.ts'
 import { docFor, nameKey } from '../baseline/index.ts'
 import { referenceUsage } from '../baseline/interpretation.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
-import { CORE_ADMIN_ROLE_IDS, guestKindsReached, matchesSignature } from '../coverage/classify.ts'
+import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { scopedToGoalApps } from '../coverage/goalIdentity.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
@@ -1837,6 +1837,59 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const want = new Set([planName, proposedPolicyName(goal, naming)].map((n) => nameKey(n)))
       return all.find((p) => live(p) && want.has(nameKey(String(p.displayName ?? '')))) ?? null
     }
+    /**
+     * The halves of the guest pair (Require MFA for Guests: Jon's Mixed-Guests
+     * and B2B-Guest), each with the tenant policy that IS that half: the one
+     * carrying the half's name or the name IAMAI gave it before it used the
+     * baseline's, else a live policy carrying this plan's tag for that member;
+     * null where the tenant has neither, and the half is created in Report-only.
+     * No other tenant policy is credited as a half or rewritten into one (owner,
+     * 2026-09-29: match Jon's baseline exactly): the tenant's own guest policy
+     * stays as it is and is named as existing coverage. `ambiguous` where one
+     * tenant policy stands for both halves, or two carry one half's name or tag.
+     * `intent` is the half's whole policy as the plan writes it. Guests only: the
+     * user-risk EAM companion keeps its own reading.
+     */
+    type PairHalf = { input: StepPolicyInput; key: string; earlierName: string; policy: RawPolicy | null; intent: Record<string, unknown> | null }
+    const pairOf = (): { halves: PairHalf[]; ambiguous: boolean } | null => {
+      if (impl.expectedWho.kind !== 'guests' || stepSources.length < 2) return null
+      const changing = stepPolicies()
+      if (changing.length < 2) return null
+      const all = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
+      const tags = findTaggedPolicies(snapshot, planId, stepId)
+      const live = (p: RawPolicy | undefined): p is RawPolicy => p !== undefined && (p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced')
+      const earlier = proposedPolicyName(goal, naming)
+      let ambiguous = false
+      const halves = named(changing, planName).map((m, i): PairHalf => {
+        const key = memberKeyOf(m.sourceKey ?? '', i)
+        const earlierName = i === 0 ? earlier : policyPairNames(earlier, m.sourceName, naming ?? null).b
+        const names = new Set([nameKey(String(m.displayName ?? '')), nameKey(earlierName)].filter((n) => n !== ''))
+        const byNames = all.filter((p) => names.has(nameKey(String(p.displayName ?? ''))))
+        const liveByNames = byNames.filter(live)
+        if (liveByNames.length > 1) ambiguous = true
+        const tagged = tags.filter((t) => t.memberKey === key).map((t) => all.find((p) => p.id === t.policyId)).filter(live)
+        if (byNames.length === 0 && tagged.length > 1) ambiguous = true
+        const policy = liveByNames[0] ?? byNames[0] ?? (tagged.length === 1 ? tagged[0] : null)
+        const built = buildCreateAction([{ ...m, target: policy ? { policyId: String(policy.id), state: String(policy.state ?? 'enabled'), policy } : null }], mapping, planId, stepId, goal.id, { sections: new Set() })
+        const op = (built.missing ?? []).length === 0 ? built.resolution?.policies[0] : undefined
+        const intent = op ? ((op.mode === 'update' ? op.intent : op.body) as Record<string, unknown> | undefined) ?? null : null
+        return { input: m, key, earlierName, policy, intent }
+      })
+      const ids = halves.flatMap((h) => (h.policy ? [String(h.policy.id)] : []))
+      if (new Set(ids).size !== ids.length) ambiguous = true
+      return { halves, ambiguous }
+    }
+    const pairMembersOf = (p: { halves: PairHalf[] }): NonNullable<Action['pairMembers']> =>
+      p.halves.map((h) => ({ key: h.key, name: String(h.input.displayName ?? h.input.sourceName), earlierName: h.earlierName, policyId: h.policy ? String(h.policy.id) : null, ...(h.intent ? { intent: h.intent } : {}) }))
+    const pair = pairOf()
+    // The guest pair is finished when, and only when, each half is its own tenant
+    // policy, On and exact: coverage reading the goal in place through the
+    // tenant's own policies does not build Jon's two, and Jon's two On and exact
+    // complete the step whatever else coverage reads, so a half that leaves out a
+    // guest type by the owner's answer (service providers) never deadlocks it.
+    const pairAccepted = mapping.acceptedDeviations?.[stepId]?.fields ?? {}
+    const pairExact = (h: PairHalf): boolean => h.policy !== null && h.intent !== null && unwrittenDifferences(h.intent, null, h.policy as Record<string, unknown>).every((d) => pairAccepted[d] !== undefined)
+    const pairDone = pair !== null && !pair.ambiguous && pair.halves.every((h) => h.policy?.state === 'enabled' && pairExact(h))
 
     const whoKey = impl.expectedWho.kind
     // The service accounts are the mapping's, and the one population every other
@@ -1926,7 +1979,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     const standing = result.verdict === 'inPlace' ? (result.satisfaction?.policyIds ?? []) : result.candidates.filter((c) => c.ownScope && c.contribution !== 'disabled').map((c) => c.policyId)
     const anotherJobOnly = result.status !== 'absent' && result.status !== 'unknown' && claimedPolicy() === null && standing.length > 0 && standing.every(anotherStepsJob)
-    if (result.verdict === 'inPlace' && !anotherJobOnly) {
+    if ((pair !== null && !pair.ambiguous ? pairDone : result.verdict === 'inPlace') && !anotherJobOnly) {
       kind = 'create'
       // Delivered — and by whom decides which of the two done outcomes this is.
       //
@@ -1947,7 +2000,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // the classifier actually counted towards the satisfaction — a tagged
       // policy sitting disabled beside a tenant policy that delivers the goal
       // earned nothing.
-      const planDeployed = (result.satisfaction?.policyIds ?? []).some((id) => matchedPolicyIds.includes(id))
+      const planDeployed = pairDone ? (pair?.halves ?? []).some((h) => matchedPolicyIds.includes(String(h.policy?.id))) : (result.satisfaction?.policyIds ?? []).some((id) => matchedPolicyIds.includes(id))
       state = { ...state, satisfied: true, inPlace: !planDeployed }
       // What the plan would write for the goal, kept for comparison only
       // (Action.intended): coverage judges who a policy reaches, which resources
@@ -2023,6 +2076,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         ...(planned ? { planned } : {}),
         ...(ownPolicyDiffers ? { ownPolicyDiffers } : {}),
         ...(alsoExcluded ? { alsoExcluded } : {}),
+        // Each half keyed and read exactly against its own whole policy (tracking.ts).
+        ...(pair && !pair.ambiguous ? { pairMembers: pairMembersOf(pair) } : {}),
       }
     } else if (result.status === 'unknown') {
       // Coverage could not settle the goal: a live policy that stands for it
@@ -2063,11 +2118,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const one = named(stepPolicies(), String(claimed.displayName ?? planName))
       one[0] = { ...one[0], target: { policyId: String(claimed.id), state: String(claimed.state ?? 'enabled'), policy: claimed } }
       action = changesFor(buildCreateAction(one, mapping, planId, stepId, goal.id, { sections: new Set() }), new Set(), claimed)
-    } else if (result.status === 'absent' || anotherJobOnly) {
+    } else if (result.status === 'absent' || anotherJobOnly || (pair !== null && !pair.ambiguous && pair.halves.every((h) => h.policy === null))) {
+      // Or the guest pair with neither of Jon's halves on the tenant: both are
+      // created exactly as on a tenant with no guest policy, whatever guest
+      // policy of its own the tenant has (named as existing coverage, never edited).
       kind = 'create'
       if (source) {
         const proposed = uniqueName(planName, stepId)
         action = buildCreateAction(named(stepPolicies(), proposed.name), mapping, planId, stepId, goal.id)
+        if (pair && !pair.ambiguous) action = { ...action, pairMembers: pairMembersOf(pair) }
         namingNote = proposed
       } else {
         // No baseline policy stands for this goal: the goal's own template is
@@ -2174,46 +2233,52 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         let built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
         if (settleSections(sections, built, new Map(existing && existingRaw ? [[existing.policyId, existingRaw]] : []), belowFloor)) built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
         action = changesFor(built, sections, existingRaw)
+      } else if (pair !== null) {
+        // The guest pair: Jon's own two (owner, 2026-09-29). Each half is the
+        // tenant policy carrying its name, the name IAMAI gave it earlier or this
+        // plan's tag for it, and is corrected in place (R4-11); a half the tenant
+        // has no policy of is created in Report-only, also where the tenant's own
+        // guest policy covers the same guests. That policy is never credited as a
+        // half and never rewritten into one: the step names it as existing
+        // coverage, for the owner to retire once Jon's two are enforced. Two
+        // tenant policies carrying one half's name (or one standing for both) are
+        // a guess the step will not make: it asks for the names to be sorted out.
+        if (pair.ambiguous) {
+          action = { kind: 'adjust', summary: [], json: null, portalSteps: pair.halves.map((h) => fillText(app.plan.pairReviewExpected, { name: String(h.input.displayName) })), missing: [], unmatchedPair: true }
+        } else {
+          const withTargets = pair.halves.map((h) => (h.policy ? { ...h.input, target: { policyId: String(h.policy.id), state: String(h.policy.state ?? 'enabled'), policy: h.policy } } : { ...h.input, target: null }))
+          const matched = pair.halves.flatMap((h) => (h.policy ? [h.policy] : []))
+          let built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
+          if (settleSections(sections, built, new Map(matched.map((q) => [String(q.id), q])), belowFloor)) built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
+          // A half that owes nothing has no operation: an empty update is no
+          // operation, and one invalid operation withholds every other
+          // (operations.ts validOperations), so it held back the other half's
+          // Report-only create. The half is still tracked, by its policy and
+          // against its whole policy (Action.pairMembers).
+          const idle = new Set((built.resolution?.policies ?? []).filter((o) => o.mode === 'update' && Object.keys(o.body).length === 0).map((o) => o.memberKey))
+          const owing = withTargets.filter((_, i) => !idle.has(pair.halves[i].key))
+          if (idle.size > 0 && owing.length > 0) built = buildCreateAction(owing, mapping, planId, stepId, goal.id, { sections })
+          action = { ...changesFor(built, sections, owing.find((w) => w.target)?.target?.policy ?? matched[0] ?? null), pairMembers: pairMembersOf(pair) }
+        }
       } else {
-        // Two policies: each member needs its own tenant policy, or none. The
-        // plan associates a member with a tenant policy only where the policy
-        // carries the name the plan gives that member — an operator who followed
-        // these instructions. Anything less is a guess, so the step withholds the
-        // implementation and asks for the names to be sorted out instead.
-        // The plan's canonical name for each member — not the suffixed proposal a
-        // create would take, because the policy this matches is the one already
-        // carrying that name.
-        const pair = named(changing, planName)
+        // Two policies (the user-risk step with Jon's EAM companion): each member
+        // needs its own tenant policy, or none. The plan associates a member with
+        // a tenant policy only where the policy carries the name the plan gives
+        // that member — an operator who followed these instructions. Anything less
+        // is a guess, so the step withholds the implementation and asks for the
+        // names to be sorted out instead. The plan's canonical name for each
+        // member — not the suffixed proposal a create would take, because the
+        // policy this matches is the one already carrying that name.
+        const members = named(changing, planName)
         // Or the name IAMAI gave that member before it used the baseline's (a
         // policy built then), as claimedPolicy reads the goal's one policy.
         const earlier = proposedPolicyName(goal, naming)
         const earlierName = new Map(changing.map((p, i) => [p.sourceKey, nameKey(i === 0 ? earlier : policyPairNames(earlier, p.sourceName, naming ?? null).b)]))
         const namesOf = (m: StepPolicyInput): string[] => [nameKey(String(m.displayName ?? '')), earlierName.get(m.sourceKey) ?? ''].filter((n) => n !== '')
-        // What the tenant's own policies already do is credited (owner decision 8,
-        // 2026-09-25): a member every one of whose guest kinds an enabled policy
-        // delivers at that member's floor (coverage `kindsDelivered`) is in place,
-        // and only the member left short is written — never both of the baseline's
-        // beside a policy that does half of it, and never a rewrite of the
-        // tenant's policy into the baseline's narrower one.
-        const delivered = result.kindsDelivered
-        const namedRows = new Set(((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]).filter((p) => p.state !== 'disabled').map((p) => nameKey(String(p.displayName ?? ''))))
-        const creditOf = (m: StepPolicyInput): string[] | null => {
-          // A member whose own copy the tenant already has, by the name the plan
-          // gives it, is the step's to finish, never credited to another policy.
-          if (namesOf(m).some((n) => namedRows.has(n))) return null
-          const f = stepSources.find((s) => s.key === m.sourceKey)?.facts
-          const k = f && delivered ? guestKindsReached(f) : 'unknown'
-          if (k === 'unknown' || k.size === 0 || [...k].some((x) => (delivered?.[x] ?? []).length === 0)) return null
-          return [...new Set([...k].flatMap((x) => delivered?.[x] ?? []))]
-        }
-        const credits = pair.map(creditOf)
-        const partlyCredited = credits.some((c) => c !== null) && credits.some((c) => c === null)
-        const creditedMembers: Action['creditedMembers'] = !partlyCredited ? undefined : pair.flatMap((m, i) => (credits[i] ? [{ name: String(m.displayName ?? m.sourceName), policyIds: credits[i]!, policyNames: credits[i]!.map((id) => String(((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]).find((p) => String(p.id) === id)?.displayName ?? id)), kinds: [...(guestKindsReached(stepSources.find((s) => s.key === m.sourceKey)!.facts) as Set<string>)] }] : []))
-        const members = partlyCredited ? pair.filter((_, i) => credits[i] === null) : pair
         const byName = new Map((snapshot.config.caPolicies?.rows ?? []).map((p) => [nameKey(String((p as RawPolicy).displayName ?? '')), p as RawPolicy]))
         const matched = members.map((m) => namesOf(m).map((n) => byName.get(n)).find((row) => row !== undefined) ?? null)
         const ids = matched.filter((p): p is RawPolicy => p !== null).map((p) => String(p.id))
-        const ambiguous = !partlyCredited && (matched.every((p) => p === null) || new Set(ids).size !== ids.length)
+        const ambiguous = matched.every((p) => p === null) || new Set(ids).size !== ids.length
         if (ambiguous) {
           action = { kind: 'adjust', summary: [], json: null, portalSteps: members.map(m => fillText(app.plan.pairReviewExpected, { name: String(m.displayName) })), missing: [], unmatchedPair: true }
         } else {
@@ -2229,7 +2294,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           let built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
           if (settleSections(sections, built, new Map(matched.filter((p): p is RawPolicy => p !== null).map((p) => [String(p.id), p])), belowFloor)) built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
           const firstUpdate = matched.find((p) => p !== null) ?? null
-          action = { ...changesFor(built, sections, firstUpdate), ...(creditedMembers ? { creditedMembers } : {}) }
+          action = changesFor(built, sections, firstUpdate)
         }
       }
       // Every update empty: the policies it targets already hold each section
@@ -2256,6 +2321,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       existingRaw = null
       blockPlaceholder('{exclusionsGroup}')
     }
+    // Every reading of the guest pair keys its members by the halves, whatever
+    // branch built the action: one member keyed `sole` stood for both and took
+    // the step's own name (tracking.ts plannedNameOf).
+    if (pair && !pair.ambiguous && !action.unmatchedPair && !action.pairMembers) action = { ...action, pairMembers: pairMembersOf(pair) }
 
     // The tenant objects the resolution used travel with the result, so an
     // instruction names the object the body actually holds rather than looking
