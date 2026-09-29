@@ -75,7 +75,7 @@ export function PlanFooter({ computed, mapping, nameOf, onPutBack }: { computed:
               <li key={r.goalId}>{r.text}</li>
             ))}
           </ul>
-          <p className="reason">{notLicensedNote()}</p>
+          <p className="reason">{notLicensedNote(notInPlan.length)}</p>
         </details>
       )}
       {notInPlan.length > 0 && (

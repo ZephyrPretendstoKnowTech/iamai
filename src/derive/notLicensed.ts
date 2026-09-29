@@ -21,7 +21,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 /** One line of the group. `goalIds` are the baseline goals it names: one, or each device goal on the shared device line. */
 export type NotLicensedRow = { goalId: string; goalIds: string[]; title: string; licence: string; text: string }
 
-type FooterCopy = { notLicensed: string; notLicensedRow: string; notLicensedNote: string; notLicensedDevices: string }
+type FooterCopy = { notLicensed: string; notLicensedRow: string; notLicensedNote: string; notLicensedNoteOthers: string; notLicensedDevices: string }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
 /**
@@ -73,15 +73,19 @@ export function notLicensedSummary(rows: readonly NotLicensedRow[]): string {
   return fillText(footer().notLicensed, { n: notLicensedCount(rows) })
 }
 
-/** The one sentence under the group. */
-export function notLicensedNote(): string {
-  return footer().notLicensedNote
+/**
+ * The one sentence under the group. Where the plan also leaves baseline policies
+ * out for other reasons (derive/notInPlan.ts), it says so rather than reading as
+ * the whole baseline within the licences (N-008).
+ */
+export function notLicensedNote(others = 0): string {
+  return others > 0 ? fillText(footer().notLicensedNoteOthers, { n: others }) : footer().notLicensedNote
 }
 
 /** The print page's count and sentence (pages.export.printPage1.notLicensed). */
-export function notLicensedPrintLine(rows: readonly NotLicensedRow[]): string {
-  const line = (pages.export as { printPage1: { notLicensed: string } }).printPage1.notLicensed
-  return fillText(line, { n: notLicensedCount(rows) })
+export function notLicensedPrintLine(rows: readonly NotLicensedRow[], others = 0): string {
+  const page = (pages.export as { printPage1: { notLicensed: string; notLicensedOthers: string } }).printPage1
+  return others > 0 ? fillText(page.notLicensedOthers, { n: notLicensedCount(rows), others }) : fillText(page.notLicensed, { n: notLicensedCount(rows) })
 }
 
 /**

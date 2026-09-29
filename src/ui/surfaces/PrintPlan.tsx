@@ -76,6 +76,7 @@ export function PrintPlan({
   stepCtx,
   answers = null,
   tenant,
+  notInPlanCount = 0,
 }: {
   tenantName: string
   baselineLabel: string
@@ -98,6 +99,8 @@ export function PrintPlan({
    * the Plan's one sentence instead of a plan (printPlan.ts noPlanLine).
    */
   tenant: Pick<TenantSnapshot, 'capabilities'>
+  /** The baseline policies the plan leaves out for reasons other than a licence (derive/notInPlan.ts), so the licence line never reads as the whole baseline (N-008). */
+  notInPlanCount?: number
   /** The plan record's saved step decisions (kept for the Export page's one call; the briefing states no decision's contents). */
   decisions: Readonly<Record<string, StepDecision>>
 }) {
@@ -265,7 +268,7 @@ export function PrintPlan({
               ))}
             </ul>
           )}
-          {notLicensed.length > 0 && <p>{notLicensedPrintLine(notLicensed)}</p>}
+          {notLicensed.length > 0 && <p>{notLicensedPrintLine(notLicensed, notInPlanCount)}</p>}
         </section>
       )}
 

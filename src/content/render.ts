@@ -976,7 +976,7 @@ export function renderPages(): string {
       h('Gap suffix on a partly-in-place row') +
       ul([pl.gapSuffix['admin-session']], exT) +
       h('Footer groups') +
-      ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT) +
+      ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.notLicensedNoteOthers, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT) +
       h('In the baseline, not in this plan: the group, then each reason a policy can read') +
       ul([pl.footer.notInPlan + ' — ' + pl.footer.notInPlanRow, ...words(pl.footer.notInPlanReason)], { ...exT, policy: 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations', reason: '[its reason]', step: 'Establish Emergency Access' }),
   )
@@ -1036,7 +1036,7 @@ export function renderPages(): string {
       exCard('csv') +
       exCard('bundle') +
       h('Print page 1') +
-      ul([exP.printPage1.title, exP.printPage1.inPlace, exP.printPage1.toDo, exP.printPage1.doesntApply, exP.printPage1.notLicensed], { tenant: 'Contoso Pty Ltd', date: 'September 1, 2026', n: 7, finish: 'September 27' }) +
+      ul([exP.printPage1.title, exP.printPage1.inPlace, exP.printPage1.toDo, exP.printPage1.doesntApply, exP.printPage1.notLicensed, exP.printPage1.notLicensedOthers], { tenant: 'Contoso Pty Ltd', date: 'September 1, 2026', n: 7, finish: 'September 27', others: 8 }) +
       `<div class="tip">${esc(exP.tip)}<span class="q">?</span></div>`,
   )
   sec(

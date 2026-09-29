@@ -49,6 +49,7 @@ import { announceSaved } from '../planSync.ts'
 import { asksBeforeLoading, holdsOf, loadConfirmText, loadedText } from './planFileLoad.ts'
 import { noticeForPlan } from './planChanges.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { notInPlanRows } from '../../derive/notInPlan.ts'
 
 // The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
 // source (the copy lint forbids one as punctuation).
@@ -412,6 +413,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           stepCtx={stepCtx}
           answers={data.mapping?.breakGlassAnswers ?? null}
           tenant={snapshot}
+          notInPlanCount={notInPlanRows(c.baselinePolicies, c.steps, c.coverage, c.goalMap).length}
           decisions={data.stepDecisions}
         />
       )}
