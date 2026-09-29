@@ -65,7 +65,7 @@ const APPROVED = [
     surface: 'home',
     file: 'home-v3.html',
     sourceName: 'home-v3.html (drafted for OWN-B1, approved by the owner 2026-09-27)',
-    sha256: 'abf8875fcfcd1ac269d2f7aa3f547192739cdc9287156de1b23ad254a2fba030',
+    sha256: '4d1bf92d6d988381030c2b2ac29a195e8735de8aa5a0b145a125c4ea95b71088',
   },
   {
     surface: 'connect',

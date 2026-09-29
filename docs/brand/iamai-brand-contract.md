@@ -22,7 +22,7 @@ Brand is a skin over an anatomy.
 
    | Surface | File | SHA-256 |
    |---|---|---|
-   | Home | [`docs/design/approved/anatomy/home-v3.html`](../design/approved/anatomy/home-v3.html) | `abf8875fcfcd1ac269d2f7aa3f547192739cdc9287156de1b23ad254a2fba030` |
+   | Home | [`docs/design/approved/anatomy/home-v3.html`](../design/approved/anatomy/home-v3.html) | `4d1bf92d6d988381030c2b2ac29a195e8735de8aa5a0b145a125c4ea95b71088` |
    | Connect | [`docs/design/approved/anatomy/connect-v3.html`](../design/approved/anatomy/connect-v3.html) | `d899bd2a99f65bd68e6af6ac156dd765591f06d0df5c53750b8148236becb793` |
    | Plan + step | [`docs/design/approved/anatomy/plan-step-v1.html`](../design/approved/anatomy/plan-step-v1.html) | `43de0a7cb9eae37ddf08eeebd829dcd13ed00200ca42e412cbbbfb875df6ae39` |
    | MFA Readiness | [`docs/design/approved/anatomy/mfa-readiness-v3.html`](../design/approved/anatomy/mfa-readiness-v3.html) | `39e18ee8e3a35972085293b888f1ecebf026fd74086144d37ee26cc4780221e4` |

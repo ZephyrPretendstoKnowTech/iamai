@@ -112,8 +112,9 @@ const onThePlan = (step: Step): boolean => !(step.status === 'skipped' || step.s
  */
 function leftOutOf(step: Step): ReportOnlyOutlier[] {
   if (!onThePlan(step)) return []
-  const whole = step.kind === 'create' && step.state.lifecycle === 'not-deployed'
-  if (!whole && step.kind !== 'adjust' && step.kind !== 'create') return []
+  // A whole create counts only while its policy is still to create; once created it counts for nothing.
+  if (step.kind === 'create' ? step.state.lifecycle !== 'not-deployed' : step.kind !== 'adjust') return []
+  const whole = step.kind === 'create'
   // The plan's own policies, whether or not their create can be written today:
   // a policy held on something else is still never listed here, for this reason.
   // Beside a whole create, only the creates count (a mixed step's update is its own task).

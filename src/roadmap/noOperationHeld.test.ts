@@ -202,9 +202,11 @@ test("R4-11: a policy enforced as its step asked (token protection) or as the ba
   assert.equal(implementationOffered(large), false)
 })
 
-test('R4-11: a pair with a half still to create keeps its update to the other half, even where that half holds everything', () => {
+test('R4-11: a pair with a half still to create offers that create, and a half that already holds everything is idle', () => {
   // An empty update is no operation, and one invalid operation withholds the
   // whole step's (operations.ts validOperations): the create would go with it.
+  // Since the 2026-09-29 guest pair, a half already holding what its update
+  // would write is idle (no operation at all), so the create stands alone.
   const base = fixture('demo')
   const ca = base.snapshot.config.caPolicies!
   const empty = { ...base, snapshot: { ...base.snapshot, config: { ...base.snapshot.config, caPolicies: { ...ca, rows: [] } } } } as Fixture
@@ -215,8 +217,7 @@ test('R4-11: a pair with a half still to create keeps its update to the other ha
   const r = runFixture({ ...empty, snapshot }, { snapshot } as never)
   const step = r.steps.find((s) => s.id === pair.id)!
   const ops = step.action.resolution?.policies ?? []
-  assert.deepEqual(ops.map((o) => o.mode).sort(), ['create', 'update'], `premise: one half to create, one to update: ${JSON.stringify(ops.map((o) => [o.mode, o.body]))}`)
-  const update = ops.find((o) => o.mode === 'update')!
-  assert.notDeepEqual(update.body, {}, 'the update keeps what it carried')
-  assert.notEqual(unavailableReason(step), 'no-operation', 'and the create is not withheld with it')
+  assert.deepEqual(ops.map((o) => o.mode), ['create'], `one half to create, the other idle: ${JSON.stringify(ops.map((o) => [o.mode, o.body]))}`)
+  assert.ok(ops.every((o) => o.mode !== 'update' || Object.keys(o.body).length > 0), 'no empty update')
+  assert.notEqual(unavailableReason(step), 'no-operation', 'and the create is not withheld')
 })

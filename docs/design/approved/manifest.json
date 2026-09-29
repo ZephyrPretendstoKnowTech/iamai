@@ -30,7 +30,7 @@
       "produces": "home/index.html (getiamai.com/)",
       "ownerApprovedSourceName": "home-v3.html (drafted for OWN-B1, approved by the owner 2026-09-27)",
       "path": "docs/design/approved/anatomy/home-v3.html",
-      "sha256": "abf8875fcfcd1ac269d2f7aa3f547192739cdc9287156de1b23ad254a2fba030",
+      "sha256": "4d1bf92d6d988381030c2b2ac29a195e8735de8aa5a0b145a125c4ea95b71088",
       "declaredTitle": "IAMAI Home Design Pack v3",
       "observed": {
         "$comment": "Read directly out of the file by task 030, not paraphrased from a prompt.",

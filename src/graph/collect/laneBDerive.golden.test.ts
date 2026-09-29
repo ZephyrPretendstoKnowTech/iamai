@@ -44,7 +44,10 @@ const guid = (rnd: () => number): string => {
 }
 
 type App = { appId: string; displayName: string; role?: string }
-const APPS = (firstParty as { apps: App[] }).apps
+// The list as it stood when the digests were captured: Microsoft Rights Management
+// Services joined it on 2026-09-29 (the re-pin keeps Jon's exclusion of it), which is not
+// a change to the derivations these digests pin.
+const APPS = (firstParty as { apps: App[] }).apps.filter((a) => a.appId !== '00000012-0000-0000-c000-000000000000')
 const byRole = (role: string) => APPS.filter((a) => a.role === role)
 const TECHNICIAN = byRole('technician tool')
 const SERVER = byRole('server sign-in')
