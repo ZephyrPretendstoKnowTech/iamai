@@ -11,6 +11,9 @@ Everything else is either a working document it links to, or history in
   (Home) and https://getiamai.com/planner/ (the tool). Round 5 is the ten edits the owner
   approved after the fresh rating (the rounds document has them), after five review rounds.
   Before it, f0c82ea3 carried the pre-launch night and the morning of 2026-09-28.
+- `round-5` also carries the 2026-09-29 match-Jon run (re-pin to 8af3b118, MFA for
+  Everyone = AllUsers, the guest pair, BaselineScopes, 3.8 lists every created policy), not
+  CI-verified: Codex audits it first, `docs/launch/2026-09-29-codex-handoff.md`.
 - `round-5` carries the pre-share night of 2026-09-28/29 on top of it, CI green, not yet on
   `main` (pushing main needs the owner): the held step's wait first (N-001), scripts pinned
   to the scanned tenant (N-027), the countries baseline line (N-018), Save Countries (N-034),
@@ -106,10 +109,14 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
 - The tool directs people to build the baseline's own policies, not IAMAI's interpretation
   of it; exceptions only where necessary, and safety is one (2026-09-28). Applied: the
   trusted-network goals (SharePoint and OneDrive, AVD, service accounts) are delivered only
-  by a block that carves out the trusted network, never by a Countries block. Still open,
-  each an owner decision: the guest pair (a tenant's one guest policy standing for Jon's
-  two), and Require MFA for Everyone's own policy once other MFA policies are On (Jon's
-  AllUsers leaves Intune Enrollment out, which IAMAI's session-loop rule holds against).
+  by a block that carves out the trusted network, never by a Countries block. Decided 2026-09-29 (owner:
+  match Jon exactly, follow Jon over IAMAI's own interpretations): Require MFA for Everyone
+  is Jon's AllUsers with its Intune Enrollment and RMS exclusions, and the session-loop hold
+  is removed; Require MFA for Guests builds Jon's two policies (Mixed-Guests, B2B-Guest), a
+  tenant's own guest policy is named as existing coverage and never edited; Medium-Risk
+  Users stays Jon's JSON (password change + strength); every policy the plan adds or
+  replaces is listed in 3.8 Create the Policies in Report-only, one card per policy, and an
+  in-place correction stays its own step's task. Pin: Jon's 8af3b118.
 - Policy names match with dashes, spacing and capitals aside: one key,
   baseline/discover.ts nameKey (2026-09-28).
 - An On Hold step whose tabs hand over a live change heads its column with its wait, and
@@ -120,8 +127,11 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   Accounts Excluded by Name and Review Overlapping Policies (roadmap/cleanup.ts
   WITHHELD_CLEANUP; taking a kind out brings it back). Align Policy Names stays (2026-09-28).
 - Polish, not features. The polish research waits for v1.5 or v2 (2026-09-26).
-- Out of v1.0: Jon's AVD allowed-users block and WindowsAzureAD-BaselineScopes (their
-  groups are unidentified); the ZTCA Admin Portal block stays hidden (2026-09-24).
+- Out of v1.0: Jon's AVD allowed-users block (its group is unidentified); the ZTCA Admin
+  Portal block stays hidden (2026-09-24). WindowsAzureAD-BaselineScopes is in (2026-09-29):
+  Require Phishing-Resistant MFA for Basic Sign-ins, in Extend MFA right after Require MFA
+  to Register a Device, created in Report-only and turned on only when everyone has a
+  method that meets the strength.
 - IAMAI is the brand; IAMAI Planner is the tool.
 
 **How work is done**
