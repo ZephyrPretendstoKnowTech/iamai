@@ -20,6 +20,7 @@
 // words, ui/surfaces/stepExport.ts) and the Cleanup row that takes a by-name
 // emergency exclusion out (ui/surfaces/cleanupExport.ts, roadmap/prompts.ts).
 import { test } from 'node:test'
+import { WITHHELD_CLEANUP } from '../../roadmap/cleanup.ts'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
@@ -112,6 +113,11 @@ test("the correction keeps the tenant's by-name emergency exclusion and adds non
     const submitted = ((op.body as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users?.excludeUsers ?? []).filter((id) => bg.has(id.toLowerCase()))
     assert.deepEqual([...submitted].sort(), [...tenantNamed].sort(), 'the correction carries exactly the tenant\'s own by-name exclusion, and adds none')
     const row = cleanupExportViews(r.schedule.cleanup).find((c) => c.kind === 'namedExclusions')
+    // The row is held back from plans for now (roadmap/cleanup.ts WITHHELD_CLEANUP): the tenant's name exclusion stays, and nothing asks for it.
+    if (WITHHELD_CLEANUP.has('namedExclusions')) {
+      assert.equal(row, undefined, 'a held-back row is drawn nowhere')
+      return
+    }
     assert.ok(row, 'a Cleanup row')
     assert.equal(row.title, 'Remove Emergency Accounts Excluded by Name')
     assert.ok(row.whatToDo[0].includes(tenant.displayName) && row.whatToDo[0].includes(r.input.names!.label(tenantNamed[0])), row.whatToDo[0])

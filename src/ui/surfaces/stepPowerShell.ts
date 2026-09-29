@@ -36,9 +36,15 @@ export function pinnedToTenant(script: string, tenantId: string, tenantName: str
   const id = tenantId.replace(/[^0-9A-Za-z.-]/g, '')
   if (script.trim() === '' || id === '') return script
   const name = tenantName.replace(/[\r\n]+/g, ' ').trim() || 'the scanned tenant'
+  // The script's own opening warnings stay first ("Do this after …", "This policy
+  // is On"); the pin follows them, before any line that runs.
+  const lines = script.replace(/\bConnect-MgGraph\b(?![^\n]*-TenantId)/g, `Connect-MgGraph -TenantId '${id}'`).split('\n')
+  const lead = lines.findIndex((l) => !l.startsWith('#'))
+  const at = lead === -1 ? lines.length : lead
   return [
+    ...lines.slice(0, at),
     `# For ${name} only (tenant ID ${id}): a session open in another tenant is closed first.`,
     `if ((Get-MgContext) -and (Get-MgContext).TenantId -ne '${id}') { Disconnect-MgGraph | Out-Null }`,
-    script.replace(/\bConnect-MgGraph\b(?![^\n]*-TenantId)/g, `Connect-MgGraph -TenantId '${id}'`),
+    ...lines.slice(at),
   ].join('\n')
 }

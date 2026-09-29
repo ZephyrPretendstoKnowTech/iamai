@@ -23,6 +23,12 @@ test('pinnedToTenant names the tenant, closes a session open elsewhere, and pins
   assert.match(out, new RegExp(`Connect-MgGraph -TenantId '${ID}' -Scopes 'Policy.Read.All' -NoWelcome`))
   assert.match(out, /Connect-MgGraph -TenantId 'kept' -Scopes 'X'/, 'a connect that names a tenant is left as it is')
   for (const line of lines.filter((l) => /\bConnect-MgGraph\b/.test(l))) assert.match(line, /Connect-MgGraph -TenantId '/, line)
+  // The script's own opening warnings stay first; the pin follows them, before any line that runs.
+  const warned = pinnedToTenant('# Do this after Configure Emergency Exclusions.\nConnect-MgGraph -Scopes X', ID, 'Contoso').split('\n')
+  assert.equal(warned[0], '# Do this after Configure Emergency Exclusions.')
+  assert.match(warned[1], /^# For Contoso only/)
+  assert.match(warned[2], /Disconnect-MgGraph/)
+  assert.equal(warned[3], `Connect-MgGraph -TenantId '${ID}' -Scopes X`)
   assert.equal(pinnedToTenant('', ID, 'x'), '', 'no script, nothing to pin')
   assert.equal(pinnedToTenant(script, '', 'x'), script, 'no tenant id, nothing to pin')
   assert.match(pinnedToTenant(script, "x'; Remove-Item C:\\ -Recurse; '", 'x').split('\n')[1], /-ne '[0-9A-Za-z.-]+'\) \{ Disconnect-MgGraph \| Out-Null \}$/, 'the id cannot carry a quote or a statement')
@@ -38,7 +44,11 @@ test('every PowerShell tab on the sample tenants is pinned to the tenant the sca
       if (!ps) continue
       const text = ps.text()
       scripts++
-      assert.ok(text.startsWith(`# For ${tenantNameOf(f.snapshot) || 'the scanned tenant'} only (tenant ID ${f.snapshot.tenantId})`), `${f.name}/${step.id}: ${text.split('\n')[0]}`)
+      // The header, and the guard after it, come before any line that runs.
+      const lines = text.split('\n')
+      const header = lines.findIndex((l) => l.startsWith(`# For ${tenantNameOf(f.snapshot) || 'the scanned tenant'} only (tenant ID ${f.snapshot.tenantId})`))
+      assert.ok(header >= 0 && lines.slice(0, header).every((l) => l.startsWith('#')), `${f.name}/${step.id}: ${lines.slice(0, 3).join(' / ')}`)
+      assert.match(lines[header + 1], /Disconnect-MgGraph/)
       for (const line of text.split('\n').filter((l) => /\bConnect-MgGraph\b/.test(l))) assert.match(line, /Connect-MgGraph -TenantId '/, `${f.name}/${step.id}: ${line}`)
     }
   }

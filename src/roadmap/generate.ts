@@ -1084,14 +1084,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     return cohortCache.get(key) ?? null
   }
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
-  const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
+  // Names as the plan compares them (baseline/discover.ts nameKey): dashes, spacing and capitals aside.
+  const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => nameKey(String((p as RawPolicy).displayName ?? ''))).filter(Boolean))
   const proposedTaken = new Set<string>()
-  const switchedOffNames = new Set((snapshot.config.caPolicies?.rows ?? []).filter((p) => (p as RawPolicy).state === 'disabled').map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
-  /** The names of the policies this plan tagged for one step, lower-cased. */
+  const switchedOffNames = new Set((snapshot.config.caPolicies?.rows ?? []).filter((p) => (p as RawPolicy).state === 'disabled').map((p) => nameKey(String((p as RawPolicy).displayName ?? ''))).filter(Boolean))
+  /** The names of the policies this plan tagged for one step, as the plan compares names. */
   const taggedNamesFor = (stepId: string): Set<string> => {
     const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
     const ids = new Set(findTaggedPolicies(snapshot, planId, stepId).map((tag) => tag.policyId))
-    return new Set(rows.filter((p) => ids.has(String(p.id))).map((p) => String(p.displayName ?? '').trim().toLowerCase()).filter(Boolean))
+    return new Set(rows.filter((p) => ids.has(String(p.id))).map((p) => nameKey(String(p.displayName ?? ''))).filter(Boolean))
   }
   /**
    * The tenant-convention name, suffixed when a policy of that name already
@@ -1110,16 +1111,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // A switched-off policy carrying the name is the step's own too: the step
     // sets it to Report-only (tracking.ts matchMembers, rule 5), never builds a
     // "(2)" beside it (walk list 4.x item 12, owner 2026-09-24).
-    if (switchedOffNames.has(base.trim().toLowerCase())) mine.add(base.trim().toLowerCase())
+    if (switchedOffNames.has(nameKey(base))) mine.add(nameKey(base))
     const taken = (name: string): boolean => (existingNames.has(name) && !mine.has(name)) || proposedTaken.has(name)
-    if (!taken(base.toLowerCase())) {
-      proposedTaken.add(base.toLowerCase())
+    if (!taken(nameKey(base))) {
+      proposedTaken.add(nameKey(base))
       return { name: base, note: null }
     }
     let n = 2
-    while (taken(`${base} (${n})`.toLowerCase())) n += 1
+    while (taken(nameKey(`${base} (${n})`))) n += 1
     const name = `${base} (${n})`
-    proposedTaken.add(name.toLowerCase())
+    proposedTaken.add(nameKey(name))
     return { name, note: null }
   }
 
@@ -1833,8 +1834,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const tagged = findTaggedPolicies(snapshot, planId, stepId).map((t) => all.find((p) => p.id === t.policyId)).find(live)
       if (tagged) return tagged
       // By the plan's name, or by the name IAMAI proposed before it used the baseline's (a policy built then).
-      const want = new Set([planName, proposedPolicyName(goal, naming)].map((n) => n.trim().toLowerCase()))
-      return all.find((p) => live(p) && want.has(String(p.displayName ?? '').trim().toLowerCase())) ?? null
+      const want = new Set([planName, proposedPolicyName(goal, naming)].map((n) => nameKey(n)))
+      return all.find((p) => live(p) && want.has(nameKey(String(p.displayName ?? '')))) ?? null
     }
 
     const whoKey = impl.expectedWho.kind
@@ -2181,7 +2182,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // beside a policy that does half of it, and never a rewrite of the
         // tenant's policy into the baseline's narrower one.
         const delivered = result.kindsDelivered
-        const namedRows = new Set(((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]).filter((p) => p.state !== 'disabled').map((p) => String(p.displayName ?? '').trim().toLowerCase()))
+        const namedRows = new Set(((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]).filter((p) => p.state !== 'disabled').map((p) => nameKey(String(p.displayName ?? ''))))
         const creditOf = (m: StepPolicyInput): string[] | null => {
           // A member whose own copy the tenant already has, by the name the plan
           // gives it, is the step's to finish, never credited to another policy.
