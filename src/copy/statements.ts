@@ -27,6 +27,19 @@ export function list(items: string[]): string {
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 }
 
+/**
+ * A tenant's name as it goes into Markdown IAMAI draws (StepSections.tsx
+ * AuthoredText): the link form `[words](destination)` broken, so a group, person
+ * or policy named as a link never draws as one, whatever host it names. The
+ * allowed hosts include pages anyone can post to (Microsoft Q&A on
+ * learn.microsoft.com) and deep links an attacker picks (an app's consent blade
+ * on entra.microsoft.com), so the host list alone does not stop it (security
+ * review, 2026-09-29). "](" becomes "] (", which reads the same.
+ */
+export function unlinked(s: string): string {
+  return s.replaceAll('](', '] (')
+}
+
 const em = (s: string): string => `*${s}*`
 const strong = (s: string): string => `**${s}**`
 

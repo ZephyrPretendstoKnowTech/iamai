@@ -22,7 +22,7 @@
 import { policyFacts } from '../coverage/facts.ts'
 import type { PolicyFacts } from '../coverage/types.ts'
 import { shared } from '../content/content.ts'
-import { list } from '../copy/statements.ts'
+import { list, unlinked } from '../copy/statements.ts'
 import { roleNamesOf } from '../roles.ts'
 import { UNNAMED } from '../names.ts'
 import { GRANT_LABEL, portalName } from './portalLines.ts'
@@ -41,11 +41,13 @@ export const PROCEDURE = (shared as unknown as { procedure: Words }).procedure
 /**
  * A template with its {placeholders} filled; a value the caller did not supply is
  * left empty. A tenant name holding a line break stays on its line: every value
- * is one line, so a name never ends the instruction it is in (R6-1).
+ * is one line, so a name never ends the instruction it is in (R6-1). No value
+ * draws as a link: every value is a tenant's name or built from them, never
+ * IAMAI's own link, so its link form is broken (copy/statements.ts unlinked).
  */
 const LINE_BREAK = new RegExp(`\\s*[\\r\\n${String.fromCharCode(0x2028, 0x2029, 0x85)}]\\s*`, 'g')
-const fill = (template: string, vars: Record<string, string>): string => template.replace(/\{(\w+)\}/g, (_m, key: string) => (vars[key] ?? '').replace(LINE_BREAK, ' '))
-const bold = (s: string): string => `**${s}**`
+const fill = (template: string, vars: Record<string, string>): string => template.replace(/\{(\w+)\}/g, (_m, key: string) => unlinked((vars[key] ?? '').replace(LINE_BREAK, ' ')))
+const bold = (s: string): string => `**${unlinked(s)}**`
 const lc = (s: string): string => s.toLowerCase()
 const sameId = (a: string, b: string | null | undefined): boolean => b != null && lc(a) === lc(b)
 
@@ -91,7 +93,7 @@ const roleNames = (ids: Iterable<string>, ctx: ProcedureContext): string[] => ro
  * (StepSections.tsx AuthoredText draws it as a list; an export reads it as it is).
  */
 const roleList = (label: string, items: readonly string[]): string => (items.length === 0 ? '' : `
-  + ${fill(label, { n: String(items.length) })}: ${items.join('; ')}`)
+  + ${fill(label, { n: String(items.length) })}: ${unlinked(items.join('; '))}`)
 const boldList = (items: readonly string[]): string => list(items.map(bold))
 
 /** "the group **A**" / "the groups **A** and **B**". */

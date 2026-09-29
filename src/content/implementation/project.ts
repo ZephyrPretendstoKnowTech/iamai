@@ -16,6 +16,7 @@ import { BINDING, CHANGED_FIELDS_BINDING, PACKAGE_STATES, memberChangedFieldsBin
 import type { Bindings, ConditionContext } from './conditions.ts'
 import { holds, present } from './conditions.ts'
 import { renderInvocation } from './invocation.ts'
+import { unlinked } from '../../copy/statements.ts'
 import type { ScriptRun } from './invocation.ts'
 import type { OwnerConfirmation } from '../../roadmap/decisions.ts'
 
@@ -119,6 +120,9 @@ function powershellJson(v: unknown): string {
   return JSON.stringify(v).replace(/['\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
 }
 
+/** Blocks whose bound text is data a machine reads: a request body, a script. */
+const MACHINE_FORMATS: ReadonlySet<string> = new Set(['json', 'json-template', 'powershell'])
+
 function formatValue(v: unknown): string {
   if (Array.isArray(v)) return v.map((x) => (typeof x === 'string' ? oneLine(x) : JSON.stringify(x))).join(', ')
   if (typeof v === 'string') return oneLine(v)
@@ -174,7 +178,10 @@ export const UNRESOLVED = /\{\{(?:json:)?[A-Za-z0-9_.-]+\}\}|\[omit (?:this line
  * no step for Conditions, and every condition stays at its default.
  *
  * `format` is the block's (`meta.format`): in a PowerShell block a JSON value is
- * written so no quote in it can end a string (powershellJson).
+ * written so no quote in it can end a string (powershellJson), and in text a
+ * person reads (Markdown, or a caller that names no format) a value's link form
+ * is broken, so a tenant's name never draws as a link (copy/statements.ts
+ * unlinked). A request body or a script keeps its values exactly.
  */
 export function bindText(text: string, bindings: Bindings, required: ReadonlySet<string>, emptyOk: ReadonlySet<string> = NO_EMPTY, format?: string): { text: string } | { missing: string[] } {
   const missing = new Set<string>()
@@ -190,7 +197,7 @@ export function bindText(text: string, bindings: Bindings, required: ReadonlySet
       continue
     }
     out.push(line.replace(BINDING_STOP, (_m, json: string | undefined, key: string, stop: string | undefined) => {
-      const value = json ? (format === 'powershell' ? powershellJson(bindings[key]) : JSON.stringify(bindings[key])) : formatValue(bindings[key])
+      const value = json ? (format === 'powershell' ? powershellJson(bindings[key]) : JSON.stringify(bindings[key])) : MACHINE_FORMATS.has(format ?? '') ? formatValue(bindings[key]) : unlinked(formatValue(bindings[key]))
       return stop === undefined || (!json && /[.!?]$/.test(value)) ? value : `${value}${stop}`
     }).replace(OMIT, ''))
   }

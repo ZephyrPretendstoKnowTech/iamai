@@ -13,7 +13,9 @@ import { join } from 'node:path'
 import { AUTHORED_LINK_HOSTS, authoredParts, foldLineOf, inlineParts } from './authoredText.ts'
 import type { InlinePart } from './authoredText.ts'
 import { bindText, oneLine } from '../../content/implementation/project.ts'
-import { createLines } from '../../roadmap/policyProcedure.ts'
+import { createLines, openLine } from '../../roadmap/policyProcedure.ts'
+import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
+import type { CompiledPackage } from '../../content/implementation/protocol.ts'
 
 /** Every inline part a block draws: each line, heading and list item, and a sub-line's pieces as FoldLine draws them. */
 function drawnParts(text: string): InlinePart[] {
@@ -40,7 +42,7 @@ test('a crafted directory name bound into authored text draws no link, and stays
     const bound = bindText("# This change removes {{policy.current.removedExclusions}} from the policy's exclusions.\n1. Remove {{policy.current.removedExclusions}}.", { 'policy.current.removedExclusions': ['Finance travellers', name] }, new Set())
     assert.ok('text' in bound)
     assert.deepEqual(linksIn(bound.text), [], name)
-    assert.ok(drawnParts(bound.text).some((p) => p.kind === 'text' && p.text.includes(name)), `${name} is not drawn as text`)
+    assert.ok(drawnParts(bound.text).some((p) => p.kind === 'text' && p.text.includes(name.replace('](', '] ('))), `${name} is not drawn as text`)
   }
   // a policy procedure: one '*' in a group name broke the bold around it, and the next name on the line too
   {
@@ -61,6 +63,42 @@ test('a crafted directory name bound into authored text draws no link, and stays
     { kind: 'link', text: 'Microsoft Entra', href: 'https://entra.microsoft.com/', external: true },
     { kind: 'link', text: 'the plan', href: '#/plan', external: false },
   ])
+})
+
+// Security review, 2026-09-29: the host list let a name link to any page on an
+// allowed host, worded as the name chose: an app's consent blade on
+// entra.microsoft.com ("Grant the permissions IAMAI needs"), or a Microsoft Q&A
+// page on learn.microsoft.com, which anyone can post. A bound name's link form
+// is now broken where it is bound, so it never draws as a link, whatever host.
+const ON_ALLOWED_HOSTS = [
+  '[Grant the permissions IAMAI needs to finish this step](https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/00000000-aaaa-4bbb-8ccc-000000000000)',
+  '[Read how to finish this step](https://learn.microsoft.com/en-us/answers/questions/1234567/finish-this-step)',
+  '[Open the policy](https://portal.azure.com/#view/attacker-chosen)',
+  '[the plan](#/connect)',
+]
+
+test('a directory name linking to an allowed host draws no link either, in a package channel and in a policy procedure', () => {
+  const blocks = Object.values((registry as unknown as { packages: Record<string, CompiledPackage> }).packages).flatMap((pkg) => Object.values(pkg.blocks))
+  const block = blocks.find((b) => b.meta.format === 'markdown' && b.text.includes('{{policy.current.removedExclusions}}'))
+  assert.ok(block, 'no Markdown block binds the removed exclusions')
+  for (const name of ON_ALLOWED_HOSTS) {
+    const words = /^\[([^\]]+)\]/.exec(name)![1]
+    // a package channel: a real Markdown block, bound as the projection binds it
+    const bound = bindText(block.text, { 'policy.current.removedExclusions': ['Finance travellers', name] }, new Set(), undefined, block.meta.format)
+    assert.ok('text' in bound && bound.text.includes(words), `${block.meta.id} does not draw the name`)
+    assert.deepEqual(linksIn(bound.text).filter((l) => l.text === words), [], `${block.meta.id}: ${name}`)
+    // a policy procedure: an included group, an excluded person, the policy's own name, a role list
+    const G = '11111111-1111-4111-8111-111111111111'
+    const U = '22222222-2222-4222-8222-222222222222'
+    const R = '33333333-3333-4333-8333-333333333333'
+    const ctx = { nameOf: (id: string) => oneLine(id === G ? `Travel *${name}` : id === U ? name : id === R ? name : id) }
+    const policy = { displayName: name, state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: [], includeGroups: [G], includeRoles: [R], excludeUsers: [U], excludeGroups: [] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
+    const text = [openLine(name), ...createLines(policy as never, ctx as never, { name })].join('\n')
+    assert.ok(text.includes(words), 'the names are in the procedure')
+    assert.deepEqual(linksIn(text).filter((l) => l.text.includes(words) || l.href !== 'https://entra.microsoft.com/'), [], name)
+  }
+  // The same words IAMAI authors itself still draw as links (the walk below reads every one).
+  assert.equal(linksIn('Open [Microsoft Entra admin center](https://entra.microsoft.com/).').length, 1)
 })
 
 /** Every source of authored text: the words, the implementation content, and the code that writes procedures. */

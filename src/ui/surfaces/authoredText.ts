@@ -27,13 +27,18 @@ export function foldLineOf(line: string): { title: string; items: string[] } | {
 /**
  * The hosts IAMAI's own authored text links to (content.json, the
  * implementation content, and the procedures the code writes). A tenant's names
- * are bound into the same text, and nothing tells a bound name from IAMAI's
- * words: a group or person named as a Markdown link to another site would draw
- * as a link styled like IAMAI's own (security audit, 2026-09-29). So an external
- * link is drawn only to one of these hosts, and anything else as the plain text
- * it is. authoredLinks.test.ts walks every authored link against this list, so
- * content that links to a new host fails there until the host is added here.
- * No host that serves anyone's content (github.com, linkedin.com) is listed.
+ * are bound into the same text, and nothing here tells a bound name from IAMAI's
+ * words: a group or person named as a Markdown link would draw as a link styled
+ * like IAMAI's own (security audit, 2026-09-29). Where a name is bound, its link
+ * form is broken (copy/statements.ts unlinked: bindText, policyProcedure.ts), so
+ * a name never draws as a link whatever host it names. This list is defence in
+ * depth behind that: an external link is drawn only to one of these hosts, and
+ * anything else as the plain text it is. It is not a list of hosts no one else
+ * can post to: learn.microsoft.com carries Microsoft Q&A and user profiles, and
+ * entra.microsoft.com takes any deep link. github.com and linkedin.com, which
+ * serve anyone's pages, are not listed. authoredLinks.test.ts walks every
+ * authored link against this list, so content that links to a new host fails
+ * there until the host is added here.
  */
 export const AUTHORED_LINK_HOSTS: ReadonlySet<string> = new Set([
   'entra.microsoft.com',
