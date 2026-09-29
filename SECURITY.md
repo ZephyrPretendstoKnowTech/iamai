@@ -162,8 +162,8 @@ signed in. *Sign out* clears the sign-in session.
 
 Apart from the Microsoft sign-in, the Microsoft Graph reads and the GitHub checks listed
 above, nothing leaves on its own. Data moves when you choose to move it: downloading a file
-(the plan file, CSVs, the calendar file, the prompts, the grounding bundle, a policy's
-JSON, diagnostics), copying text to the clipboard, or printing. Writing to the feedback
+(the plan file, CSVs, the calendar file, the prompts, the grounding bundle,
+diagnostics), copying text to the clipboard, or printing. Writing to the feedback
 address is a message you compose in your own mail client; the app adds nothing to it.
 
 Every download, clipboard write and print goes through `src/ui/exportGuard.ts`, and
@@ -177,7 +177,6 @@ placeholders. Display names are not replaced unless the item says so.
   and policies' names and the tenant's name (the file name carries it too). Passkey
   model ids (AAGUIDs) stay as they are: they are vendor constants, not tenant data.
 - The text a step's More section copies (the email, help-desk and manager text).
-- A policy's JSON downloaded from the plan footer.
 - The diagnostics downloads. They carry no tenant id and no hash of one.
 - The grounding bundle, which is masked unless you clear its checkbox. It also replaces
   the display names the tenant contains: the organisation's however short, other names

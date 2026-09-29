@@ -11,9 +11,10 @@
 // The type is the enforcement. `Disposition` has no default and no optional
 // field, so adding an export without deciding is a compile error rather than an
 // omission nobody notices; and the unredacted branch demands a `surface` naming
-// where the warning lives, so an unredacted export cannot be added without
-// pointing at the copy that warns about it. `exportGuard.test.ts` then walks the
-// source and fails if any new call site reaches a browser export API directly.
+// where the export happens, so an unredacted export cannot be added without
+// naming the place whose copy should say what it carries. `exportGuard.test.ts`
+// then walks the source and fails if any new call site reaches a browser export
+// API directly.
 import { redactIdentifiers } from '../redact.ts'
 import { isDemo } from './demoMode.ts'
 import { calendarDay } from '../copy/dates.ts'
@@ -24,10 +25,13 @@ import { AUTHENTICATOR_AAGUIDS, WINDOWS_HELLO_AAGUIDS } from '../scoring/phishin
 import type { MappingState } from '../mapping/types.ts'
 
 /**
- * The surfaces allowed to export without redaction. Each value names a place in
- * the UI that shows the user what the export contains before they can trigger
- * it; adding a value here without adding that warning is the thing the test
- * below is watching for.
+ * The surfaces allowed to export without redaction: each value names the place
+ * in the UI that exports names, sign-in addresses and object ids in full, and
+ * SECURITY.md and the README list every one (exportGuard.test.ts). Most say so
+ * on screen before the export. Two do not yet (security audit, 2026-09-29): the
+ * print card carries no identifier warning, and on MFA Readiness and the
+ * Inventory tables the CSV notice is only the button's tooltip and does not
+ * mention object ids. Adding a value means adding its warning too.
  *
  * - `grounding-bundle` — the Export tab's bundle card, whose warning Callout
  *   (`GROUNDING.warning`) renders above the checkbox that clears redaction.
@@ -61,7 +65,7 @@ export type Disposition = { redact: true; keep?: ReadonlySet<string> } | { redac
 /** Redacted, which is what almost every caller wants. */
 export const REDACTED: Disposition = { redact: true }
 
-/** Names in full, only from a surface that warns first. */
+/** Names in full, only from a named surface (UnredactedSurface). */
 export const unredactedFrom = (surface: UnredactedSurface): Disposition => ({ redact: false, surface })
 
 /**

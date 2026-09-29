@@ -87,7 +87,7 @@ and `offline_access` for the sign-in itself.
   is sent). `src/network.test.ts` fails the build if the source or the built bundle names
   another.
 - **Exports.** An export is a file you save, a copy to your clipboard or a printout. The
-  calendar, the prompts, the copied More text, a policy's JSON and the diagnostics mask
+  calendar, the prompts, the copied More text and the diagnostics mask
   sign-in addresses and object ids (names remain), and the grounding bundle masks names
   too unless you clear its checkbox. These carry names, sign-in addresses and object ids
   in full: the plan file, the print document, the unmasked grounding bundle, every CSV

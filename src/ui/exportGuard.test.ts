@@ -159,3 +159,20 @@ test('SECURITY.md and the README name every surface that exports names, sign-in 
   assert.match(security, /does not reach the dedicated worker[\s\S]{0,700}refuses any URL whose origin is not exactly\s+`https:\/\/graph\.microsoft\.com`/)
   assert.match(guard, /- `inventory-csv` —/, 'the guard\'s comment does not describe the inventory-csv surface')
 })
+
+// Security review, 2026-09-29: the docs named a masked "policy's JSON downloaded
+// from the plan footer" that no one can download (no housekeeping line carries
+// JSON, so the footer never offers it), and the guard's comment opened by saying
+// every surface warns before its export while its own bullets say two do not.
+test('the docs name no export the app does not offer, and the guard says which in-full surfaces do not warn yet', () => {
+  for (const file of ['SECURITY.md', 'README.md']) assert.doesNotMatch(readFileSync(file, 'utf8'), /policy's\s+JSON/, file)
+  const footer = readFileSync('src/ui/surfaces/PlanFooter.tsx', 'utf8')
+  assert.doesNotMatch(footer, /housekeeping\.push\(\{[^\n]*\bjson\b/, 'a plan-footer line now offers its JSON: name that download in SECURITY.md and README.md')
+  const guard = readFileSync(GUARD, 'utf8')
+  const lead = guard.slice(guard.indexOf(' * The surfaces allowed to export without redaction'), guard.indexOf(' * - `grounding-bundle`'))
+  assert.ok(lead.length > 0, 'the comment is not where it was')
+  assert.doesNotMatch(lead, /Each value names a place in\s+\* the UI that shows the user what the export contains before/)
+  assert.match(lead, /print/, 'the lead does not say the print card has no identifier warning')
+  assert.match(lead, /tooltip/, 'the lead does not say the CSV notice is a tooltip on two pages')
+  assert.doesNotMatch(guard, /Names in full, only from a surface that warns first/)
+})
