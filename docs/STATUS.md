@@ -11,6 +11,14 @@ Everything else is either a working document it links to, or history in
   (Home) and https://getiamai.com/planner/ (the tool). Round 5 is the ten edits the owner
   approved after the fresh rating (the rounds document has them), after five review rounds.
   Before it, f0c82ea3 carried the pre-launch night and the morning of 2026-09-28.
+- `round-5` carries the pre-share night of 2026-09-28/29 on top of it, CI green, not yet on
+  `main` (pushing main needs the owner): the held step's wait first (N-001), scripts pinned
+  to the scanned tenant (N-027), the countries baseline line (N-018), Save Countries (N-034),
+  the licence line (N-008), the tile filter (N-005), the calendar card (N-047), dash-tolerant
+  policy names, three Cleanup rows held back, trusted-network goals delivered only by a
+  block that carves out the trusted network, and the contained security fixes of the
+  pre-share audit (Graph token to graph.microsoft.com only, CSV formulas, masking, the
+  diagnostics hash, links from tenant names, PowerShell quoting, SECURITY.md).
 
 ## Launch
 
@@ -95,6 +103,22 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
 - 1.3's passkey-type lockout (a synced-only account stopped by the Device-bound type
   while the allow list is withheld) ships unchanged for now and is first after launch; a
   warning was built and taken out after five review rounds (2026-09-28).
+- The tool directs people to build the baseline's own policies, not IAMAI's interpretation
+  of it; exceptions only where necessary, and safety is one (2026-09-28). Applied: the
+  trusted-network goals (SharePoint and OneDrive, AVD, service accounts) are delivered only
+  by a block that carves out the trusted network, never by a Countries block. Still open,
+  each an owner decision: the guest pair (a tenant's one guest policy standing for Jon's
+  two), and Require MFA for Everyone's own policy once other MFA policies are On (Jon's
+  AllUsers leaves Intune Enrollment out, which IAMAI's session-loop rule holds against).
+- Policy names match with dashes, spacing and capitals aside: one key,
+  baseline/discover.ts nameKey (2026-09-28).
+- An On Hold step whose tabs hand over a live change heads its column with its wait, and
+  every tab and copy says it first (2026-09-28).
+- Every PowerShell script names the scanned tenant, closes a Graph session open in another
+  tenant and connects with -TenantId (2026-09-28).
+- Held back from every plan for now: Alert on Emergency Account Sign-ins, Remove Emergency
+  Accounts Excluded by Name and Review Overlapping Policies (roadmap/cleanup.ts
+  WITHHELD_CLEANUP; taking a kind out brings it back). Align Policy Names stays (2026-09-28).
 - Polish, not features. The polish research waits for v1.5 or v2 (2026-09-26).
 - Out of v1.0: Jon's AVD allowed-users block and WindowsAzureAD-BaselineScopes (their
   groups are unidentified); the ZTCA Admin Portal block stays hidden (2026-09-24).
