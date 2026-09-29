@@ -11,7 +11,10 @@ import { join } from 'node:path'
 import { content } from './content/content.ts'
 import { allFixtures } from './roadmap/fixtures/index.ts'
 
-const OWNER = /the owner/
+// The owner's first name, read from the Home attribution so no other file has to spell it.
+const OWNER_NAME = /I[’']m (\S+) /.exec(JSON.stringify(content.pages.home))?.[1] ?? ''
+assert.ok(OWNER_NAME.length > 1, 'the Home attribution names the owner')
+const OWNER = new RegExp(OWNER_NAME)
 const OWN_TENANT = /getiamai\.onmicrosoft\.com|"GetIAMAI"/
 
 /** Every `example` object in the content file, wherever it sits. */
@@ -31,7 +34,7 @@ test('content.json example values, the fixture generators and the fixture snapsh
   }
   const whole = JSON.stringify(content)
   const home = JSON.stringify(content.pages.home)
-  assert.equal(whole.split('the owner').length - 1, home.split('the owner').length - 1, "the owner's name appears only in the Home attribution")
+  assert.equal(whole.split(OWNER_NAME).length - 1, home.split(OWNER_NAME).length - 1, "the owner's name appears only in the Home attribution")
   assert.doesNotMatch(whole, /getiamai\.onmicrosoft\.com/, 'no sign-in address on the product tenant')
   // The fixture generators and the design renderer carry no tenant-derived identities.
   const dirs = ['src/roadmap/fixtures', 'src/testing']
