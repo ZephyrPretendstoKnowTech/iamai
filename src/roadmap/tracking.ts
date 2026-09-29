@@ -304,6 +304,10 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     if (artifact === null) continue
     const policy = all.find((p) => artifactIdOf(p.id) === artifact)
     if (!policy || claimed.has(policy.id as string)) continue
+    // A finished step that names the policy it compares (Action.intendedFor)
+    // takes that one: an older record's tie to another yields to it.
+    const pin = sole ? step.action.intendedFor : undefined
+    if (pin !== undefined && byId.has(pin) && String(policy.id).toLowerCase() !== pin.toLowerCase()) continue
     // The strongest proof this scan still holds for the tie, else the record.
     const by: MemberTracking['matchedBy'] =
       m.op && m.op.mode === 'update' && m.op.policyId === policy.id
@@ -371,7 +375,11 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   // 4. the goal's coverage fingerprint, for a step with one member. Not for the
   // member a partly credited pair still writes (Action.creditedMembers): it is
   // half of a pair, and the policies that deliver the goal are the other half's.
-  if (sole && !out[0].policy && !out[0].ambiguous && !(step.action.creditedMembers?.length)) {
+  // A finished step names the policy it reads against the plan (Action.intendedFor):
+  // that one is its member, whatever order the scan listed the others in.
+  const pinned = sole && !out[0].policy && !out[0].ambiguous && step.action.intendedFor !== undefined ? byId.get(step.action.intendedFor) : undefined
+  if (pinned && !claimed.has(pinned.id as string)) claim(out[0], pinned, 'fingerprint')
+  else if (sole && !out[0].policy && !out[0].ambiguous && step.action.intendedFor === undefined && !(step.action.creditedMembers?.length)) {
     const result = coverage.results.find((r) => r.goal.id === step.goalId)
     // The goal's own policy (coverage.ts ownScope), whatever order the scan listed
     // policies in. Another goal's policy stands for this step only where the
@@ -977,7 +985,10 @@ export function trackExecution(
       // (Action.intended) with nothing patched: the step's one policy only. A
       // create's member is read against the whole body the create writes: the
       // policy built from it is exactly that, or it has a setting to correct.
-      const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : m.op.body ?? null) : sole ? step.action.intended ?? null : null
+      // Only the policy the step names for it (Action.intendedFor): a record that
+      // tied the member to another object keeps the tie, never the comparison.
+      const forThis = step.action.intendedFor === undefined || (policyRow?.id !== undefined && String(policyRow.id).toLowerCase() === step.action.intendedFor.toLowerCase())
+      const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : m.op.body ?? null) : sole && forThis ? step.action.intended ?? null : null
       // An emergency account the tenant excludes by name stays excluded: the one
       // exclusion no correction asks to remove (owner, 2026-09-26).
       const tenantObjects = step.action.resolution?.tenant ?? step.action.planned?.tenant ?? null

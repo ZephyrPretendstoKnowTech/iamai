@@ -38,13 +38,16 @@ test('7.x finishes on the section completion form: "IAMAI sees {policy} On." and
   }
 })
 
-test('7.3: an On policy requiring MFA on All resources is the MFA that prevents the sign-in loop; one leaving out Intune Enrollment is not', () => {
+test('7.3: a tenant that follows the baseline (its MFA for everyone leaving Intune Enrollment out) is never held for a sign-in loop', () => {
+  // Jon Hope's pairing is the plan (owner, 2026-09-29): AllUsers leaves Intune
+  // Enrollment out and IntuneEnrollment-SIFEveryTime has no grant of its own.
   const f = curatedFixture('demo-week2')
-  const loops = (fx: Fixture): boolean => runFixture(fx).steps.find((s) => s.id === INTUNE_STEP)!.blockers.some((b) => b.kind === 'readiness' && b.label === 'session-loop')
-  assert.equal(loops(f), false, 'Require MFA for everyone on All resources covers Intune Enrollment: no hold')
   const { fixture: out, changed } = mfaLeavesOutIntune(f)
   assert.ok(changed > 0, 'the premise: the fixture has an On MFA policy on All resources')
-  assert.equal(loops(out), true, 'with Intune Enrollment left out of it, nothing asks for MFA on that sign-in: the hold stands')
+  for (const fx of [f, out]) {
+    const step = runFixture(fx).steps.find((s) => s.id === INTUNE_STEP)!
+    assert.equal(step.blockers.some((b) => b.label === 'session-loop'), false)
+  }
 })
 
 test('7.3: no "Fresh sign-in proof · Unknown" card in the step’s readiness model', () => {
@@ -130,34 +133,6 @@ test('7.4 held on device readiness is estimated at the end of the preparation wi
   assert.equal(lane.estimate?.slice(0, 10), window.prepEnd.slice(0, 10), `device readiness is preparation a person does: ${boardWhenOf(step, waveStartOf(step), lane)}`)
 })
 
-/** Week two with each On MFA policy on All resources changed by `edit`. */
-function editMfa(edit: (p: Record<string, any>) => void): Fixture {
-  const f = structuredClone(curatedFixture('demo-week2'))
-  let changed = 0
-  for (const p of (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]) {
-    if (p.state !== 'enabled' || !(p.grantControls?.builtInControls ?? []).includes('mfa') || !(p.conditions?.applications?.includeApplications ?? []).includes('All')) continue
-    edit(p)
-    changed++
-  }
-  assert.ok(changed > 0, 'the premise: an On MFA policy on All resources')
-  return f
-}
-const loopHeld = (f: Fixture): boolean => runFixture(f).steps.find((s) => s.id === INTUNE_STEP)!.blockers.some((b) => b.kind === 'readiness' && b.label === 'session-loop')
-
-test('7.3: an OR grant a compliant device satisfies asks no MFA of that device, so it does not clear the loop hold', () => {
-  const f = editMfa((p) => { p.grantControls = { ...p.grantControls, operator: 'OR', builtInControls: ['mfa', 'compliantDevice'] } })
-  assert.equal(loopHeld(f), true)
-})
-
-test('7.3: an MFA policy the plan will correct to the baseline’s, which leaves Intune Enrollment out, does not clear the loop hold', () => {
-  // Leaving another app out makes the plan write the baseline's resources whole: All, except Intune Enrollment.
-  const f = editMfa((p) => { p.conditions.applications.excludeApplications = [...(p.conditions.applications.excludeApplications ?? []), '00000002-0000-0ff1-ce00-000000000000'] })
-  const mfa = runFixture(f).steps.find((s) => s.id === 's-goal-mfa-all-users')!
-  const leaves = (mfa.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && JSON.stringify((o.target as { conditions?: { applications?: unknown } } | undefined)?.conditions?.applications ?? '').includes('d4ebce55'))
-  assert.ok(leaves, 'the premise: the plan corrects the MFA policy to leave Intune Enrollment out')
-  assert.equal(loopHeld(f), true)
-})
-
 test('7.4: the held create is one Threshold card, with the count and the certificate reason, and hands over nothing runnable', () => {
   // Owner, 2026-09-26: no policy card and no Implementation card beside it, no
   // PowerShell or JSON while the create waits, and no lecture lines.
@@ -175,69 +150,4 @@ test('7.4: the held create is one Threshold card, with the count and the certifi
   assert.match(gate.instruction, /\d+ of \d+ people have a compliant computer\./)
   assert.doesNotMatch(gate.instruction, /Phones are outside this answer|No step of this plan enrolls a device/)
   assert.deepEqual(body.artifacts.map((a) => a.id), ['portal', 'ai'], 'the Entra procedure stays; PowerShell and JSON wait with the create')
-})
-
-test('7.3: MFA split across policies covers the sign-in when, between them, they reach everyone the step reaches', () => {
-  // Internal users on one policy, guests on another, as the baseline splits them.
-  const split = (guestsOn: boolean): Fixture => {
-    const f = structuredClone(curatedFixture('demo-week2'))
-    const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]
-    const everyone = rows.find((p) => p.displayName === 'Core - Grant - MFA for all users')
-    const guests = rows.find((p) => p.displayName === 'Core - Grant - Guests MFA')
-    assert.ok(everyone && guests, 'the premise: week two has both policies')
-    const kinds = { guestOrExternalUserTypes: 'internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider', externalTenants: { membershipKind: 'all' } }
-    everyone.conditions.users.excludeGuestsOrExternalUsers = kinds
-    // The guest condition as Entra writes it today, not the legacy GuestsOrExternalUsers user value.
-    guests.conditions.users = { ...guests.conditions.users, includeUsers: [], includeGuestsOrExternalUsers: kinds }
-    if (!guestsOn) guests.state = 'disabled'
-    return f
-  }
-  assert.ok(curatedFixture('demo-week2').snapshot.users.some((u) => u.userType === 'guest'), 'the premise: the tenant has a guest')
-  assert.equal(loopHeld(split(true)), false, 'internal users on one policy and guests on the other: covered')
-  assert.equal(loopHeld(split(false)), true, 'with the guest policy off, the guest has no MFA on the sign-in')
-})
-
-test('7.3: a policy leaving guests out through the legacy GuestsOrExternalUsers value never clears the hold', () => {
-  const f = structuredClone(curatedFixture('demo-week2'))
-  const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]
-  rows.find((p) => p.displayName === 'Core - Grant - MFA for all users')!.conditions.users.excludeUsers = ['GuestsOrExternalUsers']
-  rows.find((p) => p.displayName === 'Core - Grant - Guests MFA')!.state = 'disabled'
-  assert.equal(loopHeld(f), true)
-})
-
-test('7.3: an account PIM-eligible for a role the MFA policy leaves out keeps the hold; nobody holding it clears it', () => {
-  // A role no MFA policy of week two names: activated, nothing else reaches the account.
-  const ROLE = 'aaaaaaaa-0000-4000-8000-000000000001'
-  const withRole = (eligible: boolean): Fixture => {
-    const f = structuredClone(curatedFixture('demo-week2'))
-    const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]
-    rows.find((p) => p.displayName === 'Core - Grant - MFA for all users')!.conditions.users.excludeRoles = [ROLE]
-    if (eligible) {
-      const member = f.snapshot.users.find((u) => u.userType !== 'guest' && !f.mapping.breakGlassUserIds.includes(u.id) && !(f.snapshot.roles.active[u.id]?.length))!
-      f.snapshot.roles.eligible = { ...(f.snapshot.roles.eligible ?? {}), [member.id]: [ROLE] }
-    }
-    return f
-  }
-  assert.equal(f73RolesRead(withRole(false)), true, 'the premise: the roles were read')
-  assert.equal(loopHeld(withRole(false)), false, 'nobody holds the role: everyone the step reaches has MFA')
-  assert.equal(loopHeld(withRole(true)), true, 'once the eligible role is activated, that account leaves the MFA policy')
-})
-const f73RolesRead = (f: Fixture): boolean => f.snapshot.config.roleAssignments?.status === 'ok'
-
-test('7.3: a role held through a group, left out of one MFA policy, counts as covered only where another MFA policy names it', () => {
-  const ROLE = 'aaaaaaaa-0000-4000-8000-000000000002'
-  const held = (named: boolean): Fixture => {
-    const f = structuredClone(curatedFixture('demo-week2'))
-    const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Record<string, any>[]
-    const everyone = rows.find((p) => p.displayName === 'Core - Grant - MFA for all users')!
-    everyone.conditions.users.excludeRoles = [ROLE]
-    // A principal the directory read has no row for: a role-assignable group, or an app.
-    f.snapshot.roles.active = { ...f.snapshot.roles.active, 'not-a-user-principal': [ROLE] }
-    // It may also leave out a group read whole with no one in it (the owner's Passkey Bootstrap group).
-    f.groups.set('empty-read-group', { memberIds: [], memberCount: 0, sampled: false })
-    if (named) rows.push({ id: 'admins-mfa', displayName: 'Admins MFA', state: 'enabled', conditions: { users: { includeUsers: [], excludeUsers: [], includeGroups: [], excludeGroups: [...(everyone.conditions.users.excludeGroups ?? []), 'empty-read-group'], includeRoles: [ROLE], excludeRoles: [] }, applications: { includeApplications: ['All'], excludeApplications: [], includeUserActions: [], includeAuthenticationContextClassReferences: [] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
-    return f
-  }
-  assert.equal(loopHeld(held(false)), true, 'its members may be left out of the only MFA policy: held')
-  assert.equal(loopHeld(held(true)), false, 'another MFA policy names the role: its members are covered either way')
 })

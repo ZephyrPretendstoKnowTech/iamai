@@ -21,8 +21,8 @@ import { CORE_ADMIN_ROLE_IDS, guestKindsReached, matchesSignature } from '../cov
 import { scopedToGoalApps } from '../coverage/goalIdentity.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { accountApplicability, applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
-import type { PolicyEffect, RoleDirectory } from './operations.ts'
+import { applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
+import type { PolicyEffect } from './operations.ts'
 import { REPORT_ONLY_STEP_ID, batchable } from './reportOnlyBatch.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -1966,16 +1966,26 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // Android and iOS out of its own enforced compliant-device policy, a
       // narrowing of a policy the plan never built (an owner question).
       const claimed = claimedPolicy()
-      const own = planDeployed || (claimed !== null && (result.satisfaction?.policyIds ?? []).includes(String(claimed.id)))
-      // Every control is exact (owner, 2026-09-25): the one policy delivering the
-      // goal as its own step's policy is read against the plan's whoever wrote it,
-      // so a policy the tenant wrote that is not the plan's is corrected toward it.
-      // Several policies delivering it together are not one policy to compare.
       const delivers = result.satisfaction?.policyIds ?? []
-      const ownStep = delivers.length === 1 && result.candidates.some((c) => c.policyId === delivers[0] && c.ownScope)
+      const claimedDelivers = claimed !== null && delivers.includes(String(claimed.id))
+      const own = planDeployed || claimedDelivers
+      // Every control is exact (owner, 2026-09-25): the one policy of the goal's own
+      // scope that delivers it (coverage.ts ownScope) is its step's policy, read
+      // against the plan's whoever wrote it, and Align Policy Names gives it the
+      // baseline's name. Another goal's policy that also covers some of its people
+      // (the admins' or the guests' MFA policy) is that goal's, never this step's
+      // (owner, 2026-09-29: match the baseline exactly). Two of its own delivering
+      // it are not one policy to compare.
+      const ownDelivering = delivers.filter((id) => result.candidates.some((c) => c.policyId === id && c.ownScope))
+      const ownStep = ownDelivering.length === 1
       const policies = !own && !ownStep ? [] : stepSources.length > 0 ? stepPolicies() : templatePolicy()
       const would = policies.length === 1 ? buildCreateAction(named(policies, planName), mapping, planId, stepId, goal.id) : null
       const intended = would && (would.missing ?? []).length === 0 ? would.resolution?.policies[0]?.body : undefined
+      // Which tenant policy that is, as one fact (Action.intendedFor): the one the
+      // plan tagged, else the one carrying its name, else its own delivering one.
+      // Tracking compares and Align Policy Names renames that policy and no other.
+      const tagged = delivers.filter((id) => matchedPolicyIds.includes(id))
+      const intendedFor = !intended ? undefined : tagged.length === 1 ? tagged[0] : claimedDelivers ? String(claimed!.id) : ownStep ? ownDelivering[0] : undefined
       // The same create, whoever's policy delivers the goal, for the step's
       // procedure alone (Action.planned): a finished step still hands over how
       // its policy is created and turned on (walk list item 18). Every
@@ -2009,6 +2019,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         json: null,
         portalSteps: [],
         ...(intended ? { intended } : {}),
+        ...(intended && intendedFor ? { intendedFor } : {}),
         ...(planned ? { planned } : {}),
         ...(ownPolicyDiffers ? { ownPolicyDiffers } : {}),
         ...(alsoExcluded ? { alsoExcluded } : {}),
@@ -3236,96 +3247,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
   }
 
-  // 4. No session control that can put the person applying it in a loop:
-  // sign-in every time without MFA on that sign-in is Microsoft's own
-  // documented hazard (steps/session-controls.md).
-  // The MFA may come from other policies: On policies that ask for a method on
-  // the same resources and, between them, reach every account this one reaches
-  // (Require MFA for everyone on All resources, or one each for admins, internal
-  // users and guests) prompt for MFA on the same sign-in. One that leaves the
-  // resource out, as the baseline's own MFA policy leaves out Intune Enrollment,
-  // does not.
-  // Each policy is read as the plan leaves it: an MFA policy another step will
-  // correct to the baseline's, which leaves Intune Enrollment out, covers nothing
-  // once that correction is made. An OR grant with a way through that is not a
-  // method (a compliant or joined device) asks no MFA of that device.
-  const leftBehind = new Map(steps.filter(isOpenPolicy).flatMap((s) => s.action.resolution?.policies ?? []).flatMap((o) => (o.mode === 'update' && o.target ? [[o.policyId.toLowerCase(), o.target as RawPolicy] as const] : [])))
-  const onMfa = ((snapshot.config.caPolicies?.rows ?? []) as RawPolicy[])
-    .filter((p) => p.state === 'enabled')
-    .map((p) => effectOf(leftBehind.get(String(p.id ?? '').toLowerCase()) ?? p))
-    .filter((m) => m.asksForMethod && !m.blocks && m.unknown.length === 0 && (m.operator === 'AND' || m.requirements.every((r) => r.kind === 'mfa' || r.kind === 'strength')) && !m.scope.unreadable && m.narrowings.every((n) => n.kind === 'applications') && m.scope.applications.userActions.length === 0 && m.scope.applications.authContexts.length === 0)
-    // The legacy GuestsOrExternalUsers user value is a guest clause the scope reader keeps as an account id: nothing here settles whom it reaches.
-    .filter((m) => ![...m.scope.users.include, ...m.scope.users.exclude].some((u) => u.toLowerCase() === 'guestsorexternalusers'))
-  // A policy that leaves a role out is trusted only where the roles were read.
-  // A role held by a principal the directory read has no row for (a
-  // role-assignable group, or an app) sits on that principal, and a member of
-  // such a group reads as not holding it: the policy is trusted for that role
-  // only where another of the MFA policies names the role and leaves out no one
-  // the step reaches, which is where that member is covered either way.
-  const accountIds = new Set(snapshot.users.map((u) => u.id.toLowerCase()))
-  const rolesByGroup = new Set([...Object.entries(snapshot.roles?.active ?? {}), ...Object.entries(snapshot.roles?.eligible ?? {})].filter(([id]) => !accountIds.has(id.toLowerCase())).flatMap(([, roles]) => roles))
-  const rolesRead = snapshot.config.roleAssignments?.status === 'ok' && ['ok', 'disabled', undefined].includes(snapshot.config.pimEligibility?.status)
-  // A group whose membership was read whole and holds no one leaves no one out.
-  const emptyGroup = (id: string): boolean => (knownGroupMembers[id.toLowerCase()] ?? knownGroupMembers[id])?.length === 0
-  const rolesTrusted = (m: PolicyEffect, others: readonly PolicyEffect[], e: PolicyEffect): boolean =>
-    m.scope.roles.exclude.length === 0 ||
-    (rolesRead && m.scope.roles.exclude.every((role) => !rolesByGroup.has(role) || others.some((o) => o !== m && lower(o.scope.roles.include).includes(role.toLowerCase()) && within(o.scope.users.exclude, e.scope.users.exclude) && o.scope.groups.exclude.every((g) => lower(e.scope.groups.exclude).includes(g.toLowerCase()) || emptyGroup(g)) && o.scope.roles.exclude.length === 0)))
-  const lower = (xs: readonly string[]): string[] => xs.map((x) => x.toLowerCase())
-  const within = (xs: readonly string[], of: readonly string[]): boolean => lower(xs).every((x) => lower(of).includes(x))
-  /** Whether an MFA policy reaches the step's resources: all of them, or each one it names, none left out. */
-  const onApps = (m: PolicyEffect, apps: readonly string[]): boolean => {
-    const mInclude = lower(m.scope.applications.include)
-    const mExclude = lower(m.scope.applications.exclude)
-    return apps.includes('all') ? mInclude.includes('all') && mExclude.length === 0 : (mInclude.includes('all') || apps.every((a) => mInclude.includes(a))) && apps.every((a) => !mExclude.includes(a))
-  }
-  const scopeEvidence = { groupMembers: knownGroupMembers, groupMemberSets: Object.fromEntries(Object.entries(knownGroupMembers).map(([id, ids]) => [id, new Set(ids.map((x) => x.toLowerCase()))])) }
-  // Each role state an account can sign in with: today's roles, and each PIM-eligible role activated.
-  const roleStates = (id: string): RoleDirectory[] => {
-    const active = snapshot.roles?.active ?? {}
-    return [{ users: snapshot.users, roles: { active } }, ...(snapshot.roles?.eligible?.[id] ?? []).map((role) => ({ users: snapshot.users, roles: { active: { ...active, [id]: [...(active[id] ?? []), role] } } }))]
-  }
-  // `e` is the step's own policy. Every enabled account in the directory it
-  // reaches, in every role state, is reached by at least one of the MFA
-  // policies; an account either answer is unsure of holds it, and so does a
-  // directory the scan did not read. With no policy of its own the step's resources and
-  // exclusions are unknown, and only one policy for everyone on every resource,
-  // leaving out only the exclusions group, answers for it.
-  const mfaCovers = (e: PolicyEffect | null): boolean => {
-    if (e === null) {
-      const excluded = [tenantObjects.exclusionsGroupId].filter((x): x is string => typeof x === 'string')
-      return onMfa.some((m) => m.scope.allUsers && onApps(m, ['all']) && m.scope.users.exclude.length === 0 && m.scope.roles.exclude.length === 0 && m.scope.guests.exclude === null && within(m.scope.groups.exclude, excluded))
-    }
-    // A step policy on a user action or an authentication context, or naming no resource, is not a sign-in to an app this reads.
-    if (e.scope.applications.include.length === 0 || e.scope.applications.userActions.length > 0 || e.scope.applications.authContexts.length > 0) return false
-    const onResources = onMfa.filter((m) => onApps(m, lower(e.scope.applications.include)))
-    const covering = onResources.filter((m) => rolesTrusted(m, onResources, e))
-    if (covering.length === 0 || snapshot.users.length === 0 || snapshot.sources.users?.status === 'error') return false
-    for (const u of snapshot.users) {
-      if (u.accountEnabled === false) continue
-      for (const state of roleStates(u.id)) {
-        const reached = accountApplicability(e.scope, u.id, state, scopeEvidence)
-        if (reached === 'out') continue
-        if (reached === 'unknown') return false
-        if (!covering.some((m) => accountApplicability(m.scope, u.id, state, scopeEvidence) === 'in')) return false
-      }
-    }
-    return true
-  }
-  for (const s of steps) {
-    // The policy the step will actually leave behind decides: a sign-in
-    // frequency of "every time" with nothing granting a way through is the loop,
-    // whatever the goal's floor was written as. The floor answers only for a
-    // step with no policy of its own (roadmap/operations.ts stepEffects).
-    const effects = effectsOf(s)
-    const loops =
-      effects !== null
-        ? effects.some((e) => e.sessionControls?.signInFrequencyEveryTime === true && !e.asksForMethod && !mfaCovers(e))
-        : (() => {
-            const floor = input.coverage.results.find((r) => r.goal.id === s.goalId)?.goal.implementations[0]?.floor
-            return floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined && !mfaCovers(null)
-          })()
-    if (loops) blockLate(s, 'session-loop', BLOCKED_REASON.after(shared.sessionLoopHold as string))
-  }
+  // 4. The baseline's session control on Intune Enrollment (sign-in every time,
+  // no grant) beside its all-users MFA policy that leaves Intune Enrollment out
+  // is Jon Hope's own pairing, and it is the plan (owner, 2026-09-29: match the
+  // baseline exactly). IAMAI holds nothing against it and tells nobody it loops.
 
   // 5. Block Legacy Authentication is not turned on while an account named in
   // Confirm What You Use's mail-sending answer still signs in with legacy

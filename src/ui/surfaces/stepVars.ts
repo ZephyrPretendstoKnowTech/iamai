@@ -40,6 +40,7 @@ import { exclusionsGroupPolicies, exclusionsReach, groupLookup } from '../../val
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { isHeld } from '../../roadmap/holds.ts'
+import { deliveredByEnforcedPolicy } from '../../roadmap/operations.ts'
 import { engine, shared, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
@@ -731,12 +732,17 @@ export function planDates(steps: readonly Step[], scheduleStart: string, naming?
   // no day on which people will be asked for MFA, and another policy's is not one
   // (roadmap/holds.ts; the board's hold as much as the roadmap's). The first
   // enforcement stands in only where there is no MFA step to have a day.
-  const mfaEnforce = mfa && (isHeld(mfa) || held(mfa)) ? null : (mfa?.events?.enforce?.at ?? firstEnforce)
+  // A policy the tenant enforces delivering it is Require MFA for Everyone in
+  // place, open or not (operations.ts deliveredByEnforcedPolicy): a difference
+  // from the plan left to correct holds the step, and holds nobody's first MFA
+  // prompt, which already happened. The board's hold still does.
+  const mfaDelivered = mfa !== undefined && deliveredByEnforcedPolicy(mfa)
+  const mfaEnforce = mfa && (held(mfa) || (isHeld(mfa) && !mfaDelivered)) ? null : (mfa?.events?.enforce?.at ?? firstEnforce)
   const enrolWindowDays = firstEnforce ? Math.max(1, Math.ceil((Date.parse(firstEnforce) - Date.parse(scheduleStart)) / 86_400_000)) : null
   const unmanagedBrowserOnPlan = steps.some((s) => (s.goalId === 'block-downloads-unmanaged' || s.goalId === 'byod-session-controls') && s.status !== 'skipped')
   // Require MFA for Everyone in place: the campaign's email is the passkey version,
   // and names the first policy still to enforce that needs a passkey, by its date.
-  const mfaInPlace = mfa?.status === 'done'
+  const mfaInPlace = mfaDelivered
   const passkey = dated
     // Whether a policy needs a passkey is the policy's own answer, measured
     // against what this tenant says the strength allows. Without the scan only

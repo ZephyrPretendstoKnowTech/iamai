@@ -132,12 +132,10 @@ test('S7.3: while the plan dates the report-only create, no readiness wait is li
       // waits on under Fix whatever its date.
       if (waitsOnFoundation(s)) continue
       // The step's own threshold is a wait on every reading (stepContract.ts thresholdBinding); the other readiness bindings are the ones at issue.
-      // The session-loop wait is not one of these either: it has its own sentence
-      // under Fix (stepContract.ts reads shared.sessionLoopReview for it), not its binding.
       // Nor is the Temporary Access Pass wait, for the same reason: nothing in the
       // plan creates a pass, so its binding was a count with no way to change it
       // and it reads shared.noTemporaryAccessPass instead.
-      const waits = s.blockers.filter((b) => b.kind === 'readiness' && b.label !== 'session-loop' && b.label !== 'registration-no-tap' && typeof b.binding === 'string' && !/readiness reaches/.test(b.binding)).map((b) => b.binding as string)
+      const waits = s.blockers.filter((b) => b.kind === 'readiness' && b.label !== 'registration-no-tap' && typeof b.binding === 'string' && !/readiness reaches/.test(b.binding)).map((b) => b.binding as string)
       if (waits.length === 0) continue
       creating++
       const c = stepContract(s, ctx)

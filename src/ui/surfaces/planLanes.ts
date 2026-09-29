@@ -237,7 +237,6 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       const on: Action = policy && GATE.has(b.stepId) && b.label !== FOUNDATION_WAIT ? 'enforce' : action
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
-    else if (b.kind === 'readiness' && b.label === 'session-loop' && exists) blockers.push({ kind: 'fact', id: 'fact:session-loop' })
     // The readiness threshold holds a compliant-device policy's create as well as its
     // enforcement (roadmap/operations.ts createWaitsOnReadiness; owner, 2026-09-23).
     else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: readinessRowWords(step, b.label, b.binding), ...(b.label === 'readiness' && holdsCreate ? { holdsCreate } : {}) })

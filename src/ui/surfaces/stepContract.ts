@@ -1038,7 +1038,6 @@ function isThresholdWait(b: Step['blockers'][number], threshold: string | null):
  */
 function waitTextOf(b: Step['blockers'][number]): string | null {
   if (typeof b.binding !== 'string' || b.binding.length === 0) return null
-  if (b.kind === 'readiness' && b.label === 'session-loop') return shared.sessionLoopReview as string
   if (b.kind === 'readiness' && b.label === 'registration-no-tap') return shared.noTemporaryAccessPass as string
   return b.binding
 }
@@ -1275,7 +1274,6 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
-  if (step.state.lifecycle === 'report-only' && step.blockers.some(b => b.kind === 'readiness' && b.label === 'session-loop')) return { kind: 'resolve', text: shared.sessionLoopHold as string }
   // A deployed policy held for review overrules the step's own words for its
   // work, which describe the rollout it is no longer simply having: "Leave it in
   // report-only until Sep 3" is true of the window and silent about the change
@@ -2811,12 +2809,6 @@ function fixTiles(fixes: readonly ContractFix[], prerequisiteLabel: (id: string)
     if (kind === 'mapping') return { key: f.key, label: t.mapping, tone: 'warn', value: BLOCKED_REASON.sourceMapping, note: f.text, link: mappingsLink() }
     if (kind === 'review') return { key: f.key, label: t.review, tone: 'warn', value: CONTRACT.condition['review-required'], note: f.text }
     if (kind === 'check') return { key: f.key, label: t.check, tone: 'warn', value: f.text, note: null }
-    // The session-loop wait is four sentences (shared.sessionLoopReview). As a
-    // tile value it became the Tasks Remaining card's heading, a paragraph where
-    // every other card heads one short check. Its short form — the same wait, the
-    // words the step's own action already uses — is the heading, and the
-    // paragraph is the explanation under it.
-    if (f.key === 'readiness:session-loop') return { key: f.key, label: t.blockers, tone: 'warn', value: shared.sessionLoopHold as string, note: f.text }
     // Every other blocker reads the same way: its subject is the check, and the
     // binding — written to follow "Blocked · ", so lowercase and mid-clause — is
     // the sentence beneath it (quality audit 2.3). A blocker with no subject
@@ -2888,8 +2880,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     // planLanes.ts observe names the fact `fact:<label>`) — is that tile. It was
     // drawn again as its bare kind, "Tenant fact · Tenant fact", with nothing
     // under it: beside "Authentication context · while another policy targets
-    // authentication context c1" on the held PIM create (R4-18 review), and beside
-    // the session-loop wait on Intune enrollment.
+    // authentication context c1" on the held PIM create (R4-18 review).
     if (b.kind === 'fact') {
       const label = b.id.startsWith('fact:') ? b.id.slice('fact:'.length) : b.id
       if (present.has(`evidence:${label}`) || present.has(`readiness:${label}`)) continue

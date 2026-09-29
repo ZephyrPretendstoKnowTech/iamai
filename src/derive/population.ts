@@ -12,6 +12,7 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUsers, enabledUsers, notPeopleIds, personAccounts } from './sets.ts'
 import { affectedIds } from './whoLine.ts'
 import { effectsOf } from '../roadmap/strand.ts'
+import { deliveredByEnforcedPolicy } from '../roadmap/operations.ts'
 import type { StepPopulation } from '../roadmap/types.ts'
 import { adminUserIds } from '../roles.ts'
 
@@ -126,6 +127,10 @@ export type StepPopulationView = {
  */
 export function reached(step: Step): StepPopulation | null {
   if (effectsOf(step) === null) return step.state?.satisfied === true && step.deliveredReach !== undefined ? step.deliveredReach : step.population
+  // Open with no operation of its own, only for how the enforced policy that
+  // delivers it differs from the plan (roadmap/operations.ts
+  // deliveredByEnforcedPolicy): that policy's reach, which a correction does not move.
+  if (step.deliveredReach !== undefined && step.cohort === undefined && deliveredByEnforcedPolicy(step)) return step.deliveredReach
   return step.cohort ?? null
 }
 

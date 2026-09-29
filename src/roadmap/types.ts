@@ -291,6 +291,16 @@ export type Action = {
    */
   intended?: Record<string, unknown>
   /**
+   * The tenant policy `intended` is read against, by id: the one fact of which
+   * policy a finished step compares and renames. Tracking claims it for the
+   * step's one member (tracking.ts matchMembers) and compares no other policy
+   * against `intended`; Align Policy Names renames no other (cleanupPhase.ts
+   * renamesOf). Set only with `intended`: the policy carrying the plan's tag,
+   * else the one carrying the plan's name, else the goal's one own-scoped
+   * policy that delivers it (coverage.ts ownScope).
+   */
+  intendedFor?: string
+  /**
    * On a goal the tenant already delivers, whoever's policy delivers it: the
    * create the plan would hand over for it, every reference resolved. Only the
    * step's procedure reads it (ui/surfaces/policyTasks.ts policyProcedureOf), so

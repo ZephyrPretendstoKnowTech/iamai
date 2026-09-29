@@ -36,15 +36,13 @@ test('100 identities remain stable across deployment stages; drift reopens the a
   assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.lane,'Ready')
   assert.equal(laneReadings(runs[3].r.steps).get('s-goal-admins-phishing-resistant')?.substatus,'Correct', 'a safe correction that does not enforce can proceed before final recovery verification')
 })
-test('an Every time configuration hazard cannot be mistaken for a timed observation',()=>{
-  // The hazard stands where nothing asks for MFA on the enrollment sign-in: the
-  // tenant's MFA policies leave Intune Enrollment out, as the baseline's does (7.3).
+test('the baseline\'s Every time pairing (MFA for everyone leaving Intune Enrollment out) is never held as a loop',()=>{
+  // Jon Hope's AllUsers leaves Intune Enrollment out beside IntuneEnrollment-SIFEveryTime (owner, 2026-09-29).
   const {fixture:out,changed}=mfaLeavesOutIntune(usability100('configured'))
   assert.ok(changed>0,'the premise: an On MFA policy on All resources')
-  const {r,body}=setup(out);const s=r.steps.find(s=>s.id==='s-goal-intune-enrollment-reauth')!
-  assert.ok(observe(s,new Map(r.steps.map(s=>[s.id,s]))).blockers?.some(b=>b.id==='fact:session-loop'))
-  assert.notEqual(laneReadings(r.steps).get(s.id)?.substatus,'Observing')
-  assert.match(body(s.id).readiness.tiles.map(t=>t.value+' '+t.note).join(' '),/More observation time will not resolve/)
+  const {r}=setup(out);const s=r.steps.find(s=>s.id==='s-goal-intune-enrollment-reauth')!
+  assert.ok(!observe(s,new Map(r.steps.map(s=>[s.id,s]))).blockers?.some(b=>b.id==='fact:session-loop'))
+  assert.ok(!s.blockers.some(b=>b.label==='session-loop'))
 })
 
 test('deferring a prerequisite does not complete it or release its dependent policies',()=>{
