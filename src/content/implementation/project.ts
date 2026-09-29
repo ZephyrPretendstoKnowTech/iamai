@@ -104,6 +104,21 @@ export function oneLine(text: string): string {
   return text.replace(/[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ')
 }
 
+/**
+ * A `{{json:x}}` value in a PowerShell block: its JSON, with every ' and every
+ * character above U+007E written as a \uXXXX escape. ConvertFrom-Json reads the
+ * same value back, and nothing in it can end the single-quoted string or
+ * here-string it sits in: PowerShell ends a single-quoted string at U+0027 and
+ * at U+2018–U+201B, and reads a script saved without a BOM in the ANSI code page,
+ * where other non-ASCII bytes become those (invocation.ts literal()). A baseline
+ * strength combination "x'); <code>; ('" ended the authentication-strength
+ * script's string and ran as code in the admin's session (security audit,
+ * 2026-09-29).
+ */
+function powershellJson(v: unknown): string {
+  return JSON.stringify(v).replace(/['\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
+}
+
 function formatValue(v: unknown): string {
   if (Array.isArray(v)) return v.map((x) => (typeof x === 'string' ? oneLine(x) : JSON.stringify(x))).join(', ')
   if (typeof v === 'string') return oneLine(v)
@@ -157,8 +172,11 @@ export const UNRESOLVED = /\{\{(?:json:)?[A-Za-z0-9_.-]+\}\}|\[omit (?:this line
  * target with no location or platform condition: an instruction to set a list
  * of conditions that lists none (Priya D9). With no condition to set, there is
  * no step for Conditions, and every condition stays at its default.
+ *
+ * `format` is the block's (`meta.format`): in a PowerShell block a JSON value is
+ * written so no quote in it can end a string (powershellJson).
  */
-export function bindText(text: string, bindings: Bindings, required: ReadonlySet<string>, emptyOk: ReadonlySet<string> = NO_EMPTY): { text: string } | { missing: string[] } {
+export function bindText(text: string, bindings: Bindings, required: ReadonlySet<string>, emptyOk: ReadonlySet<string> = NO_EMPTY, format?: string): { text: string } | { missing: string[] } {
   const missing = new Set<string>()
   const lines = text.split('\n')
   const out: (string | null)[] = []
@@ -172,7 +190,7 @@ export function bindText(text: string, bindings: Bindings, required: ReadonlySet
       continue
     }
     out.push(line.replace(BINDING_STOP, (_m, json: string | undefined, key: string, stop: string | undefined) => {
-      const value = json ? JSON.stringify(bindings[key]) : formatValue(bindings[key])
+      const value = json ? (format === 'powershell' ? powershellJson(bindings[key]) : JSON.stringify(bindings[key])) : formatValue(bindings[key])
       return stop === undefined || (!json && /[.!?]$/.test(value)) ? value : `${value}${stop}`
     }).replace(OMIT, ''))
   }
@@ -533,7 +551,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
         bad.push(`${id}: no such block`)
         continue
       }
-      const bound = bindText(planning && isJsonFormat(block) ? maskStandIns(block.text, standIns) : block.text, b, required, emptyOk)
+      const bound = bindText(planning && isJsonFormat(block) ? maskStandIns(block.text, standIns) : block.text, b, required, emptyOk, block.meta.format)
       if ('missing' in bound) {
         miss.push(...bound.missing)
         continue
