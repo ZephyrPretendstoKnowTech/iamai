@@ -837,3 +837,12 @@ test('the accessibility repair left the step body deciding nothing', () => {
   assert.match(contentStep, /const decides = Boolean\(d\) && \(typeof d\.applies !== 'string' \|\| truthy\(ex\[d\.applies\]\)\)/)
   assert.match(contentStep, /decides && <Decision/)
 })
+
+test('N-034: a press outside the picker hides its list when the press ends, so the button under the pointer (Save Countries) takes the first click', () => {
+  // The list sits in the page's flow; hiding it on mousedown moved the button
+  // up before mouseup, and the click never landed.
+  const onDoc = picker.slice(picker.indexOf('const onDoc = (e: MouseEvent) => {'), picker.indexOf("document.addEventListener('mousedown', onDoc)"))
+  assert.doesNotMatch(onDoc, /\bclose\(\)/, 'the list is hidden on mousedown again')
+  assert.match(onDoc, /commitIfChanged\(\)/, 'what the picker saves on leaving it is no longer saved')
+  assert.match(onDoc, /document\.addEventListener\('mouseup', \(\) => setOpen\(false\), \{ once: true \}\)/)
+})

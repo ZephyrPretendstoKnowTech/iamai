@@ -114,7 +114,8 @@ test('#15 every picker saves from the list: Done saves and closes, taking a chip
   assert.match(picker, /const next = selected\.filter\(\(s\) => s\.id !== id\)\n\s+onChange\(next\)\n\s+save\(next\)/)
   assert.match(picker, /if \(single\) \{\n\s+setOpen\(false\)\n\s+save\(\[o\]\)/)
   // Closing the list another way after a change saves it too: a pick is never left on screen unsaved.
-  assert.match(picker, /if \(ref\.current && !ref\.current\.contains\(e\.target as Node\)\) close\(\)/)
+  // A press outside saves at once and hides the list when the press ends (N-034).
+  assert.match(picker, /if \(!ref\.current \|\| ref\.current\.contains\(e\.target as Node\)\) return\n\s+commitIfChanged\(\)/)
   assert.match(picker, /if \(idsOf\(latest\.current\) !== openedWith\.current\) save\(latest\.current\)/)
 
   // The decisions whose picker is their only input draw no Save; the rest keep theirs for their other inputs.

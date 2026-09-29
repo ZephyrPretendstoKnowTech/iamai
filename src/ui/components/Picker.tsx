@@ -117,9 +117,12 @@ export function Picker({
     openedWith.current = idsOf(rows)
     commit.current(rows)
   }
+  const commitIfChanged = (): void => {
+    if (idsOf(latest.current) !== openedWith.current) save(latest.current)
+  }
   const close = (): void => {
     setOpen(false)
-    if (idsOf(latest.current) !== openedWith.current) save(latest.current)
+    commitIfChanged()
   }
   // Done saves the selection as it stands, changed or not: it is how a
   // selection the picker opened with, and nobody has saved, is saved.
@@ -135,8 +138,15 @@ export function Picker({
 
   useEffect(() => {
     if (!open) return
+    // A press outside saves what the picker saves on leaving it at once, as
+    // before, and hides the list when the press ends, not when it starts: the
+    // list sits in the page's flow, so hiding it on mousedown moved the button
+    // under the pointer and its click never landed (N-034: Save Countries saved
+    // on the second click only).
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close()
+      if (!ref.current || ref.current.contains(e.target as Node)) return
+      commitIfChanged()
+      document.addEventListener('mouseup', () => setOpen(false), { once: true })
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
