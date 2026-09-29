@@ -9,8 +9,43 @@ import {
   RETRY_MAX_5XX,
 } from './constants.ts'
 
-export const V1 = 'https://graph.microsoft.com/v1.0'
-export const BETA = 'https://graph.microsoft.com/beta'
+/** The one origin a request carrying the Graph token may go to. */
+export const GRAPH_ORIGIN = 'https://graph.microsoft.com'
+export const V1 = `${GRAPH_ORIGIN}/v1.0`
+export const BETA = `${GRAPH_ORIGIN}/beta`
+
+/**
+ * Whether `url` is an absolute URL on Graph's own origin. The worker that reads
+ * the tenant has no CSP of its own (the page's is a meta element, and GitHub
+ * Pages sends no header), so this check, not connect-src, keeps the token on
+ * Graph there. A relative URL is refused too: in the worker it would resolve
+ * against IAMAI's own origin.
+ */
+export function isGraphUrl(url: string): boolean {
+  try {
+    return new URL(url).origin === GRAPH_ORIGIN
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A URL off Graph's origin: a nextLink or $batch continuation naming another
+ * host, or a caller's mistake. Refused before the token is attached, and the
+ * read fails as any failed read does.
+ */
+export class ForeignUrlError extends Error {
+  constructor() {
+    super('request refused: not a Microsoft Graph address')
+    this.name = 'ForeignUrlError'
+  }
+}
+
+/** `url` itself when it is on Graph's origin; a ForeignUrlError otherwise. Every fetch that carries the token goes through it. */
+export function graphOnly(url: string): string {
+  if (!isGraphUrl(url)) throw new ForeignUrlError()
+  return url
+}
 
 export type TokenSource = {
   get(): string
@@ -105,6 +140,9 @@ export function retryAfterMs(value: unknown): number {
 }
 
 export async function graphRequest(tokens: TokenSource, url: string, opts: GraphRequestOpts = {}): Promise<GraphBody> {
+  // Every read goes through here, in the window and in the worker: nextLinks,
+  // $batch continuations and on-demand reads included. The token goes to Graph only.
+  graphOnly(url)
   const abortMs = opts.abortMs ?? LANE_A_ABORT_MS
   const wait = opts.wait ?? sleep
   let count429 = 0

@@ -2,6 +2,7 @@
 // support, filter operators, throttling, wall-clock. Dev-only harness; results
 // are logged to the console and stored on window.__spike1.
 import { getGraphToken } from '../msal.ts'
+import { graphOnly } from '../collect/http.ts'
 
 const V1 = 'https://graph.microsoft.com/v1.0'
 const BETA = 'https://graph.microsoft.com/beta'
@@ -37,7 +38,7 @@ export type Spike1Results = {
 
 async function probe(label: string, token: string, url: string): Promise<Probe> {
   const t0 = performance.now()
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  const res = await fetch(graphOnly(url), { headers: { Authorization: `Bearer ${token}` } })
   const ms = Math.round(performance.now() - t0)
   const out: Probe = {
     label,
@@ -147,7 +148,7 @@ export async function runSpike1(): Promise<Spike1Results> {
       break
     }
     const t0 = performance.now()
-    const res: Response = await fetch(next, { headers: { Authorization: `Bearer ${token}` } })
+    const res: Response = await fetch(graphOnly(next), { headers: { Authorization: `Bearer ${token}` } })
     const ms = Math.round(performance.now() - t0)
     const retryAfter = res.headers.get('Retry-After') ?? undefined
     if (res.status === 429) {
@@ -252,7 +253,7 @@ export async function runSpike1Retest(): Promise<Spike1RetestResults> {
         break
       }
       const t0 = performance.now()
-      const res: Response = await fetch(next, { headers: { Authorization: `Bearer ${token}` } })
+      const res: Response = await fetch(graphOnly(next), { headers: { Authorization: `Bearer ${token}` } })
       const ms = Math.round(performance.now() - t0)
       const retryAfter = res.headers.get('Retry-After') ?? undefined
       if (res.status === 429) {
@@ -337,7 +338,7 @@ export async function runSpike1Followup(): Promise<Spike1RetestResults> {
         break
       }
       const t0 = performance.now()
-      const res: Response = await fetch(next, { headers: { Authorization: `Bearer ${token}` } })
+      const res: Response = await fetch(graphOnly(next), { headers: { Authorization: `Bearer ${token}` } })
       const ms = Math.round(performance.now() - t0)
       const retryAfter = res.headers.get('Retry-After') ?? undefined
       if (res.status === 429) {
@@ -399,7 +400,7 @@ async function followPages(token: string, name: string, startUrl: string): Promi
       break
     }
     const t0 = performance.now()
-    const res: Response = await fetch(next, { headers: { Authorization: `Bearer ${token}` } })
+    const res: Response = await fetch(graphOnly(next), { headers: { Authorization: `Bearer ${token}` } })
     const ms = Math.round(performance.now() - t0)
     const retryAfter = res.headers.get('Retry-After') ?? undefined
     if (res.status === 429) {

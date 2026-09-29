@@ -3,6 +3,7 @@
 // All calls are serialized (concurrency 1), honor Retry-After on 429, and
 // abort at 30 s each. Saves only counts/statuses — never auth-method payloads.
 import { getGraphToken, msal } from '../msal.ts'
+import { graphOnly } from '../collect/http.ts'
 import { saveDevResults } from './spike1.ts'
 
 const V1 = 'https://graph.microsoft.com/v1.0'
@@ -52,7 +53,7 @@ async function fetchTimed(token: string, url: string, init?: RequestInit): Promi
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
   const t0 = performance.now()
   try {
-    const res = await fetch(url, {
+    const res = await fetch(graphOnly(url), {
       ...init,
       headers: { Authorization: `Bearer ${token}`, ...(init?.headers ?? {}) },
       signal: ctrl.signal,
