@@ -2255,7 +2255,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           // (operations.ts validOperations), so it held back the other half's
           // Report-only create. The half is still tracked, by its policy and
           // against its whole policy (Action.pairMembers).
-          const idle = new Set((built.resolution?.policies ?? []).filter((o) => o.mode === 'update' && Object.keys(o.body).length === 0).map((o) => o.memberKey))
+          // An update that writes only what the half already holds is idle too: a
+          // section another goal's policy opened (the everyone policy's own app
+          // exclusions read as apps left out of the guests' resources) is no
+          // difference of the half's.
+          const holds = (patch: unknown, have: unknown): boolean =>
+            patch !== null && typeof patch === 'object' && !Array.isArray(patch)
+              ? have !== null && typeof have === 'object' && Object.entries(patch as Record<string, unknown>).every(([k, v]) => holds(v, (have as Record<string, unknown>)[k]))
+              : JSON.stringify(patch ?? null) === JSON.stringify(have ?? null)
+          const idle = new Set((built.resolution?.policies ?? []).filter((o) => o.mode === 'update' && (Object.keys(o.body).length === 0 || holds(o.body, matched.find((q) => String(q.id) === o.policyId)))).map((o) => o.memberKey))
           const owing = withTargets.filter((_, i) => !idle.has(pair.halves[i].key))
           if (idle.size > 0 && owing.length > 0) built = buildCreateAction(owing, mapping, planId, stepId, goal.id, { sections })
           action = { ...changesFor(built, sections, owing.find((w) => w.target)?.target?.policy ?? matched[0] ?? null), pairMembers: pairMembersOf(pair) }

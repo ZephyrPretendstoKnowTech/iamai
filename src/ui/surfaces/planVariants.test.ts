@@ -394,6 +394,7 @@ const INVENTORY: string[] = [
   'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
   'campaign · verify · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-verify-mfa
   'policy · create · not-deployed · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-goal-avd-trusted-network
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known',
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // small/s-goal-admins-phishing-resistant
   'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-goal-admin-portals-protected
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // small/s-goal-geo-restriction
@@ -401,7 +402,6 @@ const INVENTORY: string[] = [
   'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // small+unanswered/s-goal-block-legacy-auth
   'policy · create · not-deployed · blocked · set-aside · do:restore · no-track · no-implementation · no-found · fix · one-policy · who-known', // small+unanswered/s-goal-avd-trusted-network
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // small+unanswered/s-goal-inforcer-mfa
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // getiamai/s-prereq-break-glass
   'check · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // getiamai/s-check-separate-admin-accounts
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // large+unanswered/s-goal-require-managed-device
@@ -413,13 +413,11 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · needs-decision · open · do:decide · track · no-implementation · no-found · fix · one-policy · who-known', // demo/s-goal-geo-restriction
   'policy · create · not-deployed · needs-decision · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo+unanswered/s-goal-geo-restriction
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · members · who-known', // demo+no-ca/s-goal-guests-mfa
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · members · who-known', // demo+half-pair/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · members · who-known', // demo+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · report-only · blocked · open · do:observe · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-block-auth-transfer
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-intune-enrollment-reauth
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo-week2+rescan/s-goal-block-auth-transfer
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo-week2+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · members · who-known', // demo-week2+half-pair/s-goal-guests-mfa
   // Every control is exact (owner, 2026-09-25): a policy with a setting to correct, waiting on a foundation, reads Blocked, never Ready (foundations.ts).
   // A policy the tenant wrote, On, with a setting that is not the plan's: a person corrects it (every control is exact, owner 2026-09-25).
