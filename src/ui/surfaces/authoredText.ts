@@ -24,6 +24,59 @@ export function foldLineOf(line: string): { title: string; items: string[] } | {
   return isListLabel(title) ? { title, items: body.split('; ').filter((x) => x !== '') } : { title, text: body }
 }
 
+/**
+ * The hosts IAMAI's own authored text links to (content.json, the
+ * implementation content, and the procedures the code writes). A tenant's names
+ * are bound into the same text, and nothing tells a bound name from IAMAI's
+ * words: a group or person named as a Markdown link to another site would draw
+ * as a link styled like IAMAI's own (security audit, 2026-09-29). So an external
+ * link is drawn only to one of these hosts, and anything else as the plain text
+ * it is. authoredLinks.test.ts walks every authored link against this list, so
+ * content that links to a new host fails there until the host is added here.
+ * No host that serves anyone's content (github.com, linkedin.com) is listed.
+ */
+export const AUTHORED_LINK_HOSTS: ReadonlySet<string> = new Set([
+  'entra.microsoft.com',
+  'portal.azure.com',
+  'mysignins.microsoft.com',
+  'support.microsoft.com',
+  'learn.microsoft.com',
+  'aka.ms',
+  'getiamai.com',
+])
+
+/** A route or fixed HTTPS source link in authored text: `[words](destination)`. */
+const AUTHORED_LINK = /^\[([^\]]+)\]\(((?:#\/|https:\/\/)[^)\s]*)\)$/
+
+/** Whether an authored link may be drawn as one: a route of the app, or plain https to a listed host on its default port. */
+export function authoredLinkAllowed(href: string): boolean {
+  if (href.startsWith('#/')) return true
+  try {
+    const url = new URL(href)
+    return url.protocol === 'https:' && url.username === '' && url.password === '' && url.port === '' && AUTHORED_LINK_HOSTS.has(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+/** One piece of an authored line, in order. */
+export type InlinePart =
+  | { kind: 'bold'; text: string }
+  | { kind: 'code'; text: string }
+  | { kind: 'link'; text: string; href: string; external: boolean }
+  | { kind: 'text'; text: string }
+
+/** `**bold**`, `` `code` `` and a safe authored link inside one line. Nothing else is interpreted, and no HTML ever is. */
+export function inlineParts(line: string): InlinePart[] {
+  return line.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\((?:#\/|https:\/\/)[^)\s]*\))/g).map((part): InlinePart => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) return { kind: 'bold', text: part.slice(2, -2) }
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) return { kind: 'code', text: part.slice(1, -1) }
+    const link = AUTHORED_LINK.exec(part)
+    if (link && authoredLinkAllowed(link[2])) return { kind: 'link', text: link[1], href: link[2], external: link[2].startsWith('https://') }
+    return { kind: 'text', text: part }
+  })
+}
+
 /** One part of an authored block, in order. */
 export type AuthoredPart =
   | { kind: 'list'; ordered: boolean; start: number; items: string[][] }

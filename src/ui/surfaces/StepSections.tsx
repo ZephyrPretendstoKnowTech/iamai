@@ -11,7 +11,7 @@
 // question got onto one screen.
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { authoredParts, foldLineOf } from './authoredText.ts'
+import { authoredParts, foldLineOf, inlineParts } from './authoredText.ts'
 import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
@@ -483,26 +483,21 @@ function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMapping
   )
 }
 
-/** A route or fixed HTTPS source link in authored text: `[words](destination)`. */
-const AUTHORED_LINK = /^\[([^\]]+)\]\(((?:#\/|https:\/\/)[^)\s]*)\)$/
-
-/** `**bold**`, `` `code` `` and a safe authored link inside one line. Nothing else is interpreted, and no HTML ever is. */
+/** `**bold**`, `` `code` `` and a safe authored link inside one line, as authoredText.ts inlineParts reads them; a link off IAMAI's own hosts is plain text there. */
 function inlineText(line: string): ReactNode[] {
-  return line.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\((?:#\/|https:\/\/)[^)\s]*\))/g).map((part, i) => {
-    const link = AUTHORED_LINK.exec(part)
-    const external = link?.[2].startsWith('https://') === true
-    return part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
-      <strong key={i}>{part.slice(2, -2)}</strong>
-    ) : part.startsWith('`') && part.endsWith('`') && part.length > 2 ? (
-      <code key={i}>{part.slice(1, -1)}</code>
-    ) : link ? (
-      <a key={i} className="inline-link" href={link[2]} target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined}>
-        {link[1]}
+  return inlineParts(line).map((part, i) =>
+    part.kind === 'bold' ? (
+      <strong key={i}>{part.text}</strong>
+    ) : part.kind === 'code' ? (
+      <code key={i}>{part.text}</code>
+    ) : part.kind === 'link' ? (
+      <a key={i} className="inline-link" href={part.href} target={part.external ? '_blank' : undefined} rel={part.external ? 'noopener noreferrer' : undefined}>
+        {part.text}
       </a>
     ) : (
-      part
-    )
-  })
+      part.text
+    ),
+  )
 }
 
 /**
