@@ -80,6 +80,8 @@
       "usersRoles": "Under **Users**, exclude {exclude}, and include {include}.",
       "workload": "Under **Users or workload identities**, select **Workload identities** and include {include}.",
       "resources": "Under **Target resources**, include {include}.",
+      "$commentResourcesDirectory": "Windows Azure Active Directory can't be picked from Select resources (Microsoft Learn, concept-conditional-access-cloud-apps); the portal reaches it only through a custom security attribute filter, which writes a different policy. The PowerShell and JSON tabs name it by its application ID, as the baseline does.",
+      "resourcesDirectory": "Under **Target resources**, **Windows Azure Active Directory** can't be picked from Select resources, so create this policy from the **PowerShell** or **JSON** tab, which targets it by its application ID.",
       "resourcesExclude": "Under **Target resources**, include {include} and exclude {exclude}.",
       "userAction": "Under **Target resources**, select **User actions** → **{action}**.",
       "authContext": "Under **Target resources**, select **Authentication context** → {contexts}.",

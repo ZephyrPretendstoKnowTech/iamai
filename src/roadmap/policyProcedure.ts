@@ -25,7 +25,7 @@ import { shared } from '../content/content.ts'
 import { list, unlinked } from '../copy/statements.ts'
 import { roleNamesOf } from '../roles.ts'
 import { UNNAMED } from '../names.ts'
-import { GRANT_LABEL, portalName } from './portalLines.ts'
+import { GRANT_LABEL, WINDOWS_AZURE_AD, portalName } from './portalLines.ts'
 import { differencePieces } from './differences.ts'
 import { sameDimension } from './observation.ts'
 import { nameKey } from '../baseline/discover.ts'
@@ -210,6 +210,8 @@ function resourcesLine(f: PolicyFacts, ctx: ProcedureContext): string | null {
     }
     return fill(PROCEDURE.authContext, { contexts: list([...f.apps.authContexts].map(context)) })
   }
+  // Not selectable in the portal's resource picker: the tabs that name it by id create it.
+  if ([...f.apps.ids].some((id) => id.toLowerCase() === WINDOWS_AZURE_AD)) return PROCEDURE.resourcesDirectory
   const include = resourceInclude(f, ctx)
   if (include.length === 0) return null
   const exclude = excludedApps(f)

@@ -18,6 +18,7 @@ import { notInPlanRows } from '../derive/notInPlan.ts'
 import { stepOperations } from '../ui/surfaces/stepJson.ts'
 import { portalLines, DIRECTORY_NOT_SELECTABLE } from './portalLines.ts'
 import { policyFacts } from '../coverage/facts.ts'
+import { createLines, PROCEDURE } from './policyProcedure.ts'
 import { READINESS_EVERYONE_GOALS } from './constants.ts'
 
 const STEP = 's-goal-directory-baseline-scopes-mfa'
@@ -78,6 +79,10 @@ test('the portal never tells anyone to pick Windows Azure Active Directory from 
   const text = lines.join('\n')
   assert.ok(text.includes(DIRECTORY_NOT_SELECTABLE), text)
   assert.doesNotMatch(text, /Select resources → Windows Azure Active Directory/)
+  // The create task's own procedure (Create the policy in Report-only) says the same.
+  const create = createLines(policy as never, { nameOf: () => 'Windows Azure Active Directory' }, { name: 'x' }).join('\n')
+  assert.ok(create.includes(PROCEDURE.resourcesDirectory), create)
+  assert.doesNotMatch(create, /include \*\*Windows Azure Active Directory\*\*/)
 })
 
 test('its turn-on waits until everyone it covers is ready, and is released when they are', () => {
