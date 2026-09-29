@@ -611,7 +611,7 @@ function SignedIn({
         />
       </Flow>
       <Destination tile={t4} actions={t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)} />
-      <ScanDevTools tenantId={account.tenantId} scan={runner} snapshot={lastScan?.snapshot ?? null} />
+      <ScanDevTools scan={runner} snapshot={lastScan?.snapshot ?? null} />
     </>
   )
 }

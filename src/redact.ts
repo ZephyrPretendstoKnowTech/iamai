@@ -51,9 +51,3 @@ export function redactIdentifiers(text: string, keep: ReadonlySet<string> = new 
       keep.has(m.toLowerCase()) ? m : sub(m, () => `guid-${String(++guids).padStart(4, '0')}`),
     )
 }
-
-// SHA-256 hex of a tenant id for diagnostics (works in window and worker).
-export async function hashTenantId(tenantId: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tenantId))
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
-}

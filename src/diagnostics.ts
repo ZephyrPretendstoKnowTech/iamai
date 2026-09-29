@@ -19,7 +19,6 @@ export type DiagnosticsBundle = {
   generatedAt: string
   userAgent: string
   schemaVersion: number | null
-  tenantIdHash: string
   sources: TenantSnapshot['sources'] | null
   /** The scan's per-source progress rows, when the bundle is built on the Scan page. */
   sections: unknown[]
@@ -45,7 +44,7 @@ function sectionDiagnostic(s: ConfigSection): SectionDiagnostic {
 export function diagnosticsBundle(
   snapshot: TenantSnapshot | null,
   sections: unknown[],
-  meta: { tenantIdHash: string; userAgent: string; generatedAt: string },
+  meta: { userAgent: string; generatedAt: string },
 ): DiagnosticsBundle {
   const config: DiagnosticsBundle['config'] = {}
   for (const [key, section] of Object.entries(snapshot?.config ?? {}) as [ConfigSectionKey, ConfigSection | undefined][]) {
@@ -57,7 +56,6 @@ export function diagnosticsBundle(
     generatedAt: meta.generatedAt,
     userAgent: meta.userAgent,
     schemaVersion: snapshot?.schemaVersion ?? null,
-    tenantIdHash: meta.tenantIdHash,
     sources: snapshot?.sources ?? null,
     sections,
     config,

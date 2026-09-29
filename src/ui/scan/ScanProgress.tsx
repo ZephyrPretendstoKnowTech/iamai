@@ -79,7 +79,7 @@ export function ScanBar({ scan }: { scan: ScanState }) {
 }
 
 /** Developer tools (?dev=1): the section list with timings, and the diagnostics bundle. The per-scope role map stays here, for diagnostics. */
-export function ScanDevTools({ tenantId, scan, snapshot }: { tenantId: string; scan: ScanState; snapshot: TenantSnapshot | null }) {
+export function ScanDevTools({ scan, snapshot }: { scan: ScanState; snapshot: TenantSnapshot | null }) {
   if (!DEV) return null
   const rows = Object.values(scan.sections)
   const statusLabel = (status: string, reason?: string | null): string => (isPrivilegeDenial(reason) ? ACCESS.refusedStatus : (SCAN.evidenceStatus[status] ?? status))
@@ -102,7 +102,7 @@ export function ScanDevTools({ tenantId, scan, snapshot }: { tenantId: string; s
           ))}
           {scan.laneB?.oldest && <li>{fillText(SCAN.signInsBarCovered, { rows: scan.laneB.rows, oldest: absoluteDate(scan.laneB.oldest) })}</li>}
         </ul>
-        <Button variant="tertiary" onClick={() => void downloadScanDiagnostics(tenantId, snapshot, rows)}>
+        <Button variant="tertiary" onClick={() => void downloadScanDiagnostics(snapshot, rows)}>
           {CONNECT.diagnostics}
         </Button>
       </details>
