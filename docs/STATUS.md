@@ -7,15 +7,15 @@ Everything else is either a working document it links to, or history in
 
 ## Live
 
-- `main` at 750a2a00 (Round 5), deployed 2026-09-28 and audited live: https://getiamai.com
-  (Home) and https://getiamai.com/planner/ (the tool). Round 5 is the ten edits the owner
-  approved after the fresh rating (the rounds document has them), after five review rounds.
-  Before it, f0c82ea3 carried the pre-launch night and the morning of 2026-09-28.
-- `round-5` also carries the 2026-09-29 match-Jon run (re-pin to 8af3b118, MFA for
-  Everyone = AllUsers, the guest pair, BaselineScopes, 3.8 lists every created policy), not
-  CI-verified: Codex audits it first, `docs/launch/2026-09-29-codex-handoff.md`.
-- `round-5` carries the pre-share night of 2026-09-28/29 on top of it, CI green, not yet on
-  `main` (pushing main needs the owner): the held step's wait first (N-001), scripts pinned
+- `main` = `round-5`, deployed 2026-09-29 (owner's call, before Codex's audit):
+  https://getiamai.com (Home) and https://getiamai.com/planner/ (the tool). The whole history
+  was rewritten the same day (owner): the résumé, old screenshots, the owner's personal
+  address and every tenant value are gone from every branch and tag; only the Home About bio
+  and LinkedIn link keep the owner's name. Commit ids from before 2026-09-29 no longer resolve.
+- It carries the 2026-09-29 match-Jon run (re-pin to 8af3b118, MFA for Everyone = AllUsers,
+  the guest pair, BaselineScopes, 3.8 lists every created policy), not CI-verified: Codex
+  audits it, `docs/launch/2026-09-29-codex-handoff.md`.
+- Under it, the pre-share night of 2026-09-28/29 (CI green then): the held step's wait first (N-001), scripts pinned
   to the scanned tenant (N-027), the countries baseline line (N-018), Save Countries (N-034),
   the licence line (N-008), the tile filter (N-005), the calendar card (N-047), dash-tolerant
   policy names, three Cleanup rows held back, trusted-network goals delivered only by a

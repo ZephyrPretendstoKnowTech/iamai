@@ -1,31 +1,31 @@
 # Hand-off to Codex, 2026-09-29
 
-The owner asked for speed over checks on this run: Codex audits `round-5` before anything
-reaches `main`. Base 3efd8621 (CI green there). Nothing here is pushed.
+The owner asked for speed over checks on this run. `main` = `round-5` was deployed on
+2026-09-29 before this audit, and the history was rewritten that day (ids below are the new ones). Base 89eb7a84 (CI green there before the rewrite).
 
-## What changed (`git log 3efd8621..HEAD`, merges left out)
-- 26b5f52f Re-pin Jon Hope's baseline to 8af3b118 and settle the groups his README names:
+## What changed (`git log 89eb7a84..HEAD`, merges left out)
+- 29e91d9e Re-pin Jon Hope's baseline to 8af3b118 and settle the groups his README names:
   `baselines/jhope188-conditionalaccesspolicies.{pinned,index,interpretation}.json`,
   `data/first-party-apps.json` (+ Microsoft Rights Management Services 00000012-…),
   `docs/baselines/jhope188-conditionalaccesspolicies/8af3b118….md`.
-- 39b55956 A workload-identity policy takes no exclusions group (Jon's EntraConnectIDSync):
+- a2215d7c A workload-identity policy takes no exclusions group (Jon's EntraConnectIDSync):
   `src/roadmap/resolvePolicy.ts`.
-- 1c567938 The not-in-plan footer reads the goal map in use, one reason per policy:
+- 2999b448 The not-in-plan footer reads the goal map in use, one reason per policy:
   `src/derive/notInPlan.ts`, `src/ui/surfaces/planData.ts`, `docs/design/content.json`.
-- dffc7edc Require MFA for Guests builds exactly Jon's two guest policies:
+- 4b4dc7c2 Require MFA for Guests builds exactly Jon's two guest policies:
   `src/roadmap/generate.ts`, `tracking.ts`, `types.ts`, `src/ui/surfaces/stepContract.ts`.
-- ee954938 WindowsAzureAD-BaselineScopes enters the plan as Require Phishing-Resistant MFA
+- 1fbbdda3 WindowsAzureAD-BaselineScopes enters the plan as Require Phishing-Resistant MFA
   for Basic Sign-ins (`s-goal-directory-baseline-scopes-mfa`): `data/goals.json`,
   `src/coverage/goalIdentity.ts`, `src/roadmap/constants.ts`, `generate.ts`, `holds`,
   `stepGroups.ts`, `docs/design/content.json`.
-- df3725c5 Require MFA for Everyone matches Jon's AllUsers (compared and renamed, his Intune
+- a66ef419 Require MFA for Everyone matches Jon's AllUsers (compared and renamed, his Intune
   Enrollment pairing never held): `src/coverage/coverage.ts`, `src/derive/population.ts`,
   `src/roadmap/{cleanupPhase,generate,operations,tracking}.ts`, fixtures, `content.json`.
-- 20e124ab Tests follow the guest step building both of Jon's guest policies (tests only).
-- 8c221b08 Integration: a guest half already holding what its update writes is idle:
+- 3cf60f51 Tests follow the guest step building both of Jon's guest policies (tests only).
+- 189df280 Integration: a guest half already holding what its update writes is idle:
   `src/roadmap/generate.ts` plus tests.
-- 4016e042 [snapshots] Step snapshots after the four merges.
-- d5eb7aa4 [snapshots] 3.8 lists every policy the plan creates, including a create beside
+- 58f77398 [snapshots] Step snapshots after the four merges.
+- 99e6c209 [snapshots] 3.8 lists every policy the plan creates, including a create beside
   an update in a mixed step, and draws one card per created policy:
   `src/roadmap/reportOnlyBatch.ts` (`createdBodiesOf`, `batchable`, `batchMemberOf`),
   `src/ui/surfaces/reportOnlyStep.ts`, a stepGroups order test.
@@ -73,4 +73,5 @@ src/roadmap/stepGroups.test.ts src/testing/stepSnapshots.test.ts`: typecheck + 2
 
 ## Verify, then ship
 - `npm run verify -- --release` (local full preflight), and/or `gh workflow run ci --ref round-5`.
-- Push main only after the audit: `git push origin round-5:main` (deploys getiamai.com/planner).
+- `main` is already live (fda21751 and later); fix on a branch and push `git push origin round-5:main`.
+- Since then: fda21751 the create task points to the PowerShell or JSON tab for Windows Azure Active Directory (not in the portal picker); 5dc04a07 the identity test reads the owner's name from the Home bio; ecb545ad the project no longer denies force-push.
