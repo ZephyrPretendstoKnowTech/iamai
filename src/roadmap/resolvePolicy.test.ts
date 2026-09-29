@@ -814,3 +814,15 @@ test('an unmatched pair is withheld rather than guessed, and it and a contradict
     assert.ok(!step.events, 'and nothing is scheduled for it')
   }
 })
+
+test('a workload-identity policy (users None, a service principal targeted) takes no exclusions group, as Jon wrote it', () => {
+  const src = (pinned as { policies: { displayName: string }[] }).policies.find((p) => /EntraConnectIDSync/i.test(p.displayName))!
+  assert.ok(src, 'the premise: the pin carries the EntraConnectIDSync block')
+  const resolved = resolveTenantPolicy(structuredClone(src) as never, tenant(), 'x')
+  const users = (resolved.body.conditions as { users?: { includeUsers?: string[]; excludeGroups?: string[] } }).users ?? {}
+  assert.ok(!(users.excludeGroups ?? []).includes(X), 'the exclusions group is not added to a workload policy')
+  assert.deepEqual(users.excludeGroups ?? [], (src as unknown as { conditions: { users?: { excludeGroups?: string[] } } }).conditions.users?.excludeGroups ?? [], 'the author\'s user exclusions stand as written')
+  // A person-facing policy still takes it.
+  const person = resolveTenantPolicy({ conditions: { users: { includeUsers: ['All'] } } } as never, tenant(), 'x')
+  assert.ok(((person.body.conditions as { users: { excludeGroups: string[] } }).users.excludeGroups).includes(X))
+})
