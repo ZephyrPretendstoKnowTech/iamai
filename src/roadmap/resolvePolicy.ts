@@ -767,9 +767,16 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
   // to the tenant's exclusions group, so a null one left the policy unresolved.
   // With the fall-through gone, saying it is the only way it is said.
   const conditions = (body.conditions ?? {}) as RawPolicy
-  const users = (conditions.users ?? {}) as RawPolicy
-  users.excludeGroups = [...(Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]) : []), tenant.exclusionsGroupId ?? '{exclusionsGroup}']
-  conditions.users = users
+  // A workload-identity policy (users None, a service principal targeted, as
+  // Jon's EntraConnectIDSync block) applies to no person, so it takes no
+  // exclusions group: the author's body stands as he wrote it.
+  const sps = ((conditions.clientApplications ?? {}) as RawPolicy).includeServicePrincipals
+  const workload = Array.isArray(sps) && sps.length > 0
+  if (!workload) {
+    const users = (conditions.users ?? {}) as RawPolicy
+    users.excludeGroups = [...(Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]) : []), tenant.exclusionsGroupId ?? '{exclusionsGroup}']
+    conditions.users = users
+  }
   body.conditions = conditions
   return { body: dedupeCollections(body) as RawPolicy, substitutions: ids, unresolved, authorOnly, unsettled, decisions, omitted }
 }
