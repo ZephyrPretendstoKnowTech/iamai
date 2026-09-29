@@ -39,10 +39,10 @@ import { heldLiveChange } from '../../roadmap/holds.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
 import { aiBriefingText, aiGroundingText } from './aiGrounding.ts'
 import type { TabItem } from '../components/index.ts'
-import { powershellFor } from './stepPowerShell.ts'
+import { pinnedToTenant, powershellFor } from './stepPowerShell.ts'
 import { policyJsonText, stepOperations } from './stepJson.ts'
 import { ifWrongLineFor, stepExportView } from './stepExport.ts'
-import { stepVars, withoutScheduleDates } from './stepVars.ts'
+import { stepVars, tenantNameOf, withoutScheduleDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, unwrittenCorrectionLines } from './stepPortal.ts'
 import { campaignProcedureLines, preparationLines, preparesWhileCreateWaits, stepInstructions, wholeLines } from './stepInstructions.ts'
@@ -889,7 +889,8 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     /** The step's own Tasks Remaining card words beyond its subject, filled (policyTasks.ts ownCardWordsOf). */
     ownCard: ownCardWordsOf(step, ex as Record<string, unknown>),
     eyebrow,
-    artifacts,
+    // Every script runs in the tenant IAMAI scanned and nowhere else (N-027): pinned last, so its header is the script's first line.
+    artifacts: artifacts.map((a): Artifact => (a.id === 'ps' ? { ...a, text: () => pinnedToTenant(a.text(), ctx.snapshot.tenantId, tenantNameOf(ctx.snapshot)) } : a)),
     emergencyAccountTasks: taskProjection,
     /** The step's own Tasks Remaining card where it reads its people (prepareSteps.ts), in place of its content's fixed check. */
     prepareCard: prepare?.card ?? null,

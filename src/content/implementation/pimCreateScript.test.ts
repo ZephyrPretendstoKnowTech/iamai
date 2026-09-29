@@ -68,7 +68,10 @@ $global:Context = switch ($Scenario) {
 }
 function global:Import-Module { }
 function global:Connect-MgGraph { }
-function global:Get-MgContext { if ($Connected -eq 'yes') { [pscustomobject]@{ Scopes = @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess','AuthenticationContext.Read.All','AuthenticationContext.ReadWrite.All') } } else { $null } }
+# A session in the tenant the script is pinned to (stepPowerShell.ts pinnedToTenant; N-027).
+$global:PinnedTenant = ([regex]::Match((Get-Content -Raw $ScriptPath), 'tenant ID ([0-9A-Za-z.-]+)')).Groups[1].Value
+function global:Disconnect-MgGraph { $global:Requests.Add('DISCONNECT') }
+function global:Get-MgContext { if ($Connected -eq 'yes') { [pscustomobject]@{ TenantId = $global:PinnedTenant; Scopes = @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess','AuthenticationContext.Read.All','AuthenticationContext.ReadWrite.All') } } else { $null } }
 function global:Invoke-MgGraphRequest {
   param([string]$Method,[string]$Uri,[object]$Body,[string]$ContentType,[string]$OutputType)
   $global:Requests.Add("$Method $Uri")

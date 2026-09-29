@@ -25,3 +25,20 @@ export function powershellFor(operations: readonly PolicyOperation[]): string {
   })
   return ['Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess', ...blocks].join('\n\n')
 }
+
+/**
+ * A script handed to a person runs in the tenant IAMAI scanned and nowhere else
+ * (N-027): an MSP's Graph session left open to another client is closed first,
+ * and every Connect-MgGraph names the tenant, so neither a script that reuses the
+ * session it finds nor one that signs in again can write to another tenant.
+ */
+export function pinnedToTenant(script: string, tenantId: string, tenantName: string): string {
+  const id = tenantId.replace(/[^0-9A-Za-z.-]/g, '')
+  if (script.trim() === '' || id === '') return script
+  const name = tenantName.replace(/[\r\n]+/g, ' ').trim() || 'the scanned tenant'
+  return [
+    `# For ${name} only (tenant ID ${id}): a session open in another tenant is closed first.`,
+    `if ((Get-MgContext) -and (Get-MgContext).TenantId -ne '${id}') { Disconnect-MgGraph | Out-Null }`,
+    script.replace(/\bConnect-MgGraph\b(?![^\n]*-TenantId)/g, `Connect-MgGraph -TenantId '${id}'`),
+  ].join('\n')
+}
