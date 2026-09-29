@@ -564,7 +564,20 @@ function evaluateGoal(
     // Resource scope the baseline member does not give away: applications this
     // policy excludes and the baseline member does not, or an application filter
     // whose rule IAMAI does not evaluate (exact or unknown, never assumed equal).
-    const extraExcluded = [...c.apps.excludedIds].filter((a) => !baselineExcludedApps.has(a.toLowerCase()))
+    // Only an application inside the goal's own resources gives any of them away:
+    // one the goal's own policy names (the step's written policy, else its
+    // template), or any where that covers every resource or a
+    // Microsoft group of them. An excluded Microsoft group (Office 365, the admin
+    // portals) always counts: IAMAI does not list its members, and it may hold
+    // the very apps the goal names (SharePoint, the token-protection apps).
+    // An all-users MFA policy that leaves out Microsoft Intune Enrollment or
+    // Rights Management Services, as the baseline's own does, leaves nothing of
+    // Inforcer Access or Azure management out (owner, 2026-09-29).
+    const goalApps = (written ?? policyFacts(impl.template, input.strengths)).apps
+    const refIds = new Set([...goalApps.ids].map((id) => id.toLowerCase()))
+    const APP_GROUPS = new Set(['all', 'office365', 'microsoftadminportals'])
+    const withinGoal = (a: string): boolean => goalApps.all || goalApps.office365 || goalApps.adminPortals || APP_GROUPS.has(a.toLowerCase()) || refIds.has(a.toLowerCase())
+    const extraExcluded = [...c.apps.excludedIds].filter((a) => !baselineExcludedApps.has(a.toLowerCase()) && withinGoal(a))
     const unreadableAppFilter = c.apps.filterRule !== null
     if (extraExcluded.length > 0 || unreadableAppFilter) caveats.push('apps-excluded')
     // Conditions that confine it to fewer sign-ins than the reference as the

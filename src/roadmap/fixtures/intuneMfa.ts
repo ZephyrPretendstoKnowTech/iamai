@@ -1,7 +1,7 @@
 // A fixture whose On MFA policies on All resources leave Microsoft Intune
 // Enrollment out, as the baseline's own Require MFA for everyone does. Nothing
 // then asks for MFA on the enrollment sign-in, so a sign-in frequency of Every
-// time there can loop, and 7.3's session-loop hold stands (roadmap/generate.ts).
+// time there has no MFA of its own: the baseline's own pairing, never held (owner, 2026-09-29).
 // Pure data: it never runs the engine (demo.test.ts A).
 import type { Fixture } from './index.ts'
 

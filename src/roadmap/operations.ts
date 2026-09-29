@@ -1314,6 +1314,21 @@ export function awaitsMailMove(step: PolicyStep): boolean {
 }
 
 /**
+ * Whether a policy the tenant enforces delivers the step's goal, finished or
+ * not: done, or open only for how that policy differs from the plan's (a
+ * correction by hand), with coverage finding the goal delivered this scan
+ * (Action.intended is set only then), no operation of its own, and nothing
+ * blocking it. The people it reaches are protected as the goal asks, whatever is
+ * left to correct: Require MFA for Everyone owing its baseline exclusions is not
+ * a reason to tell anybody they are about to meet MFA for the first time.
+ */
+export function deliveredByEnforcedPolicy(step: PolicyStep): boolean {
+  if (step.status === 'done') return true
+  const s = step.state
+  return (s?.observation?.unwritten.length ?? 0) > 0 && s?.lifecycle === 'enforced' && s.condition !== 'blocked' && !s.setAside && step.action.intended !== undefined && (step.action.resolution?.policies ?? []).length === 0
+}
+
+/**
  * True when Require MFA at Every Role Activation's policy is on and delivers the
  * goal, and the step stays open for its PIM role settings alone: a role someone
  * is eligible for whose activation does not yet require the policy's context
