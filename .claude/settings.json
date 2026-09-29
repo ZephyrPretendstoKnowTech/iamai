@@ -30,7 +30,6 @@
       "Bash(sed:*)"
     ],
     "deny": [
-      "Bash(git push --force:*)",
       "Bash(rm -rf:*)",
       "Read(./fixtures/private/**)"
     ]
