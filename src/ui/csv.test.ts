@@ -85,31 +85,44 @@ test('the Export page\'s files are named as their buttons read, and the sign-in 
 // inside an unquoted value starts a new cell, and that cell can be a live
 // formula. Every cell a separator could split is quoted, and a value whose
 // split-off piece would start with a formula character is marked as text.
-/** One line read as a spreadsheet reads it with `sep` as the separator: double quotes keep a field whole. */
-function fieldsOf(line: string, sep: string): string[] {
-  const out: string[] = []
-  let field = ''
-  let quoted = false
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i]
-    if (quoted) {
-      if (c === '"' && line[i + 1] === '"') { field += '"'; i++ }
-      else if (c === '"') quoted = false
-      else field += c
-    } else if (c === '"') quoted = true
-    else if (c === sep) { out.push(field); field = '' }
-    else field += c
+/**
+ * A file read as Excel reads it with `sep` as the separator: a double quote keeps
+ * a field whole only when it is the field's first character (elsewhere it is a
+ * literal character), and a line break outside such a field ends the row. Rows
+ * of cells, header included.
+ */
+function cellsOf(csv: string, sep: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let i = 0
+  for (;;) {
+    let field = ''
+    if (csv[i] === '"') {
+      i++
+      while (i < csv.length) {
+        if (csv[i] === '"' && csv[i + 1] === '"') { field += '"'; i += 2 }
+        else if (csv[i] === '"') { i++; break }
+        else field += csv[i++]
+      }
+    }
+    while (i < csv.length && csv[i] !== sep && csv[i] !== '\r' && csv[i] !== '\n') field += csv[i++]
+    row.push(field)
+    if (i >= csv.length) { rows.push(row); return rows }
+    if (csv[i] === sep) { i++; continue }
+    i += csv[i] === '\r' && csv[i + 1] === '\n' ? 2 : 1
+    rows.push(row)
+    row = []
   }
-  out.push(field)
-  return out
 }
+/** One line's cells, read as cellsOf reads a file. */
+const fieldsOf = (line: string, sep: string): string[] => cellsOf(line, sep)[0]
 
 test('a ; or tab inside a value cannot start a formula cell in a spreadsheet that splits on it', () => {
   // The audit's payload: a guest's own display name, no quotes or commas needed.
   const payload = 'Pat;=HYPERLINK(CHAR(104)&CHAR(116)&CHAR(116)&CHAR(112)&A3);x'
   const lines = toCsv(['Name', 'Sign-in'], [['=1+1', 'a@x.test'], [payload, 'b@x.test']]).split('\r\n')
   assert.equal(lines[1], `'=1+1,a@x.test`)
-  assert.equal(lines[2], `"'${payload}",b@x.test`)
+  assert.equal(lines[2], `"'Pat;'=HYPERLINK(CHAR(104)&CHAR(116)&CHAR(116)&CHAR(112)&A3);x",b@x.test`)
   const payloads = [
     payload,
     'Pat; =HYPERLINK(A3)',
@@ -129,8 +142,40 @@ test('a ; or tab inside a value cannot start a formula cell in a spreadsheet tha
       }
     }
   }
-  // Read with the file's own separator, each value comes back whole.
-  assert.deepEqual(csv.split('\r\n').slice(1).map((line) => fieldsOf(line, ',')[0].replace(/^'/, '')), payloads)
+  // Read with the file's own separator, each value comes back whole, the marks aside.
+  assert.deepEqual(csv.split('\r\n').slice(1).map((line) => fieldsOf(line, ',')[0].replace(/^'/, '').replace(/([;\t\r\n]\s*)'(?=[=+\-@])/g, '$1')), payloads)
   // A ; with nothing formula-like after it is quoted, not marked.
   assert.equal(toCsv(['Name'], [['a;b;c']]).split('\r\n')[1], '"a;b;c"')
+})
+
+// Security review, 2026-09-29: where the list separator is ';', Excel honours a
+// double quote only as the first character of a ';'-piece. A value in any column
+// after the first is split at its own ';' however it is quoted, and the
+// apostrophe at the start of the value does not reach the piece split off. So
+// the piece itself is marked: an apostrophe goes after any ';', tab or line
+// break that a formula character follows.
+test('a formula split off at a ; tab or line break is text in every column, not only the first', () => {
+  const payload = 'Pat;=HYPERLINK(CHAR(104)&A3);x'
+  const rows = [
+    // the people a sign-in row names, joined with '; '
+    ['Legacy authentication', `Alice; ${payload}; Bob`, '3'],
+    // a device's owner and its authenticator's registrant
+    ['Laptop-01', 'Windows', 'Entra joined', payload, payload],
+    // a policy's exclusions
+    ['Require MFA', 'On', 'All users', `Excluded: ${payload}`],
+    ['Group', 'Pat; +1+1', 'Pat;-1', 'Pat; @SUM(A1)', 'Pat\t=1+1', 'Pat\r\n=1+1', 'Pat\n  =1+1', 'Pat\r@x'],
+  ]
+  for (const row of rows) {
+    const csv = toCsv(row.map((_, n) => `h${n}`), [row])
+    for (const sep of [';', '\t', ',']) {
+      for (const cells of cellsOf(csv, sep)) {
+        for (const cell of cells) assert.ok(!/^\s*[=+\-@]/.test(cell), `split at ${JSON.stringify(sep)}, ${JSON.stringify(csv)} leaves the formula cell ${JSON.stringify(cell)}`)
+      }
+    }
+    // Read with the file's own separator, each value comes back, the marks aside.
+    const back = cellsOf(csv, ',')[1].map((cell) => cell.replace(/^'/, '').replace(/([;\t\r\n]\s*)'(?=[=+\-@])/g, '$1'))
+    assert.deepEqual(back, row)
+  }
+  // A value with no formula after a split point is left as it was.
+  assert.equal(toCsv(['People'], [['Alice; Bob; Carol-Ann']]).split('\r\n')[1], '"Alice; Bob; Carol-Ann"')
 })

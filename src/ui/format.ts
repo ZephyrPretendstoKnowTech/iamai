@@ -23,6 +23,17 @@ const FORMULA_LEAD = /^[=+\-@\t\r]/
  */
 const SPLIT_FORMULA_LEAD = /(?:^|[;,\t])\s*[=+\-@]/
 
+/**
+ * A point inside a value where a formula character starts the next piece: after
+ * a ';', a tab or a line break, with any whitespace. Where the list separator is
+ * ';', Excel honours a double quote only as the first character of a ';'-piece,
+ * so a value in any column after the first is split at its own ';' however it
+ * is quoted, and the apostrophe at the start of the value never reaches the
+ * piece split off. The piece is marked where it starts (security review,
+ * 2026-09-29).
+ */
+const FORMULA_AT_SPLIT = /([;\t\r\n]\s*)(?=[=+\-@])/g
+
 /** A value holding any of these is quoted, so no reader splits it or ends its line inside it. */
 const NEEDS_QUOTES = /[",;\t\n\r]/
 
@@ -37,6 +48,7 @@ export function toCsv(header: string[], rows: (string | number | null | undefine
     // An apostrophe is what every spreadsheet reads as "this is text"; it is
     // not rendered in the cell.
     if (FORMULA_LEAD.test(s) || SPLIT_FORMULA_LEAD.test(s)) s = `'${s}`
+    s = s.replace(FORMULA_AT_SPLIT, "$1'")
     return NEEDS_QUOTES.test(s) ? `"${s.replaceAll('"', '""')}"` : s
   }
   return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')
