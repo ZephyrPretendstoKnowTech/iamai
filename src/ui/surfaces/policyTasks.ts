@@ -98,6 +98,8 @@ export const isPolicyProcedureTask = (task: Pick<EmergencyAccountTask, 'id'>): b
 
 /** What the procedure needs beside the step: the tenant's names and policies, the lines to do before a create, and the card's reading. */
 export type PolicyProcedureInput = {
+  /** Directory-resource guidance from the channels this step actually displays. */
+  directoryResourcesLine?: string
   /** id → the tenant's name for it, on one line. */
   nameOf: (id: string) => string
   /** The tenant's name for an authentication strength, or null. */
@@ -510,7 +512,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
     return key ? [[m.token.toLowerCase(), input.proposed[key]] as const] : []
   }))
   const tenant = step.action.resolution?.tenant ?? step.action.planned?.tenant ?? null
-  const ctx: ProcedureContext = { nameOf: (id) => pendingName.get(id.toLowerCase()) ?? input.nameOf(id), strengthNameOf: input.strengthNameOf, exclusionsGroupId: tenant?.exclusionsGroupId ?? null, emergencyIds: tenant?.emergencyIds ?? [], contextNameOf: input.extras?.contextNameOf, appIdShown: (id) => missing.some((m) => unmadeApp(m) && m.token.toLowerCase() === id.toLowerCase()) }
+  const ctx: ProcedureContext = { directoryResourcesLine: input.directoryResourcesLine, nameOf: (id) => pendingName.get(id.toLowerCase()) ?? input.nameOf(id), strengthNameOf: input.strengthNameOf, exclusionsGroupId: tenant?.exclusionsGroupId ?? null, emergencyIds: tenant?.emergencyIds ?? [], contextNameOf: input.extras?.contextNameOf, appIdShown: (id) => missing.some((m) => unmadeApp(m) && m.token.toLowerCase() === id.toLowerCase()) }
   // The exclusions group, or the one the plan proposes while it is still to be made.
   const exclusionIds = [ctx.exclusionsGroupId, ...missing.filter((m) => m.stepId === PREREQ_STEP_ID.exclusionsGroup).map((m) => m.token)].filter((id): id is string => typeof id === 'string' && id !== '')
   const members = membersOf(step, input, ctx, exclusionIds).filter((m) => m.name !== '' || m.create !== null)

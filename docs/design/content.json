@@ -82,6 +82,7 @@
       "resources": "Under **Target resources**, include {include}.",
       "$commentResourcesDirectory": "Windows Azure Active Directory can't be picked from Select resources (Microsoft Learn, concept-conditional-access-cloud-apps); the portal reaches it only through a custom security attribute filter, which writes a different policy. The PowerShell and JSON tabs name it by its application ID, as the baseline does.",
       "resourcesDirectory": "Under **Target resources**, **Windows Azure Active Directory** can't be picked from Select resources, so create this policy from the **PowerShell** or **JSON** tab, which targets it by its application ID.",
+      "resourcesDirectoryWaiting": "Under **Target resources**, **Windows Azure Active Directory** can't be picked from Select resources. The **PowerShell** and **JSON** tabs are not available yet. {wait} Resolve the outstanding items in **Tasks Remaining**, then select **Scan to update the plan**. Use **PowerShell** or **JSON** to create this policy once its tab appears.",
       "resourcesExclude": "Under **Target resources**, include {include} and exclude {exclude}.",
       "userAction": "Under **Target resources**, select **User actions** → **{action}**.",
       "authContext": "Under **Target resources**, select **Authentication context** → {contexts}.",

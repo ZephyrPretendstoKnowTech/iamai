@@ -40,6 +40,7 @@ import { stepContext } from '../../roadmap/prompts.ts'
 import { aiBriefingText, aiGroundingText } from './aiGrounding.ts'
 import type { TabItem } from '../components/index.ts'
 import { pinnedToTenant, powershellFor } from './stepPowerShell.ts'
+import { PROCEDURE } from '../../roadmap/policyProcedure.ts'
 import { policyJsonText, stepOperations } from './stepJson.ts'
 import { ifWrongLineFor, stepExportView } from './stepExport.ts'
 import { stepVars, tenantNameOf, withoutScheduleDates } from './stepVars.ts'
@@ -722,8 +723,19 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // board's reading of the next action does not carry it.
   const ownWaits = step.blockers.flatMap((b) => (b.kind === 'step' ? [contentTitleOfId(b.stepId)] : [])).filter((x): x is string => x !== null)
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...ownWaits, ...(o.enforceWaits ?? [])])]
+  // A directory-resource create cannot use the portal picker. When its machine
+  // tabs are withheld, explain the existing wait instead of pointing at absent tabs.
+  const directoryDecision = readiness.tiles.find((tile) => tile.key.startsWith('direction:'))
+  const directoryWait = (!contract.implementation.offered ? contract.implementation.because : null)
+    || laneView.waitingIn
+    || (directoryDecision ? `${directoryDecision.label}: ${directoryDecision.value}` : null)
+    || laneView.waitingFor
+    || ''
+  const directoryResourcesLine = step.state.lifecycle === 'not-deployed' && !artifacts.some((a) => (a.id === 'ps' || a.id === 'json') && !a.unavailable)
+    ? fillText(PROCEDURE.resourcesDirectoryWaiting, { wait: directoryWait && !/[.!?]$/.test(directoryWait) ? `${directoryWait}.` : directoryWait })
+    : undefined
   const procedure = machine && drawsTaskAnatomy(step.id)
-    ? policyProcedureOf(step, { nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)), announces: supported.has('email'), externalOf: externalOf(ctx) })
+    ? policyProcedureOf(step, { directoryResourcesLine, nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)), announces: supported.has('email'), externalOf: externalOf(ctx) })
     : null
   if (procedure !== null) {
     const text = emergencyAccountTasksText(procedure)

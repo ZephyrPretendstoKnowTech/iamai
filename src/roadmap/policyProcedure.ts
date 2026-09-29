@@ -53,6 +53,8 @@ const sameId = (a: string, b: string | null | undefined): boolean => b != null &
 
 /** What the lines need beyond the policy: the tenant's names for its ids. */
 export type ProcedureContext = {
+  /** The directory-resource instruction, matched to the implementation tabs currently shown. */
+  directoryResourcesLine?: string
   /** id → the name the tenant knows it by; the caller supplies the tenant's directory. */
   nameOf: (id: string) => string
   /** The name this tenant knows an authentication strength by, or null. */
@@ -211,7 +213,7 @@ function resourcesLine(f: PolicyFacts, ctx: ProcedureContext): string | null {
     return fill(PROCEDURE.authContext, { contexts: list([...f.apps.authContexts].map(context)) })
   }
   // Not selectable in the portal's resource picker: the tabs that name it by id create it.
-  if ([...f.apps.ids].some((id) => id.toLowerCase() === WINDOWS_AZURE_AD)) return PROCEDURE.resourcesDirectory
+  if ([...f.apps.ids].some((id) => id.toLowerCase() === WINDOWS_AZURE_AD)) return ctx.directoryResourcesLine ?? PROCEDURE.resourcesDirectory
   const include = resourceInclude(f, ctx)
   if (include.length === 0) return null
   const exclude = excludedApps(f)
