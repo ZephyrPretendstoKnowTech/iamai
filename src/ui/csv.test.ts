@@ -79,3 +79,58 @@ test('the Export page\'s files are named as their buttons read, and the sign-in 
   assert.ok(JSON.stringify(INVENTORY).includes('Sign-in address'), 'the accounts file heads its column another way')
   assert.equal((INVENTORY.signIns.columns as Record<string, string>).country, 'Country')
 })
+
+// Security audit, 2026-09-29: where the Windows list separator is ';' (most of
+// continental Europe), Excel opening a .csv splits each line at ';', so a ';'
+// inside an unquoted value starts a new cell, and that cell can be a live
+// formula. Every cell a separator could split is quoted, and a value whose
+// split-off piece would start with a formula character is marked as text.
+/** One line read as a spreadsheet reads it with `sep` as the separator: double quotes keep a field whole. */
+function fieldsOf(line: string, sep: string): string[] {
+  const out: string[] = []
+  let field = ''
+  let quoted = false
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (quoted) {
+      if (c === '"' && line[i + 1] === '"') { field += '"'; i++ }
+      else if (c === '"') quoted = false
+      else field += c
+    } else if (c === '"') quoted = true
+    else if (c === sep) { out.push(field); field = '' }
+    else field += c
+  }
+  out.push(field)
+  return out
+}
+
+test('a ; or tab inside a value cannot start a formula cell in a spreadsheet that splits on it', () => {
+  // The audit's payload: a guest's own display name, no quotes or commas needed.
+  const payload = 'Pat;=HYPERLINK(CHAR(104)&CHAR(116)&CHAR(116)&CHAR(112)&A3);x'
+  const lines = toCsv(['Name', 'Sign-in'], [['=1+1', 'a@x.test'], [payload, 'b@x.test']]).split('\r\n')
+  assert.equal(lines[1], `'=1+1,a@x.test`)
+  assert.equal(lines[2], `"'${payload}",b@x.test`)
+  const payloads = [
+    payload,
+    'Pat; =HYPERLINK(A3)',
+    'Pat;+1+1',
+    'Pat;-1+1',
+    'Pat;@SUM(A1)',
+    'Pat\t=1+1',
+    'Pat,=1+1',
+    ' =1+1',
+    'a;b;c',
+  ]
+  const csv = toCsv(['Name', 'Sign-in'], payloads.map((p) => [p, 'b@x.test']))
+  for (const sep of [',', ';', '\t']) {
+    for (const line of csv.split('\r\n').slice(1)) {
+      for (const field of fieldsOf(line, sep)) {
+        assert.ok(!/^\s*[=+\-@]/.test(field), `split at ${JSON.stringify(sep)}, ${JSON.stringify(line)} leaves the formula cell ${JSON.stringify(field)}`)
+      }
+    }
+  }
+  // Read with the file's own separator, each value comes back whole.
+  assert.deepEqual(csv.split('\r\n').slice(1).map((line) => fieldsOf(line, ',')[0].replace(/^'/, '')), payloads)
+  // A ; with nothing formula-like after it is quoted, not marked.
+  assert.equal(toCsv(['Name'], [['a;b;c']]).split('\r\n')[1], '"a;b;c"')
+})

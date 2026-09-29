@@ -15,6 +15,17 @@ export { STALE_SCAN_DAYS, absolute, absoluteDate, dateRange, relative, relativeD
  */
 const FORMULA_LEAD = /^[=+\-@\t\r]/
 
+/**
+ * A formula character at the start of a piece a spreadsheet could split off the
+ * value: after a ',' (this file's separator), a ';' (the list separator Excel
+ * splits a double-clicked .csv at in most of continental Europe) or a tab, with
+ * any whitespace before it (security audit, 2026-09-29).
+ */
+const SPLIT_FORMULA_LEAD = /(?:^|[;,\t])\s*[=+\-@]/
+
+/** A value holding any of these is quoted, so no reader splits it or ends its line inside it. */
+const NEEDS_QUOTES = /[",;\t\n\r]/
+
 /** The dash a table shows in an empty cell. */
 const EMPTY_CELL = '—'
 
@@ -25,8 +36,8 @@ export function toCsv(header: string[], rows: (string | number | null | undefine
     let s = v === null || v === undefined || v === EMPTY_CELL ? '' : String(v)
     // An apostrophe is what every spreadsheet reads as "this is text"; it is
     // not rendered in the cell.
-    if (FORMULA_LEAD.test(s)) s = `'${s}`
-    return /[",\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s
+    if (FORMULA_LEAD.test(s) || SPLIT_FORMULA_LEAD.test(s)) s = `'${s}`
+    return NEEDS_QUOTES.test(s) ? `"${s.replaceAll('"', '""')}"` : s
   }
   return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')
 }
