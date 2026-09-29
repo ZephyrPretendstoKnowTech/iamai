@@ -18,6 +18,10 @@
       "state": "Create in Report-only"
     },
     {
+      "label": "Require MFA for Guests",
+      "state": "Create in Report-only"
+    },
+    {
       "label": "Block Authentication Transfer",
       "state": "Create in Report-only"
     },

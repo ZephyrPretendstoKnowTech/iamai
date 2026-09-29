@@ -12,7 +12,7 @@
 // Pure: no DOM, no React, no network.
 import type { Step } from '../../roadmap/types.ts'
 import { REPORT_ONLY_STEP_ID } from '../../roadmap/stepIds.ts'
-import { operationBodies } from '../../roadmap/operations.ts'
+import { createdBodiesOf } from '../../roadmap/reportOnlyBatch.ts'
 import { stepById } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { byPlanPlace } from '../../roadmap/stepGroups.ts'
@@ -42,7 +42,8 @@ function policyNames(m: Member): string[] {
     const tenant = (m.step.tracking?.members ?? []).map((t) => t.policyName).filter((n): n is string => typeof n === 'string' && n !== '')
     if (tenant.length > 0) return tenant
   }
-  return operationBodies(m.step as Parameters<typeof operationBodies>[0]).map((b) => String(b.displayName ?? '')).filter((n) => n !== '')
+  // Only the policies it creates: a mixed step's update is its own step's task.
+  return createdBodiesOf(m.step).map((b) => String(b.displayName ?? '')).filter((n) => n !== '')
 }
 
 /**
@@ -56,9 +57,11 @@ export function reportOnlyTilesOf(step: Step, ctx: StepVarContext): ReadinessTil
   const w = W()
   // Only the policies still to create (owner, 2026-09-26): a correction is its
   // own step's card, and the policies already created are no roster here.
-  return membersOf(step, ctx).filter((m) => m.toCreate).map((m) => {
+  // One card per policy (owner, 2026-09-29): a step that creates two (Jon's guest pair) has two.
+  return membersOf(step, ctx).filter((m) => m.toCreate).flatMap((m) => {
+    const names = policyNames(m)
     // Its instruction is its task's (emergencyReadiness.ts: "Follow {title} in Implementation Tasks.").
-    return { key: `batch:${m.id}`, label: contentTitle(m.step), tone: 'warn' as const, value: w.createValue, note: null, names: policyNames(m) }
+    return (names.length > 0 ? names : [null]).map((name, i) => ({ key: i === 0 ? `batch:${m.id}` : `batch:${m.id}#${i + 1}`, label: contentTitle(m.step), tone: 'warn' as const, value: w.createValue, note: null, names: name === null ? [] : [name] }))
   })
 }
 

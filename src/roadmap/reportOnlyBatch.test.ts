@@ -67,3 +67,24 @@ test('it waits on Emergency Access and Direction, as the policies it creates do'
   assert.ok(!settled.blockers.some((b) => b.label === FOUNDATION_WAIT), 'free once the foundation is settled')
   assert.equal(settled.status, 'ready')
 })
+
+test('every policy the plan creates is listed: a mixed step lists the policy it creates, never its in-place correction (owner, 2026-09-29)', async () => {
+  const { batchMemberOf, createdBodiesOf } = await import('./reportOnlyBatch.ts')
+  const week2 = runFixture(fixture('demo-week2')).steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!.reportOnlyBatch!
+  for (const id of ['s-goal-guests-mfa', 's-goal-directory-baseline-scopes-mfa']) assert.ok(week2.create.includes(id), `${id} is listed on demo-week2`)
+  const r = runFixture(fixture('demo'))
+  const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
+  assert.equal(batchMemberOf(guests), 'create', 'both of Jon\'s guest policies are created in report-only')
+  // The same step beside a tenant's own Mixed-Guests: it updates that one by name and creates B2B-Guest.
+  const [mixed, b2b] = guests.action.resolution!.policies
+  const mixedStep = structuredClone(guests)
+  mixedStep.kind = 'adjust'
+  mixedStep.action.resolution!.policies = [{ ...structuredClone(mixed), mode: 'update', policyId: 'tenant-mixed-guests', body: { conditions: structuredClone(mixed.body.conditions) }, target: { ...structuredClone(mixed.body), id: 'tenant-mixed-guests', state: 'enabled' } } as never, structuredClone(b2b)]
+  setState(mixedStep, { lifecycle: 'enforced' })
+  assert.deepEqual(createdBodiesOf(mixedStep).map((b) => b.displayName), [b2b.body.displayName], 'only the policy it creates')
+  assert.equal(batchMemberOf(mixedStep), 'create', 'the create inside a mixed step is listed')
+  // A correction alone is never listed as a create.
+  const updateOnly = structuredClone(mixedStep)
+  updateOnly.action.resolution!.policies = [updateOnly.action.resolution!.policies[0]]
+  assert.notEqual(batchMemberOf(updateOnly), 'create', 'an in-place correction is its own step\'s task')
+})

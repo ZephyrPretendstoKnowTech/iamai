@@ -453,3 +453,19 @@ test('every step the engine can build is listed by a section, so none reaches On
   // An object task is drawn on its step's row: no tenant builds it as a row of its own.
   for (const task of Object.values(OBJECT_TASK)) assert.equal(built.includes(task), false, `${task}: an object task is built as a step`)
 })
+
+test('the round-5 steps sit in doing order: 3.8 closes Prepare, BaselineScopes follows device registration, guests and MFA for Everyone keep their places (owner, 2026-09-29)', async () => {
+  const { membersOf: m } = await import('./stepGroups.ts')
+  const prepare = m('prepare')
+  assert.equal(prepare[prepare.length - 1], 's-create-report-only')
+  const extend = m('extend-mfa')
+  assert.equal(extend[extend.indexOf('s-goal-device-registration-mfa') + 1], 's-goal-directory-baseline-scopes-mfa')
+  assert.equal(extend[extend.indexOf('s-goal-directory-baseline-scopes-mfa') + 1], 's-goal-guests-mfa')
+  assert.ok(m('core').includes('s-goal-mfa-all-users'))
+  const { fixture } = await import('./fixtures/index.ts')
+  const { runFixture } = await import('./fixtures/run.ts')
+  const { byPlanPlace } = await import('./stepGroups.ts')
+  const ids = [...runFixture(fixture('getiamai')).steps].sort(byPlanPlace).map((s) => s.id)
+  assert.ok(ids.indexOf('s-create-report-only') < ids.indexOf('s-goal-block-legacy-auth'), '3.8 comes before every policy section')
+  assert.equal(ids[ids.indexOf('s-goal-device-registration-mfa') + 1], 's-goal-directory-baseline-scopes-mfa')
+})

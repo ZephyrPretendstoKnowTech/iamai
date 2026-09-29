@@ -42,10 +42,11 @@ test('one card per policy still to create, headed by its step and naming the pol
   const { create, created } = step.reportOnlyBatch!
   const open = body.readiness.tiles.filter((t) => t.key.startsWith('batch:'))
   const done = body.readiness.satisfied.filter((t) => t.key.startsWith('batch:'))
-  assert.deepEqual(open.map((t) => t.key), r.steps.filter((s) => create.includes(s.id)).sort((a, b) => byPlanPlace(a, b)).map((s) => `batch:${s.id}`))
+  assert.deepEqual([...new Set(open.map((t) => t.key.replace(/#\d+$/, '')))], r.steps.filter((s) => create.includes(s.id)).sort((a, b) => byPlanPlace(a, b)).map((s) => `batch:${s.id}`))
+  assert.equal(open.filter((t) => t.key.startsWith('batch:s-goal-guests-mfa')).length, 2, "one card per policy: both of Jon's guest policies")
   assert.equal(done.length, 0, 'the policies already created are no roster here')
   for (const t of open) {
-    const member = r.steps.find((s) => `batch:${s.id}` === t.key)!
+    const member = r.steps.find((s) => `batch:${s.id}` === t.key.replace(/#\d+$/, ''))!
     assert.equal(t.label, contentTitle(member))
     assert.equal(t.value, 'Create in Report-only')
     assert.equal(t.names?.length, 1, 'the policy it creates, by name')
@@ -79,4 +80,15 @@ test('its rail counts the policies left to create, and its header reads Preparat
   assert.equal(body.eyebrow, 'Preparation step')
   const n = step.reportOnlyBatch!.create.length
   assert.match(JSON.stringify(body), new RegExp(`${n} policies to create in Report-only`))
+})
+
+test('a mixed step\'s card names only the policy it creates (owner, 2026-09-29)', async () => {
+  const { reportOnlyTilesOf } = await import('./reportOnlyStep.ts')
+  const { r, ctx, step } = plan('demo')
+  const guests = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
+  const [mixed, b2b] = guests.action.resolution!.policies
+  guests.kind = 'adjust'
+  guests.action.resolution!.policies = [{ ...mixed, mode: 'update', policyId: 'tenant-mixed-guests', body: { conditions: mixed.body.conditions }, target: { ...mixed.body, id: 'tenant-mixed-guests', state: 'enabled' } } as never, b2b]
+  const tile = reportOnlyTilesOf(step, { ...ctx, planSteps: r.steps }).find((t) => t.key === 'batch:s-goal-guests-mfa')
+  assert.deepEqual(tile?.names, [b2b.body.displayName])
 })

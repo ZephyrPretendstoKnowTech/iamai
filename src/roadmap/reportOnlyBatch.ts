@@ -7,8 +7,12 @@
 //
 // What it lists is read from the policies themselves (the pinned baseline, and
 // the tenant's licences through the plan: a policy not licensed is not on it):
-//   - every policy step whose next task is to create its policy, and whose
-//     create the plan can write now (operations.ts implementationOffered): a step
+//   - every policy the plan creates whose create the plan can write now: a
+//     whole-create step, a create inside a mixed step (the guest step updating
+//     the tenant's Mixed-Guests by name while creating B2B-Guest), and a
+//     replacement create beside a tenant's own policy (owner, 2026-09-29: every
+//     policy the plan adds or replaces is listed here). Its create
+//     the plan can write now (operations.ts implementationOffered): a step
 //     held only by order or by a readiness threshold qualifies, because
 //     Report-only stops nobody; one waiting on an object nobody has identified,
 //     or on a baseline that contradicts itself, does not;
@@ -25,7 +29,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
-import { finalTargets, implementationOffered } from './operations.ts'
+import { finalTargets, implementationOffered, operationsOf } from './operations.ts'
 import { setState } from './lifecycle.ts'
 
 import { REPORT_ONLY_STEP_ID } from './stepIds.ts'
@@ -58,6 +62,15 @@ function policiesOf(step: Step, tenant: TenantPolicies): Json[] {
   const bodies = finalTargets(step as Parameters<typeof finalTargets>[0])
   if (bodies.length > 0) return bodies
   return (step.tracking?.members ?? []).flatMap((m) => (m.policyId && tenant.has(m.policyId) ? [tenant.get(m.policyId)!] : []))
+}
+
+/**
+ * The whole policies a step creates (its create operations' bodies), never an
+ * update's: a mixed step lists only the policy it adds, and its in-place
+ * correction stays its own step's task (owner, 2026-09-26).
+ */
+export function createdBodiesOf(step: Step): Json[] {
+  return operationsOf(step as Parameters<typeof operationsOf>[0]).filter((o) => o.mode === 'create').map((o) => o.body as Json)
 }
 
 /** Why report-only is left out for a policy: it has a user action, or it checks a device beyond Windows. */
@@ -98,25 +111,32 @@ const onThePlan = (step: Step): boolean => !(step.status === 'skipped' || step.s
  * says why it waits.
  */
 function leftOutOf(step: Step): ReportOnlyOutlier[] {
-  if (step.kind !== 'create' || !onThePlan(step) || step.state.lifecycle !== 'not-deployed') return []
+  if (!onThePlan(step)) return []
+  const whole = step.kind === 'create' && step.state.lifecycle === 'not-deployed'
+  if (!whole && step.kind !== 'adjust' && step.kind !== 'create') return []
   // The plan's own policies, whether or not their create can be written today:
   // a policy held on something else is still never listed here, for this reason.
-  return (step.action.resolution?.policies ?? []).map((op) => reportOnlyOutlierOf(obj(op.body))).filter((r): r is ReportOnlyOutlier => r !== null)
+  // Beside a whole create, only the creates count (a mixed step's update is its own task).
+  return (step.action.resolution?.policies ?? []).filter((op) => whole || op.mode === 'create').map((op) => reportOnlyOutlierOf(obj(op.body))).filter((r): r is ReportOnlyOutlier => r !== null)
 }
 
 /** A policy step the batch can ever list, whatever its lifecycle. */
 export function batchable(step: Step, tenant: TenantPolicies = new Map()): boolean {
   if (step.kind !== 'create' && step.kind !== 'adjust') return false
   if (!onThePlan(step)) return false
-  const policies = policiesOf(step, tenant)
+  // A step that creates a policy is judged by the policies it creates.
+  const creates = createdBodiesOf(step)
+  const policies = creates.length > 0 ? creates : policiesOf(step, tenant)
   return policies.length > 0 && !policies.some(reportOnlyOutlier)
 }
 
 /** Where a policy step stands in the batch: still to create, already created, or not in it. */
 export function batchMemberOf(step: Step, tenant: TenantPolicies = new Map()): 'create' | 'created' | null {
   if (!batchable(step, tenant)) return null
+  // Any policy the plan creates, in a whole-create step or beside an update (owner, 2026-09-29).
+  const creates = createdBodiesOf(step).length > 0 && (step.kind !== 'create' || step.state.lifecycle === 'not-deployed')
+  if (creates && implementationOffered(step as Parameters<typeof implementationOffered>[0])) return 'create'
   if (CREATED.has(step.state.lifecycle ?? '')) return 'created'
-  if (step.kind === 'create' && step.state.lifecycle === 'not-deployed' && implementationOffered(step as Parameters<typeof implementationOffered>[0])) return 'create'
   return null
 }
 

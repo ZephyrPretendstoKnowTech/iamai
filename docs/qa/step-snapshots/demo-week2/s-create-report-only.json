@@ -22,6 +22,10 @@
       "state": "Create in Report-only"
     },
     {
+      "label": "Require MFA for Guests",
+      "state": "Create in Report-only"
+    },
+    {
       "label": "Block Unsupported Device Platforms",
       "state": "Create in Report-only"
     },
