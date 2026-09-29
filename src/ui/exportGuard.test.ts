@@ -126,3 +126,36 @@ test('AI Info carries its tenant-context warning above the text, in the preview 
   assert.ok(warnings[0]! < preview && preview < warnings[1]! && warnings[1]! < dialog, 'each warning stands above the text it warns about')
   assert.match(readFileSync(GUARD, 'utf8'), /AI Info carries its tenant-context warning above the same/, 'the guard still names the warning')
 })
+
+// Security audit, 2026-09-29: SECURITY.md and the README said three exports
+// carried names and ids in full, while every CSV and the Implementation viewer's
+// Copy did too, and the docs still described a feedback link that prefilled a
+// scan summary. The published docs name every surface that exports in full, and
+// a surface added to the guard fails here until they do.
+test('SECURITY.md and the README name every surface that exports names, sign-in addresses and object ids in full', () => {
+  const guard = readFileSync(GUARD, 'utf8')
+  const surfaces = [...(/export type UnredactedSurface = ([^\n]+)/.exec(guard)?.[1] ?? '').matchAll(/'([a-z-]+)'/g)].map((m) => m[1])
+  assert.ok(surfaces.length >= 5, `surfaces read: ${surfaces.join(', ')}`)
+  /** How each surface is named in the docs. */
+  const NAMED: Record<string, { security: RegExp; readme: RegExp }> = {
+    'plan-file': { security: /The plan file:/, readme: /the plan file/ },
+    'print-document': { security: /The print document:[\s\S]{0,200}sign-in address/, readme: /the print document/ },
+    'grounding-bundle': { security: /The grounding bundle with its redaction checkbox cleared/, readme: /the unmasked grounding bundle/ },
+    'inventory-csv': { security: /Every CSV:[\s\S]{0,300}`Id` column/, readme: /every CSV\s+\(the groups CSV includes each group's object id\)/ },
+    'implementation-artifact': { security: /Copy in a step's Implementation viewer, AI Info included/, readme: /Copy in a step's Implementation\s+viewer, AI Info included/ },
+  }
+  const security = readFileSync('SECURITY.md', 'utf8')
+  const inFull = security.slice(security.indexOf('**In full.**'), security.indexOf('## What it never does'))
+  const readme = readFileSync('README.md', 'utf8')
+  const exportsBullet = readme.slice(readme.indexOf('- **Exports.**'), readme.indexOf('- **Hosting.**'))
+  for (const surface of surfaces) {
+    const named = NAMED[surface]
+    assert.ok(named, `${surface} exports in full and SECURITY.md and README.md do not name it: add it to both, and here`)
+    assert.match(inFull, named.security, `SECURITY.md's "In full" list does not name ${surface}`)
+    assert.match(exportsBullet, named.readme, `README.md's Exports line does not name ${surface}`)
+  }
+  assert.doesNotMatch(security, /Three exports carry names and ids in full|prefills the message|scan summary is\s+optional/, 'a stale claim is back')
+  // The worker the scan's bulk reads run in has no CSP of its own; the docs say what keeps the token on Graph there.
+  assert.match(security, /does not reach the dedicated worker[\s\S]{0,700}refuses any URL whose origin is not exactly\s+`https:\/\/graph\.microsoft\.com`/)
+  assert.match(guard, /- `inventory-csv` —/, 'the guard\'s comment does not describe the inventory-csv surface')
+})

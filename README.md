@@ -86,10 +86,13 @@ and `offline_access` for the sign-in itself.
   `raw.githubusercontent.com` (checking for and reviewing baseline updates; no tenant data
   is sent). `src/network.test.ts` fails the build if the source or the built bundle names
   another.
-- **Exports.** An export is a file you save, a copy to your clipboard or a printout. By
-  default sign-in names and ids are replaced with placeholders (display names can remain);
-  the plan file, the print document and the grounding bundle with redaction turned off
-  contain names and ids in full, and the page says so before you export.
+- **Exports.** An export is a file you save, a copy to your clipboard or a printout. The
+  calendar, the prompts, the copied More text, a policy's JSON and the diagnostics mask
+  sign-in addresses and object ids (names remain), and the grounding bundle masks names
+  too unless you clear its checkbox. These carry names, sign-in addresses and object ids
+  in full: the plan file, the print document, the unmasked grounding bundle, every CSV
+  (the groups CSV includes each group's object id), and Copy in a step's Implementation
+  viewer, AI Info included. Review them before you share them.
 - **Hosting.** getiamai.com is a static site on GitHub Pages served through Cloudflare.
   Cloudflare adds its own page-load analytics beacon to both pages, and an email-address
   obfuscation script to the home page. Neither is in this repository or the build, and

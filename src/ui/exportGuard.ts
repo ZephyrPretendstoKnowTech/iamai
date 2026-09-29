@@ -33,7 +33,9 @@ import type { MappingState } from '../mapping/types.ts'
  *   (`GROUNDING.warning`) renders above the checkbox that clears redaction.
  * - `print-document` — the print layout. Printing exists to put the plan in
  *   front of the person doing the work, and a redacted printout would be
- *   useless for that; the print card states what the document contains.
+ *   useless for that. It names the people and groups the plan names and the
+ *   preparer's sign-in address; the print card says what the briefing is for,
+ *   not that it carries those (security audit, 2026-09-29: a warning to add).
  * - `plan-file` — the Export tab's plan-file card. The file is the person's own
  *   working state, saved to load back on the same tenant (the loader's tenant
  *   check needs the real id); the card says what it holds and that names are in full.
@@ -44,6 +46,12 @@ import type { MappingState } from '../mapping/types.ts'
  *   Microsoft's own constants in it, so a redacted copy is a different and
  *   invalid artifact. AI Info carries its tenant-context warning above the same
  *   preview (ui/surfaces/ContentStep.tsx `Implementation`).
+ * - `inventory-csv` — every CSV: the Export page's CSV buttons, MFA Readiness's
+ *   CSV and each Inventory table's (components/DataTable.tsx). A person opens the
+ *   file to find the accounts, so it carries names and sign-in addresses, and the
+ *   groups CSV an `Id` column of object ids. The Export page's CSV card says so
+ *   in its text; on MFA Readiness and the Inventory tables `shared.csvNotice` is
+ *   only the button's tooltip. Neither mentions object ids.
  */
 export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file' | 'implementation-artifact' | 'inventory-csv'
 

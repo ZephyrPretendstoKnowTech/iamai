@@ -16,14 +16,15 @@ public issue for a vulnerability. If you cannot use GitHub, email
 
 Do not include sign-in names, object ids or tenant ids. If the app showed its error page,
 you can attach the diagnostics download from it: sign-in names and ids in it are replaced
-with stable placeholders before the file is written.
+with stable placeholders before the file is written, and it carries no tenant id or hash
+of one.
 
 IAMAI has a single maintainer. There is no bug bounty and no guaranteed response time.
 
 For anything that is not a security issue (a wrong number, unclear wording, a step that
 does not match your tenant), email **feedback@getiamai.com** or open an issue. The footer
-of every page has a link that prefills the message; including a scan summary is
-optional, and it is counts only, with no names and no tenant id.
+of every page has that address as a plain mail link: it opens your mail client with an
+empty message, and nothing from the scan is added to it.
 
 ## What the app reads
 
@@ -105,6 +106,16 @@ own inline theme script by hash and fetches nothing. Neither page allows `unsafe
 inline script. Both also allow Cloudflare's beacon hosts, because Cloudflare injects that
 script (below) and whether it runs is a setting on the Cloudflare account, not the page's.
 
+A `<meta>` policy does not reach the dedicated worker that runs the scan's bulk reads: a
+worker loaded from a URL takes its policy from its own response headers, and GitHub Pages
+sends none. The code holds the line there instead. Every request that carries the Graph
+token goes through one function (`graphRequest`, `src/graph/collect/http.ts`), in the
+worker and in the page, and it refuses any URL whose origin is not exactly
+`https://graph.microsoft.com` before the token is attached. That includes an
+`@odata.nextLink` or `$batch` continuation a response names; a refused URL is a failed
+read of that section (`src/graph/collect/http.test.ts`). So the token only ever goes to
+`graph.microsoft.com`.
+
 GitHub Pages sends no custom response headers, so what only a header can carry is not
 set: `frame-ancestors` (framing by other sites), `report-to`, and
 `X-Content-Type-Options`. Setting them needs a response-header rule on the Cloudflare
@@ -152,19 +163,43 @@ signed in. *Sign out* clears the sign-in session.
 Apart from the Microsoft sign-in, the Microsoft Graph reads and the GitHub checks listed
 above, nothing leaves on its own. Data moves when you choose to move it: downloading a file
 (the plan file, CSVs, the calendar file, the prompts, the grounding bundle, a policy's
-JSON, diagnostics), copying text to the clipboard, printing, or sending the feedback
-message, which opens your own mail client with a prefilled message you send yourself.
+JSON, diagnostics), copying text to the clipboard, or printing. Writing to the feedback
+address is a message you compose in your own mail client; the app adds nothing to it.
 
 Every download, clipboard write and print goes through `src/ui/exportGuard.ts`, and
 `src/ui/exportGuard.test.ts` fails the build if code reaches a browser export API another
-way. By default an export is redacted: sign-in names and GUIDs are replaced with stable
-placeholders. That default does not replace display names, so a redacted CSV can still
-contain people's, groups' or policies' names. The redacted grounding bundle goes further
-and replaces every display name the tenant contains (`src/redactSnapshot.ts`).
+way. Each export either masks identifiers or carries them in full.
 
-Three exports carry names and ids in full, and each says so on screen before you export:
-the plan file, the print document, and the grounding bundle when you clear its redaction
-checkbox. Files exported from demo mode are marked as sample data.
+**Masked.** Sign-in addresses and object ids (GUIDs) are replaced with stable
+placeholders. Display names are not replaced unless the item says so.
+
+- The calendar file and the prompts, downloaded or copied. They keep people's, groups'
+  and policies' names and the tenant's name (the file name carries it too). Passkey
+  model ids (AAGUIDs) stay as they are: they are vendor constants, not tenant data.
+- The text a step's More section copies (the email, help-desk and manager text).
+- A policy's JSON downloaded from the plan footer.
+- The diagnostics downloads. They carry no tenant id and no hash of one.
+- The grounding bundle, which is masked unless you clear its checkbox. It also replaces
+  the display names the tenant contains: the organisation's however short, other names
+  from four letters up (a shorter one, such as a group called IT, is a common word)
+  (`src/redactSnapshot.ts`). It is still not guaranteed anonymous.
+
+**In full.** Names, sign-in addresses and object ids appear as the tenant holds them.
+
+- The plan file: your answers and decisions, the plan, the tenant id and the signed-in
+  account.
+- The print document: the people and groups the plan names, and the sign-in address of
+  the person who prepared it.
+- The grounding bundle with its redaction checkbox cleared.
+- Every CSV: MFA Readiness, and each table's CSV on the Inventory and Export pages. The
+  accounts CSV lists every account's sign-in address with its roles and MFA state, and the
+  groups CSV has an `Id` column with each group's object id.
+- Copy in a step's Implementation viewer, AI Info included: the Entra procedure, script,
+  JSON or email exactly as the viewer shows it, with the tenant's object ids, tenant id
+  and names. A masked copy would be a different artifact that does not deploy.
+
+Review any of these before you share it. Files exported from demo mode are marked as
+sample data.
 
 ## What it never does
 
