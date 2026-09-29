@@ -322,13 +322,17 @@ export type Action = {
    */
   unmatchedPair?: boolean
   /**
-   * The baseline members a pair step does not write because the tenant's own
-   * enabled policies already deliver every guest kind they reach at their floor
-   * (owner decision 8, 2026-09-25; coverage GoalResult.kindsDelivered): each with
-   * the policies that deliver it and the kinds, for the card that says so. Set
-   * only where the pair is partly credited, so the step writes the rest.
+   * Require MFA for Guests: Jon's two guest policies, each by its member key,
+   * with the tenant policy that IS that half (the one carrying the half's name,
+   * the name IAMAI gave it earlier, or this plan's tag for that member); null
+   * while the half is still to create. No other tenant policy is credited as a
+   * half (owner, 2026-09-29: match Jon's baseline exactly). Set on every guest
+   * pair step whose halves are told apart, open or done, so tracking keys its
+   * members by the halves and names each by its half. `intent` is the half's
+   * whole policy as the plan writes it: what tracking reads a half with no
+   * operation of its own against.
    */
-  creditedMembers?: { name: string; policyIds: string[]; policyNames: string[]; kinds: string[] }[]
+  pairMembers?: { key: string; name: string; earlierName?: string; policyId: string | null; intent?: Record<string, unknown> }[]
   /**
    * With `unmatchedPair`: the step is one policy, and the tenant has several the
    * goal could correct that nothing about them tells apart (coverage.ts

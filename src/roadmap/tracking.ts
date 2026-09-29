@@ -230,6 +230,11 @@ const nameOfOp = (op: PolicyOperation | null): string | null => {
  */
 export function requiredMembers(step: Step): RequiredMember[] {
   const ops = step.action.resolution?.policies ?? []
+  // The guest pair's two halves, in every state (Action.pairMembers): each keyed
+  // by its half, with the operation that delivers it where the step has one, so a
+  // pair with one half to create is never one member keyed `sole` standing for both.
+  const halves = step.action.pairMembers ?? []
+  if (halves.length > 1) return halves.map((h) => { const op = ops.find((o) => o.memberKey === h.key) ?? null; return { key: h.key, sourceName: op?.sourceName ?? h.name, op, displayName: nameOfOp(op) ?? h.name, ...(h.earlierName ? { earlierName: h.earlierName } : {}) } })
   if (ops.length <= 1) {
     const op = ops[0] ?? null
     return [{ key: SOLE_MEMBER, sourceName: op?.sourceName ?? '', op, displayName: nameOfOp(op), ...(step.earlierNames?.[0] ? { earlierName: step.earlierNames[0] } : {}) }]
@@ -279,10 +284,12 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     m.matchedBy = by
     claimed.add(policy.id as string)
   }
-  // The policies a partly credited pair credits (Action.creditedMembers) deliver
-  // the other half: no member the step writes is ever one of them, whatever an
-  // older record of this step said.
-  for (const m of step.action.creditedMembers ?? []) for (const id of m.policyIds) claimed.add(id)
+  // The guest pair's halves as generation told them apart (Action.pairMembers):
+  // the tenant policy each half is, by its name or its member tag. A record never
+  // hands a half another half's policy, nor a policy of the tenant's own that
+  // generation did not find to be that half.
+  const halves = new Map((step.action.pairMembers ?? []).map((h) => [h.key, h.policyId]))
+  const assigned = new Set([...halves.values()].filter((id): id is string => typeof id === 'string'))
   const sole = out.length === 1
   // A step with ONE required policy has one member, so a tag naming this step
   // names that member whatever key it carries. Generation writes the key as a
@@ -304,6 +311,10 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     if (artifact === null) continue
     const policy = all.find((p) => artifactIdOf(p.id) === artifact)
     if (!policy || claimed.has(policy.id as string)) continue
+    if (halves.size > 0) {
+      const own = halves.get(m.key) ?? null
+      if (own !== null ? own !== policy.id : assigned.has(policy.id as string) || !tagged.some((t) => t.policyId === policy.id)) continue
+    }
     // The strongest proof this scan still holds for the tie, else the record.
     const by: MemberTracking['matchedBy'] =
       m.op && m.op.mode === 'update' && m.op.policyId === policy.id
@@ -333,6 +344,16 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     if (!id || claimed.has(id)) continue
     const policy = byId.get(id)
     if (policy) claim(m, policy, 'operation-target')
+  }
+
+  // 1b. a guest pair half's own tenant policy, as generation found it by the
+  // half's name or its member tag (Action.pairMembers), where no operation targets it.
+  for (const m of out) {
+    if (m.policy) continue
+    const id = halves.get(m.key)
+    if (!id || claimed.has(id)) continue
+    const policy = byId.get(id)
+    if (policy) claim(m, policy, tagged.some((t) => t.policyId === id && t.memberKey === m.key) ? 'member-tag' : 'member-name')
   }
 
   // 2. the member's own tag
@@ -368,10 +389,9 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     }
   }
 
-  // 4. the goal's coverage fingerprint, for a step with one member. Not for the
-  // member a partly credited pair still writes (Action.creditedMembers): it is
-  // half of a pair, and the policies that deliver the goal are the other half's.
-  if (sole && !out[0].policy && !out[0].ambiguous && !(step.action.creditedMembers?.length)) {
+  // 4. the goal's coverage fingerprint, for a step with one member. A pair's
+  // halves (Action.pairMembers) are never matched by what delivers the goal.
+  if (sole && !out[0].policy && !out[0].ambiguous) {
     const result = coverage.results.find((r) => r.goal.id === step.goalId)
     // The goal's own policy (coverage.ts ownScope), whatever order the scan listed
     // policies in. Another goal's policy stands for this step only where the
@@ -977,7 +997,9 @@ export function trackExecution(
       // (Action.intended) with nothing patched: the step's one policy only. A
       // create's member is read against the whole body the create writes: the
       // policy built from it is exactly that, or it has a setting to correct.
-      const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : m.op.body ?? null) : sole ? step.action.intended ?? null : null
+      // A guest pair half with no operation of its own is read against its half's
+      // whole policy (Action.pairMembers).
+      const intended = m.op ? (m.op.mode === 'update' ? m.op.intent ?? null : m.op.body ?? null) : sole ? step.action.intended ?? null : step.action.pairMembers?.find((h) => h.key === m.key)?.intent ?? null
       // An emergency account the tenant excludes by name stays excluded: the one
       // exclusion no correction asks to remove (owner, 2026-09-26).
       const tenantObjects = step.action.resolution?.tenant ?? step.action.planned?.tenant ?? null
@@ -1214,6 +1236,11 @@ export function trackExecution(
     const since = step.history.at(-1)?.at ?? snapshot.asOf
     const sinceText = absoluteDate(since)
     const wasDone = step.status === 'done'
+    // The guest pair with each of Jon's halves its own tenant policy (generation's
+    // Action.pairMembers): the step is done on those two, On and exact, whatever
+    // coverage reads of the goal as a whole — a half the owner's answer narrows
+    // (service providers excluded) never reads the goal as partly delivered here.
+    const pairBuilt = (step.action.pairMembers?.length ?? 0) > 1 && (step.action.pairMembers ?? []).every((h) => h.policyId !== null)
     // Every object the last scan recorded for this step, whichever member it was.
     const previousIds = carried ? (carried.members?.length ? carried.members.map((m) => m.policyId) : [carried.policyId]).filter((id): id is string => typeof id === 'string' && id.length > 0) : []
     const previousName = carried?.policyName ?? carried?.members?.find((m) => m.policyName)?.policyName ?? step.deliveredBy[0]?.replace(/ \([^)]*\)$/, '') ?? step.title
@@ -1232,6 +1259,8 @@ export function trackExecution(
       const disabled = still.find((p) => p?.state === 'disabled') ?? null
       if (disabled) {
         reopen(step, fillText(TRACK.regression.disabled, { name: disabled.displayName ?? previousName, since: sinceText }), now, 'adjust')
+      } else if (pairBuilt) {
+        // Read against the halves themselves (above and below), not the goal's coverage.
       } else if (goalStatus === 'absent') {
         reopen(step, fillText(TRACK.regression.goal, { since: sinceText, what: 'missing' }), now, 'create')
       } else if (goalStatus === 'below-baseline') {
@@ -1288,7 +1317,7 @@ export function trackExecution(
       //
       // On a pair, `enforced` already means every required member is enforced:
       // one enforced policy has never finished a two-policy goal.
-      if (result?.verdict === 'inPlace' && !unplanned) {
+      if ((result?.verdict === 'inPlace' || pairBuilt) && !unplanned) {
         advance(step, { satisfied: true }, `${fillText(TRACK.enforced, { date: absoluteDate(tracking.enforcedAt ?? now) })}; ${tracking.note}`, now)
       }
       continue
@@ -1440,6 +1469,10 @@ function riskOnlyFor(step: Step, coverage: CoverageReport, policy: PolicyRow): b
  */
 function plannedNameOf(step: Step, m: MemberMatch, sole: boolean): string | null {
   if (m.op?.mode === 'create' && m.displayName) return m.displayName
+  // A guest pair half is named by its own half, whatever the step does now: a
+  // created B2B-Guest never takes the step's own name, which is Mixed-Guests'.
+  const half = step.action.pairMembers?.find((h) => h.key === m.key)
+  if (half) return half.name
   const ops = step.action.planned?.policies ?? []
   const op = sole && ops.length === 1 ? ops[0] : ops.find((o) => o.memberKey === m.key)
   const name = (op?.body as { displayName?: unknown } | undefined)?.displayName

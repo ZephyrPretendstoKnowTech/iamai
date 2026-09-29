@@ -2,16 +2,18 @@
 // - Impact counts the guests it acts on, "No guests" on a tenant with none, and a
 //   tenant with none has no Email tab; the Guest Directory card is gone;
 // - its guest gate counts only guests the scan can read and place (decision 7);
-// - each guest type is held to the grant of the baseline member that reaches it,
-//   what the tenant's own policies already deliver is credited, and the step
-//   writes only the member left short (decision 8);
+// - the step builds exactly Jon's two guest policies (owner, 2026-09-29): the
+//   tenant's own guest policy is never credited as a half nor rewritten into one;
+//   a half with no policy of its own is created in Report-only, the tenant's
+//   policy is named as existing coverage, and the step completes when both halves
+//   are On and exact;
 // - a Ready row with no day of its own reads its phase's first day, never
 //   "Review now" (net-new 29).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { curatedFixture, fixture } from './fixtures/index.ts'
+import { fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { runFixture, withFoundationSettled } from './fixtures/run.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
@@ -20,9 +22,122 @@ import { IMPACT } from '../derive/whoLine.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import type { Step } from './types.ts'
 import { observationsOf } from './tracking.ts'
-import { artifactIdOf } from './observation.ts'
+import type { StepObservationRecord } from './observation.ts'
+import { serviceProvidersExcluded } from './answers.ts'
+import { EXCLUSIONS_RECORD_KEY } from '../mapping/safetyChoice.ts'
+import { REPORT_ONLY_STEP_ID } from './reportOnlyBatch.ts'
 
 const GUESTS = 's-goal-guests-mfa'
+const MIXED = 'IAC - GLOBAL - GRANT - MFA - Mixed-Guests'
+const B2B = 'IAC - GLOBAL - GRANT - MFA - B2B-Guest'
+const OLD = 'tenant-guest-mfa'
+const ALL6 = 'internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider'
+type Row = Record<string, unknown> & { id: string; displayName: string; state: string }
+
+/** The owner's shape: a guest-only MFA policy of the tenant's own, every guest type, On, untagged. */
+function tenantGuestPolicy(f: Fixture): Row {
+  const exclusions = (f.mapping.records[EXCLUSIONS_RECORD_KEY] as { resolvedId?: string } | undefined)?.resolvedId
+  return {
+    id: OLD, displayName: 'Core - Allow - MFA for Guests', state: 'enabled', createdDateTime: '2026-01-01T00:00:00Z', modifiedDateTime: '2026-01-01T00:00:00Z',
+    conditions: {
+      users: { includeUsers: [], excludeUsers: [], includeGroups: [], excludeGroups: exclusions ? [exclusions] : [], includeRoles: [], excludeRoles: [], includeGuestsOrExternalUsers: { guestOrExternalUserTypes: ALL6, externalTenants: { membershipKind: 'all' } } },
+      applications: { includeApplications: ['All'], excludeApplications: [], includeUserActions: [], includeAuthenticationContextClassReferences: [] },
+      clientAppTypes: ['all'], signInRiskLevels: [], userRiskLevels: [], servicePrincipalRiskLevels: [],
+    },
+    grantControls: { operator: 'OR', builtInControls: ['mfa'], customAuthenticationFactors: [], termsOfUse: [] },
+    sessionControls: null,
+  }
+}
+
+function withRows(f: Fixture, edit: (rows: Row[]) => Row[]): Fixture {
+  const snapshot = structuredClone(f.snapshot)
+  ;(snapshot.config.caPolicies as { rows: unknown[] }).rows = edit(snapshot.config.caPolicies.rows as Row[])
+  return { ...f, snapshot }
+}
+
+/** The settled demo with its own guest policies replaced by the owner's shape. */
+const ownerShape = (f: Fixture = withFoundationSettled(fixture('demo'))): Fixture => withRows(f, (rows) => [...rows.filter((p) => !/Guests MFA/.test(p.displayName)), tenantGuestPolicy(f)])
+
+function guestStep(f: Fixture, records: Record<string, StepObservationRecord> | null = null): { step: Step; run: ReturnType<typeof runFixture> } {
+  const run = runFixture(f, {}, records)
+  const step = run.steps.find((s) => s.id === GUESTS)
+  assert.ok(step, 'Require MFA for Guests is on the plan')
+  return { step, run }
+}
+
+/** The step's creates, put on the tenant as the operator would, under ids of their own. */
+const created = (f: Fixture, step: Step, state = 'enabledForReportingButNotEnforced'): Fixture => withRows(f, (rows) => [...rows, ...(step.action.resolution?.policies ?? []).filter((o) => o.mode === 'create').map((o) => ({ ...(structuredClone(o.body) as Row), id: `created-${o.memberKey}`, state, createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf }))])
+
+test("the owner's shape: Jon's two are created beside the tenant's own guest policy, which is never edited and is named as existing coverage", () => {
+  const f = ownerShape()
+  const { step, run } = guestStep(f)
+  const ops = step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.map((o) => [o.mode, o.sourceName, (o.body as { state?: string }).state]), [['create', MIXED, 'enabledForReportingButNotEnforced'], ['create', B2B, 'enabledForReportingButNotEnforced']])
+  assert.deepEqual((step.action.pairMembers ?? []).map((h) => [h.name, h.policyId]), [[MIXED, null], [B2B, null]], 'each half keyed, neither credited to a tenant policy')
+  assert.equal(ops.some((o) => o.policyId === OLD), false, "an operation on the tenant's guest policy")
+  assert.notEqual(step.status, 'done')
+  // Named as existing coverage (shared.existingCoverage).
+  assert.ok(step.deliveredBy.some((d) => d.startsWith('Core - Allow - MFA for Guests')), step.deliveredBy.join(' | '))
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const who = JSON.stringify(stepBodyOf(step, ctx))
+  assert.match(who, /already covers this with Core - Allow - MFA for Guests \(On\)\. This step creates the baseline's version; once it is enforced, review whether the older ones can be retired\./)
+  // Both halves are listed in 3.8 Create the Policies in Report-only.
+  const batch = run.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)
+  assert.ok(batch?.reportOnlyBatch?.create.includes(GUESTS), 'the guest step is in the Report-only batch')
+})
+
+test("a tenant with Jon's Mixed-Guests by name: that half is its own and corrected in place, and B2B-Guest is created (R4-11)", () => {
+  const f0 = ownerShape()
+  const first = guestStep(f0).step
+  const mixed = structuredClone(first.action.resolution!.policies[0].body) as Row
+  // Jon's Mixed-Guests by name, drifted: plain MFA but Report-only.
+  const f = withRows(f0, (rows) => [...rows, { ...mixed, id: 'named-mixed', state: 'enabledForReportingButNotEnforced', createdDateTime: '2026-01-01T00:00:00Z' }])
+  const { step } = guestStep(f)
+  assert.deepEqual((step.action.pairMembers ?? []).map((h) => [h.name, h.policyId]), [[MIXED, 'named-mixed'], [B2B, null]])
+  const ops = step.action.resolution?.policies ?? []
+  assert.ok(ops.some((o) => o.mode === 'create' && o.sourceName === B2B), 'B2B-Guest created')
+  assert.equal(ops.some((o) => o.mode === 'create' && o.sourceName === MIXED), false, 'a second Mixed-Guests beside the named one')
+  assert.equal(ops.some((o) => o.policyId === OLD), false, "an operation on the tenant's guest policy")
+})
+
+test('both halves present, On and exact: Completed, tracked by both halves under their own names, and B2B-Guest is proposed no rename', () => {
+  const f0 = ownerShape()
+  const p1 = guestStep(f0)
+  const f1 = created(f0, p1.step)
+  const p2 = guestStep(f1, observationsOf(p1.run.steps))
+  const b2bKey = p1.step.action.pairMembers![1].key
+  const b2b = (p2.step.tracking?.members ?? []).find((m) => m.key === b2bKey)
+  assert.equal(b2b?.policyName, B2B, 'the created B2B-Guest is tracked as its own half')
+  assert.notEqual(b2b?.plannedName, MIXED, 'a created B2B-Guest proposed the Mixed-Guests name')
+  assert.equal((p2.step.tracking?.members ?? []).some((m) => m.key === 'sole'), false, 'a sole member for a pair')
+  const on = created(f0, p1.step, 'enabled')
+  const p3 = guestStep(on, observationsOf(p2.run.steps))
+  assert.equal(p3.step.status, 'done')
+  assert.deepEqual((p3.step.tracking?.members ?? []).map((m) => m.policyName), [MIXED, B2B])
+  for (const m of p3.step.tracking?.members ?? []) assert.ok(m.plannedName === undefined || m.plannedName === m.policyName, `${m.policyName} proposed as ${String(m.plannedName)}`)
+  const renames = (p3.run.schedule.cleanup?.rows ?? []).filter((r) => r.kind === 'naming').flatMap((r) => r.lists.renames ?? [])
+  assert.equal(renames.some((l) => l.startsWith(B2B)), false, renames.join(' | '))
+})
+
+test("the demo's own partner answer (service providers excluded) does not deadlock completion", () => {
+  const settled = withFoundationSettled(fixture('demo'))
+  assert.equal(serviceProvidersExcluded(settled.mapping), true, 'the premise: the demo excludes service providers')
+  const f0 = ownerShape(settled)
+  const p1 = guestStep(f0)
+  assert.equal(p1.step.action.resolution?.policies.length, 2)
+  const done = guestStep(created(f0, p1.step, 'enabled'), observationsOf(p1.run.steps))
+  assert.equal(done.step.status, 'done')
+})
+
+test('two tenant policies carrying one half\'s name hold the pair as unmatched', () => {
+  const f0 = ownerShape()
+  const first = guestStep(f0).step
+  const mixed = structuredClone(first.action.resolution!.policies[0].body) as Row
+  const f = withRows(f0, (rows) => [...rows, { ...mixed, id: 'mixed-a', state: 'enabled' }, { ...mixed, id: 'mixed-b', state: 'enabled' }])
+  const { step } = guestStep(f)
+  assert.equal(step.action.unmatchedPair, true)
+  assert.equal((step.action.resolution?.policies ?? []).length, 0)
+})
 
 function opened(f: Fixture): { step: Step; ctx: StepVarContext } {
   const run = runFixture(f)
@@ -63,29 +178,6 @@ test('the guest gate counts only guests the scan reads and places: with none, th
   assert.equal(step.methodPreparation?.ids.length ?? 0, 0)
 })
 
-test("each guest type is held to its baseline member's grant; the tenant's policies are credited, and only the member left short is written", () => {
-  const f = structuredClone(curatedFixture('demo-week2'))
-  const { step, ctx } = opened(structuredClone(f))
-  // The premise: the tenant's guest policies ask only MFA, which Jon asks of two of the six types.
-  const credited = step.action.creditedMembers ?? []
-  assert.equal(credited.length, 1, 'one member is credited')
-  assert.deepEqual([...credited[0].kinds].sort(), ['b2bcollaborationguest', 'otherexternaluser'])
-  const ops = step.action.resolution?.policies ?? []
-  assert.equal(ops.length, 1, 'one policy is written')
-  assert.equal(ops[0].mode, 'create')
-  assert.ok(ops[0].sourceName.includes('B2B-Guest'), ops[0].sourceName)
-  assert.notEqual(step.status, 'done', 'MFA alone does not deliver local guests, B2B members, direct-connect users or service providers')
-  const covered = (stepBodyOf(step, ctx).readiness?.satisfied ?? []).find((t) => t.key === 'guests-covered')
-  assert.ok(covered, 'the card that says what is covered already')
-  assert.match(covered.note ?? '', /already cover B2B collaboration guest users and other external users/)
-  // The member it writes, On: every type is delivered, by the policies between them.
-  ;(f.snapshot.config.caPolicies.rows as unknown[]).push({ ...structuredClone(ops[0].body), id: 'tenant-b2b-guest', displayName: 'Core - Require - B2B-Guest', state: 'enabled', createdDateTime: '2026-01-01T00:00:00Z', modifiedDateTime: '2026-01-01T00:00:00Z' })
-  const done = opened(f)
-  assert.equal(done.step.status, 'done')
-  assert.equal(done.step.satisfiedBy?.sufficient, null, 'no one policy covers every type')
-  assert.deepEqual(stepContract(done.step, done.ctx).doneWhen, [`IAMAI sees ${done.step.satisfiedBy!.policies.join(', ').replace(/, ([^,]*)$/, ' and $1')} On, and together they cover every guest type.`])
-})
-
 test('a Ready row with no day of its own reads its phase’s first day, never Review now or Decide now', () => {
   const f = fixture('demo')
   const r = runFixture(f)
@@ -101,21 +193,3 @@ test('a Ready row with no day of its own reads its phase’s first day, never Re
   assert.match(when, /\d{4}/, when)
 })
 
-test('a record from before the credit never makes a credited policy the member the step writes', () => {
-  // A plan record kept from a scan that tied the member to the tenant's guest
-  // policy (the fingerprint did, before the credit): the credited policies are
-  // the other half's, whatever the record says.
-  const f = curatedFixture('demo-week2')
-  const first = runFixture(f)
-  const step = first.steps.find((s) => s.id === GUESTS)!
-  const credited = step.action.creditedMembers?.[0]?.policyIds ?? []
-  assert.ok(credited.length > 0, 'the premise: a credited policy')
-  const records = observationsOf(first.steps)
-  const record = records[GUESTS]
-  assert.ok(record, 'the premise: the step has a record')
-  const key = Object.keys(record.members)[0] ?? 'sole'
-  const stale = { ...records, [GUESTS]: { ...record, members: { ...record.members, [key]: { ...(record.members[key] ?? record.unattributed!), artifact: artifactIdOf(credited[0]) } } } }
-  const again = runFixture(f, {}, stale).steps.find((s) => s.id === GUESTS)!
-  assert.equal(again.tracking?.members.some((m) => credited.includes(m.policyId ?? '')) ?? false, false, 'a credited policy tracked as the member')
-  assert.notEqual(again.state.lifecycle, 'enforced', 'the policy it creates read as enforced')
-})
