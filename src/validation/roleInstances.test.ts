@@ -5,6 +5,9 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { permanentGlobalAdministratorState } from './rules.ts'
 import { emergencyAccountTasksOf } from '../ui/surfaces/emergencyAccountTasks.ts'
+import { roleScheduleInstances } from '../graph/collect/roleSchedules.ts'
+import { licenceGateReason } from '../graph/collect/registry.ts'
+import { recoveryAccountBasis } from '../roadmap/cleanupDone.ts'
 
 const GA = '62e90394-69f5-4237-9190-012177145e10'
 // Microsoft Graph v1.0 unifiedRoleAssignmentScheduleInstance has no status:
@@ -78,4 +81,37 @@ test('instance contract preserves permanence boundaries without a fabricated sta
   check(base, false, 'no current active assignment')
   f.snapshot.config.roleAssignmentSchedules.status = 'error'
   assert.equal(permanentGlobalAdministratorState(f.snapshot, [], id), null, 'failed collection')
+})
+
+// A tenant without PIM (Business Premium, Microsoft 365 E3) has no schedules to
+// read, and every active role assignment there is permanent
+// (graph/collect/roleSchedules.ts). The scan read them anyway, Graph refused, and
+// the Global Administrator check stayed unknown, so Step 1 never finished there.
+test('without PIM the role assignments stand in for the schedules: a tenant-root Global Administrator is permanent and Step 1 says so', () => {
+  const f = structuredClone(fixture('demo-week2'))
+  const id = f.mapping.breakGlassUserIds[0]
+  assert.equal(f.snapshot.capabilities.pim.enabled, false, 'the premise: a P1 tenant with no PIM licence')
+  assert.equal(f.snapshot.config.roleAssignmentSchedules.status, 'disabled', 'the premise: the schedules were skipped for the licence')
+  f.snapshot.config.roleAssignments = { status: 'ok', reason: null, rows: [
+    { id: 'assignment-1', principalId: id, roleDefinitionId: GA, directoryScopeId: '/' },
+  ] }
+  f.snapshot.roles = deriveRoles(f.snapshot.config.roleAssignments.rows, [])
+  assert.deepEqual(roleScheduleInstances(f.snapshot), [{ principalId: id, roleDefinitionId: GA, directoryScopeId: '/', assignmentType: 'Assigned', memberType: 'Direct', startDateTime: null, endDateTime: null }])
+  assert.equal(permanentGlobalAdministratorState(f.snapshot, [], id), true)
+  assert.ok(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], 'the recovery-test basis is built')
+  const run = runFixture(f)
+  const projected = emergencyAccountTasksOf(run.steps.find(s => s.id === 's-prereq-break-glass')!, {
+    snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: value => value,
+    now: f.snapshot.asOf, signature: 'IT', operatorId: f.operatorId,
+  })
+  const tile = projected.accounts.find(a => a.accountId === id)!
+  assert.ok(tile.completed.includes('Permanent, active Global Administrator'))
+  // Only the licence stands the assignments in: a failed read of either is still no answer.
+  f.snapshot.config.roleAssignmentSchedules = { status: 'error', reason: 'Request failed (400)', rows: [] }
+  assert.equal(roleScheduleInstances(f.snapshot), null)
+  assert.equal(permanentGlobalAdministratorState(f.snapshot, [], id), null, 'a failed schedules read')
+  f.snapshot.config.roleAssignmentSchedules = { status: 'disabled', reason: licenceGateReason('pim'), rows: [] }
+  f.snapshot.config.roleAssignments.status = 'error'
+  assert.equal(roleScheduleInstances(f.snapshot), null)
+  assert.equal(permanentGlobalAdministratorState(f.snapshot, [], id), null, 'a failed assignments read')
 })

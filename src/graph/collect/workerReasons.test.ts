@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { licenceGateReason } from './registry.ts'
 import { isLicenceGate } from './roles.ts'
+import { unreadSources } from './coreSections.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 
 const ADDRESS = 'alice.synthetic@contoso.example'
@@ -104,6 +105,8 @@ test('worker (R4-37): Governance licenses the eligible-role read on P1; without 
     assert.ok(asked.some((u) => u.includes('/roleManagement/directory/roleEligibilitySchedules')), 'the eligibility read is attempted')
     assert.equal(snapshot.config.pimEligibility.status, 'ok')
     assert.equal(snapshot.config.pimEligibility.reason, null)
+    assert.ok(asked.some((u) => u.includes('/roleManagement/directory/roleAssignmentScheduleInstances')), 'and so is the schedules read')
+    assert.equal(snapshot.config.roleAssignmentSchedules.status, 'ok')
   }
 
   // worker (R4-37): a P1 tenant with no PIM licence skips the read in the collector's own words, naming both licences that would read it
@@ -119,5 +122,13 @@ test('worker (R4-37): Governance licenses the eligible-role read on P1; without 
     const f = fixture('small')
     assert.equal(f.snapshot.capabilities.pim.enabled, false, 'the premise: small holds no PIM licence')
     assert.equal(f.snapshot.config.pimEligibility?.reason, snapshot.config.pimEligibility.reason)
+
+    // The role assignment schedules are PIM's too. They were read on every tenant;
+    // without PIM, Graph refused, and Connect listed them as not read (2026-10-01).
+    assert.ok(!asked.some((u) => u.includes('/roleManagement/directory/roleAssignmentScheduleInstances')), 'no schedules request without PIM')
+    assert.equal(snapshot.config.roleAssignmentSchedules.status, 'disabled')
+    assert.equal(snapshot.config.roleAssignmentSchedules.reason, licenceGateReason('pim'))
+    assert.ok(!unreadSources(snapshot as never).some((s) => s.source === 'config:roleAssignmentSchedules'), 'Connect does not list them as not read')
+    assert.equal(f.snapshot.config.roleAssignmentSchedules?.reason, snapshot.config.roleAssignmentSchedules.reason, 'and the fixtures say the same')
   }
 })

@@ -3742,7 +3742,7 @@
           "Device registration policy": {"why":"Whether the tenant-wide device-registration MFA setting is on, which a Conditional Access policy on registering devices needs off.","note":"Read with Global Reader or a device administration role; with another role it reads as unknown, never as off."},
           "Cross-tenant access": {"why":"How accounts from other tenants are trusted, for the steps about guests and external access."},
           "Role assignments": {"why":"Who holds an active directory role, for the administrator steps, and the role names shown."},
-          "Role assignment schedules": {"why":"Whether an active emergency administrator role is assigned permanently rather than eligible, activated or time-limited."},
+          "Role assignment schedules": {"why":"Whether an active emergency administrator role is assigned permanently rather than eligible, activated or time-limited.","note":"Without either, every active role is permanent, and IAMAI reads that from Role assignments."},
           "Role definitions": {"why":"The names of the directory roles a policy lists, so every role reads by name."},
           "PIM eligibility": {"why":"Roles held as eligible rather than active; an eligible role is outside a role-scoped policy until it is activated."},
           "Subscribed SKUs": {"why":"The licences the tenant holds and how many are assigned."},

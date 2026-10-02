@@ -8,6 +8,7 @@
 // Pure: no DOM, no network.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { RecoverySignInCandidate } from '../graph/collect/types.ts'
+import { roleScheduleInstances } from '../graph/collect/roleSchedules.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { operatorExclusionsDecision } from '../mapping/safetyChoice.ts'
@@ -442,7 +443,8 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
   const ignored = new Set(['displayName', 'description', 'modifiedDateTime', 'createdDateTime', '@odata.context', 'name', 'sourceVersion'])
   const canonical = (v: unknown): unknown => Array.isArray(v) ? v.map(canonical).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !ignored.has(k) && !k.startsWith('@odata.')).sort(([a],[b]) => a.localeCompare(b)).map(([k, value]) => [k, canonical(value)])) : v
   const securityDefaults = snapshot.config.securityDefaults?.status === 'ok' && (snapshot.config.securityDefaults.rows[0] as Record<string, unknown> | undefined)?.isEnabled === true
-  if (snapshot.sources.users?.status !== 'ok' || (!securityDefaults && snapshot.config.caPolicies?.status !== 'ok') || snapshot.config.authMethodsPolicy?.status !== 'ok' || snapshot.config.roleAssignments?.status !== 'ok' || snapshot.config.roleAssignmentSchedules?.status !== 'ok') return {}
+  const schedules = roleScheduleInstances(snapshot)
+  if (snapshot.sources.users?.status !== 'ok' || (!securityDefaults && snapshot.config.caPolicies?.status !== 'ok') || snapshot.config.authMethodsPolicy?.status !== 'ok' || snapshot.config.roleAssignments?.status !== 'ok' || schedules === null) return {}
   const decision = mapping ? operatorExclusionsDecision(mapping) : null
   const selectedGroup = decision && groups ? ([...groups.entries()].find(([id]) => id.toLowerCase() === decision.id.toLowerCase())?.[1] ?? null) : null
   const exclusionsIntent = decision ? [decision.id.toLowerCase(), selectedGroup ? { sampled: selectedGroup.sampled, memberIds: selectedGroup.memberIds.map(id => id.toLowerCase()).sort(), directMembers: selectedGroup.directMembers, directMemberIds: selectedGroup.directMemberIds, securityEnabled: selectedGroup.securityEnabled, mailEnabled: selectedGroup.mailEnabled, groupTypes: selectedGroup.groupTypes, membershipRule: selectedGroup.membershipRule, assignedLicenseSkuIds: selectedGroup.assignedLicenseSkuIds } : 'membership-unread'] : null
@@ -489,7 +491,7 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
       return [p.id, p.state, { ...p.conditions, users: scopedUsers }, p.grantControls, p.sessionControls]
     })
     if (unresolvedTarget) continue
-    const roleSchedules = (snapshot.config.roleAssignmentSchedules.rows as Record<string, any>[]).filter(row => String(row.principalId).toLowerCase() === id.toLowerCase()).map(row => ({ roleDefinitionId: row.roleDefinitionId, directoryScopeId: row.directoryScopeId, assignmentType: row.assignmentType, memberType: row.memberType, status: row.status, startDateTime: row.startDateTime, endDateTime: row.endDateTime }))
+    const roleSchedules = schedules.filter(row => String(row.principalId).toLowerCase() === id.toLowerCase()).map(row => ({ roleDefinitionId: row.roleDefinitionId, directoryScopeId: row.directoryScopeId, assignmentType: row.assignmentType, memberType: row.memberType, status: row.status, startDateTime: row.startDateTime, endDateTime: row.endDateTime }))
     const passkeys = methods.filter(method => method.kind === 'passkey' || method.kind === 'fido2').map(method => ({ id: method.id, kind: method.kind, aaGuid: method.aaGuid?.toLowerCase() ?? null, passkeyType: method.passkeyType ?? null, attestationLevel: method.attestationLevel ?? null, passkeyProfileId: (method as Record<string, unknown>).passkeyProfileId ?? null }))
     // The passkey configuration as it bears on this account: which of its registered
     // credentials can authenticate and are approved. A change for other users (a

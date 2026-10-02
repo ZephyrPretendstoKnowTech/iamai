@@ -740,8 +740,13 @@ export function buildFixture(spec: Spec): Fixture {
       crossTenantAccess: section([]),
       // Microsoft's default for a tenant that never changed it (Graph v1.0 deviceRegistrationPolicy).
       deviceRegistrationPolicy: section([{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }]),
-      roleAssignments: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], roleDefinition: { id: roles[0], displayName: 'Global Administrator' }, ...(spPrincipals[principalId] ? { principalType: 'ServicePrincipal', principal: { displayName: spPrincipals[principalId], '@odata.type': '#microsoft.graph.servicePrincipal' } } : {}) }))),
-      roleAssignmentSchedules: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], directoryScopeId: '/', assignmentType: 'Assigned', startDateTime: daysAgo(365), endDateTime: null }))),
+      roleAssignments: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], directoryScopeId: '/', roleDefinition: { id: roles[0], displayName: 'Global Administrator' }, ...(spPrincipals[principalId] ? { principalType: 'ServicePrincipal', principal: { displayName: spPrincipals[principalId], '@odata.type': '#microsoft.graph.servicePrincipal' } } : {}) }))),
+      // A PIM read, like PIM eligibility below: a tenant without P2 has no schedules
+      // to read. This gave every tier a successful read, and no test saw the read
+      // fail on a tenant without PIM (graph/collect/roleSchedules.ts).
+      roleAssignmentSchedules: p2
+        ? section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], directoryScopeId: '/', assignmentType: 'Assigned', startDateTime: daysAgo(365), endDateTime: null })))
+        : section([], 'disabled', licenceGateReason('pim')),
       // The collector's own sentence for a read the licence skips (graph/collect/registry.ts
       // licenceGateReason). This said "needs Entra ID P2", which no scan writes (R4-37).
       // Every role's name is in the bundled catalogue for these tenants.

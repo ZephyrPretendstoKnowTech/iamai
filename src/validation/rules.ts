@@ -24,6 +24,7 @@ import { effectOf } from '../roadmap/operations.ts'
 //
 // Pure: no DOM, no network. Runs in Node tests, in the worker and in the UI.
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
+import { roleScheduleInstances } from '../graph/collect/roleSchedules.ts'
 import type { AuthMethodSummary, MfaViability } from '../scoring/mfaViability.ts'
 import { isPhishingResistantKind } from '../scoring/phishingResistant.ts'
 import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../copy/validation.ts'
@@ -253,23 +254,15 @@ export function initialDomain(snapshot: TenantSnapshot): string | null {
   return flagged.length === 1 ? flagged[0] : null
 }
 
-type RoleSchedule = {
-  principalId?: string
-  roleDefinitionId?: string
-  directoryScopeId?: string
-  assignmentType?: string
-  startDateTime?: string | null
-  endDateTime?: string | null
-}
-
 const sameId = (a: string | null | undefined, b: string): boolean => typeof a === 'string' && a.toLowerCase() === b.toLowerCase()
 const atOrBefore = (value: string | null | undefined, at: string): boolean => typeof value === 'string' && Number.isFinite(Date.parse(value)) && Date.parse(value) <= Date.parse(at)
 
 /** One production meaning of a current, permanent, tenant-root GA assignment. */
 export function permanentGlobalAdministratorState(snapshot: TenantSnapshot, groupMembers: readonly GroupFacts[], accountId: string): boolean | null {
-  if (snapshot.config.roleAssignments?.status !== 'ok' || snapshot.config.roleAssignmentSchedules?.status !== 'ok') return null
+  // Without PIM the schedules are the role assignments, each one permanent (graph/collect/roleSchedules.ts).
+  const schedules = roleScheduleInstances(snapshot)
+  if (snapshot.config.roleAssignments?.status !== 'ok' || schedules === null) return null
   const activeDirect = (snapshot.roles.active[accountId] ?? []).some(role => sameId(role, GLOBAL_ADMIN_ROLE))
-  const schedules = snapshot.config.roleAssignmentSchedules.rows as RoleSchedule[]
   const relevant = schedules.filter(row => sameId(row.principalId, accountId) && sameId(row.roleDefinitionId, GLOBAL_ADMIN_ROLE) && row.directoryScopeId === '/')
   const permanent = relevant.some(row => {
     // This source contains unifiedRoleAssignmentScheduleInstance records.
