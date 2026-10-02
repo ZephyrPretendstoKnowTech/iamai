@@ -992,7 +992,7 @@
       "retrySave": "Retry Saving",
       "loadFailed": "The saved plan could not be read from this browser.",
       "retryLoad": "Retry Loading",
-      "conditionalAccessNeedsP1": "Conditional Access needs Entra ID P1, and this tenant does not have it. No Conditional Access policy can be created here, so IAMAI has no plan to offer: it would rather say nothing than give you half an answer. Entra ID P1 is included in Microsoft 365 Business Premium and in the E3 and E5 plans.",
+      "conditionalAccessNeedsP1": "Conditional Access needs Entra ID P1, and this tenant does not have it. No Conditional Access policy can be created here, so IAMAI has no plan to offer: it would rather say nothing than give you half an answer. Entra ID P1 is included in Microsoft 365 Business Premium, E3 and E5. Office 365 E3 and E5 do not include it.",
       "line1": "{steps} steps · {inPlace} in place · finishes {finish} at pace · {weeks}",
       "line1Committed": "{steps} steps · {inPlace} in place · finishes {finish} at pace · committed {committed} · {weeks}",
       "line1CannotFinish": "{steps} steps · {inPlace} in place · cannot finish until {blocker}",
