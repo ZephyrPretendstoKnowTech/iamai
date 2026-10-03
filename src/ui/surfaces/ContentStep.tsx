@@ -1,6 +1,5 @@
 import { NETWORK_NAME, NETWORK_RANGES, validNetworkRanges } from '../../mapping/networkDraft.ts'
 import { passkeyReadiness } from './passkeyPresentation.ts'
-import { PasskeyModelDecision } from './PasskeyModelDecision.tsx'
 import { ManualReviewForm } from './ManualReviewForm.tsx'
 // A step opened in place: the one body the Plan draws for every step it has, and
 // the only one (task 011).
@@ -83,7 +82,6 @@ import { consolidateEmergencyReadiness, emergencySubjectsOf } from './emergencyR
 import { cardCheckOf, cardWordsOf, drawsTaskAnatomy, policyBarOf, policySubjectsOf, taskSubjectOf } from './policyTasks.ts'
 import { DORMANT_WORDS, lastSignInWords } from './sectionThreeTasks.ts'
 import type { EmergencyFact, EmergencySubjectTile } from './emergencyReadiness.ts'
-import type { ApprovedModel } from '../../roadmap/emergencyJourney.ts'
 import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 
 type Ex = Record<string, unknown>
@@ -130,12 +128,6 @@ function WhoBlockView({ block }: { block: WhoBlock }) {
 function T({ s, ex }: { s: unknown; ex: Ex }) {
   if (s === null || s === undefined) return null
   return <>{fillText(s, ex as Record<string, unknown>)}</>
-}
-
-function ApprovedAuthenticatorModels({ models }: { models: ApprovedModel[] }) {
-  return <details className="approved-model-disclosure"><summary>Approved authenticator models</summary>
-    <ul className="approved-model-list">{models.map(model => <li key={model.aaguid}><span>{model.name} — {model.aaguid}</span></li>)}</ul>
-  </details>
 }
 
 /** An identifier (UPN, object id, model id) with break opportunities after "@", "." and "-", so a narrow column wraps it at those boundaries rather than mid-word. */
@@ -493,12 +485,10 @@ export function ContentStep({
             onOpenMappings={null}
             printing={printing}
             extra={(t) => {
-              // Printed Steps 2–3 draw the source findings; Step 3 protections also list the approved models.
-              const taskBody = isPasskeySettings && t.key === 'configuration:protection' && emergencyAccountTasks ? <div className="emergency-readiness-extra"><ApprovedAuthenticatorModels models={emergencyAccountTasks.approvedModels ?? []} /></div> : null
               const slot = t.key === 'configuration:credential-custody' && contract.hardening
                 ? { key: t.key, label: t.label, accountId: null, state: 'hardening' as const, minimum: [], hardening: [] }
                 : contract.emergencySlots.find((s) => s.key === t.key)
-              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return taskBody
+              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return null
               const deferralSlot = t.key === 'configuration:credential-custody' || contract.emergencySlots.find((s) => s.state === 'hardening')?.key === slot.key
               return (
                 <>
@@ -508,7 +498,6 @@ export function ContentStep({
                     onDefer={!printing && onConfirm && contract.hardening ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
                     onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
                   />
-                  {taskBody}
                 </>
               )
             }}
@@ -555,18 +544,6 @@ export function ContentStep({
               column below Completion Criteria — a sixth section, outside the four
               the anatomy has, on twelve steps. */}
           {step.manualReview && !printing && <ManualReviewForm key={`${step.id}:${step.manualReview.basis}:${step.manualReview.record?.at ?? ''}`} review={step.manualReview} ctx={ctx} printing={false} onConfirm={onConfirm} onUnconfirm={onUnconfirm} />}
-          {/* Configure Passkey Settings' settings: the approved models and the
-              models an owner adds, in the column with every other control
-              (owner, 2026-09-23). They stood under the step, right of the scan. */}
-          {isPasskeySettings && !printing && (
-            <div className="rail-settings">
-              <ApprovedAuthenticatorModels models={emergencyAccountTasks?.approvedModels ?? []} />
-              <details className="passkey-model-disclosure">
-                <summary>Add additional AAGUIDs</summary>
-                <PasskeyModelDecision mapping={ctx.mapping} saved={decision ?? null} onDecide={onDecide} />
-              </details>
-            </div>
-          )}
           {/* The rollout exception and Doesn't apply here, last in the column: every
               control a step takes lives here, and the footer holds only the scan
               (step template rule 2; owner, 2026-09-25). */}

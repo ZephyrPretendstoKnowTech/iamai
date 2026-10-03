@@ -3,7 +3,7 @@ import { strandedSentence } from './emergencyPasskeyTasks.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { oneLine } from '../../content/implementation/project.ts'
-import { approvedPasskeyModels, EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
+import { EMERGENCY_ACCOUNTS, EMERGENCY_GROUP, PASSKEY_SETTINGS } from '../../roadmap/emergencyJourney.ts'
 import { assignedPasskeyProfiles, passkeyReadingOf } from '../../roadmap/passkeySettings.ts'
 import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
 import { emergencyAccountTasksOf, emergencyAccountTasksText } from './emergencyAccountTasks.ts'
@@ -55,8 +55,6 @@ export function emergencyImplementation(step: Step, ctx: StepVarContext, project
   const { snapshot, mapping } = ctx
   const name = (id: string) => oneLine(ctx.nameOf(id))
   const accountNames = mapping.breakGlassUserIds.map(name)
-  const models = approvedPasskeyModels(snapshot, mapping)
-  const modelList = bullets(models.map(m => `${m.name} — ${m.aaguid}${m.source === 'existing' ? ' — Existing tenant allowance retained during the transition' : ''}`))
   const choice = exclusionsGroupChoice({ snapshot, mapping, groups: ctx.groups, directory: ctx.directory })
   const groupName = choice.actionableName ? oneLine(choice.actionableName) : null
   const accounts = accountNames.length ? accountNames.join(', ') : 'the emergency accounts you select'
@@ -67,30 +65,25 @@ export function emergencyImplementation(step: Step, ctx: StepVarContext, project
     const assigned = current ? assignedPasskeyProfiles(current) : null
     const profiles = assigned?.profiles ?? []
     const profileMode = !!current && (!!current.defaultPasskeyProfile || profiles.length > 0 || Array.isArray(current.passkeyProfiles) && current.passkeyProfiles.length > 0)
-    // The allow list is not handed over while somebody would be locked out by it
-    // (roadmap/passkeyRestrictions.ts): this channel said "apply the listed
-    // attestation and device-bound Allow restrictions" beside the same Tasks that
-    // hedged about the passkeys nobody could judge (Jordan D13).
+    // Device-bound and attested for every user, no key restrictions added (owner,
+    // 2026-10-03). The people the change stops are named before the save
+    // (roadmap/passkeyRestrictions.ts), those with no other way in first.
     const restriction = passkeyRestrictionReading(snapshot, mapping, ctx.groups)
     const configurationAction = !current || reading.state === 'unread'
-      ? 'Resolve the named read failure and scan again before changing restrictions; use the intended list only to prepare account choices.'
-      : restriction.lockedOut.length > 0
-      ? `${profileMode ? 'In the applicable profiles named in Readiness, use device-bound passkeys and attestation as listed.' : 'In the existing legacy configuration, apply the listed attestation setting.'} ${strandedSentence(restriction, ctx, true)}`
-      : profileMode
-        ? `Open only the applicable profiles named in Readiness${profiles.length ? ` (${profiles.map(p => oneLine(p.name || p.id)).join(', ')})` : ''}. Use device-bound passkeys, attestation and Allow restrictions as listed. Add missing intended AAGUIDs to their applicable profiles while preserving each profile’s existing allowances and targeting.${assigned?.unknown.length ? ' Resolve the unread profile assignments before tightening them.' : ''}`
-        : 'In the existing legacy configuration, apply the listed attestation and device-bound Allow restrictions. Retain approved existing entries; do not opt the tenant into profiles as part of this step.'
+      ? 'Resolve the named read failure and scan again before changing the passkey settings.'
+      : `${profileMode
+        ? `Open only the applicable profiles named in Readiness${profiles.length ? ` (${profiles.map(p => oneLine(p.name || p.id)).join(', ')})` : ''}. Set passkey types to device-bound and require attestation. Leave each profile’s key restrictions and targeting as they are.${assigned?.unknown.length ? ' Resolve the unread profile assignments before changing them.' : ''}`
+        : 'In the existing legacy configuration, require attestation and leave key restrictions as they are; do not opt the tenant into profiles as part of this step.'}${restriction.stranded.length > 0 ? ` ${strandedSentence(restriction, ctx, true)}` : ''}`
     return [
       numbered([
-        'Review Approved Authenticators below. To approve another model, verify its exact AAGUID from trustworthy model metadata, add its name and AAGUID under Additional Authenticators, and save. Saving changes the IAMAI plan only; registration alone is not approval.',
-        accountNames.length ? `Check Recovery Compatibility for ${accounts}. Keep a compatible working method. Where replacement is required, open ${accountLink} and prepare the approved physical security key before tightening settings.` : `Open ${accountLink} and save the intended recovery accounts so IAMAI can check their registered methods against current and intended settings.`,
+        accountNames.length ? `Check Recovery Compatibility for ${accounts}. Each emergency account keeps a device-bound passkey: a synced one stops working after this change. Where replacement is required, open ${accountLink} and prepare a physical security key first.` : `Open ${accountLink} and save the intended recovery accounts so IAMAI can check their registered methods against current and intended settings.`,
       ]),
-      '**Approved authenticator models**\n\n' + modelList,
       numbered([
         'Open Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2). Compare the current and intended values in Readiness and preserve unrelated targets and exclusions.',
-        'Make approved registration possible now: enable only the required availability, targeting and self-service settings. If an allow list lacks the replacement model, add it while retaining the working model.',
-        `${configurationAction} Keep an existing administrator session open, prepare and test any indicated replacement through ${accountLink}, then apply the remaining intended protections.`,
+        'Make registration possible now: enable only the required availability, targeting and self-service settings.',
+        `${configurationAction} Keep an existing administrator session open, prepare and test any indicated replacement through ${accountLink}, then save.`,
         `Save, reopen the setting, and scan again. Confirm the final differences are clear, complete ${groupLink}, and use ${drillLink} for the final event-backed recovery test.`,
-      ], 2),
+      ], 1),
     ].join('\n\n')
   }
 

@@ -42,7 +42,8 @@ test('passkey settings: Entra, JSON and AI Info project the resolved change; the
   assert.ok(resolved.kind === 'target')
   assert.deepEqual(body, resolved.target)
   assert.equal(body['@odata.type'], '#microsoft.graph.fido2AuthenticationMethodConfiguration')
-  assert.deepEqual(body.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE, ...PASSKEY_TARGET_AAGUIDS] })
+  // The tenant's own allow list, as it is: the plan adds no model (owner, 2026-10-03).
+  assert.deepEqual(body.keyRestrictions, { isEnforced: true, enforcementType: 'allow', aaGuids: [HARDWARE] })
   // No Authenticator or TAP body is made up, and no channel is withheld for lacking one.
   assert.doesNotMatch(json.text, /microsoftAuthenticator|temporaryAccessPass|lifetimeInMinutes/)
   assert.equal(p.degraded, undefined, JSON.stringify(p.degraded))

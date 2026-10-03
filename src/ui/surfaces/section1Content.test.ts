@@ -119,23 +119,26 @@ test('1.3 #11 with the settings matching, every task is the procedure with its v
   for (const line of ['Set **Enable** to **On**.', 'Set **Allow self-service set up** to **Yes**.']) assert.ok(registration.includes(line), registration.join('\n'))
   const protection = task('apply-passkey-settings').steps.join('\n')
   assert.match(protection, /Set \*\*Enforce attestation\*\* to \*\*Yes\*\*\./)
-  assert.match(protection, /Add AAGUID/)
+  // No model is handed over (owner, 2026-10-03): the tenant's key restrictions are left as they are.
+  assert.doesNotMatch(protection, /Add AAGUID|Enter AAGUID/)
+  assert.match(protection, /Leave \*\*(Target specific AAGUIDs|Enforce key restrictions)\*\* as it is\./)
 })
 
 test('1.3 #11 where the scan resolves no target, the tasks state the plan\'s own values', () => {
-  const blocklist = copy('demo-week2')
-  const fido = (blocklist.snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[] }).authenticationMethodConfigurations.find((c) => c.id === 'Fido2')!
-  fido.keyRestrictions = { isEnforced: true, enforcementType: 'block', aaGuids: ['00000000-0000-4000-8000-000000000001'] }
+  // A profile-based policy whose profiles were not read: held for review (a block list no longer is, 2026-10-03).
+  const partial = copy('demo-week2')
+  const policy = partial.snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[] }
+  policy.authenticationMethodConfigurations = [{ id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, defaultPasskeyProfile: 'default', includeTargets: [{ id: 'all_users', targetType: 'group' }], excludeTargets: [] }, ...policy.authenticationMethodConfigurations.filter((c) => c.id !== 'Fido2')]
   const unread = copy('demo-week2')
   unread.snapshot.config.authMethodsPolicy = { ...unread.snapshot.config.authMethodsPolicy, status: 'error', rows: [] }
-  for (const [label, value, state] of [['a block list', blocklist, 'review'], ['the policy unread', unread, 'unread']] as const) {
+  for (const [label, value, state] of [['a partial read', partial, 'review'], ['the policy unread', unread, 'unread']] as const) {
     assert.equal(passkeyReadingOf(value.snapshot, value.mapping).state, state, `${label}: the premise`)
     const { task } = opened(value, PASSKEY)
     const registration = task('make-passkey-registration-available').steps
     assert.ok(registration.includes('Under **Include**, target **All users**.'), `${label}:\n${registration.join('\n')}`)
     const protection = task('apply-passkey-settings').steps
-    for (const line of ['Set **Enforce attestation** to **Yes**.', 'Set **Enforce key restrictions** to **Yes**.', 'Set **Restrict specific keys** to **Allow**.']) assert.ok(protection.includes(line), `${label}: ${line}\n${protection.join('\n')}`)
-    for (const aaguid of PASSKEY_TARGET_AAGUIDS) assert.ok(protection.some((l) => l.includes(`**${aaguid}**`)), `${label}: ${aaguid}`)
+    for (const line of ['Set **Enforce attestation** to **Yes**.', 'Leave **Enforce key restrictions** as it is.']) assert.ok(protection.includes(line), `${label}: ${line}\n${protection.join('\n')}`)
+    assert.equal(protection.some((l) => /AAGUID/.test(l)), false, `${label}: a model is handed over`)
   }
 })
 
@@ -207,8 +210,9 @@ test('rewrites: About, Completion Criteria and the 1.4 milestone read as the own
   assert.equal(group.why, 'Put your emergency access accounts in one group, and exclude that group from every Conditional Access policy, so no policy can lock them out.')
   assert.deepEqual(group.doneWhen, ['Both emergency access accounts are direct members of the group you chose, and every policy excludes it.'])
   const passkey = opened(copy('demo'), PASSKEY).body.contract
-  assert.equal(passkey.why, 'Turn on passkeys (FIDO2) for everyone and allow only the approved passkey models, so emergency and admin accounts can register one.')
-  assert.deepEqual(passkey.doneWhen, ['Passkeys (FIDO2) are on for everyone, attestation is enforced, and only the approved models can register.'])
+  // 1.3's words follow the owner's passkey decision of 2026-10-03.
+  assert.equal(passkey.why, 'Turn on passkeys (FIDO2) for everyone and accept only device-bound, attested passkeys, so a passkey stays on the phone or security key that made it, and emergency and admin accounts can register one.')
+  assert.deepEqual(passkey.doneWhen, ['Passkeys (FIDO2) are on for everyone, device-bound only, with attestation enforced.'])
   const drill = cleanupEntry('drill')!
   assert.equal(drill.why, "Sign in once with each emergency access account's passkey, so you know the way back in works before any policy is turned on.")
   assert.deepEqual(drill.doneWhen, ['Each emergency access account has signed in with its passkey since its last change, within the last 90 days.'])

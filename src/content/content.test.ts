@@ -281,7 +281,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // the old none line, which now says the records are not proof of no use.
   '.steps[19].who.evidence[0]',
   '.steps[20].who.evidence[0]',
-  '.pages.plan.blocked.passkeyBlockConflict',
   '.pages.plan.blocked.passkeyPartialRead',
   '.pages.plan.blocked.passkeyProfiles',
   // The workload step's hold (roadmap/workloadIdentity.ts): the example tenant plans no

@@ -32,7 +32,7 @@ const person = (v: ReadinessView, f: (r: ReadinessRow) => boolean): ReadinessRow
   return r
 }
 
-test('the demo\'s people: a contractor\'s personal PC is never asked for Windows Hello, an admin on someone else\'s computer cannot use its Hello, an off-list key is flagged before Step 3, and somebody on leave reads Confirm on return', () => {
+test('the demo\'s people: a contractor\'s personal PC is never asked for Windows Hello, an admin on someone else\'s computer cannot use its Hello, a key of an unlisted model keeps working through Step 3, and somebody on leave reads Confirm on return', () => {
   // a contractor on a personal Windows PC is never asked for Windows Hello for Business
   {
     const r = person(demoView, (x) => x.user.department === 'Contractor')
@@ -48,15 +48,14 @@ test('the demo\'s people: a contractor\'s personal PC is never asked for Windows
     const windows = r.readiness!.devices.find((d) => d.os === 'Windows')!
     assert.notEqual(windows.best, 'windowsHello')
   }
-  // a key off Emergency Access Step 3’s approved list is flagged before it stops working
+  // a key of a model no list names keeps working: Step 3 adds no allow list (owner, 2026-10-03), so it is not flagged
   {
     const r = person(demoView, (x) => (x.readiness?.credentials ?? []).some((c) => c.key === 'demo-key-offlist'))
     const key = r.readiness!.credentials.find((c) => c.key === 'demo-key-offlist')!
     assert.equal(key.allowedNow, 'yes', 'today’s unrestricted settings allow it')
-    assert.equal(key.afterStep3, 'no', 'Step 3’s approved models do not')
-    // Until Step 3 is in place any passkey counts (owner decision): flagged on the credential, and a recommendation once Ready, never the only next step.
+    assert.notEqual(key.afterStep3, 'no', 'Step 3 stops no device-bound key for its model')
     assert.notEqual(r.readiness!.next.kind, 'replaceKey')
-    if (r.state === 'ready') assert.equal(r.readiness!.recommended?.kind, 'replaceKey')
+    assert.notEqual(r.readiness!.recommended?.kind, 'replaceKey')
   }
   // somebody on leave reads Confirm on return, never missing
   {

@@ -1,15 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { emergencyPasskeyTasksOf } from './emergencyPasskeyTasks.ts'
 import { emergencyImplementation } from './emergencyImplementation.ts'
-import { passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
+import { listedPasskeyAccounts, passkeyRestrictionReading } from '../../roadmap/passkeyRestrictions.ts'
+import { notActiveUsers } from '../../derive/sets.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { adminUserIds } from '../../roles.ts'
 import { emergencyTaskText } from './emergencyAccountTasks.ts'
-import { PASSKEY_DEFAULT_MODELS, PASSKEY_TARGET_AAGUIDS, passkeyReadingOf, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
+import { PASSKEY_TARGET_AAGUIDS, passkeyReadingOf, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
 
 function project() {
   const value = structuredClone(fixture('demo-week2'))
@@ -108,14 +109,6 @@ test('profile corrections expose only changed fields and do not repeat fact valu
   assert.doesNotMatch(text, /Add only:|Remove only:|Use these approved authenticator models:/i)
 })
 
-test('legacy approved-model changes expose exact nonblank AAGUID values', () => {
-  const task = projectLegacyChange(() => undefined).tasks.find(row => row.id === 'apply-passkey-settings')!
-  const fact = task.readinessFacts?.find(row => row.label === 'Approved models')
-  assert.ok(fact)
-  assert.ok(fact.value.trim().length > 0)
-  for (const aaguid of PASSKEY_TARGET_AAGUIDS) assert.match(fact.value, new RegExp(aaguid, 'i'))
-})
-
 test('the same approved models in a different order produce no Approved models row', () => {
   assert.notDeepEqual(GRAPH_ORDER, [...PASSKEY_TARGET_AAGUIDS])
   assert.deepEqual(protectionFacts(allow(GRAPH_ORDER)).map(row => row.label), ['Authenticator · Enforce attestation'])
@@ -130,18 +123,6 @@ test('a reordered, otherwise correct profile reads in place with no protection f
   assert.equal(reading.state, 'inPlace')
   assert.deepEqual(reading.differs, [])
   assert.deepEqual(projected.tasks.find(row => row.id === 'apply-passkey-settings')!.readinessFacts, [])
-})
-
-test('a genuinely different model set still produces a row naming the before and after entries', () => {
-  // A disabled list confers no approvals: its dormant Windows Hello entry is removed and the missing YubiKey 5 Series added.
-  const current = GRAPH_ORDER.filter(id => id !== '19083c3d-8383-4b18-bc03-8f1c9ab2fd1b').concat(WINDOWS_HELLO)
-  const fact = protectionFacts({ keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: current } }).find(row => row.label === 'Authenticator · Model/Provider AAGUIDs')
-  assert.ok(fact)
-  const [before, after] = fact.value.split(' → ')
-  assert.match(before, new RegExp(`AAGUID ${WINDOWS_HELLO}`))
-  assert.doesNotMatch(before, /19083c3d-8383-4b18-bc03-8f1c9ab2fd1b/)
-  assert.doesNotMatch(after, new RegExp(WINDOWS_HELLO))
-  for (const model of PASSKEY_DEFAULT_MODELS) assert.match(after, new RegExp(escape(`${model.name} (${model.aaguid})`)))
 })
 
 test('passkeyTypes equality ignores order and serialisation', () => {
@@ -169,174 +150,162 @@ test('storage: stored "deviceBound,synced" with attestation enforced is no chang
 })
 
 
-// ---- the allow list and the passkeys nobody could judge (Jordan D13, Marcus D8) ----
+// ---- the people a device-bound change stops (owner, 2026-10-03) ----
 //
-// The step opened on "Set Enforce key restrictions to Yes… Restrict specific keys
-// to Allow… Add AAGUID… Save", four lines below a hedge that the passkeys on
-// eleven accounts could not be judged — naming none of them, saying nothing of
-// what they keep. An allow list stops every passkey it does not name. After the
-// settings were applied the same hedge still said "before applying restrictions".
+// Passkeys become device-bound and attested for every user, with no key
+// restrictions added. Device-bound applies at sign-in, so a synced passkey
+// stops working. Before the change the step names the active people and the
+// emergency accounts it stops, with what each keeps, those with no other way
+// in first. The tenant here is the one Microsoft's April–May 2026 auto-enable
+// left: a default profile that allows synced passkeys, attestation off.
 
-function onMidflight(change: (snapshot: TenantSnapshot, ids: string[]) => void = () => {}, name: 'midflight' | 'small' | 'mid' = 'midflight') {
-  const value = structuredClone(fixture(name))
-  change(value.snapshot, passkeyRestrictionReading(value.snapshot, value.mapping, value.groups).stranded)
+const SYNCED_PROFILE = {
+  id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true,
+  defaultPasskeyProfile: 'default',
+  includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['default'] }], excludeTargets: [],
+  passkeyProfiles: [{ id: 'default', name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } }],
+}
+const synced = (id: string) => ({ kind: 'fido2', id: `synced-${id}`, aaGuid: 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd', passkeyType: 'synced', attestationLevel: 'notAttested' })
+const deviceBound = (id: string) => ({ kind: 'fido2', id: `bound-${id}`, aaGuid: PASSKEY_TARGET_AAGUIDS[0], passkeyType: 'deviceBound', attestationLevel: 'attested' })
+const DAY = 86_400_000
+
+/** The demo on the auto-enabled profile; `change` gives people their methods. */
+function onSyncedTenant(change: (snapshot: TenantSnapshot, people: string[], emergency: string[]) => void) {
+  const value = structuredClone(fixture('demo'))
+  withFido2(value.snapshot, structuredClone(SYNCED_PROFILE))
+  // Nobody else holds a passkey, so each case names exactly the people it gives one.
+  for (const [id, methods] of Object.entries(value.snapshot.authMethods)) if (Array.isArray(methods)) value.snapshot.authMethods[id] = methods.filter((m) => m.kind !== 'fido2' && m.kind !== 'passkey') as never
+  const admins = new Set([...adminUserIds(value.snapshot.roles), ...(value.snapshot.registrationDetails ?? []).filter((r) => r.isAdmin).map((r) => r.id)].map((id) => id.toLowerCase()))
+  const emergency = value.mapping.breakGlassUserIds
+  const listed = listedPasskeyAccounts(value.snapshot, value.mapping)
+  const people = value.snapshot.users.filter((u) => u.userType === 'member' && u.accountEnabled !== false && !admins.has(u.id.toLowerCase()) && !emergency.includes(u.id) && listed(u.id)).map((u) => u.id)
+  change(value.snapshot, people, emergency)
   const run = runFixture(value)
   const step = run.steps.find(row => row.id === 's-prereq-passkey-settings')!
   const ctx: StepVarContext = { snapshot: value.snapshot, mapping: value.mapping, nameOf: id => run.input.names!.label(id), signature: 'IT', operatorId: value.operatorId, now: value.snapshot.asOf, groups: value.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
   const upn = (id: string): string => value.snapshot.users.find(u => u.id === id)!.userPrincipalName!
-  return { projected: emergencyPasskeyTasksOf(step, ctx), portal: emergencyImplementation(step, ctx) ?? '', reading: passkeyRestrictionReading(value.snapshot, value.mapping, value.groups), upn }
+  return { value, step, projected: emergencyPasskeyTasksOf(step, ctx), portal: emergencyImplementation(step, ctx) ?? '', reading: passkeyRestrictionReading(value.snapshot, value.mapping, value.groups), upn, people, emergency }
 }
 const task = (p: ReturnType<typeof emergencyPasskeyTasksOf>, id: string) => p.tasks.find(row => row.id === id)!
-const RESTRICTION = /Enforce key restrictions|Restrict specific keys|Add AAGUID|Target specific AAGUIDs/
+/** A line that adds, removes or sets a model: none is handed over any more. */
+const MODEL_LINE = /Add AAGUID|Enter AAGUID|Remove \*\*[0-9a-f-]{36}\*\*|Select \*\*Target specific AAGUIDs\*\*|Restrict specific keys|Set \*\*Enforce key restrictions|Clear \*\*Target specific AAGUIDs/
 
-test('passkeys nobody could judge: the step opens on preparing them, names them and says what each keeps', () => {
-  // small: four accounts hold passkeys the scan could not judge, none of them an
-  // administrator, and each keeps Microsoft Authenticator.
-  const { projected, reading, upn } = onMidflight(() => {}, 'small')
-  assert.equal(reading.stranded.length, 4, 'the premise: four accounts hold passkeys whose model the scan could not read')
-  assert.equal(reading.lockedOut.length, 0, 'the premise: each keeps Microsoft Authenticator, and none is an admin')
-  assert.equal(projected.recommendedTaskId, 'prepare-affected-passkeys', 'the step opens on the Save that stops their passkeys')
+test('people whose synced passkey stops are named before the save, each with what they keep, and the step opens on preparing them', () => {
+  const { projected, reading, upn, people } = onSyncedTenant((snapshot, people) => {
+    for (const id of people.slice(0, 2)) snapshot.authMethods[id] = [synced(id), { kind: 'microsoftAuthenticator' }] as never
+  })
+  const named = people.slice(0, 2)
+  assert.deepEqual([...reading.stranded].sort(), [...named].sort(), 'the premise: two people hold only a synced passkey and Authenticator')
+  assert.equal(reading.lockedOut.length, 0, 'the premise: each keeps Microsoft Authenticator')
+  assert.equal(projected.recommendedTaskId, 'prepare-affected-passkeys', 'the step opens on the people the save stops')
   const prepare = task(projected, 'prepare-affected-passkeys')
   assert.equal(prepare.required, true)
-  const lead = prepare.steps[0]
-  for (const id of reading.stranded) assert.ok(lead.includes(upn(id)), `${upn(id)} is not named: ${lead}`)
-  assert.match(lead, /Each keeps Microsoft Authenticator, so none is locked out/)
-  assert.doesNotMatch(lead, /could not tell whether/, 'the anonymous hedge is back')
-  // Nobody is locked out by it, so the restrictions stay offered: holding them back
-  // on every tenant with an unreadable passkey would make the tool require what it
-  // can only help with.
-  assert.match(task(projected, 'apply-passkey-settings').steps.join('\n'), RESTRICTION)
+  for (const id of named) assert.ok(prepare.steps[0].includes(upn(id)), `${upn(id)} is not named: ${prepare.steps[0]}`)
+  assert.match(prepare.steps[0], /Changing passkeys to device-bound stops the synced passkeys on 2 accounts/)
+  assert.match(prepare.steps[0], /Each keeps Microsoft Authenticator, so none is locked out/)
+  // The facts: each passkey that stops, its type, and what the person keeps.
+  for (const id of named) assert.ok((prepare.facts ?? []).some((f) => f.label === upn(id) && /· Synced ·/.test(f.value) && /Keeps Microsoft Authenticator/.test(f.value)), `${upn(id)}'s fact: ${JSON.stringify(prepare.facts)}`)
+  // The change itself is offered whole: device-bound, attestation, and no model line.
+  const apply = task(projected, 'apply-passkey-settings').steps.join('\n')
+  assert.match(apply, /Set \*\*Passkey types\*\* to \*\*Device-bound\*\*/)
+  assert.match(apply, /Set \*\*Enforce attestation\*\* to \*\*Yes\*\*/)
+  assert.doesNotMatch(apply, MODEL_LINE)
 })
 
-test('an account the allow list would lock out: the restrictions are not handed over, anywhere', () => {
-  const { projected, portal, reading, upn } = onMidflight((snapshot, ids) => {
-    const id = ids[0]
-    snapshot.authMethods[id] = (snapshot.authMethods[id] as { kind: string }[]).filter(m => m.kind !== 'microsoftAuthenticator') as never
+test('someone whose only way in is a synced passkey is named first as locked out, and the change is still offered, never withheld', () => {
+  const { projected, portal, reading, upn, people } = onSyncedTenant((snapshot, people) => {
+    snapshot.authMethods[people[0]] = [synced(people[0]), { kind: 'microsoftAuthenticator' }] as never
+    snapshot.authMethods[people[1]] = [synced(people[1])] as never
   })
-  assert.equal(reading.lockedOut.length, 1, 'the premise: one account keeps nothing but the passkey nobody could judge')
-  const apply = task(projected, 'apply-passkey-settings').steps.join('\n')
-  assert.doesNotMatch(apply, RESTRICTION, `the allow list is handed over with an account it would lock out:\n${apply}`)
-  assert.match(apply, /Key restrictions are not part of this change yet: 1 account would be locked out/)
-  assert.match(apply, /Enforce attestation/, 'attestation only affects registration and stays')
-  const lead = task(projected, 'prepare-affected-passkeys').steps[0]
-  assert.match(lead, /Key restrictions stay off for now: they would lock out 1 account/)
-  // A count of one bends the first verb after it (content/render.ts pluralise):
-  // the first wording read "1 account would be left with no way to signs in".
-  assert.doesNotMatch(lead, /signs in/)
-  assert.ok(lead.includes(upn(reading.lockedOut[0])), lead)
+  assert.deepEqual(reading.lockedOut, [people[1]], 'the premise: one person keeps nothing but the synced passkey')
+  const prepare = task(projected, 'prepare-affected-passkeys')
+  assert.match(prepare.steps[0], /^Before you save: changing passkeys to device-bound would lock out 1 account/)
+  assert.match(prepare.steps[0], /Every passkey that account holds is synced/, 'one account is "that account"')
+  assert.doesNotMatch(prepare.steps[0], /signs in/)
+  assert.ok(prepare.steps[0].includes(upn(people[1])))
+  // Locked out first in the list, then the person who keeps another way in.
+  assert.deepEqual((prepare.facts ?? []).map((f) => f.label), [upn(people[1]), upn(people[0])])
+  assert.match(prepare.facts![0].value, /No other way to sign in$/)
+  const apply = task(projected, 'apply-passkey-settings').steps
+  assert.match(apply[0], /Prepare affected passkeys first: this change would lock out 1 account/)
+  assert.ok(apply.some((l) => /Set \*\*Passkey types\*\* to \*\*Device-bound\*\*/.test(l)), 'the change is withheld')
   assert.equal(projected.recommendedTaskId, 'prepare-affected-passkeys')
-  // The Entra channel says the same, not "apply the listed … Allow restrictions".
-  assert.doesNotMatch(portal, /Allow restrictions/)
-  assert.match(portal, /Key restrictions stay off for now/)
+  // The Entra channel says the same.
+  assert.match(portal, /Before you save: changing passkeys to device-bound would lock out 1 account/)
+  assert.doesNotMatch(portal, /Allow restrictions|allow list/i)
 })
 
-test('once the settings are applied, the passkeys nobody could judge are named, with no "before applying restrictions"', () => {
-  const { projected, reading } = onMidflight((snapshot) => {
-    // The tenant as the step's target would leave it.
-    const mapping = structuredClone(fixture('midflight')).mapping
-    const target = passkeyReadingOf(snapshot, mapping).resolution
-    assert.ok(target && target.kind === 'target', 'the premise: the step resolves a target')
-    const row = snapshot.config.authMethodsPolicy!.rows[0] as { authenticationMethodConfigurations?: Record<string, unknown>[]; fido2Configuration?: unknown }
-    row.authenticationMethodConfigurations = (row.authenticationMethodConfigurations ?? []).map(c => String(c.id).toLowerCase() === 'fido2' ? { ...target.target, id: c.id } : c)
-    if (row.fido2Configuration) row.fido2Configuration = { ...target.target }
+test('the list holds the people who sign in and every emergency account; a dormant or disabled account and a device-bound key are not on it', () => {
+  const { reading, people, emergency, value } = onSyncedTenant((snapshot, people, emergency) => {
+    const [active, dormant, disabled, bound] = people
+    const old = new Date(Date.parse(snapshot.asOf) - 400 * DAY).toISOString()
+    for (const id of [active, dormant, disabled]) snapshot.authMethods[id] = [synced(id)] as never
+    snapshot.authMethods[bound] = [deviceBound(bound)] as never
+    const d = snapshot.users.find((u) => u.id === dormant)!
+    Object.assign(d, { lastSuccessfulSignIn: old, successfulSignInActivityRead: true, createdDateTime: old })
+    if (snapshot.signInEvidence) delete snapshot.signInEvidence[dormant]
+    snapshot.users.find((u) => u.id === disabled)!.accountEnabled = false
+    // An emergency account signs in rarely; its passkey is still the way back in.
+    const e = snapshot.users.find((u) => u.id === emergency[0])!
+    Object.assign(e, { lastSuccessfulSignIn: old, successfulSignInActivityRead: true, createdDateTime: old })
+    if (snapshot.signInEvidence) delete snapshot.signInEvidence[emergency[0]]
+    snapshot.authMethods[emergency[0]] = [synced(emergency[0])] as never
   })
-  assert.equal(reading.stranded.length > 0, true, 'the premise: some passkeys still could not be judged')
-  const prepare = task(projected, 'prepare-affected-passkeys').steps
-  assert.equal(prepare.some(line => /before applying restrictions/.test(line)), false, prepare.join('\n'))
-  assert.match(prepare[0], /The passkey settings are applied/)
-  assert.match(prepare[0], /sign in (once )?with their passkey/)
-  // An admin among them with no other phishing-resistant way in is told to check now, not that they keep something.
-  if (reading.lockedOut.length > 0) assert.doesNotMatch(prepare[0], /each keeps/)
-  // Nothing waits on preparing them any more — unless one may have lost their way
-  // in, and then checking them is the first thing the step asks.
-  if (reading.lockedOut.length === 0) assert.notEqual(projected.recommendedTaskId, 'prepare-affected-passkeys', 'nothing is waiting on preparing them any more')
-  else assert.equal(projected.recommendedTaskId, 'prepare-affected-passkeys', 'an account that may have lost its way in is not the first thing checked')
+  const [active, dormant, disabled, bound] = people
+  assert.ok(notActiveUsers(value.snapshot, value.snapshot.asOf).some((u) => u.id === dormant), 'the premise: the dormant account reads dormant')
+  assert.ok(notActiveUsers(value.snapshot, value.snapshot.asOf).some((u) => u.id === emergency[0]), 'the premise: the emergency account reads dormant too')
+  assert.ok(reading.stranded.includes(active), 'an active person is listed')
+  assert.ok(reading.stranded.includes(emergency[0]), 'an emergency account is listed however rarely it signs in')
+  assert.equal(reading.stranded.includes(dormant), false, 'a dormant account is Disable or Confirm Dormant Accounts\' to handle')
+  assert.equal(reading.stranded.includes(disabled), false, 'a disabled account cannot sign in at all')
+  assert.equal(reading.stranded.includes(bound), false, 'a device-bound key keeps working')
 })
 
-// An administrator is held to more. The admin policy asks for a
-// phishing-resistant sign-in, and push does not satisfy it where that policy is
-// enforced: "Each keeps Microsoft Authenticator, so none is locked out" was said
-// over five admins on mid whose only phishing-resistant method was the passkey
-// nobody could judge, above the allow list that could stop it.
-test('an administrator whose only phishing-resistant method is an unjudged passkey is locked out by the list, and it is withheld', () => {
-  const { projected, reading } = onMidflight(() => {}, 'mid')
-  const value = fixture('mid')
-  const admins = new Set(value.snapshot.registrationDetails.filter((r) => r.isAdmin).map((r) => r.id.toLowerCase()))
-  const lockedAdmins = reading.lockedOut.filter((id) => admins.has(id.toLowerCase()))
-  assert.ok(lockedAdmins.length > 0, 'the premise: some admin keeps only push beside an unjudged passkey')
-  for (const id of lockedAdmins) {
-    const kinds = (value.snapshot.authMethods[id] as { kind: string }[]).map((m) => m.kind)
-    assert.ok(kinds.includes('microsoftAuthenticator'), `${id}: the premise is an admin who keeps push`)
+test('no task, fact or channel adds, removes or names a model to allow: legacy or profiles, any tenant list', () => {
+  for (const projected of [
+    projectLegacyChange(() => undefined),
+    projectLegacyChange((c) => { c.keyRestrictions = { isEnforced: false, enforcementType: 'block', aaGuids: [] } }),
+    projectProfile().projected,
+    projectProfile({ keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: [WINDOWS_HELLO] } }).projected,
+  ]) {
+    const apply = task(projected, 'apply-passkey-settings')
+    assert.doesNotMatch(apply.steps.join('\n'), MODEL_LINE)
+    assert.equal((apply.readinessFacts ?? []).some((f) => /AAGUID|Approved models/.test(f.label)), false, JSON.stringify(apply.readinessFacts))
   }
-  const apply = task(projected, 'apply-passkey-settings').steps.join('\n')
-  assert.doesNotMatch(apply, RESTRICTION, `the allow list is handed over with admins it would lock out:\n${apply}`)
-  assert.doesNotMatch(task(projected, 'prepare-affected-passkeys').steps[0], /none is locked out/)
 })
 
-test('1.3’s card and its task state one count, the accounts the allow list would lock out, each named on the card (net-new 3)', () => {
-  const f = curatedFixture('mid')
-  const r = runFixture(f)
-  const step = r.steps.find((s) => s.id === 's-prereq-passkey-settings')!
-  const locked = passkeyRestrictionReading(f.snapshot, f.mapping, f.groups).lockedOut
-  assert.ok(locked.length > 0, 'the premise: mid would lock accounts out')
+test('1.3’s card and its task state one count, the accounts the change would lock out, each named on the card (net-new 3)', () => {
+  const { step, projected, reading, people } = onSyncedTenant((snapshot, people) => {
+    for (const id of people.slice(0, 2)) snapshot.authMethods[id] = [synced(id)] as never
+  })
+  assert.equal(reading.lockedOut.length, 2, 'the premise: two people would be locked out')
   const card = (step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')!
-  assert.equal(card.value, `${locked.length} accounts would be locked out`)
+  assert.equal(card.value, '2 accounts would be locked out')
   const named = (card.items ?? []).filter((i) => i.value === 'No other way in').map((i) => i.accountId)
-  assert.deepEqual(named, locked, 'each lock-out named')
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  const task = emergencyPasskeyTasksOf(step, ctx).tasks.find((t) => t.id === 'prepare-affected-passkeys')!
-  assert.ok(task.steps.some((l) => l.includes(`would lock out ${locked.length} accounts`)), 'the task says the same count')
+  assert.deepEqual([...named].sort(), [...people.slice(0, 2)].sort(), 'each lock-out named')
+  assert.ok(task(projected, 'prepare-affected-passkeys').steps.some((l) => l.includes('would lock out 2 accounts')), 'the task says the same count')
 })
 
-test("1.3's card and its task name the same accounts: the one it would lock out, not a passkey only the withheld allow list stops (F-036)", () => {
-  // Owner, 2026-09-28: the sample's card said one account's passkey "loses access" (a key
-  // only the allow list stops) while its task said another account would be locked out.
-  // The allow list is withheld while an account would be locked out, so the first
-  // passkey is not stopped by what is handed over.
-  const f = fixture('demo')
-  const r = runFixture(f)
-  const step = r.steps.find((s) => s.id === 's-prereq-passkey-settings')!
-  const locked = passkeyRestrictionReading(f.snapshot, f.mapping, f.groups).lockedOut
-  assert.equal(locked.length, 1, 'the premise: the sample would lock one account out')
+test("1.3's card and its task name the same accounts, and a person who keeps another way in is named with it on both (F-036)", () => {
+  const { step, projected, upn, people } = onSyncedTenant((snapshot, people) => {
+    snapshot.authMethods[people[0]] = [synced(people[0]), { kind: 'microsoftAuthenticator' }] as never
+  })
   const card = (step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')!
-  assert.equal(card.value, '1 account would be locked out')
-  assert.deepEqual((card.items ?? []).map((i) => i.accountId), locked, 'the card names another account than the one locked out')
-  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  const prepare = emergencyPasskeyTasksOf(step, ctx).tasks.find((t) => t.id === 'prepare-affected-passkeys')!
-  assert.match(prepare.steps[0], /would lock out 1 account/)
-  assert.match(prepare.steps[0], /Every passkey that account holds/, 'one account is "that account", not "those accounts"')
-  assert.deepEqual(prepare.facts ?? [], [], 'the task lists a passkey the change it hands over does not stop')
+  assert.deepEqual((card.items ?? []).map((i) => i.accountId), [people[0]])
+  assert.match(card.items![0].value, /Keeps Microsoft Authenticator/)
+  assert.deepEqual((task(projected, 'prepare-affected-passkeys').facts ?? []).map((f) => f.label), [upn(people[0])])
 })
 
-/** The fixture with Configure Passkey Authentication's planned settings already applied. */
-function applied(name: 'mid' | 'small') {
-  const f = curatedFixture(name)
-  const snapshot = structuredClone(f.snapshot)
-  const reading = passkeyReadingOf(snapshot, f.mapping)
-  assert.equal(reading.resolution?.kind, 'target', 'the premise: the step has settings to apply')
-  const target = (reading.resolution as { target: Record<string, unknown> }).target
-  const rows = (snapshot.config.authMethodsPolicy?.rows ?? []) as { authenticationMethodConfigurations?: Record<string, unknown>[] }[]
-  const others = (rows[0]?.authenticationMethodConfigurations ?? []).filter((c) => String(c.id).toLowerCase() !== 'fido2')
-  snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ ...(rows[0] ?? {}), authenticationMethodConfigurations: [{ ...target, id: 'Fido2' }, ...others] }] }
-  const r = runFixture({ ...f, snapshot })
-  return { f, snapshot, r, step: r.steps.find((s) => s.id === 's-prereq-passkey-settings')! }
-}
-
-test('1.3 is never Completed while an account the applied allow list locks out is still to check; with nobody locked out it completes, and the rest is a fact (net-new 4)', () => {
-  {
-    const { f, snapshot, r, step } = applied('mid')
-    assert.notEqual(step.status, 'done', 'mid: accounts with no other way in keep the step open')
-    const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
-    assert.equal(emergencyPasskeyTasksOf(step, ctx).tasks.find((t) => t.id === 'prepare-affected-passkeys')?.required, true)
-    assert.match((step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')?.value ?? '', /^\d+ accounts? to check now$/)
-  }
-  {
-    const { f, snapshot, r, step } = applied('small')
-    assert.equal(step.status, 'done', 'small: everyone affected keeps another way in')
-    const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups }
-    assert.ok(emergencyPasskeyTasksOf(step, ctx).tasks.every((t) => !t.required), 'Completed: no task required')
-    const card = (step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')!
-    assert.equal(card.outcome, 'pass')
-    assert.match(card.value, /keep another way in$/)
-  }
+test('1.3 completes once the settings are applied, and a device-bound tenant has nobody to list (net-new 4)', () => {
+  const { value } = onSyncedTenant((snapshot, people) => {
+    for (const id of people.slice(0, 3)) snapshot.authMethods[id] = [deviceBound(id)] as never
+  })
+  const snapshot = structuredClone(value.snapshot)
+  const reading = passkeyReadingOf(snapshot, value.mapping)
+  assert.equal(reading.resolution?.kind, 'target')
+  withFido2(snapshot, { ...(reading.resolution as { target: Record<string, unknown> }).target, id: 'Fido2' })
+  const r = runFixture({ ...value, snapshot })
+  const step = r.steps.find((s) => s.id === 's-prereq-passkey-settings')!
+  assert.equal(passkeyRestrictionReading(snapshot, value.mapping, value.groups).stranded.length, 0)
+  assert.equal(step.status, 'done')
 })

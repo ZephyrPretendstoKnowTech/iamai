@@ -249,13 +249,17 @@
       }
     },
     "passkeyRestrictions": {
-      "$comment": "Configure Passkey Authentication's key restrictions, read from roadmap/passkeyRestrictions.ts. The step opened on \"Set Enforce key restrictions to Yes… Add AAGUID… Save\" four lines below a hedge that the passkeys on eleven accounts could not be judged, naming none of them (Jordan D13); after the settings were applied the same hedge still said \"before applying restrictions\" (Marcus D8). An allow list stops every passkey it does not name: the accounts it would stop are named, with what each keeps; and where one would keep nothing, the restrictions are not handed over at all. The clauses saying IAMAI could not judge a passkey, or could not confirm another way in, were deleted (owner, 2026-09-23).",
-      "stranded": "An allow list stops every passkey it does not name. The planned restrictions would stop the passkeys on {count}: {names}. Each keeps {kept}, so none is locked out, but tell them before you save: afterwards, one whose passkey stops working registers an approved one.",
+      "$comment": "Configure Passkey Authentication's change, read from roadmap/passkeyRestrictions.ts. The change makes passkeys device-bound and attested for every user with no key restrictions added (owner, 2026-10-03): a synced passkey stops working, so before the save the step names the active people and emergency accounts it stops, with what each keeps, and those with no other way in first. The clauses saying IAMAI could not judge a passkey, or could not confirm another way in, were deleted (owner, 2026-09-23).",
+      "stranded": "Changing passkeys to device-bound stops the synced passkeys on {count}: {names}. Each keeps {kept}, so none is locked out, but tell them before you save: afterwards, each registers a device-bound passkey in Microsoft Authenticator or on a security key.",
       "strandedAfter": "The passkey settings are applied. Have each of {count} sign in once with their passkey to confirm it still works: {names}. Each keeps {kept} if it does not.",
-      "strandedAfterLocked": "The passkey settings are applied. Have each of {count} sign in with their passkey now: {names}. Where it no longer works, register an approved passkey for that account.",
-      "withheld": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey those accounts hold is one the allow list would stop, and none has another way in (for an administrator, another phishing-resistant method). Register an approved passkey for each, then scan again: the restrictions are offered once nobody would be locked out.",
-      "withheldOne": "Key restrictions stay off for now: they would lock out {count} — {names}. Every passkey that account holds is one the allow list would stop, and it has no other way in (for an administrator, another phishing-resistant method). Register an approved passkey for it, then scan again: the restrictions are offered once nobody would be locked out.",
-      "withheldTask": "Key restrictions are not part of this change yet: {count} would be locked out by them. Prepare affected passkeys says who and what to do first.",
+      "strandedAfterLocked": "The passkey settings are applied. Have each of {count} sign in with their passkey now: {names}. Where it no longer works, register a device-bound passkey for that account.",
+      "lockedOut": "Before you save: changing passkeys to device-bound would lock out {count}: {names}. Every passkey those accounts hold is synced, and none has another way in (for an administrator, another phishing-resistant method). Register a device-bound passkey in Microsoft Authenticator or on a security key for each, or give each another way to sign in, then scan again.",
+      "lockedOutOne": "Before you save: changing passkeys to device-bound would lock out {count}: {names}. Every passkey that account holds is synced, and it has no other way in (for an administrator, another phishing-resistant method). Register a device-bound passkey in Microsoft Authenticator or on a security key for it, or give it another way to sign in, then scan again.",
+      "lockedOutTask": "Prepare affected passkeys first: this change would lock out {count}. It says who, and what to do before you save.",
+      "factNoOtherWay": "No other way to sign in",
+      "factOtherPasskey": "Another passkey keeps working",
+      "factKeeps": "Keeps {method}",
+      "factReplacement": "Replacement needed",
       "keptMany": "another sign-in method ({methods})"
     },
     "changeRemoves": "This change removes {removed} from the policy's exclusions. If the policy is On, it applies to them as soon as you save.",
@@ -269,17 +273,13 @@
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
     "certificatePrompt": "In report-only, a policy that requires a compliant device can prompt people on Mac, iOS and Android devices to pick a certificate, again and again, until the device is compliant.",
     "strengthName": "Modern MFA + TAP",
-    "aaguids": {
-      "Microsoft Authenticator for Android": "de1e552d-db1d-4423-a619-566b625cdc84",
-      "Microsoft Authenticator for iOS": "90a3ccdf-635c-4729-a248-9b709135078f"
-    },
     "licenceRule": "Where a control needs a licence {tenant} does not hold, the step uses the nearest control it does hold and says so; the licensed version is listed under Not licensed.",
     "methodGuides": {
       "$comment": "The one source of MFA remediation guidance (task 014). MFA Readiness's person panel, its copy-for-the-help-desk box, the campaign step's pointer and the campaign email all read from here; nothing writes a second version. A guide's steps may name a shared line as \"@key\" into `common`, so a sentence two platforms share is written once (src/content/methodGuides.ts resolves them). Which guide applies to a person is decided by the evidence, not here.",
-      "target": "The target is phishing-resistant MFA the person has been seen signing in with: a passkey, Windows Hello for Business or a certificate.",
+      "target": "The target is phishing-resistant MFA the person has been seen signing in with: a device-bound passkey, Windows Hello for Business or a certificate.",
       "prereq": "Passkey (FIDO2) has to be on in the tenant first; Configure Passkey Authentication turns it on.",
       "pointer": "MFA Readiness lists each person’s next step, grouped by what to do; start with its next check.",
-      "userInstruction": "Install Microsoft Authenticator, select your work account in it and Create a passkey, then sign in once with it.",
+      "userInstruction": "Install Microsoft Authenticator, select your work account in it and Create a passkey (it stays device-bound on the phone), then sign in once with it.",
       "guest": "A guest cannot be issued a Temporary Access Pass; they register from their own tenant or with their own phone.",
       "common": {
         "$commentAuthenticator": "The one procedure for a passkey in Microsoft Authenticator (owner, 2026-09-24: Emergency Access's steps are the model; https://aka.ms/mfasetup sends people the wrong way). Microsoft Learn's recommended flow, 'Use Authenticator' (how-to-register-passkey-authenticator). Read by Emergency Access (emergencyAccountTasks.ts authenticatorSteps), Use Separate Accounts for Admin Work, Register Your Own Passkey, Prepare Your Team for MFA and these guides, as the shared references {passkeyOpen}, {passkeyCreate}, {passkeyPrompts} and {passkeyProvider}. {passkeyPhone} and {passkeyAccount} are the reader's own.",
@@ -1208,7 +1208,6 @@
         "namedLocationsUnread": "until the named locations can be read",
         "emergency": "until emergency access is provably out of scope",
         "passkeyProfiles": "until the passkey profile settings are reviewed",
-        "passkeyBlockConflict": "until the block list entry for Microsoft Authenticator is reviewed",
         "passkeyPartialRead": "until every passkey setting the change needs can be read",
         "workloadIdentityUnknown": "until the sync identity is confirmed as supported",
         "workloadIdentityUnsupported": "until a supported identity performs this synchronization",
@@ -1436,7 +1435,8 @@
         "Devices seen",
         "Methods",
         "Readiness",
-        "Next step"
+        "Next step",
+        "Passkey type"
       ],
       "details": "Details",
       "detailsFor": "Details for {name}",
@@ -1528,7 +1528,7 @@
       },
       "notes": {
         "automated": "Looks like a script or service: confirm it as a service account.",
-        "keyStops": "This passkey stops working once Configure Passkey Authentication is applied: register an approved one first.",
+        "keyStops": "This passkey stops working once Configure Passkey Authentication is applied: register a device-bound one first.",
         "onLeave": "No sign-in in 30 days"
       },
       "panel": {
@@ -1538,6 +1538,12 @@
         "methods": "Phishing-resistant methods",
         "best": "Best option",
         "now": "Now",
+        "$commentStorage": "A passkey’s storage, in the drawer and the CSV: 1.3 makes passkeys device-bound, so a synced one stops (owner, 2026-10-03).",
+        "storage": "Stored",
+        "storageTypes": {
+          "deviceBound": "Device-bound",
+          "synced": "Synced"
+        },
         "allowed": "Allowed",
         "lastConfirmed": "Last confirmed",
         "noneRegistered": "None registered yet.",
@@ -2102,13 +2108,15 @@
           "noAccountsChosen": "No accounts chosen yet",
           "$commentAccountsToPrepare": "Existing passkeys affected on Configure Passkey Authentication where the planned settings would leave accounts without a passkey they allow (src/roadmap/emergencyJourney.ts journeyPasskeyFindings, the projection’s stranded accounts): how many accounts Prepare affected passkeys is for. It read Could not verify on every tenant with such accounts (owner, 2026-09-23).",
           "accountsToPrepare": "{count} to prepare",
-          "$commentAccountsLockedOut": "Existing passkeys affected where the planned allow list would lock accounts out (roadmap/passkeyRestrictions.ts lockedOut): one count, the lock-outs, each named on the card, the same count Prepare affected passkeys and the withheld line state (net-new 3). accountsToPrepare stays for stranded accounts that keep another way in.",
+          "$commentAccountsLockedOut": "Existing passkeys affected where the planned change would lock accounts out (roadmap/passkeyRestrictions.ts lockedOut): one count, the lock-outs, each named on the card, the same count Prepare affected passkeys states (net-new 3). accountsToPrepare stays for stranded accounts that keep another way in.",
           "accountsLockedOut": "{count} would be locked out",
-          "$commentAccountsToCheck": "The same accounts once the passkey settings are applied (net-new 4): the allow list now stops their passkeys and none has another way in, so each signs in now, and the step stays open until nobody is locked out.",
+          "$commentAccountsToCheck": "The same accounts once the passkey settings are applied (net-new 4): the change now stops their passkeys and none has another way in, so each signs in now, and the step stays open until nobody is locked out.",
           "accountsToCheck": "{count} to check now",
-          "$commentAccountsKeepAnother": "Once the settings are applied with nobody locked out (net-new 4): the accounts whose passkeys the allow list stops each keep another way in. A fact of the finished step, under Satisfied.",
+          "$commentAccountsKeepAnother": "Once the settings are applied with nobody locked out (net-new 4): the accounts whose passkeys the change stops each keep another way in. A fact of the finished step, under Satisfied.",
           "accountsKeepAnother": "{count} keep another way in",
           "lockedOutItem": "No other way in",
+          "$commentKeeps": "Beside an affected passkey on Configure Passkey Authentication's card: the other sign-in method the person keeps (roadmap/passkeyRestrictions.ts keeps), so the list says who loses access and who loses only a passkey (owner, 2026-10-03).",
+          "keeps": "Keeps {method}",
           "$commentSignedInAccount": "The one line on an emergency access account card when that account is the one signed in to IAMAI (the scan's /me, by object id or sign-in name; emergencyAccountTasks.ts). A fact, not a check: it replaces the bg.notPersonal note on that card and gates nothing. Owner wording, 2026-09-23.",
           "signedInAccount": "You're signed in to IAMAI with this account. Emergency accounts should be ones nobody uses day to day.",
           "sharedDeviceLabel": "Shared Authenticator device",
@@ -3043,14 +3051,12 @@
               },
               "target": {
                 "unrestricted": "Keep key restrictions off, so every model that can register today still can, including Microsoft Authenticator.",
-                "allow": "Keep the allow list and its existing allowed models ({retained}); add approved authenticator models ({added}).",
-                "allowPresent": "Keep the allow list and its existing allowed models ({retained}); the required authenticator models are already allowed.",
-                "block": "Keep the block list as it is ({blocked}); it does not block Microsoft Authenticator.",
-                "common": "Enable the method and self-service registration, require attestation for new registrations, and keep the target groups and exclusions shown in the resolved configuration."
+                "allow": "Keep the allow list as it is ({retained}); IAMAI adds no model to it.",
+                "block": "Keep the block list as it is ({blocked}).",
+                "common": "Enable the method and self-service registration, allow device-bound passkeys only, require attestation for new registrations, and keep the target groups and exclusions shown in the resolved configuration."
               },
               "review": {
                 "profiles": "This tenant uses passkey profiles. IAMAI does not read profile settings, so it cannot tell which groups can use Microsoft Authenticator passkeys. Review each profile and its group assignments in the Entra admin center and keep them unchanged; IAMAI does not write the older global settings over a profile-based policy.",
-                "blockListConflict": "The key restriction block list blocks Microsoft Authenticator ({aaguids}). IAMAI does not remove a block list entry. Find out why it was blocked before allowing Authenticator passkeys.",
                 "partialRead": "The scan did not return every passkey setting this change is built from ({fields}). IAMAI cannot build an update that preserves the current configuration, so none is offered."
               },
               "allUsers": "All users"
@@ -3134,17 +3140,6 @@
         "manualReviewExplain": "IAMAI cannot verify the whole review. Confirm only after you have met the completion criteria above. Changes to the reviewed accounts or settings may reopen this step.",
         "manualReviewConfirm": "I completed this review",
         "manualReviewUndo": "Reopen this review",
-        "passkeyModels": {
-          "$comment": "Configure Passkey Authentication's list of extra key models (PasskeyModelDecision.tsx). Add and Remove save at once (F-104): a model added was lost unless a second Save was pressed, and that button is gone.",
-          "name": "Authenticator Name",
-          "aaguid": "AAGUID",
-          "add": "Add to List",
-          "remove": "Remove",
-          "removeLabel": "Remove {name}",
-          "invalid": "Enter an authenticator name and a valid AAGUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).",
-          "duplicate": "This AAGUID is already listed.",
-          "none": "No additional authenticators accepted."
-        },
         "manualReviewScanFirst": "Complete the changes above and scan again. The account or setting checks must pass before you can record this review.",
         "workflows": {
           "title": "Confirm the Services You Use",
@@ -4833,44 +4828,44 @@
     {
       "id": "s-prereq-passkey-settings",
       "brief": {
-        "does": "Switches on passkeys and allows only approved models.",
+        "does": "Switches on passkeys and accepts only device-bound, attested ones.",
         "matters": "Passkeys can't be phished, and the admin and emergency accounts rely on them.",
         "notice": "People can add a passkey; nothing is required of them yet."
       },
       "preparation": [
         "Open Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2).",
         "Enable the method and self-service registration for the intended users. Keep the existing target groups and exclusions.",
-        "For passkey profiles, review every applicable profile. Require device-bound passkeys and attestation, and restrict allowed models to Microsoft Authenticator and the approved hardware keys used by this tenant.",
-        "Microsoft Authenticator AAGUIDs: iOS 90a3ccdf-635c-4729-a248-9b709135078f; Android de1e552d-db1d-4423-a619-566b625cdc84. Add both to the allowed models.",
-        "Confirm each hardware-key model’s AAGUID with its manufacturer and retain tested emergency access before narrowing an existing list.",
+        "For passkey profiles, review every applicable profile. Set passkey types to device-bound and require attestation. Leave the tenant’s key restrictions as they are.",
+        "Before you save, check Prepare affected passkeys: anyone whose only passkey is synced (iCloud Keychain, Google Password Manager) needs another way to sign in first.",
+        "Keep each emergency access account’s device-bound key working: test it before and after the change.",
         "Save, reopen the configuration and scan again. Readiness lists the remaining setting differences."
       ],
       "kind": "object",
       "title": "Configure Passkey Authentication",
       "changeLine": null,
-      "why": "Turn on passkeys (FIDO2) for everyone and allow only the approved passkey models, so emergency and admin accounts can register one.",
+      "why": "Turn on passkeys (FIDO2) for everyone and accept only device-bound, attested passkeys, so a passkey stays on the phone or security key that made it, and emergency and admin accounts can register one.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-passkeys-fido2"
       },
       "who": {
-        "lead": "Passkey (FIDO2) in {tenant} today: {current}. Security keys registered here, for review (a registered key is not automatically an approved model): {list:registeredKeys}",
-        "emergencyNote": "The emergency access accounts' keys are in that list; check that their models stay allowed."
+        "lead": "Passkey (FIDO2) in {tenant} today: {current}. Security keys registered here: {list:registeredKeys}",
+        "emergencyNote": "The emergency access accounts’ keys are in that list; each must be device-bound, because a synced passkey stops working after this change."
       },
       "decision": null,
       "whatToDo": {
         "lead": null,
         "steps": [
           "Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable: On; Target: keep the existing target groups and exclusions shown in the resolved configuration.",
-          "Allow self-service set up: Yes. Enforce attestation: Yes; it applies to new registrations only.",
-          "Keep the tenant's key restriction setting. With an allow list, keep every model already on it and add Microsoft Authenticator: Android {aaguidAndroid}; iOS {aaguidIos}. Without key restrictions, leave them off. With a block list, check that it does not block those identifiers.",
-          "A registered key is not automatically an approved model: add a hardware key model only when your organization approves it. Removing a model stops its keys from signing in.",
+          "Allow self-service set up: Yes. Passkey types: Device-bound. Enforce attestation: Yes; it applies to new registrations only.",
+          "Leave the tenant’s key restrictions as they are: IAMAI adds no allow list. A synced passkey stops working once the type is device-bound, so prepare the people Prepare affected passkeys names first.",
+          "Each person registers a device-bound passkey in Microsoft Authenticator or on a security key; a synced passkey from iCloud Keychain or Google Password Manager cannot register.",
           "Save. Then Microsoft Authenticator → Enable: On, All users, for push and codes; passkeys in the app are governed by the Passkey (FIDO2) policy above.",
           "Temporary Access Pass → Enable: On for the people who may need a pass to register their first passkey; keep the tenant's lifetime and one-time-use settings unless your security team approved different values."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Passkeys (FIDO2) are on for everyone, attestation is enforced, and only the approved models can register."
+        "Passkeys (FIDO2) are on for everyone, device-bound only, with attestation enforced."
       ],
       "ifWrong": null,
       "comms": null,
@@ -4880,11 +4875,11 @@
       "more": {
         "risks": [
           {
-            "text": "An allow-list that omits a key model already in use stops that key working, including an emergency account's.",
+            "text": "Changing passkeys to device-bound stops every synced passkey, including an emergency account’s if that is all it holds.",
             "applies": "always"
           },
           {
-            "text": "Removing an identifier later stops sign-in for everyone who registered with it.",
+            "text": "The tenant’s own key restrictions still apply: removing a model from them stops every key of that model.",
             "applies": "always"
           },
           {
@@ -4893,7 +4888,7 @@
           }
         ],
         "helpDesk": [
-          "A key that will not register: check whether its model is approved; add its AAGUID, which the vendor publishes, only after approval."
+          "A passkey that will not register: check that it is device-bound (Microsoft Authenticator or a security key); a synced passkey from iCloud Keychain or Google Password Manager is refused."
         ],
         "manager": null,
         "waits": "Register Your Own Passkey, the registration campaign and every phishing-resistant policy wait on this."
@@ -4901,17 +4896,15 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "current": "enabled for all users, attestation not enforced, no key restrictions",
-        "wanted": "enabled for all users, attestation enforced, no key restrictions",
+        "wanted": "enabled for all users, device-bound, attestation enforced, no key restrictions",
         "attestation": "Yes",
         "keyRestrictions": "No",
         "registeredKeys": [
           "YubiKey 5 NFC · 2fc0579f-8113-47ea-b116-bb5a8db9202a (Breakglass)"
         ],
-        "aaguidAndroid": "de1e552d-db1d-4423-a619-566b625cdc84",
-        "aaguidIos": "90a3ccdf-635c-4729-a248-9b709135078f",
         "from": "Aug 1"
       },
-      "aiFocus": "State which existing allowed models the resolved change retains, which Microsoft Authenticator models it adds, and whether a profile-based policy, a block list or a partial read holds the change. Existing allowed models are retained configuration, not proof that every registered key was approved."
+      "aiFocus": "State that the change sets device-bound passkeys with attestation enforced and adds no key restrictions, keeping the tenant’s own. Name the active people and emergency accounts whose synced passkey stops working, those with no other way in first, and say whether a profile-based policy or a partial read holds the change."
     },
     {
       "id": "s-prereq-auth-strength",

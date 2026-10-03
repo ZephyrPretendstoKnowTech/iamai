@@ -105,7 +105,11 @@ test('on every fixture: lapsing is the Ready people whose readiness ends within 
   // the CSV methods cell carries the note the screen shows under it
   {
     let noted = 0
-    for (const f of allFixtures()) {
+    // The demo with the tenant's own allow list naming one model: its other keys are not allowed today.
+    const listed = structuredClone(fixture('demo'))
+    const row = listed.snapshot.config.authMethodsPolicy!.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[]; fido2Configuration?: Record<string, unknown> }
+    for (const c of [row.fido2Configuration, ...row.authenticationMethodConfigurations.filter((c) => String(c.id).toLowerCase() === 'fido2')]) if (c) c.keyRestrictions = { isEnforced: true, enforcementType: 'allow', aaGuids: ['90a3ccdf-635c-4729-a248-9b709135078f'] }
+    for (const f of [...allFixtures(), listed]) {
       const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
       for (const r of v.rows) {
         assert.equal(rowCells(r)[2], methodsLine(r), r.user.id)

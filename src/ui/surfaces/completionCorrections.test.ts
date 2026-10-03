@@ -59,8 +59,8 @@ test('device answers: all nine choices keep their scope through a second save, o
   }
  }
 })
-test('passkey settings: a fresh configuration starts with known approved models, an exclusion wins over All users, and incomplete membership stays unknown',()=>{
- {const r=resolvePasskeyTarget(null);assert.equal(r.kind,'target');if(r.kind==='target'){assert.equal(r.restriction,'allow');assert.equal(r.target.keyRestrictions?.isEnforced,true);assert.equal(r.target.isAttestationEnforced,true)}}
+test('passkey settings: a fresh configuration starts device-bound and attested with no key restrictions, an exclusion wins over All users, and incomplete membership stays unknown',()=>{
+ {const r=resolvePasskeyTarget(null);assert.equal(r.kind,'target');if(r.kind==='target'){assert.equal(r.restriction,'unrestricted');assert.equal(r.target.keyRestrictions?.isEnforced,false);assert.equal(r.target.isAttestationEnforced,true)}}
  {
   const f=fixture('demo');const id=f.mapping.breakGlassUserIds[0];assert.ok(id)
   const config={id:'Fido2',state:'enabled',includeTargets:[{id:'all_users',allowedPasskeyProfiles:[]}],excludeTargets:[{id:'g'}],isSelfServiceRegistrationAllowed:true,isAttestationEnforced:true,keyRestrictions:{isEnforced:false,enforcementType:'allow',aaGuids:[]}}

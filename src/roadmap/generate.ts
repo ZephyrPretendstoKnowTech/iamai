@@ -1505,11 +1505,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       setState(s, { condition: conditionFor(s.blockers) })
     } else if (passkey.resolution?.kind === 'review') {
       // No change can be built without overwriting something (owner approval,
-      // 2026-09-14): a profile-based policy, a block list that blocks Authenticator,
-      // or a read short of a setting. The step holds on that fact, like an unread
+      // 2026-09-14): a profile-based policy or a read short of a setting. The step holds on that fact, like an unread
       // policy, and is never completed by it.
       const review = passkey.resolution.review
-      const binding = passkeyReadinessFindingsOf(snapshot, mapping).filter(f => f.outcome !== 'pass').slice(0, 1).map(f => `${f.label}: ${f.value}`).join('') || (review === 'profiles' ? BLOCKED_REASON.passkeyProfiles : review === 'blockListConflict' ? BLOCKED_REASON.passkeyBlockConflict : BLOCKED_REASON.passkeyPartialRead)
+      const binding = passkeyReadinessFindingsOf(snapshot, mapping).filter(f => f.outcome !== 'pass').slice(0, 1).map(f => `${f.label}: ${f.value}`).join('') || (review === 'profiles' ? BLOCKED_REASON.passkeyProfiles : BLOCKED_REASON.passkeyPartialRead)
       s.blockers = [{ kind: 'evidence', label: `passkey-settings-${review}`, binding, unverified: true }]
       setState(s, { condition: conditionFor(s.blockers) })
     }

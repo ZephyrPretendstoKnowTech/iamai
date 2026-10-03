@@ -23,6 +23,7 @@ import { app } from '../content/content.ts'
 import { EMERGENCY_TASK } from './emergencyTaskTitles.ts'
 import { affectedByHandover, passkeyRestrictionReading } from './passkeyRestrictions.ts'
 import { fillText } from '../content/render.ts'
+import { methodName } from '../copy/inventory.ts'
 
 // A failing finding's value. "Needs attention" is a retired state word
 // (oneProducer.test, stateAgreement.test); the Plan's own word for a fact that
@@ -32,7 +33,7 @@ const NEEDS_CORRECTION = (app.plan as unknown as { stepContract: { stateWords: {
 const NO_ACCOUNTS_CHOSEN = (app.plan as unknown as { emergencyTasks: { noAccountsChosen: string } }).emergencyTasks.noAccountsChosen
 /** Existing passkeys affected where accounts would be left without a passkey the planned settings allow (pages.app.plan.emergencyTasks). */
 const ACCOUNTS_TO_PREPARE = (app.plan as unknown as { emergencyTasks: { accountsToPrepare: string } }).emergencyTasks.accountsToPrepare
-const LOCKED_OUT = (app.plan as unknown as { emergencyTasks: { accountsLockedOut: string; accountsToCheck: string; accountsKeepAnother: string; lockedOutItem: string } }).emergencyTasks
+const LOCKED_OUT = (app.plan as unknown as { emergencyTasks: { accountsLockedOut: string; accountsToCheck: string; accountsKeepAnother: string; lockedOutItem: string; keeps: string } }).emergencyTasks
 
 export const EMERGENCY_ACCOUNTS = 's-prereq-break-glass'
 export const EMERGENCY_GROUP = 's-prereq-exclusion-group'
@@ -222,29 +223,19 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
       items: rows.filter(said).map(f => ({ label: f.label, factLabel: f.label, value: f.value, subjectId: f.key, outcome: f.outcome, issueKeys: [`passkey:${f.key}`] })),
     }
   }
-  const models = grouped('models', 'Approved authenticators', f => f.key.endsWith('.restrictions'))
+  // Key restrictions are the tenant's own (owner, 2026-10-03): the plan adds none and
+  // keeps whatever the tenant has, so the group states them and requires nothing.
+  const models = grouped('models', 'Key restrictions', f => f.key.endsWith('.restrictions'))
   models.items = (models.items ?? []).map(item => ({ ...item, factLabel: 'Current restriction' }))
-  const modelProblems = raw.filter(f => (f.key.startsWith('authenticator.') || f.key.startsWith('target.')) && f.outcome !== 'pass')
-  if (modelProblems.length && models.outcome === 'pass') { models.outcome = modelProblems.some(f => f.outcome === 'fail') ? 'fail' : 'unknown'; models.value = 'Required models need attention' }
-  const modelIssueOutcomes = [...raw.filter(f => f.key.endsWith('.restrictions') && f.outcome !== 'pass'), ...modelProblems].map(f => f.outcome)
-  models.value = !modelIssueOutcomes.length ? 'Configured'
-    : modelIssueOutcomes.includes('fail') && modelIssueOutcomes.includes('unknown') ? NEEDS_CORRECTION
-      : modelIssueOutcomes.includes('fail') ? 'Needs a change'
-        : EMERGENCY_TASK.passkeyProtections
-  models.detail = reasonOf([...raw.filter(f => f.key.endsWith('.restrictions')), ...modelProblems])
-  const modelStates = approvedPasskeyModels(snapshot, mapping).map(m => [...new Set(raw.filter(f => (f.key.startsWith('authenticator.') || f.key.startsWith('target.')) && f.detail.toLowerCase().includes(m.aaguid)).map(f => (f.key.startsWith('target.') ? f.detail.split(':')[0] + ': ' : '') + f.value))])
-  const commonState = modelStates.length && modelStates.every(s => s.join('; ') === modelStates[0].join('; ')) ? modelStates[0].join('; ') : ''
+  const restrictionIssues = raw.filter(f => f.key.endsWith('.restrictions') && f.outcome !== 'pass').map(f => f.outcome)
+  models.value = !restrictionIssues.length ? 'Configured' : EMERGENCY_TASK.passkeyProtections
+  models.detail = reasonOf(raw.filter(f => f.key.endsWith('.restrictions')))
   const plannedRestriction = reading.resolution?.kind === 'target'
-    ? reading.resolution.restriction === 'allow' ? 'Allow list' : reading.resolution.restriction === 'block' ? 'Block list' : 'Unrestricted'
+    ? reading.resolution.restriction === 'allow' ? 'Allow list kept' : reading.resolution.restriction === 'block' ? 'Block list kept' : 'Unrestricted'
     : null
   models.items = [
     ...(models.items ?? []),
-    ...(commonState ? [{ label: 'Model coverage', factLabel: 'Model coverage', value: commonState, subjectId: 'passkey-restriction', outcome: models.outcome, issueKeys: ['passkey:restriction'] }] : []),
     ...(plannedRestriction ? [{ label: 'Planned restriction', factLabel: 'Planned restriction', value: plannedRestriction, subjectId: 'passkey-restriction', outcome: 'pass' as const }] : []),
-    ...approvedPasskeyModels(snapshot, mapping).map((m, index) => {
-      const states = commonState ? [] : modelStates[index]
-      return { label: m.name, factLabel: 'AAGUID', subjectLabel: m.name, value: [m.aaguid, ...(m.source === 'existing' ? ['Existing tenant allowance retained'] : []), ...states].join(' · '), subjectId: `model:${m.aaguid}`, outcome: models.outcome, issueKeys: [`passkey:model:${m.aaguid}`] }
-    }),
   ]
   const availabilityRows = raw.filter(f => ['method', 'selfService', 'targets', 'exclusions', 'read'].includes(f.key) || f.key.startsWith('profiles.unread'))
   const availability: ConfigurationFinding = {
@@ -272,13 +263,15 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   }
   const protection = grouped('protection', 'Storage and attestation', f => f.key.endsWith('.types') || f.key.endsWith('.attestation'))
   protection.items = (protection.items ?? []).map(item => ({ ...item, factLabel: item.factLabel === 'Passkey Attestation' ? 'Current attestation' : item.factLabel === 'Passkey Storage' ? 'Current storage' : item.factLabel }))
-  const restrictionProblems = raw.filter(f => (f.key.endsWith('.restrictions') || f.key.startsWith('authenticator.') || f.key.startsWith('target.')) && f.outcome !== 'pass')
-  protection.items.push(...restrictionProblems.filter(said).map(f => ({ label: f.label, factLabel: f.label, value: f.value === 'AAGUID missing' ? 'Add the approved AAGUID to the allow list' : f.value, subjectId: f.key, outcome: f.outcome, issueKeys: [`passkey:${f.key}`] })))
+  const restrictionProblems = raw.filter(f => f.key.endsWith('.restrictions') && f.outcome !== 'pass')
+  protection.items.push(...restrictionProblems.filter(said).map(f => ({ label: f.label, factLabel: f.label, value: f.value, subjectId: f.key, outcome: f.outcome, issueKeys: [`passkey:${f.key}`] })))
   if (reading.resolution?.kind === 'target') {
     const profiles = Array.isArray(reading.resolution.target.passkeyProfiles) ? reading.resolution.target.passkeyProfiles as Record<string, unknown>[] : []
     const profileAttestationKnown = profiles.length > 0 && profiles.every(profile => profile?.attestationEnforcement === 'registrationOnly')
     const planned = typeof reading.resolution.target.isAttestationEnforced === 'boolean' ? reading.resolution.target.isAttestationEnforced : profileAttestationKnown ? true : null
     if (typeof planned === 'boolean') protection.items.push({ label: 'Planned attestation', factLabel: 'Planned attestation', value: planned ? 'Required' : 'Off', subjectId: 'planned-attestation', outcome: 'pass' })
+    // Device-bound for every user (owner, 2026-10-03): with attestation enforced only a device-bound passkey registers.
+    if (planned === true) protection.items.push({ label: 'Planned storage', factLabel: 'Planned storage', value: 'Device-bound only', subjectId: 'planned-storage', outcome: 'pass' })
   }
   const protectionProblems = (protection.items ?? []).filter(item => item.outcome !== 'pass')
   protection.value = protectionProblems.length === 0 ? 'Configured'
@@ -295,26 +288,27 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   // said only that (owner, 2026-09-23): it is left out, unless some account
   // would be left without a passkey the planned settings allow, where it is
   // Prepare affected passkeys' card and states how many accounts that is.
-  // One count on the card and in the task: the accounts the allow list would
+  // One count on the card and in the task: the accounts the change would
   // lock out, each named (net-new 3). The card read "33 accounts to prepare"
   // while its task said the list "would lock out 5 accounts", both right and
   // read as a contradiction.
   const restrictionRead = passkeyRestrictionReading(snapshot, mapping, groups)
   const lockedOut = restrictionRead.lockedOut
-  // One reading with the task (F-036, owner 2026-09-28): the accounts the change handed
-  // over stops, and an account it would lock out named once, as locked out. The card
-  // named one account whose passkey "loses access" to the allow list the task withholds,
-  // while the task named another as the one locked out.
+  // One reading with the task (F-036, owner 2026-09-28): the listed accounts the change
+  // stops (active people and the emergency accounts, roadmap/passkeyRestrictions.ts), and
+  // an account it would lock out named once, as locked out.
   const locked = new Set(lockedOut.map((id) => id.toLowerCase()))
   const unjudged = new Set(affected.unassessable.map((id) => id.toLowerCase()))
-  const users = affectedByHandover(snapshot, mapping, groups, affected, restrictionRead, reading.state !== 'inPlace').filter((user) => !locked.has(user.accountId.toLowerCase()))
+  // What each keeps, said beside the passkey it loses, so the list reads as the admin acts on it.
+  const keptBy = new Map(restrictionRead.keeps.map((k) => [k.accountId.toLowerCase(), k.method === 'phone' ? 'mobilephone' : k.method]))
+  const users = affectedByHandover(snapshot, mapping, affected, restrictionRead).filter((user) => !locked.has(user.accountId.toLowerCase()))
   // Applied, and every account whose passkey it stops keeps another way in: a fact, not work (net-new 4).
   const settled = reading.state === 'inPlace' && !users.length && lockedOut.length === 0
   // Applied, and it stopped no passkey: nothing to say about a change already
   // made (owner audit, 2026-09-24: "No existing passkey stops working under
   // this change." on a finished step).
   const madeHarmless = reading.state === 'inPlace' && affected.state === 'known' && !users.length && lockedOut.length === 0
-  const affectedFinding: ConfigurationFinding | null = madeHarmless || (!users.length && !lockedOut.length && affected.state !== 'known' && !affected.stranded.length) ? null : {
+  const affectedFinding: ConfigurationFinding | null = madeHarmless || (!users.length && !lockedOut.length && affected.state !== 'known' && !restrictionRead.stranded.length) ? null : {
     key: 'affected-passkeys',
     label: 'Existing passkeys affected',
     value: lockedOut.length > 0
@@ -323,7 +317,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
         ? `${users.length} ${users.length === 1 ? 'user has' : 'users have'} a passkey that loses access`
         : affected.state === 'known'
           ? 'No existing passkey stops working under this change.'
-          : fillText(settled ? LOCKED_OUT.accountsKeepAnother : ACCOUNTS_TO_PREPARE, { count: count(affected.stranded.length, 'account') }),
+          : fillText(settled ? LOCKED_OUT.accountsKeepAnother : ACCOUNTS_TO_PREPARE, { count: count(restrictionRead.stranded.length, 'account') }),
     // A lockout the scan settled is a fail; one resting on a passkey it could not judge
     // stays unknown, as before. Settled per account: another account's unreadable
     // passkey does not unsettle this one's (review, 2026-09-28).
@@ -331,7 +325,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
     detail: '',
     items: users.flatMap(user => user.methods.map((method, index) => ({
       label: `Affected passkey ${index + 1}`, factLabel: `Affected passkey ${index + 1}`, accountId: user.accountId, subjectId: user.accountId, subjectLabel: accountLabel(snapshot, user.accountId),
-      value: `${[method.displayName, method.aaguid, method.passkeyType].filter(Boolean).join(' · ')}${user.hasCompatibleAlternative ? ' · Compatible alternative observed' : ''}`,
+      value: `${[method.displayName, method.aaguid, method.passkeyType].filter(Boolean).join(' · ')}${user.hasCompatibleAlternative ? ' · Compatible alternative observed' : ''}${keptBy.has(user.accountId.toLowerCase()) ? ` · ${fillText(LOCKED_OUT.keeps, { method: methodName(keptBy.get(user.accountId.toLowerCase())!) })}` : ''}`,
       outcome: 'fail' as const, issueKeys: [`passkey:affected:${user.accountId.toLowerCase()}`],
     }))).concat(lockedOut.map(id => ({
       label: LOCKED_OUT.accountsLockedOut, factLabel: fillText(reading.state === 'inPlace' ? LOCKED_OUT.accountsToCheck : LOCKED_OUT.accountsLockedOut, { count: count(lockedOut.length, 'account') }), accountId: id, subjectId: id, subjectLabel: accountLabel(snapshot, id),

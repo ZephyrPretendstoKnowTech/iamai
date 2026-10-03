@@ -1,21 +1,19 @@
-// Whether the passkey key restrictions — an allow list of authenticator models —
-// are IAMAI's to hand over yet. One reading, for the step's Tasks and its Entra
-// channel alike (ui/surfaces/emergencyPasskeyTasks.ts, emergencyImplementation.ts).
+// Who Configure Passkey Authentication's change stops, and whether each keeps a
+// way in. One reading, for the step's card, its Tasks, its Entra channel, the
+// Plan's hold and MFA Readiness alike (ui/surfaces/emergencyPasskeyTasks.ts,
+// emergencyImplementation.ts, derive/readinessContext.ts).
 //
-// An allow list stops every passkey it does not name. The step opened on "Set
-// Enforce key restrictions to Yes… Restrict specific keys to Allow… Add AAGUID…
-// Save", four lines below a hedge that the passkeys on eleven accounts could not
-// be judged (Jordan D13). A warning above an instruction is still the
-// instruction.
+// The change makes passkeys device-bound and attested for every user, with no
+// key restrictions added (owner, 2026-10-03). Device-bound applies at sign-in,
+// so a synced passkey (iCloud Keychain, Google Password Manager) stops working;
+// attestation applies to new registrations only. Before the change the step
+// lists the people it would stop, so the admin knows: those left with no other
+// way in first. The change is not withheld; the list is how the admin prepares.
 //
-// What is held back is precise, because holding it back everywhere would make
-// the tool require what it can only help with: nearly every tenant holds a
-// passkey whose model the scan cannot read, and an account that keeps another
-// way to sign in loses a method, not its access, and registers an allowed
-// passkey afterwards. So the restrictions are withheld only while some
-// account the settings would leave without a passkey they allow has no other
-// sign-in method this tenant is known to accept. That account is locked out by
-// the save.
+// Only accounts that sign in are listed: an enabled account with a sign-in
+// inside the activity window, the one rule Disable or Confirm Dormant Accounts
+// uses (derive/sets.ts notActiveUsers). An emergency access account is always
+// listed, however rarely it signs in: its passkey is the way back in.
 //
 // An administrator is held to more. The admin policy asks for a
 // phishing-resistant sign-in, and where the tenant already enforces it, push
@@ -29,6 +27,7 @@ import type { MappingState } from '../mapping/types.ts'
 import type { MethodKind } from '../scoring/mfaViability.ts'
 import { methodAvailability } from './methodAvailability.ts'
 import { adminUserIds } from '../roles.ts'
+import { notActiveUsers } from '../derive/sets.ts'
 import { affectedPasskeysByProposedChange } from './passkeyCompatibility.ts'
 import type { AffectedPasskeyProjection, AffectedPasskeyUser } from './passkeyCompatibility.ts'
 
@@ -45,38 +44,51 @@ const SIGN_IN_METHOD: Partial<Record<MethodKind, string>> = {
 }
 
 export type PasskeyRestrictionReading = {
-  /** Accounts the intended settings leave with no passkey IAMAI can confirm they allow (passkeyCompatibility.ts `stranded`). */
+  /** Listed accounts the intended settings leave with no passkey IAMAI can confirm they allow (passkeyCompatibility.ts `stranded`). */
   stranded: string[]
-  /** Those of them with no other sign-in method the tenant is known to accept: the save locks them out. */
+  /** Those of them with no other sign-in method the tenant is known to accept: the change locks them out. */
   lockedOut: string[]
   /** Those of them that keep another method, with it: they lose a passkey, not their access. */
   keeps: { accountId: string; method: MethodKind }[]
 }
 
 /**
- * The accounts whose passkeys the change IAMAI hands over actually stops. While an
- * account would be locked out, the allow list is withheld (emergencyPasskeyTasks.ts
- * `withheld`), so a passkey that only the allow list stops is not stopped by what is
- * handed over, and its account is not affected (F-036, owner 2026-09-28: the sample's
- * card named one account whose passkey "loses access" while its task named another
- * as the one locked out). The card and the task read this one list.
+ * The accounts the step lists: enabled and signing in, by the dormant step's own
+ * rule, and every emergency access account. A dormant account is Disable or
+ * Confirm Dormant Accounts' to handle; a disabled one cannot sign in at all.
  */
-export function affectedByHandover(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers | undefined, affected: AffectedPasskeyProjection, reading: PasskeyRestrictionReading, beforeChange: boolean): AffectedPasskeyUser[] {
-  // Once the settings are in place the allow list is the tenant's, and it stops them.
-  if (reading.lockedOut.length === 0 || !beforeChange) return affected.users
-  // The change as handed over, not a guess from a passkey's reason: a passkey the
-  // storage-type change stops is still named (review, 2026-09-28).
-  return affectedPasskeysByProposedChange(snapshot, mapping, groups ?? new Map(), { allowListWithheld: true }).users
+export function listedPasskeyAccounts(snapshot: TenantSnapshot, mapping: MappingState | undefined): (accountId: string) => boolean {
+  const emergency = new Set((mapping?.breakGlassUserIds ?? []).map((id) => id.toLowerCase()))
+  const dormant = new Set(notActiveUsers(snapshot, snapshot.asOf).map((u) => u.id.toLowerCase()))
+  const disabled = new Set(snapshot.users.filter((u) => u.accountEnabled === false).map((u) => u.id.toLowerCase()))
+  return (accountId) => {
+    const id = accountId.toLowerCase()
+    return emergency.has(id) || (!dormant.has(id) && !disabled.has(id))
+  }
+}
+
+/**
+ * The listed accounts whose passkeys the change stops, each with the passkeys it
+ * stops: the accounts left with no other way in first (F-036: the card and the
+ * task read this one list).
+ */
+export function affectedByHandover(snapshot: TenantSnapshot, mapping: MappingState | undefined, affected: AffectedPasskeyProjection, reading: PasskeyRestrictionReading): AffectedPasskeyUser[] {
+  const listed = listedPasskeyAccounts(snapshot, mapping)
+  const locked = new Set(reading.lockedOut.map((id) => id.toLowerCase()))
+  const users = affected.users.filter((u) => listed(u.accountId))
+  return [...users.filter((u) => locked.has(u.accountId.toLowerCase())), ...users.filter((u) => !locked.has(u.accountId.toLowerCase()))]
 }
 
 export function passkeyRestrictionReading(snapshot: TenantSnapshot, mapping: MappingState | undefined, groups: GroupMembers = new Map()): PasskeyRestrictionReading {
   const affected = affectedPasskeysByProposedChange(snapshot, mapping, groups)
+  const listed = listedPasskeyAccounts(snapshot, mapping)
   const { usable } = methodAvailability(snapshot, { groupMembers: Object.fromEntries([...groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])) })
   const lockedOut: string[] = []
   const keeps: { accountId: string; method: MethodKind }[] = []
   const admins = new Set([...adminUserIds(snapshot.roles)].map((id) => id.toLowerCase()))
   for (const row of snapshot.registrationDetails ?? []) if (row.isAdmin) admins.add(row.id.toLowerCase())
-  for (const accountId of affected.stranded) {
+  const stranded = affected.stranded.filter(listed)
+  for (const accountId of stranded) {
     const methods = snapshot.authMethods[accountId]
     const admin = admins.has(accountId.toLowerCase())
     // Known to be accepted, or it does not count: an unread authentication
@@ -86,5 +98,5 @@ export function passkeyRestrictionReading(snapshot: TenantSnapshot, mapping: Map
     if (other) keeps.push({ accountId, method: other.kind })
     else lockedOut.push(accountId)
   }
-  return { stranded: affected.stranded, lockedOut, keeps }
+  return { stranded, lockedOut, keeps }
 }

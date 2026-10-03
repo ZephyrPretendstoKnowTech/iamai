@@ -315,6 +315,8 @@ export type CredentialReading = {
   /** Registered inside the readiness window: new, so no sign-in with it yet says it is unused, not that it may be gone. */
   createdInWindow: boolean
   created: string | null
+  /** A passkey's storage as Entra reports it: device-bound (stays on the authenticator that made it) or synced (copied through a personal account). Null where not read, or not a passkey. */
+  storage?: 'deviceBound' | 'synced' | null
   /** Usable under the tenant's current passkey settings; an observed sign-in settles it. */
   allowedNow: Verdict
   /** Allowed by Emergency Access Step 3's intended models; null where Step 3's settings are already the tenant's, or the class has no model. */
@@ -622,9 +624,13 @@ function fallbackOf(pk: PasskeyPolicy): SignInOption {
  * list. Settings already applied are today's, which `eligibility` has read.
  */
 function step3Keeps(option: SignInOption, ctx: ReadinessContext): boolean {
-  if (ctx.step3.applied || ctx.step3.models.length === 0) return true
+  if (ctx.step3.applied) return true
   const form = FORM_OF[option]
   if (form === undefined) return true
+  // Step 3 makes passkeys device-bound and attested for everyone (owner,
+  // 2026-10-03): a synced passkey never survives it.
+  if (form === 'synced') return false
+  if (ctx.step3.models.length === 0) return true
   const listed = new Set(ctx.step3.models.map((m) => m.aaguid.toLowerCase()))
   const models = form === 'authenticator' ? AUTHENTICATOR_AAGUIDS : form === 'windowsHelloPasskey' ? WINDOWS_HELLO_AAGUIDS : []
   return models.some((a) => listed.has(a))
@@ -831,7 +837,10 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       forms.add(passkeyForm(m, reg ?? null))
       if (allowedNow !== 'no') usableForms.add(passkeyForm(m, reg ?? null))
     }
-    const afterStep3: Verdict | null = cls !== 'passkey' || ctx.step3.applied || step3.size === 0 ? null : aaguid === null ? 'unknown' : step3.has(aaguid) ? 'yes' : 'no'
+    // Step 3 makes passkeys device-bound and attested for everyone (owner, 2026-10-03):
+    // a synced passkey never survives it, whatever its model. A model matters only
+    // where the tenant keeps its own allow list.
+    const afterStep3: Verdict | null = cls !== 'passkey' || ctx.step3.applied ? null : /synced/i.test(m?.passkeyType ?? '') ? 'no' : step3.size === 0 ? null : aaguid === null ? 'unknown' : step3.has(aaguid) ? 'yes' : 'no'
     // The Plan's own per-person projection confirms this key stops (F-075, reviews of
     // 2026-09-28): only where it has settled settings to judge by and judged this person.
     // Where it cannot say, nothing is claimed either way.
@@ -851,6 +860,7 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
       approvedTwin: twin ? twin.aaguid.toLowerCase() : null,
       createdInWindow: !!m?.createdDateTime && inWindow(m.createdDateTime),
       created: m?.createdDateTime ?? null,
+      storage: (cls !== 'passkey' ? null : /synced/i.test(m?.passkeyType ?? '') ? 'synced' : /devicebound/i.test(m?.passkeyType ?? '') ? 'deviceBound' : null) as CredentialReading['storage'],
       allowedNow,
       afterStep3,
       ...(stopConfirmed ? { stopConfirmed: true as const } : {}),

@@ -99,7 +99,7 @@ test("a row's cells: the state is the pack's word, a person's role is Admin or n
   const t = readinessTable(f.snapshot, f.mapping)
   assert.deepEqual(t.header, W.csvColumns)
   // The sign-in column is headed as the accounts file heads it (F-127).
-  assert.deepEqual(W.csvColumns, [W.columns[0], 'Sign-in address', 'Role', W.columns[1], W.columns[2], 'Readiness', W.columns[3]])
+  assert.deepEqual(W.csvColumns, [W.columns[0], 'Sign-in address', 'Role', W.columns[1], W.columns[2], 'Readiness', W.columns[3], 'Passkey type'])
   for (const r of t.rows) assert.equal(r.length, W.csvColumns.length)
 })
 

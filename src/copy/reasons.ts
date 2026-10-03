@@ -56,7 +56,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; namedLocationsUnread: string; passkeyProfiles: string; passkeyBlockConflict: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string; mailAccounts: string; operator: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; namedLocationsUnread: string; passkeyProfiles: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string; mailAccounts: string; operator: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -102,7 +102,6 @@ export const BLOCKED_REASON = {
   namedLocationsUnread: BLOCKED.namedLocationsUnread,
   /** Passkey settings IAMAI cannot change without overwriting something (roadmap/passkeySettings.ts): a profile-based policy, a block list that blocks Authenticator, or a partial read. */
   passkeyProfiles: BLOCKED.passkeyProfiles,
-  passkeyBlockConflict: BLOCKED.passkeyBlockConflict,
   passkeyPartialRead: BLOCKED.passkeyPartialRead,
   /** The sync workflow's calling identity is not established as supported for workload Conditional Access (roadmap/workloadIdentity.ts), or is known not to be. */
   workloadIdentityUnknown: BLOCKED.workloadIdentityUnknown,

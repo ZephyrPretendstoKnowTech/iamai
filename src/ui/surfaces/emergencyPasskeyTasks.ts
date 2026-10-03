@@ -1,5 +1,5 @@
 import { affectedPasskeysByProposedChange } from '../../roadmap/passkeyCompatibility.ts'
-import { PASSKEY_TARGET, assignedPasskeyProfiles, passkeyReadingOf, requiredModels, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
+import { PASSKEY_TARGET, assignedPasskeyProfiles, passkeyReadingOf, samePasskeyValue } from '../../roadmap/passkeySettings.ts'
 import { approvedPasskeyModels } from '../../roadmap/emergencyJourney.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection, EmergencyAccountTaskVariant } from './emergencyAccountTasks.ts'
 import { emergencyRegistrationVariants, yubiKeySteps } from './emergencyAccountTasks.ts'
@@ -88,66 +88,29 @@ function normalRegistrationVariants(): EmergencyAccountTaskVariant[] {
   }))
 }
 
-/** The portal's Add AAGUID provider entries: selecting one adds every model of that provider. */
-const AAGUID_PROVIDERS: readonly { label: string; aaguids: readonly string[] }[] = [
-  { label: 'Microsoft Authenticator', aaguids: ['90a3ccdf-635c-4729-a248-9b709135078f', 'de1e552d-db1d-4423-a619-566b625cdc84'] },
-]
-const lowerIds = (value: unknown): string[] => Array.isArray(value) ? [...new Set(value.filter((id): id is string => typeof id === 'string').map(id => id.trim().toLowerCase()))] : []
 const typeWords = (value: unknown): string => (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []).map(entry => String(entry).trim().toLowerCase()).filter(Boolean).map(entry => entry === 'devicebound' ? 'Device-bound' : entry === 'synced' ? 'Synced' : entry).join(', ')
 
-/**
- * The allow list as portal actions, each value given where it is typed: the
- * entries the target drops removed, then every model the target lists — a
- * provider entry where every one of its models is required (one save), then
- * each remaining model entered by AAGUID (one save each).
- */
-function aaguidSteps(currentIds: string[], targetIds: string[], required: readonly string[], modelNames: ReadonlyMap<string, string>, profile: boolean): string[] {
-  const named = (id: string): string => modelNames.has(id) ? ` (${modelNames.get(id)})` : ''
-  const steps = currentIds.filter(id => !targetIds.includes(id)).map(id => `Remove **${id}**${named(id)} from the AAGUID list.`)
-  let missing = [...targetIds]
-  if (profile) for (const provider of AAGUID_PROVIDERS) {
-    if (!provider.aaguids.every(id => required.includes(id)) || !provider.aaguids.some(id => missing.includes(id))) continue
-    steps.push(`Select **+ Add AAGUID → ${provider.label}**, then **Save**.`)
-    missing = missing.filter(id => !provider.aaguids.includes(id))
-  }
-  for (const id of missing) steps.push(profile ? `Select **+ Add AAGUID → Enter AAGUID**, enter **${id}**${named(id)}, then **Save**.` : `Select **Add AAGUID** and enter **${id}**${named(id)}.`)
-  return steps
-}
 
 const saved = (steps: string[]): string[] => steps.length && !/then \*\*Save\*\*\.$/.test(steps.at(-1)!) ? [...steps, 'Select **Save**.'] : steps
 
 /**
- * One profile's values, every one of them, in the order the profile page sets
- * them. With attestation enforced the page offers device-bound passkeys only,
- * however the types are stored.
+ * One profile's values, in the order the profile page sets them: device-bound
+ * passkeys with attestation enforced, for every user (owner, 2026-10-03). Its key
+ * restrictions are the tenant's and are left as they are, so no line touches them.
  */
-function profileSteps(currentRaw: unknown, targetRaw: unknown, required: readonly string[], modelNames: ReadonlyMap<string, string>, restrict = true): string[] {
-  const current = (currentRaw && typeof currentRaw === 'object' ? currentRaw : {}) as Record<string, any>
+function profileSteps(targetRaw: unknown): string[] {
   const target = (targetRaw && typeof targetRaw === 'object' ? targetRaw : {}) as Record<string, any>
-  const kr = current.keyRestrictions ?? {}
-  const tk = target.keyRestrictions ?? {}
   const attested = target.attestationEnforcement === 'registrationOnly'
   return saved([
     `Set **Passkey types** to **${attested ? 'Device-bound' : typeWords(target.passkeyTypes)}**.`,
     `Set **Enforce attestation** to **${attested ? 'Yes' : 'No'}**.`,
-    // The allow list, only where it is IAMAI's to hand over (roadmap/passkeyRestrictions.ts).
-    ...(!restrict ? [] : [tk.isEnforced === true ? `Select **Target specific AAGUIDs** and set **Behavior** to **${tk.enforcementType === 'block' ? 'Block' : 'Allow'}**.` : 'Clear **Target specific AAGUIDs**.']),
-    ...(restrict ? aaguidSteps(lowerIds(kr.aaGuids), lowerIds(tk.aaGuids), required, modelNames, true) : []),
+    'Leave **Target specific AAGUIDs** as it is.',
   ])
 }
 
-/** The legacy (profile-less) configuration's values, every one of them, on its Configure tab. */
-const LEGACY_PROTECTION_FIELDS = ['isAttestationEnforced', 'keyRestrictions.isEnforced', 'keyRestrictions.enforcementType', 'keyRestrictions.aaGuids'] as const
-function legacySteps(current: Record<string, any> | null, target: Record<string, any>, required: readonly string[], modelNames: ReadonlyMap<string, string>, restrict = true): string[] {
-  const yes = (value: unknown): string => value === true ? 'Yes' : 'No'
-  return saved(LEGACY_PROTECTION_FIELDS.filter(field => restrict || !field.startsWith('keyRestrictions.')).flatMap(field => {
-    switch (field) {
-      case 'isAttestationEnforced': return [`Set **Enforce attestation** to **${yes(target.isAttestationEnforced)}**.`]
-      case 'keyRestrictions.isEnforced': return [`Set **Enforce key restrictions** to **${yes(target.keyRestrictions?.isEnforced)}**.`]
-      case 'keyRestrictions.enforcementType': return [`Set **Restrict specific keys** to **${target.keyRestrictions?.enforcementType === 'block' ? 'Block' : 'Allow'}**.`]
-      case 'keyRestrictions.aaGuids': return aaguidSteps(lowerIds(current?.keyRestrictions?.aaGuids), lowerIds(target.keyRestrictions?.aaGuids), required, modelNames, false)
-    }
-  }))
+/** The legacy (profile-less) configuration's value on its Configure tab: attestation; the key restrictions stay as they are. */
+function legacySteps(target: Record<string, any>): string[] {
+  return saved([`Set **Enforce attestation** to **${target.isAttestationEnforced === true ? 'Yes' : 'No'}**.`, 'Leave **Enforce key restrictions** as it is.'])
 }
 
 /** Three persistent, outcome-sized Entra procedures for Configure Passkey Authentication. */
@@ -175,18 +138,25 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     return changedProfileFacts(currentProfiles.get(id), raw, modelNames)
   })
   const affected = affectedPasskeysByProposedChange(ctx.snapshot, ctx.mapping, ctx.groups)
-  // Who the planned allow list would leave without a passkey it allows, and
-  // whether any of them would keep no way to sign in (roadmap/passkeyRestrictions.ts).
+  // Who the change stops (a synced passkey under device-bound), and whether each
+  // keeps another way to sign in (roadmap/passkeyRestrictions.ts): one reading
+  // with the Existing passkeys affected card (affectedByHandover, F-036). The
+  // active people and the emergency accounts, those with no other way in first.
   const restriction = passkeyRestrictionReading(ctx.snapshot, ctx.mapping, ctx.groups)
-  const withheld = restriction.lockedOut.length > 0
-  // The accounts the change handed over stops, read as the Existing passkeys affected
-  // card reads them (roadmap/passkeyRestrictions.ts affectedByHandover, F-036): a passkey
-  // only the withheld allow list stops is not one of them.
-  const users = affectedByHandover(ctx.snapshot, ctx.mapping, ctx.groups, affected, restriction, reading.state !== 'inPlace')
-  const affectedFacts = users.flatMap(user => user.methods.map(method => ({
-    label: upnOf(ctx, user.accountId),
-    value: `${method.displayName}${method.aaguid ? ` · ${method.aaguid}` : ''}${method.passkeyType ? ` · ${method.passkeyType}` : ''}${user.hasCompatibleAlternative ? ' · Compatible alternative registered' : ' · Replacement needed'}`,
-  })))
+  const users = affectedByHandover(ctx.snapshot, ctx.mapping, affected, restriction)
+  const locked = new Set(restriction.lockedOut.map(id => id.toLowerCase()))
+  const kept = new Map(restriction.keeps.map(k => [k.accountId.toLowerCase(), k.method]))
+  const affectedFacts = users.flatMap(user => user.methods.map(method => {
+    const keeps = kept.get(user.accountId.toLowerCase())
+    const after = locked.has(user.accountId.toLowerCase()) ? PR().factNoOtherWay
+      : user.hasCompatibleAlternative ? PR().factOtherPasskey
+        : keeps ? fillText(PR().factKeeps, { method: methodName(keeps === 'phone' ? 'mobilephone' : keeps) })
+          : PR().factReplacement
+    return {
+      label: upnOf(ctx, user.accountId),
+      value: `${method.displayName}${method.passkeyType ? ` · ${typeWords(method.passkeyType)}` : ''}${method.aaguid ? ` · ${method.aaguid}` : ''} · ${after}`,
+    }
+  }))
   const variants = normalRegistrationVariants()
   const customHardware = intendedModels.filter(model => model.source === 'plan' && model.recovery && !/yubikey/i.test(model.name))
   if (customHardware.length) variants.push({
@@ -195,21 +165,13 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     facts: [...affectedFacts, ...customHardware.map(model => ({ label: model.name, value: `Replacement AAGUID: ${model.aaguid}` }))],
     steps: yubiKeySteps('the affected account', `approved hardware security key (${customHardware.map(model => `${model.name}, AAGUID ${model.aaguid}`).join('; ')})`).filter(line => !/Store the|Return to IAMAI/i.test(line)).map(line => line.replace('Microsoft Entra admin center', 'a normal work resource')),
   })
-  const required = requiredModels(ctx.mapping).map(model => model.aaguid.toLowerCase())
   const targetValue = (field: string): unknown => field === 'state' ? resolution?.target.state : field === 'includeTargets' ? resolution?.target.includeTargets : field === 'isSelfServiceRegistrationAllowed' ? resolution?.target.isSelfServiceRegistrationAllowed : field === 'isAttestationEnforced' ? resolution?.target.isAttestationEnforced : field === 'keyRestrictions.isEnforced' ? resolution?.target.keyRestrictions?.isEnforced : field === 'keyRestrictions.enforcementType' ? resolution?.target.keyRestrictions?.enforcementType : field === 'keyRestrictions.aaGuids' ? resolution?.target.keyRestrictions?.aaGuids : field === 'passkeyProfiles' ? resolution?.target.passkeyProfiles : undefined
   // Every task states the values it sets, in every state, a change needed or
   // not (owner, 2026-09-23): they read "Review … No save is required." once the
   // settings matched. The values are the resolved target's. Where the scan
   // resolves none (the settings unread, or a policy the step holds for review)
-  // they are the plan's own: the pinned settings, the tenant's included targets
-  // or All users, and each allow list keeping the models it already allows and
-  // adding the approved ones. The protections had named no value at all there.
-  const restrictionsOf = (raw: unknown): unknown => raw && typeof raw === 'object' ? (raw as Record<string, unknown>).keyRestrictions : undefined
-  const planKeys = (raw: unknown): Record<string, unknown> => {
-    const kr = restrictionsOf(raw) as Record<string, unknown> | undefined
-    const kept = kr?.isEnforced === true && kr.enforcementType === 'allow' ? lowerIds(kr.aaGuids) : []
-    return { isEnforced: true, enforcementType: 'allow', aaGuids: [...kept, ...required.filter(id => !kept.includes(id))] }
-  }
+  // they are the plan's own: the pinned settings and the tenant's included
+  // targets or All users. Key restrictions are the tenant's either way.
   const include = [resolution?.target.includeTargets, current?.includeTargets, PASSKEY_TARGET.includeTargets].map(displayTargets).find(words => words !== '' && words !== 'None')
   const registrationSteps = [
     `Set **Enable** to **${resolution?.target.state === 'disabled' ? 'Off' : 'On'}**.`,
@@ -217,20 +179,13 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
     `Set **Allow self-service set up** to **${resolution?.target.isSelfServiceRegistrationAllowed === false ? 'No' : 'Yes'}**.`,
   ]
   const assignedProfiles = profiles?.profiles ?? []
-  const target = (resolution?.target ?? { ...PASSKEY_TARGET, keyRestrictions: planKeys(current) }) as Record<string, any>
+  const target = (resolution?.target ?? { ...PASSKEY_TARGET, keyRestrictions: current?.keyRestrictions ?? PASSKEY_TARGET.keyRestrictions }) as Record<string, any>
   const targetProfiles = resolution
     ? new Map((Array.isArray(target.passkeyProfiles) ? target.passkeyProfiles as unknown[] : []).flatMap(raw => raw && typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as Record<string, unknown>).id === 'string' ? [[String((raw as Record<string, unknown>).id).toLowerCase(), raw] as const] : []))
-    : new Map(assignedProfiles.map(profile => [profile.id.toLowerCase(), { ...profile, passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly', keyRestrictions: planKeys(profile) }] as const))
-  // The allow list is stated unless it is withheld (roadmap/passkeyRestrictions.ts),
-  // and always where the tenant already has it as planned.
-  const restricts = (from: unknown, to: unknown): boolean => !withheld || samePasskeyValue(restrictionsOf(from), restrictionsOf(to))
+    : new Map(assignedProfiles.map(profile => [profile.id.toLowerCase(), { ...profile, passkeyTypes: 'deviceBound', attestationEnforcement: 'registrationOnly' }] as const))
   const protectionSteps = assignedProfiles.length && targetProfiles.size
-    ? assignedProfiles.flatMap(profile => {
-        const from = currentProfiles.get(profile.id)
-        const to = targetProfiles.get(profile.id.toLowerCase())
-        return [`Open **${clean(profile.name || profile.id)}**.`, ...profileSteps(from, to, required, modelNames, restricts(from, to))]
-      })
-    : ['Open **Configure**.', ...legacySteps(current as Record<string, any> | null, target, required, modelNames, restricts(current, target))]
+    ? assignedProfiles.flatMap(profile => [`Open **${clean(profile.name || profile.id)}**.`, ...profileSteps(targetProfiles.get(profile.id.toLowerCase()))])
+    : ['Open **Configure**.', ...legacySteps(target)]
   // Prepare affected passkeys opens on what the scan found: the accounts the
   // planned settings would stop, or the affected accounts. The lines that said
   // IAMAI could not tell which passkeys the settings affect, or had not read
@@ -266,16 +221,16 @@ export function emergencyPasskeyTasksOf(step: Step, ctx: StepVarContext): Emerge
       issueKeys: (step.configurationFindings ?? []).filter(finding => finding.key === 'protection').flatMap(finding => finding.items?.flatMap(item => item.issueKeys ?? []) ?? []),
       // The changes are the tile's facts; the procedure applies each value at the point of action.
       readinessFacts: resolution ? (profileCorrections.length ? profileCorrections : protectionFields.flatMap(field => { const value = fieldAction(field, targetValue(field), modelNames).replace(/\*\*/g, ''); return value ? [{ label: fieldLabel(field), value }] : [] })) : [],
-      steps: [...(withheld && protectionFields.some(field => field === 'passkeyProfiles' || field.startsWith('keyRestrictions.')) ? [fillText(PR().withheldTask, { count: count(restriction.lockedOut.length, 'account') })] : []), 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...protectionSteps, 'Return to IAMAI and select **Scan to update the plan**.'],
+      steps: [...(restriction.lockedOut.length > 0 && protectionFields.length > 0 ? [fillText(PR().lockedOutTask, { count: count(restriction.lockedOut.length, 'account') })] : []), 'Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Authentication methods → Policies → Passkey (FIDO2)**.', ...protectionSteps, 'Return to IAMAI and select **Scan to update the plan**.'],
     },
   ]
   // The step opens on Prepare while it is the thing to do first: somebody would be
   // locked out, or somebody loses a passkey the change has not been made to yet.
-  const prepareFirst = withheld || (restriction.stranded.length > 0 && protectionFields.length > 0)
+  const prepareFirst = restriction.lockedOut.length > 0 || (restriction.stranded.length > 0 && protectionFields.length > 0)
   return { tasks, printAll: true, approvedModels: intendedModels, ...(prepareFirst ? { recommendedTaskId: 'prepare-affected-passkeys' } : {}) }
 }
 
-type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; withheld: string; withheldOne: string; withheldTask: string; keptMany: string }
+type PasskeyRestrictionWords = { stranded: string; strandedAfter: string; strandedAfterLocked: string; lockedOut: string; lockedOutOne: string; lockedOutTask: string; keptMany: string; factNoOtherWay: string; factOtherPasskey: string; factKeeps: string; factReplacement: string }
 const PR = (): PasskeyRestrictionWords => (shared as unknown as { passkeyRestrictions: PasskeyRestrictionWords }).passkeyRestrictions
 
 /** Accounts by sign-in name, the first NAMES_INLINE of them, the rest counted. */
@@ -285,21 +240,20 @@ function namedAccounts(ids: readonly string[], ctx: StepVarContext): string {
 }
 
 /**
- * The accounts the planned allow list would leave without a passkey it allows,
- * named, with what each keeps — or, where one would keep nothing, why the
- * restrictions are not handed over. The step said "IAMAI could not tell whether
+ * The accounts the change would leave without a passkey it allows (a synced
+ * passkey under device-bound), named, with what each keeps — or, where one would
+ * keep nothing, that the change locks it out unless it gets another way in first. The step said "IAMAI could not tell whether
  * the planned settings affect the passkeys on 11 accounts… Check those before
  * applying restrictions" over a Save that applied them, naming none (Jordan
  * D13), and said "before applying restrictions" still after they were applied
  * (Marcus D8).
  */
 export function strandedSentence(r: PasskeyRestrictionReading, ctx: StepVarContext, beforeChange: boolean): string {
-  // Before the change, an account the list would lock out withholds it. After it
-  // — the tenant applied the restrictions — "stay off for now" is not true, and
-  // "each keeps …" is not true of an account with no other confirmed way in: the
-  // step says to check each one now.
+  // Before the change, an account it would lock out is named first, with what to
+  // do. After it, "each keeps …" is not true of an account with no other
+  // confirmed way in: the step says to check each one now.
   if (r.lockedOut.length > 0 && !beforeChange) return fillText(PR().strandedAfterLocked, { count: count(r.stranded.length, 'account'), names: namedAccounts(r.stranded, ctx) })
-  if (r.lockedOut.length > 0) return fillText(r.lockedOut.length === 1 ? PR().withheldOne : PR().withheld, { count: count(r.lockedOut.length, 'account'), names: namedAccounts(r.lockedOut, ctx) })
+  if (r.lockedOut.length > 0) return fillText(r.lockedOut.length === 1 ? PR().lockedOutOne : PR().lockedOut, { count: count(r.lockedOut.length, 'account'), names: namedAccounts(r.lockedOut, ctx) })
   const methods = [...new Set(r.keeps.map(k => methodName(k.method === 'phone' ? 'mobilephone' : k.method)))]
   const kept = methods.length === 1 ? methods[0] : fillText(PR().keptMany, { methods: list(methods) })
   return fillText(beforeChange ? PR().stranded : PR().strandedAfter, { count: count(r.stranded.length, 'account'), names: namedAccounts(r.stranded, ctx), kept })

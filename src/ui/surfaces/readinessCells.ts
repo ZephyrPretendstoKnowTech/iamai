@@ -60,6 +60,8 @@ type Words = {
   }
   notes: { automated: string; onLeave: string; keyStops: string }
   panel: {
+    storage: string
+    storageTypes: Record<'deviceBound' | 'synced', string>
     noDevices: string
     noneRegistered: string
     noneNow: string
@@ -461,7 +463,9 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
     const last = c.lastConfirmed ? `${monthDay(c.lastConfirmed.at)}${c.lastConfirmed.os ? `, ${osWord(c.lastConfirmed.os)}` : ''}${c.lastConfirmed.retained ? ` (${P.retained})` : ''}` : P.never
     // Microsoft's last-use date, where it was read: supporting evidence, and the flag for a passkey that may be gone.
     const used = c.unused === 'never' ? P.unused.never : c.unused === 'stale' && c.lastUsed ? fillText(P.unused.stale, { date: monthDay(c.lastUsed) }) : c.lastUsed ? fillText(P.lastUsedDate, { date: monthDay(c.lastUsed) }) : null
-    const facts: [string, string][] = [[P.allowed, allowed], [P.lastConfirmed, last], ...(used ? [[P.lastUsed, used] as [string, string]] : [])]
+    // A passkey's storage, as Entra reports it: Configure Passkey Authentication stops a synced one (owner, 2026-10-03).
+    const stored: [string, string][] = c.storage ? [[P.storage, P.storageTypes[c.storage]]] : []
+    const facts: [string, string][] = [...stored, [P.allowed, allowed], [P.lastConfirmed, last], ...(used ? [[P.lastUsed, used] as [string, string]] : [])]
     return { icon: c.cls === 'passkey' && c.aaguid && !/authenticator/i.test(model) ? 'key' : c.cls === 'windowsHello' || c.cls === 'platformCredential' ? 'computer' : 'phone', name: classWord(c.cls), sub: model, facts }
   })
 }
@@ -587,5 +591,15 @@ export function rowCells(r: ReadinessRow, next: string = nextCell(r)): string[] 
   const devices = [...shown.chips.map((c) => `${c.os}: ${c.word}`), ...quiet].join('; ')
   const state = r.state !== null ? stateTitle(r.state) : r.explained ? T.counted[r.explained] : r.kind !== 'person' ? (T.show[r.kind] ?? r.kind) : ''
   // The methods cell with the note the screen shows under it (methodsLine).
-  return [roleWord(r), devices, methodsLine(r), state, [next, keyStopsNote(r)].filter((x) => x !== '').join(' ')]
+  return [roleWord(r), devices, methodsLine(r), state, [next, keyStopsNote(r)].filter((x) => x !== '').join(' '), passkeyTypesWord(r)]
+}
+
+/**
+ * The person's passkeys by storage, for the CSV: Device-bound, Synced, or both. A synced
+ * passkey stops at Configure Passkey Authentication (owner, 2026-10-03), so the admin can
+ * sort the list by it. Empty where the person holds no passkey whose storage was read.
+ */
+export function passkeyTypesWord(r: ReadinessRow): string {
+  const kinds = new Set((r.readiness?.credentials ?? []).flatMap((c) => (c.cls === 'passkey' && c.storage ? [c.storage] : [])))
+  return (['deviceBound', 'synced'] as const).filter((k) => kinds.has(k)).map((k) => T.panel.storageTypes[k]).join(', ')
 }

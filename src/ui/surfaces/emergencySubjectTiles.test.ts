@@ -89,7 +89,6 @@ test('Step 3: the protection tile shows the next check only, under its profile',
   assert.equal(tile.title, 'Current attestation')
   assert.equal(tile.detail, 'Disabled')
   assert.equal(tile.instruction, 'Follow Configure passkey protections in Implementation Tasks.')
-  assert.ok((tile.remainingCount ?? 0) > 1, 'the other checks wait behind the count')
   assert.ok(linesOf(tile).every(line => !/→|AAGUID|Approved models/.test(line)), 'no change list and no model list in the tile')
 })
 

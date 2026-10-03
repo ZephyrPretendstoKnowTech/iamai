@@ -102,26 +102,6 @@ export function passkeyProfilesFor(policy: Fido2Configuration, accountId: string
  * methods per key made the tenant-wide projection quadratic (about 1.7 s of the
  * large fixture's roadmap after e54f1590).
  */
-/**
- * The planned settings as handed over while the allow list is withheld: every other
- * setting as planned (passkey types, attestation), each key restriction the tenant's
- * own, as Configure Passkey Authentication's task leaves them (emergencyPasskeyTasks.ts
- * `restricts`). A profile the tenant does not have yet gets no restriction.
- */
-function withTenantAllowList(target: Fido2Configuration, current: Fido2Configuration): Fido2Configuration {
-  const next = structuredClone(target)
-  next.keyRestrictions = structuredClone(current.keyRestrictions ?? null)
-  if (Array.isArray(next.passkeyProfiles)) {
-    const own = new Map((Array.isArray(current.passkeyProfiles) ? current.passkeyProfiles : []).map((p) => [String((p as Record<string, unknown>)?.id ?? '').toLowerCase(), p as Record<string, unknown>]))
-    next.passkeyProfiles = next.passkeyProfiles.map((raw) => {
-      const profile = raw as Record<string, unknown>
-      const from = own.get(String(profile?.id ?? '').toLowerCase())
-      return { ...profile, keyRestrictions: from ? structuredClone(from.keyRestrictions ?? null) : { isEnforced: false } }
-    })
-  }
-  return next
-}
-
 function oneKey(snapshot: TenantSnapshot, accountId: string, method: AuthMethodSummary): TenantSnapshot {
   return { ...snapshot, authMethods: { [accountId]: [method] } }
 }
@@ -152,7 +132,12 @@ function policyCompatibility(snapshot: TenantSnapshot, ids: readonly string[], p
         const types = typeof profile.passkeyTypes === 'string' ? profile.passkeyTypes.toLowerCase().split(',').map(t => t.trim()) : []
         const keyType = key.passkeyType?.toLowerCase()
         if (!keyType || !types.length || types.some(t => t !== 'devicebound' && t !== 'synced')) { unknown = true; continue }
-        if (!types.includes(keyType)) continue
+        // With attestation enforced a profile allows device-bound passkeys only, and
+        // synced ones are excluded (Microsoft Learn, passkey profiles), however the
+        // types are stored: Graph can keep "deviceBound,synced" while the portal shows
+        // Device-bound. So a synced passkey stops under it (owner, 2026-10-03).
+        const allowed = profileAttestationRequirement(profile.attestationEnforcement) === true ? types.filter(t => t !== 'synced') : types
+        if (!allowed.includes(keyType)) continue
         if (purpose === 'approval') {
           const attestationRequired = profileAttestationRequirement(profile.attestationEnforcement)
           if (attestationRequired === null) { unknown = true; continue }
@@ -254,13 +239,10 @@ export function recoveryPasskeyCandidateSet(snapshot: TenantSnapshot, accountId:
 }
 
 /** Registered methods that are usable now and not under the exact proposed target. */
-export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map(), opts: { allowListWithheld?: boolean } = {}): AffectedPasskeyProjection {
+export function affectedPasskeysByProposedChange(snapshot: TenantSnapshot, mapping?: MappingState, groups: GroupMembers = new Map()): AffectedPasskeyProjection {
   const reading = passkeyReadingOf(snapshot, mapping)
   if (!reading.current || reading.resolution?.kind !== 'target') return { state: 'unknown', users: [], unassessable: [], coverage: ['configuration'], stranded: [] }
-  // While an account would be locked out, the allow list is not handed over
-  // (roadmap/passkeyRestrictions.ts): the change is every other planned setting,
-  // with each key restriction left as the tenant has it (F-036).
-  const target = opts.allowListWithheld ? withTenantAllowList(reading.resolution.target, reading.current) : reading.resolution.target
+  const target = reading.resolution.target
   const users: AffectedPasskeyUser[] = []
   const unassessable = new Set<string>()
   const stranded = new Set<string>()

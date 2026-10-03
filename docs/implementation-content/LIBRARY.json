@@ -1499,7 +1499,7 @@
       ],
       "correctionModules": 0,
       "requiredBindings": 1,
-      "optionalBindings": 13,
+      "optionalBindings": 11,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -3913,35 +3913,11 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "passkey.target.allowedAaguids",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-prereq-passkey-settings"
-      ],
-      "packages": [
-        "s-prereq-passkey-settings"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
       "binding": "passkey.target.fido2Configuration",
       "requiredBy": [
         "s-prereq-passkey-settings"
       ],
       "optionalBy": [],
-      "packages": [
-        "s-prereq-passkey-settings"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "passkey.target.modelList",
-      "requiredBy": [],
-      "optionalBy": [
-        "s-prereq-passkey-settings"
-      ],
       "packages": [
         "s-prereq-passkey-settings"
       ],
@@ -6059,14 +6035,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 893,
-    "uniqueBindings": 268,
+    "uniqueBindings": 266,
     "bindingsRequiredByAtLeastOneProjection": 82,
-    "bindingsOptionalInAtLeastOnePackage": 188,
+    "bindingsOptionalInAtLeastOnePackage": 186,
     "bindingDefinitionsCarriedForward": 42,
-    "bindingDefinitionsPendingHolisticReview": 226,
+    "bindingDefinitionsPendingHolisticReview": 224,
     "knownIAMAIInputTrue": 40,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 226,
+    "knownIAMAIInputUnreviewed": 224,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

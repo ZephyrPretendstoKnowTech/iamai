@@ -406,11 +406,13 @@ test('automatic recovery waits for complete passkey evidence and the final polic
     const methods = f.snapshot.authMethods[id]
     if (!Array.isArray(methods)) throw new Error('fixture passkeys unavailable')
     const passkey = methods.find(method => method.kind === 'fido2' || method.kind === 'passkey')!
-    const originalAaguid = passkey.aaGuid
-    passkey.aaGuid = '11111111-2222-4333-8444-555555555555'
+    // Drift the planned settings refuse: the key is no longer attested (a model change
+    // no longer drifts anything, the settings restricting no model since 2026-10-03).
+    const originalAttestation = passkey.attestationLevel
+    passkey.attestationLevel = 'notAttested'
     checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: new Date(Date.parse(baselineAt) + 60_000).toISOString() })
     assert.equal(cleanupRecord(checkpoints).records!.at(-1)?.workflow, RECOVERY_INVALIDATION_WORKFLOW)
-    passkey.aaGuid = originalAaguid
+    passkey.attestationLevel = originalAttestation
     checkpoints = reconcileAutomaticRecovery({ checkpoints, snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: [id], acquisitionCompletedAt: new Date(Date.parse(baselineAt) + 120_000).toISOString() })
     assert.equal(cleanupRecord(checkpoints).records!.at(-1)?.workflow, RECOVERY_PREPARATION_WORKFLOW, 'change-and-revert creates a new baseline rather than reviving old proof')
   }
@@ -422,10 +424,11 @@ test('automatic recovery waits for complete passkey evidence and the final polic
     const at = f.snapshot.asOf
     const policy = f.snapshot.config.authMethodsPolicy.rows[0] as Record<string, any>
     const fido = policy.fido2Configuration ?? policy.authenticationMethodConfigurations.find((row: Record<string, unknown>) => String(row.id).toLowerCase() === 'fido2')
-    const restrictions = structuredClone(fido.keyRestrictions)
-    fido.keyRestrictions = { isEnforced: false, enforcementType: 'allow', aaGuids: [] }
+    // Step 3 unfinished: attestation not yet enforced (the settings restrict no model since 2026-10-03).
+    const attestation = fido.isAttestationEnforced
+    fido.isAttestationEnforced = false
     assert.equal(cleanupRecord(reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })).records!.length, 0, 'unfinished Step 3 cannot establish a baseline')
-    fido.keyRestrictions = restrictions
+    fido.isAttestationEnforced = attestation
     let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
     assert.equal(cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW).length, 2)
 

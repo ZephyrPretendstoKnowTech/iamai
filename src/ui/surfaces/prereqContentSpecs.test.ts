@@ -94,7 +94,7 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
   const b = blocksOf(PASSKEYS)
   const entra = b['entra.configure-fido2'].text
   assert.ok(authoredParts(entra).some(p => p.kind === 'list' && p.ordered))
-  for (const text of ['attestation', 'modelList', 'hardware', 'profile']) assert.match(entra, new RegExp(text, 'i'))
+  for (const text of ['attestation', 'Device-bound', 'synced', 'profile']) assert.match(entra, new RegExp(text, 'i'))
   const drawn = body.artifacts.find(a => a.id === 'portal')!.text()
   assert.doesNotMatch(drawn, /Open Temporary Access Pass|Open Microsoft Authenticator in the same/)
   assert.match(drawn, /rescan|scan again/i)

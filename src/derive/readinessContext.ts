@@ -186,7 +186,13 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
     if (!p) people.set(userId, (p = personPasskeyPolicy(reading.current, passkey, userId, groups)))
     return p
   }
-  const models = requiredModels((mapping && 'passkeyApprovedModels' in mapping ? mapping : undefined) as MappingState | undefined)
+  // The models a phone or Windows Hello passkey must be on to survive Configure Passkey
+  // Authentication: only the tenant's own allow list, kept as it is. The plan adds none
+  // (owner, 2026-10-03), so with no allow list nothing a model check could stop.
+  const known = requiredModels((mapping && 'passkeyApprovedModels' in mapping ? mapping : undefined) as MappingState | undefined)
+  const models = reading.resolution?.kind === 'target' && reading.resolution.restriction === 'allow'
+    ? reading.resolution.retained.map((aaguid) => ({ name: known.find((m) => m.aaguid === aaguid)?.name ?? aaguid, aaguid }))
+    : []
   // The Plan's per-person reading of which held keys Configure Passkey Authentication
   // stops (reviews, 2026-09-28): MFA Readiness warns only where it agrees with the plan's
   // model list, so a key the tenant's allow list keeps is never said to stop. It only
@@ -199,7 +205,7 @@ export function readinessContextOf(snapshot: TenantSnapshot, mapping?: Partial<M
   // Step 3 is in place exactly when Emergency Access Step 3 reads it so (one reading, roadmap/passkeySettings.ts),
   // which counts the extra models the operator accepted there.
   const applied = reading.state === 'inPlace'
-  const modelNames = new Map<string, string>([...PASSKEY_DEFAULT_MODELS, ...models].map((m) => [m.aaguid.toLowerCase(), m.name]))
+  const modelNames = new Map<string, string>([...PASSKEY_DEFAULT_MODELS, ...known].map((m) => [m.aaguid.toLowerCase(), m.name]))
   for (const a of WINDOWS_HELLO_AAGUIDS) modelNames.set(a, 'Windows Hello')
   modelNames.set(PLATFORM_CREDENTIAL_AAGUID, 'Platform Credential for macOS')
   const deviceOwners = new Map<string, string[]>()

@@ -26,10 +26,10 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "productContract": "Configure device-bound, attested passkeys using Microsoft Authenticator or approved hardware-key models, preserving existing recovery access and effective profile assignments.",
+    "productContract": "Configure device-bound, attested passkeys for every user, with no key restrictions IAMAI adds (owner, 2026-10-03), preserving existing recovery access, effective profile assignments and the tenant's own key restrictions.",
     "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027.",
     "passkeyTarget": {
-      "$comment": "Decision 9 (RUN-CONTEXT-A, 2026-09-12), superseded in part by the owner's approval of 2026-09-14: support Microsoft Authenticator passkeys while preserving existing approved hardware keys and profile configurations. This object supplies the approved Authenticator AAGUIDs (copied from the Microsoft Learn page in verifiedSources, ms-authenticator-passkey, never from memory) and the product settings; roadmap/passkeySettings.ts resolves each tenant's target from its own configuration (existing allowed models, groups and exclusions retained) and binds it as passkey.target.fido2Configuration. The whole object is the target only for a methods policy with no Fido2 entry.",
+      "$comment": "Decision 9 (RUN-CONTEXT-A, 2026-09-12), superseded in part by the owner's approval of 2026-09-14: support Microsoft Authenticator passkeys while preserving existing approved hardware keys and profile configurations. This object supplies the approved Authenticator AAGUIDs (copied from the Microsoft Learn page in verifiedSources, ms-authenticator-passkey, never from memory) and the product settings; roadmap/passkeySettings.ts resolves each tenant's target from its own configuration (existing allowed models, groups and exclusions retained) and binds it as passkey.target.fido2Configuration. The whole object is the target only for a methods policy with no Fido2 entry. Superseded in part by the owner's decision of 2026-10-03: device-bound and attested passkeys for all users with no AAGUID key restrictions. The target sets no allow list; a tenant's own key restrictions are kept as they are.",
       "fido2Configuration": {
         "@odata.type": "#microsoft.graph.fido2AuthenticationMethodConfiguration",
         "id": "Fido2",
@@ -37,14 +37,9 @@
         "isSelfServiceRegistrationAllowed": true,
         "isAttestationEnforced": true,
         "keyRestrictions": {
-          "isEnforced": true,
-          "enforcementType": "allow",
-          "aaGuids": [
-            "90a3ccdf-635c-4729-a248-9b709135078f",
-            "de1e552d-db1d-4423-a619-566b625cdc84",
-            "a25342c0-3cdc-4414-8e46-f4807fca511c",
-            "19083c3d-8383-4b18-bc03-8f1c9ab2fd1b"
-          ]
+          "isEnforced": false,
+          "enforcementType": "block",
+          "aaGuids": []
         },
         "includeTargets": [
           {
@@ -67,12 +62,10 @@
     "passkey.current.summary",
     "passkey.current.registeredAaguids",
     "passkey.target.profileSummary",
-    "passkey.target.allowedAaguids",
     "dependencies.blockers",
     "tenant.displayName",
     "passkey.profileOptInApproved",
     "passkey.target.summary",
-    "passkey.target.modelList",
     "passkey.review.detail",
     "passkey.current.fido2Configuration",
     "authenticator.target.configuration",
@@ -173,7 +166,7 @@
       "authority": "Microsoft Learn",
       "title": "Enable passkeys in Microsoft Authenticator",
       "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-authenticator-passkey",
-      "purpose": "Microsoft Authenticator AAGUIDs for iOS and Android, pinned as the key-restriction allow list (decision 9). Page dated 2026-07-05.",
+      "purpose": "Microsoft Authenticator AAGUIDs for iOS and Android, used to name Microsoft Authenticator passkeys. Page dated 2026-07-05.",
       "checkedOn": "2026-09-25",
       "userFacing": true
     }

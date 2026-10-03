@@ -17,6 +17,7 @@ import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { cohortWords } from '../../derive/whoLine.ts'
 import { checkWords, goalLine, nextCell, noDevicesWord, panelNoDevices, panelNoMethods, railRemaining, rowCells, rowNote, summaryLine, unreadMethodsWords, whyLine, countedLine, scopeWords, panelMethods, groupBodyLine, computersSeen, leadLine, subDevicesTitle, notCountedWhy, needsActionWords, groupWhy } from './readinessCells.ts'
 import { syncedPasskeyOffered } from '../../scoring/phishingResistant.ts'
+import { PASSKEY_TARGET_AAGUIDS } from '../../roadmap/passkeySettings.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -36,6 +37,25 @@ const WHY = (pages.readiness as unknown as { panel: { why: Record<string, string
 const FOOT = (pages.readiness as unknown as { footer: { counted: string } }).footer
 const PC = (pages.readiness as unknown as { planContext: Record<string, string> }).planContext
 const page = (): string => readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+
+/**
+ * The demo on the passkey profile Microsoft's April–May 2026 auto-enable left
+ * (synced passkeys allowed, attestation off), with every passkey synced.
+ * Configure Passkey Authentication makes them device-bound and attested for
+ * everyone (owner, 2026-10-03), so each of those passkeys stops at it.
+ */
+function withSyncedKeys() {
+  const f = structuredClone(fixture('demo'))
+  const profile = { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, defaultPasskeyProfile: 'default', includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['default'] }], excludeTargets: [], passkeyProfiles: [{ id: 'default', name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] } }] }
+  const row = f.snapshot.config.authMethodsPolicy!.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[]; fido2Configuration?: unknown }
+  row.authenticationMethodConfigurations = [profile, ...row.authenticationMethodConfigurations.filter((c) => String(c.id).toLowerCase() !== 'fido2')]
+  if (row.fido2Configuration) row.fido2Configuration = profile
+  for (const [id, methods] of Object.entries(f.snapshot.authMethods)) {
+    if (!Array.isArray(methods)) continue
+    f.snapshot.authMethods[id] = methods.map((m) => (m.kind === 'passkey' || m.kind === 'fido2' ? { ...m, passkeyType: 'synced', attestationLevel: 'notAttested' } : m)) as never
+  }
+  return f
+}
 
 test('every remaining setup check carries its own words: the migration never shows without its safe order', () => {
   const f = fixture('messy')
@@ -327,8 +347,8 @@ test('registration limited to trusted places is not answered with a Temporary Ac
 })
 
 test('a Ready person whose only usable key stops working under Step 3 is told to replace it before any upgrade', () => {
-  // demo, with the Ready people's passkey an unlisted security-key model and their Windows Hello removed.
-  const f = fixture('demo')
+  // demo, with the Ready people's passkey synced and their Windows Hello removed: the device-bound change stops it.
+  const f = withSyncedKeys()
   const s = structuredClone(f.snapshot)
   const methods = s.authMethods as unknown as Record<string, unknown>
   const evidence = s.signInEvidence as unknown as Record<string, { proofs?: { cls: string }[] }>
@@ -336,7 +356,7 @@ test('a Ready person whose only usable key stops working under Step 3 is told to
   for (const id of before) {
     const ms = methods[id]
     if (!Array.isArray(ms)) continue
-    methods[id] = ms.filter((m: { kind: string }) => m.kind !== 'windowsHelloForBusiness').map((m: { kind: string }) => (m.kind === 'passkey' ? { ...m, aaGuid: 'ee882879-721c-4913-9775-3dfcce97072a', model: 'YubiKey 5 Series (firmware 5.2)' } : m))
+    methods[id] = ms.filter((m: { kind: string }) => m.kind !== 'windowsHelloForBusiness')
     const ev = evidence[id]
     if (ev?.proofs) ev.proofs = ev.proofs.map((p) => ({ ...p, cls: 'passkey' }))
   }
@@ -451,9 +471,13 @@ test('opened from a step, the page scopes its words and its next check to what t
   }
 })
 
-test('a key that shares an approved model’s name but not its AAGUID says which AAGUID differs', () => {
+test('a key that shares an approved model’s name but not its AAGUID says which AAGUID differs, under the tenant’s own allow list', () => {
+  // The plan adds no allow list (owner, 2026-10-03), so a model matters only where the
+  // tenant keeps its own: each fixture is given one holding the default models.
   for (const name of ['demo', 'demo-week2'] as const) {
-    const f = fixture(name)
+    const f = structuredClone(fixture(name))
+    const row = f.snapshot.config.authMethodsPolicy!.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[]; fido2Configuration?: Record<string, unknown> }
+    for (const c of [row.fido2Configuration, ...row.authenticationMethodConfigurations.filter((c) => String(c.id).toLowerCase() === 'fido2')]) if (c) c.keyRestrictions = { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] }
     const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     const approved = view.context.step3.models
     let seen = 0
@@ -563,11 +587,11 @@ test('a row whose only key stops at Configure Passkey Authentication says so und
   // Owner, 2026-09-28: the sample's row told someone to sign in once with a passkey that
   // stops working when Configure Passkey Authentication is applied; only the drawer said so,
   // and it called the step "Step 3".
-  const f = fixture('demo')
+  const f = withSyncedKeys()
   const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows
   const words = (pages as unknown as { readiness: { notes: { keyStops: string }; panel: { step3: { no: string } } } }).readiness
   const flagged = rows.filter((r) => rowNote(r) === words.notes.keyStops)
-  assert.ok(flagged.length > 0, 'the premise: the sample has someone whose only key is off the approved list')
+  assert.ok(flagged.length > 0, 'the premise: someone\'s only key is a synced passkey the change stops')
   for (const r of flagged) {
     assert.notEqual(r.readiness?.next?.kind, 'replaceKey', 'a row already asked to replace the key needs no second line')
     assert.ok(rowCells(r)[4].endsWith(words.notes.keyStops), `the CSV's Next step leaves it out: ${rowCells(r)[4]}`)
@@ -575,42 +599,21 @@ test('a row whose only key stops at Configure Passkey Authentication says so und
   assert.doesNotMatch(words.panel.step3.no, /Step 3/, 'the drawer names the step by its title')
 })
 
-test('a key the tenant already allows, which Configure Passkey Authentication keeps, is not said to stop working (review of F-075)', () => {
-  // Review, 2026-09-28: MFA Readiness compared keys with the plan's own models only,
-  // while the planned settings keep every model the tenant's allow list already holds.
-  const f = structuredClone(fixture('demo'))
-  const rows = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows
+test('a device-bound, attested key of any model is kept by Configure Passkey Authentication and never said to stop working (review of F-075)', () => {
+  // Review, 2026-09-28, then the owner's decision of 2026-10-03: the change adds no
+  // allow list, so only a synced passkey stops; the same person's key made
+  // device-bound and attested is kept, whatever its model.
+  const f = withSyncedKeys()
   const words = (pages as unknown as { readiness: { notes: { keyStops: string } } }).readiness
-  const flagged = rows.find((r) => rowNote(r) === words.notes.keyStops)!
-  assert.ok(flagged, 'the premise: someone\'s only key is off the plan\'s list')
-  const key = flagged.readiness!.credentials.find((c) => c.cls === 'passkey' && c.afterStep3 === 'no')!
-  const rowsOf = (config: Record<string, unknown>) => { f.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [config] }] } as typeof f.snapshot.config.authMethodsPolicy; return readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows }
-  // The tenant already enforces an allow list holding that key's model (and not yet every model the plan asks for).
-  const kept = rowsOf({ id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, includeTargets: [{ id: 'all_users', targetType: 'group' }], excludeTargets: [], keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [key.aaguid] } })
-  const same = kept.find((r) => r.user.id === flagged.user.id)!
+  const flagged = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => rowNote(r) === words.notes.keyStops)!
+  assert.ok(flagged, 'the premise: someone\'s only key is a synced passkey')
+  for (const m of f.snapshot.authMethods[flagged.user.id] ?? []) if ((m as { kind: string }).kind === 'passkey' || (m as { kind: string }).kind === 'fido2') Object.assign(m, { passkeyType: 'deviceBound', attestationLevel: 'attested', aaGuid: '11111111-2222-4333-8444-555555555555' })
+  const same = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.user.id === flagged.user.id)!
   assert.notEqual(rowNote(same), words.notes.keyStops, 'a key the planned settings keep is said to stop working')
 })
-
 test('a row already told to replace its key carries no second warning (review of F-075)', () => {
   const row = { readiness: { automated: false, next: { kind: 'none' }, recommended: { kind: 'replaceKey' }, credentials: [{ cls: 'passkey', allowedNow: 'yes', afterStep3: 'no' }] } } as unknown as ReadinessRow
   assert.equal(rowNote(row), '')
-})
-
-test('on passkey profiles, a leftover top-level allow list does not keep a key the person\'s own profile stops (review of F-075)', () => {
-  // Review, 2026-09-28: a tenant-wide list of kept models called a key "allowed" that the
-  // person's own profile would stop: in profile mode the top-level allow list applies to
-  // nobody, and Configure Passkey Authentication does not keep it. The verdict is now the
-  // Plan's per-person projection.
-  const f = structuredClone(fixture('demo'))
-  const words = (pages as unknown as { readiness: { notes: { keyStops: string } } }).readiness
-  const flagged = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => rowNote(r) === words.notes.keyStops)!
-  assert.ok(flagged, 'the premise: someone\'s only key is off the plan\'s list')
-  const key = flagged.readiness!.credentials.find((c) => c.cls === 'passkey' && c.afterStep3 === 'no')!
-  for (const m of f.snapshot.authMethods[flagged.user.id] ?? []) if ((m as { aaGuid?: string }).aaGuid?.toLowerCase() === key.aaguid) (m as { passkeyType?: string }).passkeyType = 'deviceBound'
-  const unrestricted = { id: 'p1', name: 'p1', passkeyTypes: 'deviceBound', attestationEnforcement: 'disabled', keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: [] } }
-  f.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, defaultPasskeyProfile: 'p1', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: [key.aaguid] }, includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: ['p1'] }], excludeTargets: [], passkeyProfiles: [unrestricted] }] }] } as typeof f.snapshot.config.authMethodsPolicy
-  const same = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.user.id === flagged.user.id)!
-  assert.equal(rowNote(same), words.notes.keyStops, 'a key the person\'s own profile stops is shown as kept')
 })
 
 test('with the passkey settings unread or held for review, a key is never called allowed and no stop is claimed (third review of F-075)', () => {
@@ -618,16 +621,37 @@ test('with the passkey settings unread or held for review, a key is never called
   // reading that as "nothing stops" called every usable key "Allowed by Configure Passkey
   // Authentication". The projection now only confirms a stop.
   const words = (pages as unknown as { readiness: { notes: { keyStops: string } } }).readiness
-  const base = structuredClone(fixture('demo'))
+  const base = withSyncedKeys()
   const flagged = readinessView(base.snapshot, base.snapshot.asOf, base.mapping).rows.find((r) => rowNote(r) === words.notes.keyStops)!
-  assert.ok(flagged, 'the premise: someone\'s only key is off the plan\'s list')
-  const unread = structuredClone(fixture('demo'))
+  assert.ok(flagged, 'the premise: someone\'s only key is a synced passkey the change stops')
+  const unread = withSyncedKeys()
   unread.snapshot.config.authMethodsPolicy = { status: 'error', reason: 'throttled', rows: [] } as typeof unread.snapshot.config.authMethodsPolicy
-  const held = structuredClone(fixture('demo'))
-  held.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, includeTargets: [{ id: 'all_users', targetType: 'group' }], excludeTargets: [], keyRestrictions: { isEnforced: true, enforcementType: 'block', aaGuids: ['11111111-2222-4333-8444-555555555555'] } }] }] } as typeof held.snapshot.config.authMethodsPolicy
+  // A profile-based policy whose profiles were not read: held for review.
+  const held = withSyncedKeys()
+  held.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [{ id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, defaultPasskeyProfile: 'default', includeTargets: [{ id: 'all_users', targetType: 'group' }], excludeTargets: [] }] }] } as typeof held.snapshot.config.authMethodsPolicy
   for (const [name, f] of [['unread', unread], ['held for review', held]] as const) {
     const row = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.user.id === flagged.user.id)!
     assert.equal(rowNote(row), '', `${name}: a stop is claimed the Plan cannot judge`)
-    for (const c of row.readiness?.credentials ?? []) if (c.cls === 'passkey') assert.notEqual(c.afterStep3, 'yes', `${name}: an off-list key is called allowed`)
+    for (const c of row.readiness?.credentials ?? []) if (c.cls === 'passkey') assert.notEqual(c.afterStep3, 'yes', `${name}: a synced key is called allowed`)
   }
+})
+
+test('each person’s passkeys are named Device-bound or Synced, in the drawer and in the CSV’s last column (owner, 2026-10-03)', () => {
+  const C = pages.readiness as unknown as { csvColumns: string[]; panel: { storage: string; storageTypes: Record<'deviceBound' | 'synced', string> } }
+  assert.equal(C.csvColumns.at(-1), 'Passkey type', 'the column comes last, so the existing columns keep their place')
+  const synced = withSyncedKeys()
+  const holders = readinessView(synced.snapshot, synced.snapshot.asOf, synced.mapping).rows.filter((r) => (r.readiness?.credentials ?? []).some((c) => c.cls === 'passkey' && c.storage === 'synced'))
+  assert.ok(holders.length > 0, 'the premise: the sample holds synced passkeys')
+  for (const r of holders) {
+    assert.equal(rowCells(r).at(-1), C.panel.storageTypes.synced, r.user.id)
+    assert.equal(rowCells(r).length, C.csvColumns.length - 2, 'one cell per column after the name and address')
+    assert.ok(panelMethods(r).some((m) => m.facts.some(([label, value]) => label === C.panel.storage && value === C.panel.storageTypes.synced)), r.user.id)
+  }
+  const f = fixture('demo-week2')
+  const bound = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.filter((r) => (r.readiness?.credentials ?? []).some((c) => c.cls === 'passkey' && c.storage === 'deviceBound'))
+  assert.ok(bound.length > 0, 'the premise: the follow-up sample holds device-bound passkeys')
+  for (const r of bound) assert.match(rowCells(r).at(-1)!, /^Device-bound/, r.user.id)
+  // Nobody without a passkey of known storage gets a word.
+  const none = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => !(r.readiness?.credentials ?? []).some((c) => c.cls === 'passkey' && c.storage))
+  if (none) assert.equal(rowCells(none).at(-1), '')
 })

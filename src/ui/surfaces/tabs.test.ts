@@ -35,7 +35,7 @@ test('MFA Readiness as CSV writes the role, the devices, the methods, the state 
     const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     const table = readinessTable(f.snapshot, f.mapping)
     // The v3 row's zones in its order (prompt 62), with the sign-in name, role and state spelled out.
-    assert.deepEqual(table.header, ['Person', 'Sign-in address', 'Role', 'Devices seen', 'Methods', 'Readiness', 'Next step'])
+    assert.deepEqual(table.header, ['Person', 'Sign-in address', 'Role', 'Devices seen', 'Methods', 'Readiness', 'Next step', 'Passkey type'])
     assert.equal(table.csvName, 'iamai-mfa-readiness.csv')
     assert.equal(table.rows.length, view.rows.length, `${name}: one CSV row per account`)
     view.rows.forEach((r, i) => {

@@ -5341,14 +5341,10 @@ th .th-sort:focus-visible,
 .recovery-account-choice > .option-value { align-items: start; }
 .recovery-account-choice > .option-value input { margin-top: .2em; }
 .recovery-account-choice > .option-value span { min-width: 0; overflow-wrap: anywhere; }
-.approved-model-disclosure > summary { cursor: pointer; font-weight: var(--weight-strong); }
 /* A finished step's procedures are reference, not instructions (owner,
    2026-09-22, option A). Every word stays; the block opens closed and says
    what it is, because on a step reading Completed three blocks of imperative
    lines read as work that remained. */
-.approved-model-list { display: grid; gap: 7px; margin: 7px 0 10px; padding: 0; list-style: none; }
-.approved-model-list li { display: grid; gap: 2px; min-width: 0; }
-.approved-model-list span { color: var(--secondary-text); overflow-wrap: anywhere; }
 @media (max-width: 640px) {
   .step .emergency-channel-toolbar { align-items: flex-start; }
   .step .emergency-task-toolbar { align-items: stretch; }
@@ -5360,21 +5356,17 @@ th .th-sort:focus-visible,
   .emergency-task-print .emergency-task-body { break-inside: avoid; }
 }
 
-.passkey-model-decision .decision-fields, .decision-fields:has([id$="-network-name"]) { display: grid; gap: 1rem; }
-.passkey-model-decision .decision-field, .decision-fields:has([id$="-network-name"]) .decision-field { display: grid; gap: .5rem; min-width: 0; }
-.passkey-model-decision input, .decision-fields:has([id$="-network-name"]) input, .decision-fields:has([id$="-network-name"]) textarea { width: 100%; }
+.decision-fields:has([id$="-network-name"]) { display: grid; gap: 1rem; }
+.decision-fields:has([id$="-network-name"]) .decision-field { display: grid; gap: .5rem; min-width: 0; }
+.decision-fields:has([id$="-network-name"]) input, .decision-fields:has([id$="-network-name"]) textarea { width: 100%; }
 
 .step details.step-section > summary { cursor: pointer; }
 .step[data-step-id='cleanup-drill'] .emergency-recovery-procedure li + li { margin-top: .55rem; }
 
-.passkey-model-disclosure { margin: 0; }
-.passkey-model-disclosure[open] > .passkey-model-decision { margin-top: 8px; }
-.passkey-model-disclosure .passkey-model-decision { padding-top: 8px; }
 /* The Plan's phone width (650px), not the retired readiness pack's 620px. */
 @media (max-width: 650px) {
   .step-footer-end { width: 100%; }
 }
-@media print { .passkey-model-disclosure { display: none !important; } }
 .emergency-task-facts { margin: .75rem 0 1rem; display: grid; gap: .4rem; }
 .emergency-task-facts div { display: grid; grid-template-columns: minmax(9rem, 15rem) minmax(0, 1fr); gap: .75rem; }
 .emergency-task-facts dt { font-weight: var(--weight-strong); }

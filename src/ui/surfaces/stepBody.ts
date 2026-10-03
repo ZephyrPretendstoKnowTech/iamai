@@ -1,4 +1,3 @@
-import { requiredModels } from '../../roadmap/passkeySettings.ts'
 import { emergencyAccountAiInfo, emergencyImplementation } from './emergencyImplementation.ts'
 import { emergencyAccountTasksOf } from './emergencyAccountTasks.ts'
 import type { EmergencyTaskProjection } from './emergencyAccountTasks.ts'
@@ -571,13 +570,6 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
       supported.add('portal')
       produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
     }
-  }
-  // Keep each validated model on its own copyable line without allowing arbitrary
-  // tenant text to inject new template lines or script content.
-  if (step.id === 's-prereq-passkey-settings') {
-    const portal = produced.find(a => a.id === 'portal')
-    const modelLines = requiredModels(ctx.mapping).map(model => `- ${oneLine(model.name)} — ${model.aaguid}`)
-    if (portal) { const original = portal.text(); portal.text = () => original.replace(modelLines.join(' '), modelLines.join('\n')) }
   }
   // Every step can explain its purpose, facts, decisions and remaining work,
   // even when no executable change can be offered yet.
