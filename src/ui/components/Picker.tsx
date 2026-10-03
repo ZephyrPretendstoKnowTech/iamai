@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Icon } from './Icon.tsx'
 import { Button } from './Button.tsx'
 import { app } from '../../content/content.ts'
-import { fillText } from '../../content/render.ts'
+import { pickerList } from './pickerList.ts'
 
 const T = app.picker
 
@@ -154,8 +154,7 @@ export function Picker({
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected])
   const empty = query.trim().length === 0
-  const shown = (empty ? (listAll ? options : suggestions) : options).filter((o) => !selectedIds.has(o.id))
-  const list = listAll ? shown : shown.slice(0, 8)
+  const { list, count, none } = pickerList({ empty, listAll, options, suggestions, selectedIds })
   // Empty and nothing nominated remains: just the field, no header, no Done —
   // unless Done is what saves, so a selection the picker opened with can be saved.
   const showList = open && (!empty || loading || list.length > 0 || onCommit !== undefined)
@@ -271,7 +270,7 @@ export function Picker({
         <div className="picker-list">
           {empty && !listAll && list.length > 0 && <div className="picker-heading">{T.suggestions}</div>}
           {loading && <div className="picker-footer">{T.searching}</div>}
-          {list.length === 0 && !loading && !empty && <div className="picker-footer">{T.noMatches}</div>}
+          {none !== null && !loading && <div className="picker-footer">{none}</div>}
           <div role="listbox" id={listId} aria-label={placeholder}>
             {list.map((o, i) => (
               <div
@@ -295,7 +294,7 @@ export function Picker({
             <Button size="sm" variant="tertiary" onClick={done}>
               {T.done}
             </Button>
-            {!empty && <span className="picker-count">{fillText(T.results, { n: list.length })}</span>}
+            {count !== null && <span className="picker-count">{count}</span>}
           </div>
         </div>
       )}

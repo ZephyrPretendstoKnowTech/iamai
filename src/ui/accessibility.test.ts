@@ -539,8 +539,12 @@ test('the picker is one coherent combobox: the input keeps focus and names the o
   // Authority is untouched: what is selected, what is offered and when the
   // caller hears about it are all still the caller's.
   assert.match(picker, /onChange\(single \? \[o\] : \[\.\.\.selected, o\]\)/)
-  assert.match(picker, /const shown = \(empty \? \(listAll \? options : suggestions\) : options\)\.filter\(\(o\) => !selectedIds\.has\(o\.id\)\)/)
-  assert.match(picker, /const list = listAll \? shown : shown\.slice\(0, 8\)/)
+  // What a query offers is one pure rule (components/pickerList.ts, F-114).
+  assert.match(picker, /pickerList\(\{ empty, listAll, options, suggestions, selectedIds \}\)/)
+  const pickerRule = read('src/ui/components/pickerList.ts')
+  assert.match(pickerRule, /const source = empty \? \(listAll \? options : suggestions\) : options/)
+  assert.match(pickerRule, /const shown = source\.filter\(\(o\) => !selectedIds\.has\(o\.id\)\)/)
+  assert.match(pickerRule, /const list = listAll \? shown : shown\.slice\(0, PICKER_ROWS\)/)
 })
 
 test('a decision names the question its options answer', () => {
