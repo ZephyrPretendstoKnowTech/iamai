@@ -7,6 +7,7 @@ import react from '@vitejs/plugin-react'
 import { planner } from './src/content/content.ts'
 import { buildHome } from './scripts/build-home.ts'
 import { plannerCsp, withCsp } from './scripts/csp.ts'
+import { channelOf, withChannel } from './scripts/channel.ts'
 import { demoFacts } from './src/ui/demoFacts.ts'
 import { TOOL_PATH } from './scripts/toolPath.ts'
 import { SMOKE_MODE, smokeOutDir } from './scripts/smokeBuild.ts'
@@ -89,6 +90,22 @@ function contentSecurityPolicy(): Plugin {
   }
 }
 
+// The release channel (scripts/channel.ts): VITE_CHANNEL=preview marks the page
+// as a preview build. Unset, the page passes through untouched. It runs after the
+// product title is filled, so the title it marks is the real one.
+function releaseChannel(): Plugin {
+  return {
+    name: 'release-channel',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        return withChannel(html, channelOf(process.env.VITE_CHANNEL))
+      },
+    },
+  }
+}
+
 // The home page's theme file, from the same tokens as the bundle (prompt 47.1
 // Part 3 item 11): written on every build so the two cannot drift.
 function homeTheme(): Plugin {
@@ -149,7 +166,7 @@ export default defineConfig(({ command, mode }) => ({
     mode === SMOKE_MODE
       ? { outDir: smokeOutDir(Number(process.env.SMOKE_PORT) || 0), emptyOutDir: true, manifest: true }
       : { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
-  plugins: [react(), spikeCapture(), productTitle(), contentSecurityPolicy(), homeTheme(), demoFactsModule()],
+  plugins: [react(), spikeCapture(), productTitle(), contentSecurityPolicy(), releaseChannel(), homeTheme(), demoFactsModule()],
   // The pages the dev server serves, and nothing else: left alone, the dependency
   // scan crawls every HTML file in the repository (archive/, docs/design/, a
   // built dist/, work/) looking for imports to pre-bundle.

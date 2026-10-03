@@ -12,10 +12,16 @@
 // pages.home and the planner's tokens; this script substitutes the tool path,
 // so the path lives in exactly one place, and publishes the stylesheets under
 // their content-hashed names (assembleHome), so a changed sheet is a new URL.
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { assembleHome } from './build-home.ts'
+import { channelOf, withChannel } from './channel.ts'
 import { TOOL_PATH } from './toolPath.ts'
+
+// A preview build (VITE_CHANNEL, scripts/channel.ts) marks the home page as the
+// planner is marked, and leaves CNAME out so it never claims the live domain.
+// Unset, both are exactly as before.
+const channel = channelOf(process.env.VITE_CHANNEL)
 
 const root = resolve(import.meta.dirname, '..')
 const dist = join(root, 'dist')
@@ -36,7 +42,7 @@ for (const [name, text] of Object.entries(built)) {
     console.error(`assemble-site: a placeholder was left unsubstituted in ${name}.`)
     process.exit(1)
   }
-  writeFileSync(join(dist, name), text)
+  writeFileSync(join(dist, name), name === 'index.html' ? withChannel(text, channel) : text)
 }
 
 // Everything else in home/ except the template and the sheets. Text files get
@@ -56,7 +62,8 @@ for (const name of readdirSync(home)) {
 }
 
 // The custom domain has to be declared at the site root, not inside the tool.
-cpSync(join(root, 'public', 'CNAME'), join(dist, 'CNAME'))
+if (channel === null) cpSync(join(root, 'public', 'CNAME'), join(dist, 'CNAME'))
+else rmSync(join(dist, 'CNAME'), { force: true })
 
 // The brand icons, at the site root as well as inside the tool. Vite copies
 // public/ into the tool folder, so the planner is already served
