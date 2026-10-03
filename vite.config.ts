@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { planner } from './src/content/content.ts'
+import { PRODUCT_TITLE } from './src/content/content.ts'
 import { buildHome } from './scripts/build-home.ts'
 import { plannerCsp, withCsp } from './scripts/csp.ts'
 import { channelOf, withChannel } from './scripts/channel.ts'
@@ -72,7 +72,7 @@ function productTitle(): Plugin {
   return {
     name: 'product-title',
     transformIndexHtml(html) {
-      return html.replaceAll('__PRODUCT_TITLE__', `${planner.wordmark} — ${planner.descriptor}`).replaceAll('__TOOL_PATH__', TOOL_PATH)
+      return html.replaceAll('__PRODUCT_TITLE__', PRODUCT_TITLE).replaceAll('__TOOL_PATH__', TOOL_PATH)
     },
   }
 }

@@ -95,6 +95,8 @@ export const pages = content.pages
  * home page, which since task 016 introduces IAMAI by what it does, not by a tool card.
  */
 export const planner = (content.pages.app.shell as { product: { wordmark: string; name: string; descriptor: string } }).product
+/** The page title: the wordmark, an em dash, the descriptor. index.html starts with it (vite.config.ts) and every browser tab title ends with it (ui/shell/documentTitle.ts). */
+export const PRODUCT_TITLE = `${planner.wordmark} — ${planner.descriptor}`
 
 /** The words the app chrome and the surfaces show (pages.app): the header, the scan progress, the print cover, the export alerts. */
 export type AppWords = {

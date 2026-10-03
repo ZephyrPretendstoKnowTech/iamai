@@ -26,6 +26,7 @@ import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { PausedNotice, scanLineText } from '../scan/ScanProgress.tsx'
 import { opensAtTop, PLAN_HREF, planTabsOn, READINESS_HREF, resolveHash } from './routes.ts'
+import { documentTitle } from './documentTitle.ts'
 import type { Route } from './routes.ts'
 
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
@@ -285,6 +286,11 @@ export function AppShell({
   // on for the surface whose own authority asks for it, and for no other. There
   // is still exactly one `header.app` in the product.
   const sticky = planActive
+  // The browser tab says which page and which tenant (F-145).
+  const titleTenant = signedIn ? tenantName : null
+  useEffect(() => {
+    document.title = documentTitle(route, titleTenant)
+  }, [route, titleTenant])
   // The skip link moves focus to the page itself: the hash is the router's, so
   // an in-page anchor would navigate (F-146).
   const main = useRef<HTMLElement>(null)

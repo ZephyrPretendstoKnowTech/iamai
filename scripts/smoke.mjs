@@ -867,8 +867,8 @@ try {
   // The lockup is the brand's, the tab title is the product's (task 030): the
   // approved packs and docs/brand/brand-manifest.json both set the wordmark to
   // IAMAI, and the tab title is the wordmark and the descriptor. IAMAI Planner
-  // stays the registered application's name.
-  check('Name: the wordmark is IAMAI and the tab title carries the wordmark and descriptor', /^IAMAI(?!\s+Planner)/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI — Microsoft Entra Planner', `${t.trim().slice(0, 40)} | ${await evaluate('document.title')}`)
+  // stays the registered application's name. The page and the tenant come first (F-145).
+  check('Name: the wordmark is IAMAI and the tab title ends with the wordmark and descriptor', /^IAMAI(?!\s+Planner)/.test(t.trim()) && (await evaluate('document.title')).endsWith(' · IAMAI — Microsoft Entra Planner'), `${t.trim().slice(0, 40)} | ${await evaluate('document.title')}`)
   check('Header: no scan control and no scan age on any page', !/Scan to update the plan|scanned|Re-scan/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: the theme and Account controls are text, not button faces', await evaluate(`document.querySelectorAll('header.app .right button').length >= 2 && [...document.querySelectorAll('header.app .right button')].every((b) => { const cs = getComputedStyle(b); return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.paddingLeft === '0px' })`))
   check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)

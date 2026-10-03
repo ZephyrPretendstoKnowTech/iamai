@@ -1969,6 +1969,9 @@
           "name": "IAMAI Planner",
           "descriptor": "Microsoft Entra Planner"
         },
+        "$commentPageTitle": "F-145: the browser tab's title, set per page (ui/shell/documentTitle.ts). {page} is the header tab's word, {product} the wordmark and descriptor; no tenant while signed out or before its name arrives.",
+        "pageTitle": "{page} · {tenant} · {product}",
+        "pageTitleNoTenant": "{page} · {product}",
         "saveFailed": "Changes could not be saved in this browser. Keep this tab open and download your plan before leaving.",
         "saveBackup": "Download a backup",
         "evidenceContext": "{tenant} · Last successful scan: {date}",
