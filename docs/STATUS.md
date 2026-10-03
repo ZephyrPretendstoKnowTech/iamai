@@ -45,7 +45,8 @@ Everything else is either a working document it links to, or history in
   - **Tenants:** v1.1 adds switching between tenants in one browser, then sign-in to a named
     tenant. One tenant per session at a time.
   - **Jon's baseline:**
-    - the lockdown kit is created Off;
+    - the lockdown kit is created Off: both All Apps switches and the Admin Portal block,
+      which is read as a switch, not a contradiction;
     - Countries NoExclusions and AVD allowed-users are built;
     - ADM-Users and BreakGlass-TrustedLocations stay in the footer;
     - the Agent blocks wait.

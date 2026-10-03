@@ -174,14 +174,13 @@ truth before anything else changes.
 ### Track 2: Finish Jon's baseline
 | Policy | v1.1 | Why |
 |---|---|---|
-| ZTCA All Apps ×2 (the lockdown kit) | Build, created **Off**, with a runbook (D3) | Incident value; no user impact while off; report-only would mark every sign-in |
-| ZTCA Admin Portal | Stays withheld | Jon's README and export contradict each other; ask Jon |
+| ZTCA All Apps ×2 and Admin Portal (the lockdown kit) | Build all three, created **Off**, with a runbook (D3) | Incident switches: no user impact while off; report-only would mark every sign-in |
 | AVD AllowedAVDUsers | Build, behind a Direction question asked only when AVD is in use (D4) | The unidentified group is the only blocker |
-| Countries not Allowed - NoExclusions | Build, as an optional second half of 6.3: countries to block outright (D4) | Jon layers it with the allow list |
+| Countries not Allowed - NoExclusions | Build, as an optional second half of 6.3: countries blocked outright, with no travel exception; the exclusions group stays out, as Jon wrote it (D4) | Jon layers it with the allow list |
 | MFA-Passkeys ADM-Users | Stays in the footer, with better words | Duplicates 4.3 by group; the role-based policy is stronger |
 | BreakGlass-TrustedLocations | Stays in the footer | Contradicts the binding emergency decision |
 | Agent blocks ×2 | Deferred | Needs Microsoft Entra Agent ID; exports lack agent targeting |
-| EAM, travellers, device and AVD groups | Build the interpretation meaning that ties a group to a Direction answer | Clears several holds at once |
+| EAM, travellers, device and AVD groups | Build the interpretation meaning that ties a group to a Direction answer (D6) | Clears several holds at once |
 | Footer fallback reasons (Service Accounts, EntraConnectIDSync, the prose budget) | Specific reasons | No "No step in this plan covers it" left |
 | Stage 4, the risk-pair merge | Deferred to v1.5 | The riskiest engine change, for two rows |
 | The held-back Cleanup rows | After the policy-matching pilot | Retire-old reshapes them |
@@ -240,9 +239,39 @@ Triaged weekly against the bar:
 - **D2** Passkeys:
   - device-bound and attested for all users, with no AAGUID key restrictions;
   - 1.3 lists the active people whose passkey breaks, so the admin knows before the change.
-- **D3** The lockdown kit is created Off.
+  - The reason (research, 2026-10-03):
+    - a synced passkey is exportable by design and cannot be attested;
+    - it lives in a personal sync account the company does not control;
+    - NIST keeps it out of AAL3 and asks for compensating controls at AAL2.
+  - Microsoft auto-enabled passkey profiles from April to May 2026. Tenants whose
+    attestation was off got a default profile that allows synced passkeys, so many now
+    hold synced passkeys nobody chose. The lockout list is how the admin finds them.
+- **D3** The lockdown kit is created Off: Jon's two All Apps switches and the Admin Portal
+  block.
+  - The Admin Portal block is the third switch (owner's reading, 2026-10-03). Its ZTCA
+    prefix, its Report-only state and its excluded group are shared with the All Apps
+    switch. Read that way, the README's "non-admins" and the export no longer contradict
+    each other, so `baselineConflict.ts` stops withholding it.
+  - **Open:** who keeps working when a switch is flipped. Jon excludes an unnamed group
+    (`e663a7ce`, "AllAdminUsers" on the Admin Portal), which IAMAI drops today. That
+    leaves only the emergency accounts. Options:
+    - emergency accounts only;
+    - a responders group the operator names;
+    - the admin roles.
 - **D4** Build Countries NoExclusions and AVD allowed-users.
 - **D5** `fake-indexeddb` may be added as a dev dependency.
+- **D6** Jon's named groups, read from his README at the pin, and their counterparts.
+  - The EAM and AVD groups say who a policy is for, so they are built:
+    - SG-Entra-AUG-MFA-AuthEAM is the group the tenant's external authentication method
+      already targets, read from the scan;
+    - SG-Intune-AUG-AVD-Prod-Users and -ExternalUsers are the groups allowed to use AVD,
+      named by the operator because IAMAI cannot read Azure's assignments.
+  - The travellers and device-exception groups excuse people, so they are added only where
+    the Direction answer says they are needed, and the step says to keep them small:
+    - SG-Entra-AUG-CAP-TravelingUsers, the countries block's travellers;
+    - SG-Entra-ADG-CAP-DeviceExclusions, the device policies' exceptions.
+  - SG-Entra-DUG-Admins-AllAdminUsers stays in the footer: IAMAI targets the admin roles,
+    which cannot fall out of a group rule.
 - **Defaults taken unless the owner objects:**
   - "active" is 3.1's window;
   - a tenant's existing allow list is left in place;
@@ -260,10 +289,10 @@ Triaged weekly against the bar:
    SECURITY.md.
 6. **Remove the admin bypass on `main`.** CONTRIBUTING.md says it will go.
 7. **GitHub Support:** purge PR #13's cached views.
-8. **Ask Jon:**
-   - the ZTCA Admin Portal's intent;
-   - the AVD allowed-users group;
-   - the EAM, travellers and device groups.
+8. **Tell Jon, optionally:**
+   - SG-Entra-ADG-CAP-DeviceExclusions sits in the users slot of the two Intune device
+     policies; a device group there matches nobody;
+   - the unnamed `e663a7ce` exclusion carries two different names in his README.
 
 ## 5. Binding rules for this work
 - `CLAUDE.md`, the binding owner decisions in `docs/STATUS.md`, and this section.
