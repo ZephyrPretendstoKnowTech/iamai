@@ -3550,6 +3550,8 @@
         "planFromAnotherTenant": "This plan was made for {planTenant}, and you are connected to {current}. Nothing was loaded. Open it while connected to {madeFor}.",
         "anotherTenant": "another tenant",
         "differentTenant": "a different tenant",
+        "$commentTenantWithId": "F-164 (owner, 2026-10-03): each tenant in planFromAnotherTenant carries its ID beside its name, so two tenants with the same display name read apart.",
+        "tenantWithId": "{name} (tenant ID {id})",
         "thisTenant": "this tenant",
         "madeFor": "the tenant it was made for",
         "csvTab": "{label} as CSV",

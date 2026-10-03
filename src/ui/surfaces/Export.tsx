@@ -27,7 +27,7 @@ import type { PlanComputed } from './planData.ts'
 import { inventoryTables, planGroupRolesOf, readinessTable } from './inventoryTables.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
-import { buildPlanFile, makeCheckpoint, parsePlanFile, planFileRefusal, sameBaselineSource } from '../../roadmap/plan.ts'
+import { buildPlanFile, makeCheckpoint, parsePlanFile, planFileRefusal, planTenantRefusal, sameBaselineSource } from '../../roadmap/plan.ts'
 import { baselineContentHash } from '../../baseline/contentHash.ts'
 import type { Checkpoint } from '../../roadmap/plan.ts'
 import { decisionsOf } from '../../roadmap/progress.ts'
@@ -206,7 +206,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
       return
     }
     if (planTenantId !== snapshot.tenantId) {
-      setExportError(fillText(A.planFromAnotherTenant, { planTenant: plan.tenant?.name || A.anotherTenant, current: tenantName || A.differentTenant, madeFor: plan.tenant?.name || A.madeFor }))
+      setExportError(planTenantRefusal({ name: plan.tenant?.name, id: planTenantId }, { name: tenantName, id: snapshot.tenantId }))
       return
     }
     // Take the decisions and regenerate: a 50.1 file carries a decisions block;

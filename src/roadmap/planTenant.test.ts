@@ -19,9 +19,12 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { app } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { planTenantRefusal } from './plan.ts'
 
+const PLAN_ID = '11111111-1111-4111-8111-111111111111'
+const CURRENT_ID = '22222222-2222-4222-8222-222222222222'
 const ROADMAP = {
-  planFromAnotherTenant: (planTenant: string, current: string): string => fillText(app.export.planFromAnotherTenant, { planTenant: planTenant || app.export.anotherTenant, current: current || app.export.differentTenant, madeFor: planTenant || app.export.madeFor }),
+  planFromAnotherTenant: (planTenant: string, current: string): string => planTenantRefusal({ name: planTenant, id: PLAN_ID }, { name: current, id: CURRENT_ID }),
   planTenantUnknown: (current: string): string => fillText(app.export.planTenantUnknown, { current: current || app.export.thisTenant }),
 }
 
@@ -52,12 +55,18 @@ test('the tenant check and the no-tenant refusal both run before anything is per
   }
 })
 
-test('the refusal names both tenants and neither id, still reads with no tenant name, and says nothing was loaded', () => {
+test('the refusal names both tenants, each with its ID beside its name, still reads with no tenant name, and says nothing was loaded', () => {
   const msg = ROADMAP.planFromAnotherTenant('Contoso Holdings', 'Fabrikam Ltd')
-  assert.match(msg, /Contoso Holdings/)
-  assert.match(msg, /Fabrikam Ltd/)
   assert.match(msg, /Nothing was loaded/)
-  assert.doesNotMatch(msg, /[0-9a-f]{8}-[0-9a-f]{4}/, 'the message shows a tenant id')
+  // F-164 (owner, 2026-10-03): two tenants that share a display name read apart by their IDs.
+  assert.ok(msg.includes(`Contoso Holdings (tenant ID ${PLAN_ID})`), msg)
+  assert.ok(msg.includes(`Fabrikam Ltd (tenant ID ${CURRENT_ID})`), msg)
+  {
+    const same = ROADMAP.planFromAnotherTenant('Contoso Pty Ltd', 'Contoso Pty Ltd')
+    assert.equal(same, `This plan was made for Contoso Pty Ltd (tenant ID ${PLAN_ID}), and you are connected to Contoso Pty Ltd (tenant ID ${CURRENT_ID}). Nothing was loaded. Open it while connected to Contoso Pty Ltd.`)
+  }
+  // The import builds the refusal from the plan's tenant ID and the connected one.
+  assert.match(PAGE, /planTenantRefusal\(\{ name: plan\.tenant\?\.name, id: planTenantId \}, \{ name: tenantName, id: snapshot\.tenantId \}\)/)
 
   // The message still reads when the plan carries no tenant name.
   {

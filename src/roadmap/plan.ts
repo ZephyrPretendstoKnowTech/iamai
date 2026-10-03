@@ -10,6 +10,7 @@ import type { ExportOrder, Step } from './types.ts'
 import type { PlanDecisions, StepDecision } from './decisions.ts'
 import { isCleanupCheckpoint } from './cleanupDone.ts'
 import { app, engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 export const PLAN_SCHEMA_VERSION = 2
 
@@ -325,6 +326,21 @@ export type PlanFileProblem = 'notPlan' | 'damaged' | 'newer'
 export function planFileRefusal(kind: PlanFileProblem | null): string {
   const words = (app as unknown as { export: Record<'couldNotRead' | 'planFileNotPlan' | 'planFileDamaged' | 'planFileNewer', string> }).export
   return kind === 'notPlan' ? words.planFileNotPlan : kind === 'damaged' ? words.planFileDamaged : kind === 'newer' ? words.planFileNewer : words.couldNotRead
+}
+
+/**
+ * Why a plan file made for another tenant did not load: both tenants by name,
+ * each with its ID beside it, so two tenants that share a display name still
+ * read apart (F-164). A missing name falls back to the words for "another
+ * tenant" and "a different tenant"; the ID is always there to name.
+ */
+export function planTenantRefusal(plan: { name?: string; id: string }, current: { name: string | null; id: string }): string {
+  const words = (app as unknown as { export: Record<'planFromAnotherTenant' | 'tenantWithId' | 'anotherTenant' | 'differentTenant' | 'madeFor', string> }).export
+  return fillText(words.planFromAnotherTenant, {
+    planTenant: fillText(words.tenantWithId, { name: plan.name || words.anotherTenant, id: plan.id }),
+    current: fillText(words.tenantWithId, { name: current.name || words.differentTenant, id: current.id }),
+    madeFor: plan.name || words.madeFor,
+  })
 }
 
 export function parsePlanFile(text: string): { plan: PlanFile | null; error: string | null; kind: PlanFileProblem | null } {
