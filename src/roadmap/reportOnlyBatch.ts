@@ -12,10 +12,11 @@
 //     the tenant's Mixed-Guests by name while creating B2B-Guest), and a
 //     replacement create beside a tenant's own policy (owner, 2026-09-29: every
 //     policy the plan adds or replaces is listed here). Its create
-//     the plan can write now (operations.ts implementationOffered): a step
-//     held only by order or by a readiness threshold qualifies, because
-//     Report-only stops nobody; one waiting on an object nobody has identified,
-//     or on a baseline that contradicts itself, does not;
+//     the plan can write now (createsWritableNow): a step held only by order,
+//     by a hold on its turn-on, or by a readiness threshold qualifies, because
+//     a hold withholds only what enforces and Report-only stops nobody; one
+//     waiting on an object nobody has identified, on a baseline that
+//     contradicts itself, or a create that itself waits on readiness, does not;
 //   - and, as facts, the ones already in Report-only or On.
 // What it leaves out, and why (Microsoft Learn,
 // concept-conditional-access-report-only):
@@ -29,7 +30,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from './types.ts'
-import { finalTargets, implementationOffered, operationsOf } from './operations.ts'
+import { createWaitsOnReadiness, finalTargets, policyResult, validOperations } from './operations.ts'
 import { setState } from './lifecycle.ts'
 
 import { REPORT_ONLY_STEP_ID } from './stepIds.ts'
@@ -65,12 +66,30 @@ function policiesOf(step: Step, tenant: TenantPolicies): Json[] {
 }
 
 /**
+ * Whether the step's creates can be written now. A hold (the turn-on's
+ * prerequisite, the report-only week) and a readiness threshold withhold only
+ * the operations that enforce on run (operations.ts policyResult); a create
+ * lands in Report-only and stops nobody, so it is written beside a held update
+ * (a mixed guest step whose Mixed-Guests update waits on the drill). Not a
+ * create that itself waits on readiness (createWaitsOnReadiness: a compliant
+ * device), nor a step waiting on an object, a pair or a contradiction.
+ */
+function createsWritableNow(step: Step): boolean {
+  const p = step as Parameters<typeof policyResult>[0]
+  const result = policyResult(p)
+  if (result.kind === 'implementable' || result.kind === 'held') return true
+  return result.kind === 'unavailable' && result.reason === 'readiness-unmet' && !createWaitsOnReadiness(p)
+}
+
+/**
  * The whole policies a step creates (its create operations' bodies), never an
  * update's: a mixed step lists only the policy it adds, and its in-place
- * correction stays its own step's task (owner, 2026-09-26).
+ * correction stays its own step's task (owner, 2026-09-26). Empty while its
+ * creates cannot be written now (createsWritableNow).
  */
 export function createdBodiesOf(step: Step): Json[] {
-  return operationsOf(step as Parameters<typeof operationsOf>[0]).filter((o) => o.mode === 'create').map((o) => o.body as Json)
+  if (!createsWritableNow(step)) return []
+  return validOperations(step.action).filter((o) => o.mode === 'create').map((o) => o.body as Json)
 }
 
 /** Why report-only is left out for a policy: it has a user action, or it checks a device beyond Windows. */
@@ -136,7 +155,7 @@ export function batchMemberOf(step: Step, tenant: TenantPolicies = new Map()): '
   if (!batchable(step, tenant)) return null
   // Any policy the plan creates, in a whole-create step or beside an update (owner, 2026-09-29).
   const creates = createdBodiesOf(step).length > 0 && (step.kind !== 'create' || step.state.lifecycle === 'not-deployed')
-  if (creates && implementationOffered(step as Parameters<typeof implementationOffered>[0])) return 'create'
+  if (creates) return 'create'
   if (CREATED.has(step.state.lifecycle ?? '')) return 'created'
   return null
 }

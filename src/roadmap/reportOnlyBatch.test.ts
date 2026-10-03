@@ -88,3 +88,33 @@ test('every policy the plan creates is listed: a mixed step lists the policy it 
   updateOnly.action.resolution!.policies = [updateOnly.action.resolution!.policies[0]]
   assert.notEqual(batchMemberOf(updateOnly), 'create', 'an in-place correction is its own step\'s task')
 })
+
+test('T1-6a: the guest create is listed beside a Mixed-Guests update that is held or waits on readiness', async () => {
+  const { batchMemberOf, createdBodiesOf } = await import('./reportOnlyBatch.ts')
+  const { policyResult } = await import('./operations.ts')
+  const { withDirectionApproved } = await import('./fixtures/run.ts')
+  const GID = 's-goal-guests-mfa'
+  // The demo with the foundation settled and the cleanup drill not yet recorded, and
+  // a tenant Mixed-Guests On with a difference beside no B2B-Guest.
+  const base = withDirectionApproved(withFoundationSettled(fixture('demo')))
+  const [mixed, b2b] = runFixture(base).steps.find((s) => s.id === GID)!.action.resolution!.policies.map((o) => structuredClone(o.body) as Record<string, any>)
+  Object.assign(mixed, { id: 'aaaaaaaa-0000-4000-8000-000000000001', state: 'enabled', description: '', createdDateTime: '2026-08-01T09:00:00.000Z', modifiedDateTime: '2026-08-01T09:00:00.000Z' })
+  mixed.conditions.applications.excludeApplications = ['00000002-0000-0ff1-ce00-000000000000']
+  const snapshot = structuredClone(base.snapshot)
+  snapshot.config = { ...snapshot.config, caPolicies: { ...snapshot.config.caPolicies!, rows: [...(snapshot.config.caPolicies?.rows ?? []), mixed as never] } }
+  const r = runFixture({ ...base, snapshot }, {}, null, snapshot.asOf)
+  const guests = r.steps.find((s) => s.id === GID)!
+  const held = policyResult(guests as never)
+  assert.equal(held.kind === 'held' && held.hold, 'prerequisite-unmet', 'the Mixed-Guests update waits on the drill')
+  assert.deepEqual(createdBodiesOf(guests).map((b) => b.displayName), [b2b.displayName], 'the B2B-Guest create is still written now')
+  assert.equal(batchMemberOf(guests), 'create')
+  const batch = r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!.reportOnlyBatch!
+  assert.ok(batch.create.includes(GID), '3.8 lists the guest create while its update is held')
+  // The same step held by a readiness threshold: the update waits, the create does not.
+  const unready = structuredClone(guests)
+  unready.action.readinessGate = { measure: 'guests', threshold: '90%', value: '10%' } as never
+  const result = policyResult(unready as never)
+  assert.equal(result.kind === 'unavailable' && result.reason, 'readiness-unmet')
+  assert.deepEqual(createdBodiesOf(unready).map((b) => b.displayName), [b2b.displayName], 'a readiness threshold withholds the update, never the create')
+  assert.equal(batchMemberOf(unready), 'create')
+})
