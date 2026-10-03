@@ -5263,6 +5263,24 @@ th .th-sort:focus-visible,
   white-space: nowrap;
   border: 0;
 }
+/* Skip to main content (F-146): the shell's first Tab stop, off screen until it
+   has keyboard focus, then over the header's top-left corner, above the sticky
+   header and the open menus. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 40;
+  padding: 6px 12px;
+  background: var(--surface);
+  color: var(--primary-text);
+  border: 1px solid var(--strong-line);
+  border-radius: var(--radius-control);
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
 .emergency-account-status-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

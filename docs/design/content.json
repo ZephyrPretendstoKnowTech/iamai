@@ -1927,6 +1927,7 @@
         "tipShow": "Show the tip",
         "tipHide": "Hide the tip",
         "themeTooltip": "Switch between dark and light themes",
+        "skipToMain": "Skip to main content",
         "navLabel": "Sections",
         "tabs": {
           "connect": "Connect",

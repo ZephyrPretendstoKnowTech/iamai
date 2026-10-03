@@ -15,6 +15,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { headerTabsLine, HEADER_TAB_KEYS } from '../content/contentChecks.ts'
+import { app } from '../content/content.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { statusOf } from './surfaces/statusWord.ts'
@@ -240,6 +241,21 @@ test('the header names the five destinations once each, in the product order, wi
   const rendered = [...nav[0].matchAll(/SHELL\.tabs\.([a-z]+)/g)].map((m) => m[1])
   assert.deepEqual(rendered, [...HEADER_TAB_KEYS], 'the header renders the tabs in the content order')
   assert.equal(appShell.match(/<nav\b/g)?.length, 1, 'one primary nav in the shell')
+})
+
+test('the first Tab stop on every page skips to the main region, and shows itself when focused', () => {
+  // F-146: the first Plan step was the 25th Tab stop. The skip link is the
+  // shell's first child, before the header, and moves focus to main.page,
+  // which can take it; the router owns the hash, so the click does not navigate.
+  const shell = appShell.slice(appShell.indexOf('<div className={`shell'))
+  assert.ok(shell.indexOf('className="skip-link"') > -1 && shell.indexOf('className="skip-link"') < shell.indexOf('<header className="app">'), 'the skip link comes before the header')
+  assert.match(shell, /<a className="skip-link" href="#main" onClick=\{skipToMain\}>\s*\{SHELL\.skipToMain\}\s*<\/a>/)
+  assert.match(appShell, /<main className="page" id="main" ref=\{main\} tabIndex=\{-1\}/, 'main is the target and can take focus')
+  assert.match(appShell, /e\.preventDefault\(\)\s*main\.current\?\.focus\(\)/, 'the skip moves focus without touching the hash')
+  assert.equal((app.shell as Record<string, string>).skipToMain, 'Skip to main content')
+  // Off screen until it has focus, then on screen.
+  assert.match(rule(css, '.skip-link') ?? '', /transform:\s*translateY\(-200%\)/)
+  assert.match(rule(css, '.skip-link:focus') ?? '', /transform:\s*none/)
 })
 
 test('the current page is marked programmatically and by shape, and a tab with no data yet says so', () => {

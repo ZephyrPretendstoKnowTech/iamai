@@ -13,7 +13,7 @@ import { isBehind, subscribeBehind } from '../planSync.ts'
 // was scanned (docs/design/connect-mockup.html). The brand links to Connect.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
-import type { ReactNode } from 'react'
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { fillText } from '../../content/render.ts'
 import { app, pages, planner } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demoMode.ts'
@@ -285,6 +285,13 @@ export function AppShell({
   // on for the surface whose own authority asks for it, and for no other. There
   // is still exactly one `header.app` in the product.
   const sticky = planActive
+  // The skip link moves focus to the page itself: the hash is the router's, so
+  // an in-page anchor would navigate (F-146).
+  const main = useRef<HTMLElement>(null)
+  const skipToMain = (e: ReactMouseEvent): void => {
+    e.preventDefault()
+    main.current?.focus()
+  }
   return (
     // The route is carried on the shell, and the shell is where the route's
     // width is declared (`--route-width` in app.css). Two things read it: the
@@ -297,6 +304,10 @@ export function AppShell({
     // `main.page` keeps its own attribute for the rules that address the page
     // itself.
     <div className={`shell${sticky ? ' shell-sticky' : ''}`} data-route={route}>
+      {/* The first Tab stop on every page: past the header, the banner and the scan line, straight to the page (F-146). Hidden until it has focus. */}
+      <a className="skip-link" href="#main" onClick={skipToMain}>
+        {SHELL.skipToMain}
+      </a>
       <header className="app">
         {/* The brand lockup: the Threshold mark beside the wordmark IAMAI,
             composed at use in IBM Plex Sans (task 029). No tagline and no
@@ -371,7 +382,7 @@ export function AppShell({
         </p>
       )}
       {signedIn && <ScanLine route={route} />}
-      <main className="page" data-route={route}>
+      <main className="page" id="main" ref={main} tabIndex={-1} data-route={route}>
         {storageFailed && <p role="alert" className="callout">{SHELL.saveFailed} <a href="#/export">{SHELL.saveBackup}</a></p>}
         {behind && <p role="alert" className="callout plan-behind">{SHELL.planChangedElsewhere} <Button variant="secondary" onClick={() => window.location.reload()}>{app.error.reload}</Button></p>}
         {signedIn && (
