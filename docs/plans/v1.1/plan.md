@@ -63,8 +63,9 @@ truth before anything else changes.
   - no step snapshot changes unless the failure is a real defect, and then only after the
     owner's yes.
 - **P0-4** Codex's 2026-09-29 audit (`docs/launch/2026-09-29-codex-handoff.md`, items 1–6),
-  each checked at HEAD. A confirmed defect is fixed if it is one small commit; otherwise it
-  becomes a Track 1 item with its finding.
+  each checked at HEAD. A confirmed defect is fixed if it is one small commit outside a
+  frozen section; otherwise it becomes a Track 1 item with its finding. Outcome: six
+  findings, all in frozen sections, recorded as Track 1 item 6.
 - **P0-5** A `VITE_CHANNEL` build flag:
   - `VITE_CHANNEL=preview` marks the page as a preview build (title, banner, noindex), so a
     v1.1 preview can be hosted beside the live tool and never mistaken for it.
@@ -110,8 +111,59 @@ truth before anything else changes.
 3. **Dormant synced (hybrid) accounts** are disabled in Active Directory, not Entra.
 4. **Partial P2 seats:** risk steps say who P2 does not cover.
 5. **4.3's session and name correction lines** that never showed: find the root cause.
-6. **The guest pair's lifecycle, and 3.8 counting policies not steps** (Codex items 1–2), if
-   P0-4 leaves them open.
+6. **Codex's audit, as P0-4 found it at HEAD** (2026-10-03). Each fix reaches a frozen
+   section, so each waits for the owner's yes.
+   - **6a. 3.8 drops a guest create beside a held update** (item 1, S).
+     - Case: the tenant has Mixed-Guests with a difference and no B2B-Guest, and its
+       update is held (the drill) or unavailable (readiness).
+     - What happens: 3.8 loses the B2B-Guest create, while the guest step reads Ready ·
+       Create.
+     - Where: `reportOnlyBatch.ts` `createdBodiesOf` reads `operationsOf`, and
+       `batchMemberOf` needs the whole step's `implementationOffered`.
+     - Fix: count the step's create operations whenever only its enforcing work is held.
+     - Snapshots: none move.
+   - **6b. A half-created guest pair can be turned On with no report-only week** (item 1,
+     S–M).
+     - Case: Mixed-Guests in Report-only and B2B-Guest absent. The pair reads
+       `not-deployed`, its least advanced member (`tracking.ts`), so the step offers
+       Mixed-Guests `state: enabled`.
+     - Once both halves are in Report-only, the week runs correctly.
+     - Fix: hold an enforcing update per member that is still in Report-only.
+   - **6c. The guest create task tells the reader to create the half that exists** (item
+     1, S).
+     - Where: `policyTasks.ts` `createSteps` writes create lines for every member with a
+       body, `m.exists` or not. 3.8 copies them.
+     - Fix: create lines only for members that do not exist.
+   - **6d. 3.8 counts steps where its cards count policies** (item 2, M).
+     - The snapshots record it today:
+       - demo: the rail says 7 with 8 cards;
+       - demo-week2: the rail says 5 with 6 cards;
+       - the Plan row says "7 policies".
+     - The second guest card (`batch:s-goal-guests-mfa#2`) has no instruction.
+     - Fix: count created bodies for the milestone and `impactCount`, and one task per
+       created policy.
+     - Snapshots: the `rail` of `s-create-report-only` on demo and demo-week2 moves.
+   - **6e. 3.8's Basic Sign-ins task names tabs 3.8 does not have** (item 5, S).
+     - It copies "create this policy from the PowerShell or JSON tab", but those tabs are
+       on Require Phishing-Resistant MFA for Basic Sign-ins.
+     - Fix: name that step. This needs a new content key.
+   - **6f. Synthetic fixtures pick one source for two goals** (item 6, S).
+     - Where: `generate.ts`'s signature fallback, used only when the goal map does not
+       describe the package. On getiamai, the guest step's source is the AllUsers policy
+       ("… AllUsers (2)").
+     - The product always uses a goal map, so no user sees it. Codex's getiamai order
+       check of the guest step read this wrong source.
+     - Fix: order the fallback by `goalMapFor`. The synthetic fixtures' snapshots may move.
+   - **Not defects:**
+     - item 3: the guest pair's completion and the partner answer. The tenant's own guest
+       policy is never edited;
+     - item 4: MFA for Everyone's ownership, rename and RMS/Intune exclusions;
+     - item 5's gate: it holds only the turn-on, and the step's own tabs explain the wait.
+   - **Two points for the owner, not defects:**
+     - with "Exclude service providers" answered and Jon's halves On verbatim, the guest
+       step reads manual-correction, Mixed-Guests included;
+     - on a tenant whose service-accounts group is unresolved, MFA for Everyone reads
+       Completed without comparing the exclusions, until the group exists.
 7. **The remaining Needs attention items** (rounds document): F-010, F-180, OWN-W5, F-066,
    F-107, F-111, F-121, F-063, F-101, F-114, F-037, F-130.
 8. **Promised, never done:**
