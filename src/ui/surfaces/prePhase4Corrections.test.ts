@@ -121,17 +121,26 @@ test('a user-action policy being corrected stays off Create the Policies in Repo
 test('review fixes: a pair member’s create keeps its own name; named waits never run into the next; mail accounts are named once', () => {
   {
     // Demo-week2 creates both of the baseline's guest policies (owner, 2026-09-28); once B2B-Guest exists in Report-only,
-    // each half's create names its own half, never the step's name (Mixed-Guests) for B2B-Guest.
+    // the create names only the half still to make (T1-6c), and never the step's name (Mixed-Guests) for B2B-Guest.
     const f = structuredClone(fixture('demo-week2'))
     const plan = runFixture(f).steps.find((s) => s.id === 's-goal-guests-mfa')!
     const op = plan.action.resolution!.policies.find((o) => o.sourceName === 'IAC - GLOBAL - GRANT - MFA - B2B-Guest')
-    assert.ok(op, 'the premise: the step writes B2B-Guest')
+    const mixedOp = plan.action.resolution!.policies.find((o) => o.sourceName === 'IAC - GLOBAL - GRANT - MFA - Mixed-Guests')
+    assert.ok(op && mixedOp, 'the premise: the step writes both halves')
     ;(f.snapshot.config.caPolicies.rows as Row[]).push({ ...(structuredClone(op!.body) as Row), id: '00000000-0000-4000-8000-00000000b2b1', displayName: 'IAC - GLOBAL - GRANT - MFA - B2B-Guest', state: 'enabledForReportingButNotEnforced', grantControls: { operator: 'OR', builtInControls: ['mfa'] }, createdDateTime: f.snapshot.asOf })
-    const r = runFixture(f)
-    const step = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
-    const create = stepBodyOf(step, ctxOf(f, r)).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
-    const names = (create?.steps ?? []).filter((l) => l.startsWith('Name:'))
-    assert.deepEqual(names, ['Name: **IAC - GLOBAL - GRANT - MFA - Mixed-Guests**.', 'Name: **IAC - GLOBAL - GRANT - MFA - B2B-Guest**.'], names.join(' | '))
+    const namesOf = (fx: typeof f) => {
+      const r = runFixture(fx)
+      const step = r.steps.find((s) => s.id === 's-goal-guests-mfa')!
+      const create = stepBodyOf(step, ctxOf(fx, r)).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
+      return (create?.steps ?? []).filter((l) => l.startsWith('Name:'))
+    }
+    const names = namesOf(f)
+    assert.deepEqual(names, ['Name: **IAC - GLOBAL - GRANT - MFA - Mixed-Guests**.'], names.join(' | '))
+    // With both halves in the tenant, each half's create stands as the reference under its own name.
+    const both = structuredClone(f)
+    ;(both.snapshot.config.caPolicies.rows as Row[]).push({ ...(structuredClone(mixedOp!.body) as Row), id: '00000000-0000-4000-8000-00000000b2b2', displayName: 'IAC - GLOBAL - GRANT - MFA - Mixed-Guests', state: 'enabledForReportingButNotEnforced', createdDateTime: f.snapshot.asOf })
+    const reference = namesOf(both)
+    assert.deepEqual(reference, ['Name: **IAC - GLOBAL - GRANT - MFA - Mixed-Guests**.', 'Name: **IAC - GLOBAL - GRANT - MFA - B2B-Guest**.'], reference.join(' | '))
   }
   {
     const f = fixture('demo-week2')

@@ -92,3 +92,27 @@ test('a mixed step\'s card names only the policy it creates (owner, 2026-09-29)'
   const tile = reportOnlyTilesOf(step, { ...ctx, planSteps: r.steps }).find((t) => t.key === 'batch:s-goal-guests-mfa')
   assert.deepEqual(tile?.names, [b2b.body.displayName])
 })
+
+test('T1-6c: beside a tenant Mixed-Guests, the guest create task and 3.8\'s copy create only B2B-Guest', async () => {
+  const { withFoundationSettled, withRecoveryTested } = await import('../../roadmap/fixtures/run.ts')
+  const GID = 's-goal-guests-mfa'
+  // The demo, settled, with the tenant's own Mixed-Guests On with a difference and no B2B-Guest.
+  const base = withRecoveryTested(withFoundationSettled(fixture('demo')))
+  const [mixed, b2b] = runFixture(base).steps.find((s) => s.id === GID)!.action.resolution!.policies.map((o) => structuredClone(o.body) as Record<string, any>)
+  Object.assign(mixed, { id: 'aaaaaaaa-0000-4000-8000-000000000001', state: 'enabled', description: '', createdDateTime: '2026-08-01T09:00:00.000Z', modifiedDateTime: '2026-08-01T09:00:00.000Z' })
+  mixed.conditions.applications.excludeApplications = ['00000002-0000-0ff1-ce00-000000000000']
+  const snapshot = structuredClone(base.snapshot)
+  snapshot.config = { ...snapshot.config, caPolicies: { ...snapshot.config.caPolicies!, rows: [...(snapshot.config.caPolicies?.rows ?? []), mixed as never] } }
+  const f = { ...base, snapshot }
+  const r = runFixture(f, {}, null, snapshot.asOf)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, planSteps: r.steps, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
+  const named = (steps: readonly string[]) => steps.filter((l) => l.startsWith('Name: ')).map((l) => l.replace(/^Name: \*\*(.*)\*\*\.$/, '$1'))
+  const own = stepBodyOf(r.steps.find((s) => s.id === GID)!, ctx).emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!
+  assert.deepEqual(named(own.steps), [b2b.displayName], 'the step creates only the half the tenant does not have')
+  const batch = stepBodyOf(r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!, ctx).emergencyAccountTasks!.tasks.find((t) => t.id === `create:${GID}`)!
+  assert.deepEqual(named(batch.steps), [b2b.displayName], '3.8 copies the same single create')
+  // With neither half in the tenant, the task creates both.
+  const shipped = plan('demo')
+  const reference = stepBodyOf(shipped.r.steps.find((s) => s.id === GID)!, shipped.ctx).emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!
+  assert.equal(named(reference.steps).length, 2, 'both of Jon\'s guest policies on the demo')
+})

@@ -521,9 +521,13 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const title = (key: string): string => PW.tasks[many ? `${key}Many` : key]
   const task = (id: PolicyTaskId, key: string, steps: string[], required: boolean): EmergencyAccountTask => ({ id, accountId: null, title: title(key), targetUpn: null, required, readinessKey: '', evidence: null, actionLabel: title(key), steps })
   const tasks: EmergencyAccountTask[] = []
-  const creates = members.filter((m) => m.create !== null)
   // What the create needs first (the authentication context it targets), only while the policy is still to be made.
   const toCreate = members.some((m) => !m.exists)
+  // While a policy is still to be made, the create names only the ones the tenant
+  // does not have (T1-6c: a mixed guest step told the reader to create the
+  // Mixed-Guests it updates). Once none is left to make, every create stands as
+  // the step's reference (owner, 2026-09-25: never hide the procedure).
+  const creates = members.filter((m) => m.create !== null && (!toCreate || !m.exists))
   // Created On (roadmap/evidenceStrategy.ts stepCreatedOn; Phase 2e): the create
   // turns the policy on, so it is the step's one task, and whatever holds a
   // turn-on holds it (below).
