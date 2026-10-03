@@ -471,6 +471,12 @@ main.page a[href] {
   background: var(--brand-primary);
   color: var(--on-brand);
 }
+/* A filled button's face and edge are the ring's own colour, so the plain ring
+   disappears into it. A canvas-coloured gap first sets the ring off the edge,
+   in both themes, from the same two tokens (F-079). */
+.btn-primary:focus-visible {
+  box-shadow: 0 0 0 2px var(--canvas), 0 0 0 4px var(--brand-primary);
+}
 .btn-secondary {
   color: var(--brand-primary);
   background: transparent;

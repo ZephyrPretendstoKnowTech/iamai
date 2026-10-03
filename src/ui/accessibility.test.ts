@@ -355,6 +355,21 @@ test('no reset later in the sheet erases the focus indicator it left behind', ()
   }
 })
 
+test('a filled primary button shows a ring set off from its own face, in both themes and on both pages', () => {
+  // The ordinary ring is the brand colour, and so is a filled button's face and
+  // edge: on .btn-primary the ring disappeared (F-079). The filled button gets a
+  // canvas gap before the ring, and no theme rule takes it away again.
+  const offset = '0 0 0 2px var(--canvas), 0 0 0 4px var(--brand-primary)'
+  for (const [name, sheet] of [['app.css', css], ['home.css', homeCss]] as const) {
+    const rules = parseRules(sheet)
+    assert.equal(effective(rules, '.btn-primary', false, 'box-shadow'), offset, `${name}: a focused filled button has no offset ring`)
+    assert.match(effective(rules, '.btn-primary', true, 'outline'), /\bsolid\b/, `${name}: a focused filled button has no outline in a forced-colours mode`)
+    for (const r of rules) if (/\.btn-primary/.test(r.sel) && /focus/.test(r.sel) && r.decls['box-shadow'] !== undefined) {
+      assert.equal(r.decls['box-shadow'], offset, `${name}: ${r.sel} replaces the offset ring`)
+    }
+  }
+})
+
 test('the home sheet leaves its own controls a focus indicator in a forced-colours mode', () => {
   // Home is a separate page with its own stylesheet, and it suppresses the
   // native outline the same way the app does. The app's fallback is in
@@ -365,7 +380,7 @@ test('the home sheet leaves its own controls a focus indicator in a forced-colou
   assert.ok(forced, 'home.css carries a forced-colours focus fallback')
   assert.match(forced[0], /:focus-visible[\s\S]*outline:\s*2px solid/)
   const rules = parseRules(homeCss)
-  for (const p of ['a', '.lnk', '.btn', '.btn-primary', '.btn-secondary', '.btn-tertiary', 'header.app .right .text-control', '.shot a']) {
+  for (const p of ['a', '.lnk', '.btn', '.btn-secondary', '.btn-tertiary', 'header.app .right .text-control', '.shot a']) {
     assert.equal(effective(rules, p, false, 'box-shadow'), 'var(--focus-ring)', `${p}: the home sheet leaves it with no focus ring`)
     assert.match(effective(rules, p, true, 'outline'), /\bsolid\b/, `${p}: the home sheet leaves it with no focus outline in a forced-colours mode`)
   }
