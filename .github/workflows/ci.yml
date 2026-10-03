@@ -3,8 +3,12 @@
 # no longer runs on every push to main and no longer gates the deploy:
 # deploy-pages.yml publishes main on push. Start it with
 # `gh workflow run ci --ref main` when a change is big enough to need it.
+# The v1.1 branch is the exception: every push to it runs CI, because v1.1 is
+# built there before it reaches main (docs/plans/v1.1/plan.md, P0-2).
 name: ci
 on:
+  push:
+    branches: [v1.1]
   pull_request:
   workflow_dispatch:
 permissions:

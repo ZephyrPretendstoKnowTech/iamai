@@ -48,7 +48,8 @@ site, then runs those tests and the browser smoke concurrently. It is the quick
 local gate; use `npm run verify -- <tests>` for tighter edit loops.
 
 The `ci` check runs the complete unit suite and build/browser jobs on pull
-requests and on explicit manual runs. Use `npm run verify -- --release` only
+requests, on explicit manual runs and on every push to the `v1.1` branch, where
+v1.1 is built before it reaches `main`. Use `npm run verify -- --release` only
 when a local full release preflight is specifically needed.
 
 Publication starts immediately for the exact commit pushed to `main`. Its only
