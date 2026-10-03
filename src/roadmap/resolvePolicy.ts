@@ -8,10 +8,10 @@
 // nowhere else; no channel reinterprets an author reference on its own, and no
 // channel invents a fallback another channel does not use.
 //
-// Several of the author's objects can resolve to the one tenant object (Jon
-// Hope's baseline excludes two travellers groups, a service-accounts group and
-// an exclusions group from the same policy, and this tenant has one exclusions
-// group for all of them). The tenant object is then named once per collection,
+// Several of the author's objects can resolve to the one tenant object (a
+// baseline can exclude more than one of its author's groups from the same
+// policy, and this tenant has one exclusions group for all of them). The
+// tenant object is then named once per collection,
 // in first-occurrence order — not `[X, X, X, X]`.
 //
 // What this module does not do: it consumes the mapping the product already
