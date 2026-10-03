@@ -11,6 +11,11 @@ import { stepBodyOf } from './stepBody.ts'
 import { railOf, readinessLeadOf } from './stepContract.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { PROCEDURE } from '../../roadmap/policyProcedure.ts'
+import { fillText } from '../../content/render.ts'
+
+/** The create's line for a policy that targets Windows Azure Active Directory, in any of its readings. */
+const DIRECTORY_LINE = /\*\*Windows Azure Active Directory\*\* can't be picked from Select resources/
 
 function plan(name: 'getiamai' | 'demo') {
   const f = fixture(name)
@@ -31,7 +36,9 @@ test('each task is its policy step’s own create procedure, word for word, in p
     const member = r.steps.find((s) => s.id === id)!
     const own = stepBodyOf(member, ctx).emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!
     assert.equal(tasks[i].title, contentTitle(member))
-    assert.deepEqual(tasks[i].steps, own.steps, `${id}: the same procedure as its own step`)
+    // Save the line that sends the reader to the PowerShell or JSON tab, which 3.8 has not: it names the step that has them (T1-6e).
+    const elsewhere = fillText(PROCEDURE.resourcesDirectoryElsewhere, { step: contentTitle(member) })
+    assert.deepEqual(tasks[i].steps, own.steps.map((l) => (DIRECTORY_LINE.test(l) ? elsewhere : l)), `${id}: the same procedure as its own step`)
     assert.equal(tasks[i].required, create.includes(id))
   }
   assert.ok(tasks.every((t) => t.steps.some((l) => /Report-only/.test(l))), 'every create lands in Report-only')
@@ -115,4 +122,22 @@ test('T1-6c: beside a tenant Mixed-Guests, the guest create task and 3.8\'s copy
   const shipped = plan('demo')
   const reference = stepBodyOf(shipped.r.steps.find((s) => s.id === GID)!, shipped.ctx).emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!
   assert.equal(named(reference.steps).length, 2, 'both of Jon\'s guest policies on the demo')
+})
+
+test('T1-6e: 3.8\'s Basic Sign-ins task names the step whose PowerShell or JSON tab creates it; the step keeps its own line', async () => {
+  const { withFoundationSettled, withRecoveryTested } = await import('../../roadmap/fixtures/run.ts')
+  const ID = 's-goal-directory-baseline-scopes-mfa'
+  const f = withRecoveryTested(withFoundationSettled(fixture('demo-week2')))
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, planSteps: r.steps, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
+  const member = r.steps.find((s) => s.id === ID)!
+  const batch = r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!
+  assert.ok(batch.reportOnlyBatch!.create.includes(ID), 'the premise: 3.8 lists the policy')
+  const own = stepBodyOf(member, ctx).emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!
+  assert.ok(own.steps.includes(PROCEDURE.resourcesDirectory), 'its own step, which has the tabs, keeps "create this policy from the PowerShell or JSON tab"')
+  const copy = stepBodyOf(batch, ctx).emergencyAccountTasks!.tasks.find((t) => t.id === `create:${ID}`)!
+  const line = copy.steps.find((l) => DIRECTORY_LINE.test(l))
+  assert.equal(line, fillText(PROCEDURE.resourcesDirectoryElsewhere, { step: contentTitle(member) }))
+  assert.ok(line!.includes(contentTitle(member)), 'it names the step by its content title')
+  assert.ok(!copy.steps.includes(PROCEDURE.resourcesDirectory), '3.8 never points at a tab it does not have')
 })

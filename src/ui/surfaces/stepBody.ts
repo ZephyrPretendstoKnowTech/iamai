@@ -206,6 +206,12 @@ export type StepBodyOptions = {
    * `blockers` — and the checklist is precisely about the day it will be.
    */
   enforceWaits?: readonly string[]
+  /**
+   * The body is read for Create the Policies in Report-only (3.8), whose task
+   * copies this step's create and has no PowerShell or JSON tab: the line that
+   * sends the reader to those tabs names this step instead (T1-6e).
+   */
+  tabsElsewhere?: boolean
 }
 
 /**
@@ -230,7 +236,7 @@ export type StepBodyOptions = {
 const createTasks = new WeakMap<Step, string[] | null>()
 function createTaskOf(member: Step, ctx: StepVarContext): string[] | null {
   if (createTasks.has(member)) return createTasks.get(member) ?? null
-  const steps = stepBodyOf(member, ctx).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')?.steps ?? null
+  const steps = stepBodyOf(member, ctx, { tabsElsewhere: true }).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')?.steps ?? null
   createTasks.set(member, steps)
   return steps
 }
@@ -725,9 +731,12 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
     || (directoryDecision ? `${directoryDecision.label}: ${directoryDecision.value}` : null)
     || laneView.waitingFor
     || ''
-  const directoryResourcesLine = contract.track[0]?.current === true && !artifacts.some((a) => (a.id === 'ps' || a.id === 'json') && !a.unavailable)
-    ? fillText(PROCEDURE.resourcesDirectoryWaiting, { wait: directoryWait && !/[.!?]$/.test(directoryWait) ? `${directoryWait}.` : directoryWait })
-    : undefined
+  // Read for 3.8's copy, the line names this step, whose tabs those are (T1-6e).
+  const directoryResourcesLine = o.tabsElsewhere === true
+    ? fillText(PROCEDURE.resourcesDirectoryElsewhere, { step: title })
+    : contract.track[0]?.current === true && !artifacts.some((a) => (a.id === 'ps' || a.id === 'json') && !a.unavailable)
+      ? fillText(PROCEDURE.resourcesDirectoryWaiting, { wait: directoryWait && !/[.!?]$/.test(directoryWait) ? `${directoryWait}.` : directoryWait })
+      : undefined
   const procedure = machine && drawsTaskAnatomy(step.id)
     ? policyProcedureOf(step, { directoryResourcesLine, nameOf: portalNames.nameOf, strengthNameOf: (id) => portalNames.strengthNameFor?.(id) ?? null, rows: ctx.snapshot.config.caPolicies?.rows ?? [], before: wholeLines(w.before, ex), contract, outstanding: outstandingForEnforce, proposed: proposedNamesFor(ctx), mapping: ctx.mapping, extras: policyProcedureExtras(step, pkg, pkgBindings ?? (pkg ? packageBindings(step, ctx, contract) : null)), announces: supported.has('email'), externalOf: externalOf(ctx) })
     : null
