@@ -23,6 +23,33 @@ Everything else is either a working document it links to, or history in
   pre-share audit (Graph token to graph.microsoft.com only, CSV formulas, masking, the
   diagnostics hash, links from tenant names, PowerShell quoting, SECURITY.md).
 
+## v1.1 (in progress, branch `v1.1`)
+
+- **The plan:** [docs/plans/v1.1/plan.md](plans/v1.1/plan.md), owner-approved
+  2026-10-03.
+  - Base: `v1.0.0` = `fcf59888`, the live `main`.
+  - v1.1 is built on `v1.1` and reaches `main` only when the owner says so.
+  - CI runs on every push to `v1.1`.
+- **Phase 0 is done.**
+  - The full preflight is green; its one failure was a product defect, fixed at the source.
+  - Codex's 2026-09-29 audit is checked: six findings in frozen sections, waiting as Track 1
+    item 6.
+  - `VITE_CHANNEL=preview` builds a marked preview; unset, the build is byte-identical.
+  - The CI actions are pinned.
+- **Next:** Phase 1 (Track 1, safety and plain wrongs), on the owner's word.
+- **Owner decisions of 2026-10-03, binding for v1.1:**
+  - **Passkeys:** device-bound and attested for all users, with no AAGUID key restrictions.
+    A tenant's own allow list is left as it is.
+  - **The lockout list:** 1.3 lists the active people whose passkey stops working before the
+    change.
+  - **Tenants:** v1.1 adds switching between tenants in one browser, then sign-in to a named
+    tenant. One tenant per session at a time.
+  - **Jon's baseline:**
+    - the lockdown kit is created Off;
+    - Countries NoExclusions and AVD allowed-users are built;
+    - ADM-Users and BreakGlass-TrustedLocations stay in the footer;
+    - the Agent blocks wait.
+
 ## Launch
 
 The morning list: [docs/launch/2026-09-28-pre-launch.md](launch/2026-09-28-pre-launch.md).
@@ -42,7 +69,7 @@ what was promised and never done.
 | The step standard | `docs/plans/roadmap-flow/intent.md` (the seven questions), `step-template.md` |
 | The v1.0 plan and its design decisions | `docs/plans/roadmap-flow/v1-plan.md` |
 | Rounds: scores, Needs attention, Round 5 candidates, next-chat prompt | `docs/plans/2026-09-27-low-hanging-fruit.md` and its `-backlog.json` |
-| After launch | `docs/plans/roadmap-flow/v1.1-list.md` |
+| After launch | `docs/plans/v1.1/plan.md` (the v1.1 plan), drawing on `docs/plans/roadmap-flow/v1.1-list.md` |
 | What every step shows, per test tenant | `docs/qa/step-snapshots/` (`node scripts/step-snapshots.mjs`) |
 | The dependency playbook the engine reads | `docs/product/actionability/` |
 | Content specs the tests cite | `docs/content-review/` |

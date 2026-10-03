@@ -284,10 +284,12 @@ Triaged weekly against the bar:
 - **Phases:** each phase ends with a report. The next starts only on the owner's word.
 
 ## 6. Phase 0 ticks
-- [ ] P0-1 Branch, tag and this plan
-- [ ] P0-2 CI on push to `v1.1`
-- [ ] P0-3 The full preflight green
-- [ ] P0-4 Codex's audit checked
-- [ ] P0-5 `VITE_CHANNEL`, byte-identical when unset
-- [ ] P0-6 Actions pinned
-- [ ] P0-7 Stale records refreshed
+- [x] P0-1 Branch, tag and this plan: `4c19f907` (tag `v1.0.0` on `fcf59888`, local)
+- [x] P0-2 CI on push to `v1.1`: `28ec5398`
+- [x] P0-3 The full preflight green: `243800ba`. One failure: a product defect, the Basic
+  Sign-ins create line branched on the lifecycle. After the fix: 2,219 pass, 0 fail,
+  12 skipped; build and smoke pass.
+- [x] P0-4 Codex's audit checked: `c09737d4` (six findings, Track 1 item 6)
+- [x] P0-5 `VITE_CHANNEL`, byte-identical when unset: `bf35a876`
+- [x] P0-6 Actions pinned: `060e48be`
+- [x] P0-7 Stale records refreshed: `0aeece1f`
