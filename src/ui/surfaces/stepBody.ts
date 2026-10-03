@@ -725,13 +725,15 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const outstandingForEnforce = [...new Set([...blockers.map((b) => b.title ?? b.label).filter((x): x is string => typeof x === 'string' && x.length > 0), ...ownWaits, ...(o.enforceWaits ?? [])])]
   // A directory-resource create cannot use the portal picker. When its machine
   // tabs are withheld, explain the existing wait instead of pointing at absent tabs.
+  // Only while the policy is still to create: the contract's track says so (its
+  // first stage, Not deployed, is the current one); the body never reads the lifecycle.
   const directoryDecision = readiness.tiles.find((tile) => tile.key.startsWith('direction:'))
   const directoryWait = (!contract.implementation.offered ? contract.implementation.because : null)
     || laneView.waitingIn
     || (directoryDecision ? `${directoryDecision.label}: ${directoryDecision.value}` : null)
     || laneView.waitingFor
     || ''
-  const directoryResourcesLine = step.state.lifecycle === 'not-deployed' && !artifacts.some((a) => (a.id === 'ps' || a.id === 'json') && !a.unavailable)
+  const directoryResourcesLine = contract.track[0]?.current === true && !artifacts.some((a) => (a.id === 'ps' || a.id === 'json') && !a.unavailable)
     ? fillText(PROCEDURE.resourcesDirectoryWaiting, { wait: directoryWait && !/[.!?]$/.test(directoryWait) ? `${directoryWait}.` : directoryWait })
     : undefined
   const procedure = machine && drawsTaskAnatomy(step.id)
