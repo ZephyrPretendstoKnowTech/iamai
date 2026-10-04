@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when Modern MFA + TAP readiness reaches 100% (now 27%)",
+  "reason": "when Modern MFA + TAP readiness reaches 100% (now 31%)",
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Not yet: when Modern MFA + TAP readiness reaches 100% (now 27%)",
+  "rail": "Not yet: when Modern MFA + TAP readiness reaches 100% (now 31%)",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "8 of 29 people have a method it accepts"
+      "state": "9 of 29 people have a method it accepts"
     },
     {
       "label": "Confirm What You Use",

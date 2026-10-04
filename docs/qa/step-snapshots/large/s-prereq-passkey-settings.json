@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Ready · Correct",
   "bar": "Needs correction",
-  "rail": "Prepare affected passkeys",
+  "rail": "Configure passkey protections",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -13,10 +13,6 @@
     "Completion Criteria"
   ],
   "tiles": [
-    {
-      "label": "Existing passkeys affected",
-      "state": "12 accounts would be locked out"
-    },
     {
       "label": "Passkey protections",
       "state": "Needs correction"
