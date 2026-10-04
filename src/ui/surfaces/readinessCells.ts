@@ -75,7 +75,7 @@ type Words = {
     whyNot: Record<string, string>
     proofNow: { seamless: string; confirmed: string; none: string; covered: string }
     verdict: Record<'yes' | 'no' | 'unknown', string>
-    step3: Record<'yes' | 'no' | 'unknown', string>
+    step3: Record<'yes' | 'no' | 'unknown' | 'synced', string>
     never: string
     lastUsed: string
     lastUsedDate: string
@@ -483,7 +483,9 @@ export function panelMethods(r: ReadinessRow): PanelItem[] {
     const refused = c.afterStep3 === 'no' || c.allowedNow === 'no'
     // A key named like an approved model on another AAGUID names both, so the name alone never contradicts the list beside it.
     const model = c.model && c.approvedTwin && c.aaguid && refused ? fillText(P.twin, { model: c.model, aaguid: `${c.aaguid.slice(0, 8)}…`, approved: `${c.approvedTwin.slice(0, 8)}…` }) : c.model ?? (c.aaguid ? fillText(P.unlisted, { aaguid: `${c.aaguid.slice(0, 8)}…` }) : c.name ?? '')
-    const allowed = c.afterStep3 !== null ? `${P.verdict[c.allowedNow]}. ${P.step3[c.afterStep3]}.` : `${P.verdict[c.allowedNow]}.`
+    // A synced passkey stops because the change is device-bound, never because of a model list (owner, 2026-10-03).
+    const after = c.afterStep3 === 'no' && c.storage === 'synced' ? 'synced' : c.afterStep3
+    const allowed = after !== null ? `${P.verdict[c.allowedNow]}. ${P.step3[after]}.` : `${P.verdict[c.allowedNow]}.`
     const last = c.lastConfirmed ? `${monthDay(c.lastConfirmed.at)}${c.lastConfirmed.os ? `, ${osWord(c.lastConfirmed.os)}` : ''}${c.lastConfirmed.retained ? ` (${P.retained})` : ''}` : P.never
     // Microsoft's last-use date, where it was read: supporting evidence, and the flag for a passkey that may be gone.
     const used = c.unused === 'never' ? P.unused.never : c.unused === 'stale' && c.lastUsed ? fillText(P.unused.stale, { date: monthDay(c.lastUsed) }) : c.lastUsed ? fillText(P.lastUsedDate, { date: monthDay(c.lastUsed) }) : null
