@@ -443,6 +443,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   if (builtBeside.length > 0) {
     v.existingPolicies = builtBeside.map((p) => `${p.name} (${(INVENTORY.policies.state as Record<string, string>)[p.state] ?? p.state})`)
     v.buildsBeside = true
+    // Once the baseline's policy is On, the line says so rather than that it is being built.
+    if (step.state.lifecycle === 'enforced') v.buildsBesideOn = true
   }
   // In place: the step asks nobody to do anything, so its email does not render (stepExport.ts commsFor).
   if (step.status === 'done') v.stepDone = true

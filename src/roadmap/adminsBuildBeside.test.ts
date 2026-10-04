@@ -192,8 +192,15 @@ test('the life of the pilot: the new policy in Report-only is the step’s own a
   const on = structuredClone(inReportOnly)
   ;(on.snapshot.config.caPolicies!.rows as Row[]).find((p) => p.id === NEW)!.state = 'enabled'
   {
-    const { step, board, retire } = plan(on)
+    const { step, board, retire, ctx } = plan(on)
     assert.equal(step.status, 'done', `the step completes on its own policy On: ${step.status}`)
+    // The line beside it says the baseline's policy is On, not that it is being built.
+    assert.equal(stepVars(step, ctx).buildsBesideOn, true)
+    const who = (stepBodyOf(step, ctx).whoFull ?? []).map((w) => w.lead).join('\n')
+    if (/Also covering these people today/.test(who)) {
+      assert.match(who, /the baseline's policy is On, and Retire Replaced Policies/)
+      assert.doesNotMatch(who, /is built new/)
+    }
     assert.ok(retire, 'the old ones are still to retire')
     assert.equal(board.readings.get('cleanup-retire')!.lane, 'Ready')
     assert.equal(retire.done, null)
