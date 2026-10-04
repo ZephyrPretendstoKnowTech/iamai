@@ -190,8 +190,20 @@
         "turnOn": "Turn the policy on",
         "turnOnMany": "Turn the policies on",
         "$commentPimSettings": "Require MFA at Every Role Activation: the PIM role settings that make role activation ask for the policy's authentication context, after the policy is On (package entra.pim.configure). Without them the enforced policy requires nothing of anyone.",
-        "pimSettings": "Require the context on role activation"
+        "pimSettings": "Require the context on role activation",
+        "$commentBlockedLocation": "Block Sign-ins From Countries Not Allowed, where countries are listed to block outright (v1.1 D4): the countries location Jon's NoExclusions block includes, made before the policies that name it (policyTasks.ts; shared.procedure.blockedLocation).",
+        "blockedLocation": "Set up the blocked countries location"
       },
+      "$commentBlockedLocation": "The blocked countries location's procedure (v1.1 D4), shaped as the allowed countries location's: the countries the operator listed to block outright, by code, and nothing else. {name} is the name the plan proposes; {countries} the codes.",
+      "blockedLocation": [
+        "Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + Countries location**.",
+        "Name it **{name}**.",
+        "Use **Determine location by IP address**.",
+        "Select the countries to block outright: **{countries}**.",
+        "Leave **Include unknown countries/regions** off.",
+        "Create the location, then rescan IAMAI so the policy that blocks these countries can reference its object ID."
+      ],
+      "blockedLocationAction": "Create the blocked countries location {name} with {countries}, then scan again.",
       "$commentCard": "The policy's Tasks Remaining card (ui/surfaces/policyTasks.ts policyCardsOf; walk list item 20) names the task, never Blocked or the step's title. reportOnlyUntil stands while the report-only week runs, and says the scan after that day is what moves it on (round 1, owner 2026-09-24). Once it is over the card reads Turn the policy on, with blockedNoOne under it and, where the turn-on still waits on something, after.",
       "card": {
         "reportOnlyUntil": "Report-only until {date}; scan after that day",
@@ -1278,8 +1290,8 @@
           "adminGroupPasskeys": "The same requirement as {step}, aimed at a group of admin accounts instead of admin roles.",
           "$commentEmergencyAccount": "The trusted-locations policy that names one emergency account: IAMAI keeps emergency accounts out of every policy through the exclusions group instead. {step} is the emergency access group's title.",
           "emergencyAccount": "Limits one emergency account outside the office network. This plan keeps emergency accounts out of every policy instead ({step}).",
-          "$commentBlockedCountries": "The NoExclusions countries variant, which the plan never considers (generate.ts): it blocks a named list of countries, where the geo step allows only the named ones. {step} is the geo step's title.",
-          "blockedCountries": "Blocks a named list of countries. This plan uses {step} instead, which allows only the countries you name.",
+          "$commentBlockedCountries": "Jon's NoExclusions countries block, optional (v1.1 D4, owner 2026-10-03): it is on the plan, as {step}'s second policy, once countries to block outright are listed on its Work countries decision, and here until then. {step} is the geo step's title.",
+          "blockedCountries": "Blocks a list of countries outright, even for travellers. Optional: list them under Countries to block outright in {step} and this plan adds it.",
           "$commentGeneric": "Any other baseline policy no step, Not licensed row or review row names on this tenant.",
           "generic": "No step in this plan covers it for this tenant."
         }
@@ -4412,6 +4424,13 @@
           "$comment": "v1.1 T1-2: the countries the sign-in records show in use that the work countries above leave out, each one ticked when it is left out on purpose. Saved with Save Countries (MappingState.countriesLeftOut). A country neither added nor ticked holds the policy's turn-on; a ticked one holds nothing. Shown only while there is such a country.",
           "label": "Left out on purpose",
           "text": "People signed in from these countries, and the work countries above leave them out. Turning the policy on blocks them there, so the turn-on waits until each is added above or selected here."
+        },
+        "blockedOutright": {
+          "$comment": "v1.1 D4 (owner, 2026-10-03): Jon's NoExclusions block as an optional second half of Block Sign-ins From Countries Not Allowed. Empty by default, and then nothing changes. Listed, the step also makes a countries location holding them and Jon's policy that blocks them for everyone but the exclusions group, travellers included (MappingState.countriesBlockedOutright). A country on both lists is refused (conflictOne / conflictMany).",
+          "label": "Countries to block outright, even for travellers",
+          "text": "Optional. A second policy blocks sign-ins from these countries for everyone except the exclusions group, travellers included. Leave it empty and the plan blocks only what the work countries leave out.",
+          "conflictOne": "{countries} is on the work countries above, so it cannot be blocked outright. Take it off one of the two lists.",
+          "conflictMany": "{countries} are on the work countries above, so they cannot be blocked outright. Take each off one of the two lists."
         },
         "location": {
           "label": "Countries Location",

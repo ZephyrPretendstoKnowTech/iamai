@@ -1,6 +1,6 @@
 // The coverage algorithm (intents.md §7) and statements (§8). Pure.
 import goalsData from '../../data/goals.json' with { type: 'json' }
-import { goalMapInUse } from './companions.ts'
+import { blockedCountriesCompanion, goalMapInUse } from './companions.ts'
 import { scopedToGoalApps } from './goalIdentity.ts'
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
@@ -145,6 +145,12 @@ export type CoverageInput = {
      * narrowed it. Undefined: nothing recorded, so the baseline as the author wrote it.
      */
     questionAnswers?: Record<string, string>
+    /**
+     * The countries to block outright (MappingState.countriesBlockedOutright;
+     * v1.1 D4): listed, the countries goal also holds Jon's NoExclusions block
+     * (companions.ts blockedCountriesCompanion).
+     */
+    countriesBlockedOutright?: string[]
   }
   /**
    * The baseline's goal map (walk-51 item 9, goalMap.ts): for a goal it holds,
@@ -209,7 +215,8 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   // the goal map says which one policy a held goal is evaluated against.
   const matchedBaseline = new Set<string>()
   // A companion this tenant does not use is not part of its goal (companions.ts).
-  const goalMap = goalMapInUse(input.goalMap ?? PINNED_GOAL_MAP, snapshot)
+  // And Jon's NoExclusions countries block joins the countries goal where countries are listed to block outright (v1.1 D4).
+  const goalMap = goalMapInUse(input.goalMap ?? PINNED_GOAL_MAP, snapshot, blockedCountriesCompanion(input.baselinePolicies as never, input.mapping?.countriesBlockedOutright))
   const factsByKey = new Map<string, PolicyFacts>()
   input.baselinePolicies.forEach((p, i) => factsByKey.set(policyKey(p as { id?: string | null; displayName: string }), baselineFacts[i]))
   const rawByFacts = new Map<PolicyFacts, unknown>(baselineFacts.map((f, i) => [f, input.baselinePolicies[i]]))

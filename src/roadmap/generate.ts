@@ -1,7 +1,7 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import { REGISTER_DEVICE, createdOn } from './evidenceStrategy.ts'
-import { goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
+import { blockedCountriesCompanion, goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
@@ -1002,7 +1002,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const source = [...input.baseline.policies, ...pinnedSource(input.baseline.policies)]
     return [...new Set(source.filter((p) => keys.has(policyKey(p))).flatMap((p) => ((p as unknown as { conditions?: { users?: { includeGroups?: string[] } } }).conditions?.users?.includeGroups ?? []).map((g) => g.toLowerCase())))]
   })()
-  const tenantObjectsBase = tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot))
+  // The location holding the countries blocked outright (v1.1 D4), matched as
+  // the allowed one is, by exactly its countries; null while the tenant has
+  // none, and the policy then names the slot 6.3 fills (resolvePolicy.ts).
+  const blockedCountriesLocationId = tenantCountryLocation(snapshot, mapping.countriesBlockedOutright ?? [])?.id ?? null
+  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId }
   const tenantObjects = companionTargets.length === 0 ? tenantObjectsBase : { ...tenantObjectsBase, omitted: new Set([...(tenantObjectsBase.omitted ?? []), ...companionTargets]) }
   /**
    * The resolved policy with its authentication strength as the request may
@@ -1142,7 +1146,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     authors: input.baseline.policies,
   }))
   // Style variants are decided by data, never by a question (prompt 16 §4):
-  // "NoExclusions" variants are never considered.
+  // "NoExclusions" variants are never matched by signature: Jon's countries one joins its goal only through the goal map, where countries are listed to block outright (coverage/companions.ts; v1.1 D4).
   const baselineMatchesFor = (goal: Goal): typeof baselineFactsList => {
     const impl = goal.implementations[0]
     // A goal scoped to one service's apps is only that service's policy: the
@@ -1156,8 +1160,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // never a render-time match. The signature match above remains only as the
   // fallback for a package that does not carry the mapped policy — the
   // synthetic test fixtures, which stand in for the pinned baseline.
-  // A companion this tenant does not use is not part of its goal (coverage/companions.ts).
-  const goalMap = goalMapInUse(input.goalMap ?? PINNED_GOAL_MAP, snapshot)
+  // A companion this tenant does not use is not part of its goal (coverage/companions.ts),
+  // and Jon's NoExclusions countries block is part of the countries goal only
+  // where countries are listed to block outright (v1.1 D4): the one map coverage reads.
+  const goalMap = goalMapInUse(input.goalMap ?? PINNED_GOAL_MAP, snapshot, blockedCountriesCompanion(input.baseline.policies as never, mapping.countriesBlockedOutright))
   const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
   const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
   // The map describes this package when its keys resolve in it (the pinned
@@ -1785,7 +1791,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // The map's policy stands for the goal; among several (a Policy A/B pair),
     // the geo policy is always the allowlist style, and "NoExclusions" variants
-    // are never considered (prompt 16 §4).
+    // never stand for it: Jon's countries one is its second policy where countries
+    // are listed to block outright (coverage/companions.ts; v1.1 D4).
     const matches = sourcesFor(goal)
     let source = matches.find((m) => goal.id === 'geo-restriction' && isAllowlistGeoPolicy(m.policy as never)) ?? matches[0] ?? null
     for (const [, chosen] of Object.entries(mapping.variantChoices)) {

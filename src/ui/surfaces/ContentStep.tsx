@@ -50,7 +50,7 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey, decisionKeyOf, deviationDecision } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { BREAK_GLASS_STEP_ID, CAMPAIGN_STEP_ID, PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
-import { initialLeftOut, leftOutAnswers, leftOutOptions } from './countriesDecision.ts'
+import { blockedAnswers, blockedConflictLine, blockedWords, initialBlocked, initialLeftOut, leftOutAnswers, leftOutOptions } from './countriesDecision.ts'
 import { emergencyRemovalQuestion } from './emergencyRemoval.ts'
 import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
@@ -1181,15 +1181,23 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
   const isCountries = stepId === PREREQ_STEP_ID.allowedCountries
   const leftOutOffered = useMemo(() => (isCountries ? leftOutOptions(ctx.snapshot, chips.map((c) => c.id)) : []), [isCountries, ctx.snapshot, chips])
   const [leftOut, setLeftOut] = useState<string[]>(() => (isCountries ? initialLeftOut(saved, ctx.mapping) : []))
+  // And the countries to block outright (v1.1 D4): optional, empty by default.
+  // A country on both lists is refused: Save Countries waits until it is off one.
+  const [blocked, setBlocked] = useState<PickerOption[]>(() => (isCountries ? initialBlocked(saved, ctx.mapping).map((code) => byId.get(code) ?? { id: code, name: code }) : []))
+  const [blockedQuery, setBlockedQuery] = useState('')
+  const blockedResults = useMemo(() => filterPickerObjects(universe, blockedQuery), [universe, blockedQuery])
+  const blockedWording = isCountries ? blockedWords() : null
+  const blockedConflict = isCountries ? blockedConflictLine(chips.map((c) => c.id), blocked.map((c) => c.id)) : null
   const save = (picked: PickerOption[] = chips): void => {
     if (!canSaveWith(picked)) return
+    if (isCountries && blockedConflictLine(picked.map((c) => c.id), blocked.map((c) => c.id)) !== null) return
     onDecide?.({
       ...(hasPicker || isNetwork ? { picked: remote ? [] : picked.map((c) => c.id) } : {}),
       ...(isNetwork ? { option: remote ? 'remote' : 'office-network', answers: { [NETWORK_NAME]: !remote && picked.length === 0 ? networkName.trim() : '', [NETWORK_RANGES]: !remote && picked.length === 0 ? networkRanges.trim() : '' }, ...(remote ? {assumed: 'none'} : {}) } : {}),
       ...(option !== null ? { option } : accountPickerOnly ? { option: 'None' } : {}),
       ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
       ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
-      ...(isCountries ? { answers: leftOutAnswers(leftOut, leftOutOptions(ctx.snapshot, picked.map((c) => c.id))) } : {}),
+      ...(isCountries ? { answers: { ...leftOutAnswers(leftOut, leftOutOptions(ctx.snapshot, picked.map((c) => c.id))), ...blockedAnswers(blocked.map((c) => c.id)) } } : {}),
     })
   }
   // Each effect line shows once its answer applied (answers.ts effectLine): the
@@ -1241,6 +1249,14 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
             </div>
           </>
         )}
+        {isCountries && blockedWording !== null && !printing && (
+          <>
+            <h5 className="dlabel" id={`${base}-blocked`}>{blockedWording.label}</h5>
+            <p className="reason">{blockedWording.text}</p>
+            <Picker labelledBy={`${base}-blocked`} selected={blocked} options={blockedResults} suggestions={[]} onChange={setBlocked} onSearch={setBlockedQuery} />
+            {blockedConflict !== null && <p role="alert">{blockedConflict}</p>}
+          </>
+        )}
         {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} pickerOnly={accountPickerOnly} options={options} answer={option} onAnswer={chooseOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />}
         {!isExclusionsGroup && decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
         {question && (
@@ -1263,7 +1279,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
             </div>
           </>
         )}
-        {!savesAlone && <Button variant="secondary" disabled={!canSave} onClick={() => save()}>{d.save || 'Save'}</Button>}
+        {!savesAlone && <Button variant="secondary" disabled={!canSave || blockedConflict !== null} onClick={() => save()}>{d.save || 'Save'}</Button>}
       </div>
     </>
   )

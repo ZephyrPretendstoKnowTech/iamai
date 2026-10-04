@@ -46,6 +46,8 @@ import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
 import { doneWhenFor, fillText, whatToDoFor, whole } from '../../content/render.ts'
+import { blockedLocationActionOf, blockedLocationTaskOf } from './blockedLocationTask.ts'
+import { proposedNamesFor } from './proposedNames.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list, plural } from '../../copy/statements.ts'
 import { personLabels } from '../../names.ts'
@@ -1329,6 +1331,10 @@ type OwnObjectTask = { title: string; action: string }
 function ownObjectTaskOf(step: Step, ctx: StepVarContext): OwnObjectTask | null {
   const task = step.objectTask
   if (!task || !awaitsOwnObject(step)) return null
+  // The allowed countries location in place, the policy waits on the second
+  // location the step makes: the countries blocked outright (v1.1 D4).
+  const blocked = blockedLocationTaskOf(step.action.missing ?? [], { proposed: proposedNamesFor(ctx), mapping: ctx.mapping })
+  if (blocked !== null && task.state.satisfied) return { title: blocked.title, action: blockedLocationActionOf({ proposed: proposedNamesFor(ctx), mapping: ctx.mapping }) }
   const title = (contentStepFor(task) as { taskTitle?: string | null } | undefined)?.taskTitle
   return { title: title ?? contentTitle(task), action: stepContract(task, ctx).whatToDo.text }
 }

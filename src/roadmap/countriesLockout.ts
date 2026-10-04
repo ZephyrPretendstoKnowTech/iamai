@@ -8,7 +8,8 @@
 // (generate.ts, COUNTRIES_LOCKOUT_WAIT) and the Work countries decision's Left
 // out on purpose list (ui/surfaces/countriesDecision.ts). A country the operator
 // marked as left out on purpose, saved with the countries answer
-// (MappingState.countriesLeftOut), no longer holds anything.
+// (MappingState.countriesLeftOut), no longer holds anything; nor does one listed
+// to block outright (MappingState.countriesBlockedOutright, v1.1 D4).
 //
 // Where the records hold nothing to read (no administrator's sign-in carries a
 // country, no counts by country), nothing is said and nothing is held: the checks
@@ -36,13 +37,17 @@ export type LeftOutCountry = {
 }
 
 type Snapshot = Pick<TenantSnapshot, 'roles' | 'signInEvidence' | 'evidenceAggregates'>
-type Acknowledging = Partial<Pick<MappingState, 'countriesLeftOut'>>
+type Acknowledging = Partial<Pick<MappingState, 'countriesLeftOut' | 'countriesBlockedOutright'>>
 
 const up = (c: string): string => c.trim().toUpperCase()
 
-/** The countries the operator said are left out on purpose, saved with the countries answer. */
+/**
+ * The countries the operator said are left out on purpose, saved with the
+ * countries answer: marked as such, or listed to block outright (v1.1 D4), which
+ * is leaving a country out on purpose by definition.
+ */
 export function countriesAcknowledged(mapping: Acknowledging): Set<string> {
-  return new Set((mapping.countriesLeftOut ?? []).map(up))
+  return new Set([...(mapping.countriesLeftOut ?? []), ...(mapping.countriesBlockedOutright ?? [])].map(up))
 }
 
 /**
@@ -144,6 +149,15 @@ export function leftOutChoiceLabel(c: LeftOutCountry): string {
 
 /** The key the Work countries decision saves its Left out on purpose countries under (StepDecision.answers), beside the picked work countries. */
 export const COUNTRIES_LEFT_OUT_ANSWER = 'leftOut'
+
+/** The key it saves the countries to block outright under (v1.1 D4). */
+export const COUNTRIES_BLOCKED_ANSWER = 'blockedOutright'
+
+/** The countries on both lists: a country cannot be allowed and blocked outright, so the decision refuses a Save that holds one. */
+export function blockedAndAllowed(allowed: readonly string[], blocked: readonly string[]): string[] {
+  const keep = new Set(allowed.map(up))
+  return [...new Set(blocked.map(up))].filter((c) => keep.has(c))
+}
 
 /** ISO country codes as an answer carries them ("AU, NZ"): upper case, each once, anything that is not a two-letter code dropped. */
 export function parseCountryCodes(answer: string | null | undefined): string[] {

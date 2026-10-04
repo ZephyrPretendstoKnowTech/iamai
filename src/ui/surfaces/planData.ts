@@ -1,7 +1,7 @@
 import type { CleanupCheckpoint } from '../../roadmap/cleanupDone.ts'
 import { scopeManualBasis } from '../../roadmap/manualWork.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
-import { goalMapInUse } from '../../coverage/companions.ts'
+import { blockedCountriesCompanion, goalMapInUse } from '../../coverage/companions.ts'
 // The plan, computed and persisted, for the Plan surface (prompt 48 Part 2).
 // The same pipeline the Roadmap page used — coverage, generate, merge the
 // saved progress, track from evidence, annotate — behind one hook so Plan.tsx
@@ -448,7 +448,7 @@ export function usePlanData(
     settleRenames(schedule, steps)
     settleForecast(steps, schedule)
     annotateStateReasons(steps)
-    return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: goalMapInUse(baseline.goalMap ?? PINNED_GOAL_MAP, snapshot), baselinePolicies: baseline.pkg.policies }
+    return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: goalMapInUse(baseline.goalMap ?? PINNED_GOAL_MAP, snapshot, blockedCountriesCompanion(baseline.pkg.policies as never, mapping.countriesBlockedOutright)), baselinePolicies: baseline.pkg.policies }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, firstDeployment, band, freeze, mappingFor, groupsFor])
 

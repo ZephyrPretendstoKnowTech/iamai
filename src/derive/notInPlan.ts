@@ -40,7 +40,7 @@ const REASONS: { match: RegExp; reason: Reason; step?: string }[] = [
   { match: /\bZTCA\b.*\bAllApps\b/i, reason: 'lockdown' },
   { match: /MFA-Passkeys\s*-\s*ADM-Users/i, reason: 'adminGroupPasskeys', step: 'admins-phishing-resistant' },
   { match: /BreakGlass/i, reason: 'emergencyAccount', step: EMERGENCY_ACCESS_GROUP },
-  // The "NoExclusions" variant the plan never considers (generate.ts baselineMatchesFor).
+  // Jon's countries block with no travel exception: optional, on the plan once countries are listed to block outright (coverage/companions.ts; v1.1 D4).
   { match: /Countries.*no[-_ ]?exclusions?/i, reason: 'blockedCountries', step: 'geo-restriction' },
 ]
 

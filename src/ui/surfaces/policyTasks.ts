@@ -39,6 +39,8 @@ import { PROCEDURE, besideBaseline, correctionLines, correctionSectionOf, correc
 import type { CorrectionSection, ProcedureContext } from '../../roadmap/policyProcedure.ts'
 import { shownDay } from '../../roadmap/stepSchedule.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from '../../roadmap/stepIds.ts'
+import { blockedLocationTaskOf } from './blockedLocationTask.ts'
+import { BLOCKED_COUNTRIES_SLOT } from '../../roadmap/resolvePolicy.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
 import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
@@ -90,8 +92,8 @@ function mailDevicesTaskOf(step: Step, nameOf: (id: string) => string): Emergenc
 }
 
 /** A policy step's Implementation Task ids, in doing order (walk list item 18). */
-export type PolicyTaskId = 'create' | 'report-only' | 'correct' | 'turn-on' | 'pim-settings'
-const POLICY_TASK_IDS: readonly string[] = ['create', 'report-only', 'correct', 'turn-on', 'pim-settings'] satisfies PolicyTaskId[]
+export type PolicyTaskId = 'blocked-location' | 'create' | 'report-only' | 'correct' | 'turn-on' | 'pim-settings'
+const POLICY_TASK_IDS: readonly string[] = ['blocked-location', 'create', 'report-only', 'correct', 'turn-on', 'pim-settings'] satisfies PolicyTaskId[]
 
 /** Whether a task is one of a policy step's own procedures (policyProcedureOf). */
 export const isPolicyProcedureTask = (task: Pick<EmergencyAccountTask, 'id'>): boolean => POLICY_TASK_IDS.includes(task.id)
@@ -114,7 +116,7 @@ export type PolicyProcedureInput = {
   outstanding: readonly string[]
   /** The names the plan proposes for the objects a policy may name before they exist. */
   proposed: ProposedObjectNames
-  mapping?: Pick<MappingState, 'questionAnswers'>
+  mapping?: Pick<MappingState, 'questionAnswers'> & Partial<Pick<MappingState, 'countriesBlockedOutright'>>
   /** What the step's package says beside the procedure (stepPackage.ts policyProcedureExtras). */
   extras?: PolicyProcedureExtras
   /** Whether the step hands over an announcement to send (its Email tab): only then does its card say when to announce. */
@@ -508,7 +510,8 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const unmadeApp = (m: { token: string; stepId: string | null }): boolean => m.stepId === null && includedApps.has(m.token.toLowerCase())
   if (missing.some((m) => m.decision === true || m.unreadable === true || (m.stepId === null ? !unmadeApp(m) : !OBJECT_OF_STEP[m.stepId]))) return null
   const pendingName = new Map(missing.flatMap((m) => {
-    const key = m.stepId ? OBJECT_OF_STEP[m.stepId] : undefined
+    // The countries blocked outright are the countries step's second location (v1.1 D4), never its allowed one.
+    const key = m.token === BLOCKED_COUNTRIES_SLOT ? 'blockedCountries' : m.stepId ? OBJECT_OF_STEP[m.stepId] : undefined
     return key ? [[m.token.toLowerCase(), input.proposed[key]] as const] : []
   }))
   const tenant = step.action.resolution?.tenant ?? step.action.planned?.tenant ?? null
@@ -523,6 +526,11 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const tasks: EmergencyAccountTask[] = []
   // What the create needs first (the authentication context it targets), only while the policy is still to be made.
   const toCreate = members.some((m) => !m.exists)
+  // The countries blocked outright, while the tenant has no location holding
+  // them (v1.1 D4): Block Sign-ins From Countries Not Allowed makes it before
+  // the policy that names it, as it makes the allowed countries location.
+  const blockedLocation = blockedLocationTaskOf(missing, input)
+  if (blockedLocation !== null) tasks.push(blockedLocation)
   // While a policy is still to be made, the create names only the ones the tenant
   // does not have (T1-6c: a mixed guest step told the reader to create the
   // Mixed-Guests it updates). Once none is left to make, every create stands as

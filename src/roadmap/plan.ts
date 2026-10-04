@@ -5,7 +5,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { normalizePasskeyApprovedModels } from '../mapping/passkeyModels.ts'
-import { isCountryCodeList } from './countriesLockout.ts'
+import { blockedAndAllowed, isCountryCodeList } from './countriesLockout.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { ExportOrder, Step } from './types.ts'
 import type { PlanDecisions, StepDecision } from './decisions.ts'
@@ -295,6 +295,8 @@ function validatePlanShape(plan: PlanFile): string | null {
   if (plan.mappings.passkeyApprovedModels !== undefined && normalizePasskeyApprovedModels(plan.mappings.passkeyApprovedModels) === null) return 'not a plan file (invalid additional authenticator)'
   // The countries left out on purpose (v1.1 T1-2): two-letter codes, never one the same file allows.
   if (plan.mappings.countriesLeftOut !== undefined && (!isCountryCodeList(plan.mappings.countriesLeftOut) || plan.mappings.countriesLeftOut.some((c) => plan.mappings.allowedCountries.some((a) => a.toUpperCase() === c.toUpperCase())))) return 'not a plan file (invalid countries left out)'
+  // The countries blocked outright (v1.1 D4): two-letter codes, never one the same file allows.
+  if (plan.mappings.countriesBlockedOutright !== undefined && (!isCountryCodeList(plan.mappings.countriesBlockedOutright) || blockedAndAllowed(plan.mappings.allowedCountries, plan.mappings.countriesBlockedOutright).length > 0)) return 'not a plan file (invalid countries blocked outright)'
   if (plan.mappings.workflowAnswers && (!object(plan.mappings.workflowAnswers) || Object.values(plan.mappings.workflowAnswers).some((v) => !['yes', 'no', 'unsure'].includes(v)))) return 'not a plan file (invalid workflow choice)'
   const decisions = plan.decisions
   if (decisions) {

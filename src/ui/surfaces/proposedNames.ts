@@ -9,9 +9,9 @@ import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { proposedObjectNames } from '../../coverage/naming.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
 
-export type ProposedObjectNames = { exclusionsGroup: string; serviceAccountsGroup: string; trustedLocation: string; allowedCountries: string }
+export type ProposedObjectNames = { exclusionsGroup: string; serviceAccountsGroup: string; trustedLocation: string; allowedCountries: string; blockedCountries: string }
 
-const STEP_OF: Record<keyof ProposedObjectNames, string> = {
+const STEP_OF: Record<Exclude<keyof ProposedObjectNames, 'blockedCountries'>, string> = {
   exclusionsGroup: PREREQ_STEP_ID.exclusionsGroup,
   serviceAccountsGroup: PREREQ_STEP_ID.serviceAccountsGroup,
   trustedLocation: PREREQ_STEP_ID.trustedLocation,
@@ -23,8 +23,9 @@ export function planProposedNames(steps: readonly (Pick<Step, 'id' | 'naming'> &
   const fallback = proposedObjectNames(naming ?? null)
   // An object a step makes itself is that step's task (Step.objectTask; Stage 3: the countries location), and names itself there.
   const all = steps.flatMap((s) => (s.objectTask ? [s, s.objectTask] : [s]))
-  const of = (key: keyof ProposedObjectNames): string => all.find((s) => s.id === STEP_OF[key])?.naming?.proposed ?? fallback[key].name
-  return { exclusionsGroup: of('exclusionsGroup'), serviceAccountsGroup: of('serviceAccountsGroup'), trustedLocation: of('trustedLocation'), allowedCountries: of('allowedCountries') }
+  const of = (key: keyof typeof STEP_OF): string => all.find((s) => s.id === STEP_OF[key])?.naming?.proposed ?? fallback[key].name
+  // The countries blocked outright have no step of their own: the countries step makes them, by the engine's proposal (v1.1 D4).
+  return { exclusionsGroup: of('exclusionsGroup'), serviceAccountsGroup: of('serviceAccountsGroup'), trustedLocation: of('trustedLocation'), allowedCountries: of('allowedCountries'), blockedCountries: fallback.blockedCountries.name }
 }
 
 /** The proposed names a step context carries (planDates), else the engine's proposal for its convention. */

@@ -169,6 +169,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The Work countries decision's Left out on purpose list, drawn only while such a country exists.
   '.steps[3].decision.leftOut.label',
   '.steps[3].decision.leftOut.text',
+  // The Work countries decision's countries to block outright (v1.1 D4), a picker the review page does not draw.
+  '.steps[3].decision.blockedOutright.label',
+  '.steps[3].decision.blockedOutright.text',
+  '.steps[3].decision.blockedOutright.conflictOne',
+  '.steps[3].decision.blockedOutright.conflictMany',
   '.pages.plan.settings.cancelFreeze',
   '.pages.plan.settings.communications',
   '.pages.plan.settings.freezeSaved',

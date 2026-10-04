@@ -115,6 +115,14 @@ export type MappingState = {
    * (roadmap/countriesLockout.ts). ISO codes, never one on the allowed list.
    */
   countriesLeftOut?: string[]
+  /**
+   * Countries to block outright, even for travellers (v1.1 D4): saved with the
+   * countries answer, empty by default. Listed, Block Sign-ins From Countries
+   * Not Allowed also makes a location holding them and Jon's NoExclusions block
+   * (coverage/companions.ts). ISO codes, never one on the allowed list: the
+   * decision refuses that contradiction.
+   */
+  countriesBlockedOutright?: string[]
   displayTimeZone: string | null
   frameworks: string[]
   /** Which answers exist, detected or confirmed (progress + auto vs human). */

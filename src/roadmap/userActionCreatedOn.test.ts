@@ -140,7 +140,7 @@ test('a created-On step is dated as it runs: its Dates line creates it On (no em
   const step = released(held)
   // Require MFA to Register a Device sends no email (Phase 4: 5.2): the day alone.
   assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesCreateOnDay}')
-  const proposed = { exclusionsGroup: 'Core - Exclusions', serviceAccountsGroup: 'Core - Service Accounts', trustedLocation: 'Office', allowedCountries: 'Allowed countries' }
+  const proposed = { exclusionsGroup: 'Core - Exclusions', serviceAccountsGroup: 'Core - Service Accounts', trustedLocation: 'Office', allowedCountries: 'Allowed countries', blockedCountries: 'Blocked countries' }
   const dated = { ...step, events: { ...step.events, announce: { at: '2026-10-06T12:00:00.000Z' } } } as Step
   // The contract's two readings the card uses: the lifecycle, and the milestone's day.
   const contract = { state: { lifecycle: dated.state.lifecycle }, milestone: { kind: 'deploy', label: '', at: '2026-10-13T12:00:00.000Z', gatedBy: null, line: '' } } as unknown as PolicyProcedureInput['contract']

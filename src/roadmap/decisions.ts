@@ -13,7 +13,7 @@ import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
 import { MFA_FOLLOW_UP_KEY, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
 import { WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
-import { COUNTRIES_LEFT_OUT_ANSWER, parseCountryCodes } from './countriesLockout.ts'
+import { COUNTRIES_BLOCKED_ANSWER, COUNTRIES_LEFT_OUT_ANSWER, blockedAndAllowed, parseCountryCodes } from './countriesLockout.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
 
@@ -264,7 +264,7 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     if (typeof d.option === 'string') next.questionAnswers![labels.decision ? answerKey(stepId, labels.decision) : stepId] = d.option
     for (const [label, a] of Object.entries(d.answers ?? {})) {
       // The countries left out on purpose are their own field (below), never a question's answer as well.
-      if (stepId === DECISION_STEPS.countries && label === COUNTRIES_LEFT_OUT_ANSWER) continue
+      if (stepId === DECISION_STEPS.countries && (label === COUNTRIES_LEFT_OUT_ANSWER || label === COUNTRIES_BLOCKED_ANSWER)) continue
       if (typeof a === 'string') next.questionAnswers![answerKey(stepId, label)] = a
     }
     // A strict toggle is on only while a Save carries it: a decision saved without
@@ -372,6 +372,15 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
         const leftOut = parseCountryCodes(d.answers[COUNTRIES_LEFT_OUT_ANSWER]).filter((c) => !next.allowedCountries.includes(c))
         if (leftOut.length > 0) next.countriesLeftOut = leftOut
         else delete next.countriesLeftOut
+        // The countries to block outright (v1.1 D4), optional and empty by
+        // default. The decision refuses a country on both lists; one that
+        // reaches here anyway is never blocked: a block on an allowed country
+        // stops the people who work there.
+        const blocked = parseCountryCodes(d.answers[COUNTRIES_BLOCKED_ANSWER])
+        const refused = new Set(blockedAndAllowed(next.allowedCountries, blocked))
+        const kept = blocked.filter((c) => !refused.has(c))
+        if (kept.length > 0) next.countriesBlockedOutright = kept
+        else delete next.countriesBlockedOutright
       }
     } else if (stepId === DECISION_STEPS.trustedLocation) {
       next.trustedLocationIds = picked

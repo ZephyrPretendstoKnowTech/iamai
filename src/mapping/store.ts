@@ -52,5 +52,7 @@ export function toCoverageMapping(state: MappingState, exclusionsGroupId: string
     // The recorded answers the step's policy is built from, so coverage judges a
     // policy against the baseline as they narrowed it (coverage.ts recordedReference).
     ...(state.questionAnswers !== undefined ? { questionAnswers: { ...state.questionAnswers } } : {}),
+    // The countries to block outright: listed, the countries goal holds Jon's NoExclusions block too (v1.1 D4).
+    ...(state.countriesBlockedOutright !== undefined ? { countriesBlockedOutright: [...state.countriesBlockedOutright] } : {}),
   }
 }

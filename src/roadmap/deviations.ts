@@ -139,6 +139,12 @@ function excludeGroup(body: RawPolicy, groupId: string): RawPolicy {
   return { ...body, conditions }
 }
 
+/** A policy that applies at a list of places, not everywhere: the countries blocked outright, where the allow-list block includes All. */
+function blocksListedPlaces(body: RawPolicy): boolean {
+  const include = (((body.conditions ?? {}) as RawPolicy).locations as { includeLocations?: unknown[] } | null | undefined)?.includeLocations ?? []
+  return include.length > 0 && !include.some((l) => typeof l === 'string' && /^all$/i.test(l))
+}
+
 /** The block with phones taken off the platforms it leaves alone, so it blocks them too. */
 function blockPhones(body: RawPolicy): RawPolicy {
   const conditions = { ...((body.conditions ?? {}) as RawPolicy) }
@@ -161,7 +167,10 @@ function blockPhones(body: RawPolicy): RawPolicy {
  */
 export function applyDeviations(body: RawPolicy, goalId: string, mapping: Pick<MappingState, 'questionAnswers'> & Partial<AccountAnswers>, serviceAccountsGroupId: string | null = null): RawPolicy {
   let out = body
-  if (SERVICE_PROVIDER_GOALS.has(goalId) && serviceProvidersExcluded(mapping)) out = excludeServiceProviders(out)
+  // Not the countries blocked outright (Jon's NoExclusions block; v1.1 D4):
+  // listed to block outright is no exception for anyone but the exclusions
+  // group, as Jon wrote it. The partner answer narrows the allow-list block.
+  if (SERVICE_PROVIDER_GOALS.has(goalId) && serviceProvidersExcluded(mapping) && !(goalId === 'geo-restriction' && blocksListedPlaces(out))) out = excludeServiceProviders(out)
   if (goalId === COMPLIANT_DEVICE_GOAL) {
     const platforms = excludedPlatforms(mapping)
     if (platforms.length > 0) out = excludePlatforms(out, platforms)

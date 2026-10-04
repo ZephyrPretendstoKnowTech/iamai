@@ -76,12 +76,14 @@ export function proposedStrengthName(what: string, naming: NamingConvention): Pr
  * prerequisite steps that create them and for the portal lines that name them
  * before they exist.
  */
-export function proposedObjectNames(naming: NamingConvention): { exclusionsGroup: ProposedName; serviceAccountsGroup: ProposedName; trustedLocation: ProposedName; allowedCountries: ProposedName } {
+export function proposedObjectNames(naming: NamingConvention): { exclusionsGroup: ProposedName; serviceAccountsGroup: ProposedName; trustedLocation: ProposedName; allowedCountries: ProposedName; blockedCountries: ProposedName } {
   return {
     exclusionsGroup: proposedGroupName('Exclusion', 'Break-glass', naming),
     serviceAccountsGroup: proposedGroupName('Exception', 'Service accounts', naming),
     trustedLocation: proposedLocationName('Trusted', 'Head office', naming),
     allowedCountries: proposedLocationName('Allowed', 'Countries', naming),
+    // The countries blocked outright, travellers included (Jon's "IAC - Blocked Countries"; v1.1 D4).
+    blockedCountries: proposedLocationName('Blocked', 'Countries', naming),
   }
 }
 
