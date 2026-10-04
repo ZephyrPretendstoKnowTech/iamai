@@ -21,6 +21,7 @@ import { badgeLabel, CONTRACT, factOf, implementationIsCurrent, isAllClear, obje
 import type { LaneView, PrerequisiteLabel, StepContract } from './stepContract.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, policyProcedureExtras, previewNoteLines, selectedPolicyBodiesOf, workProcedureOf } from './stepPackage.ts'
 import { sectionThreeTasksOf } from './sectionThreeTasks.ts'
+import { lockdownKitProcedureOf } from './lockdownKitStep.ts'
 import { existingObjectProcedureOf } from './prepareProcedures.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { BOARD, SUBSTATUS_WORD, boardHolds, boardWhenOf, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor, waveStartOf } from './planBoard.ts'
@@ -528,7 +529,8 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // write no Entra procedure of their own, so the package reading below left AI
   // Info with the lead alone. Each admin's task is headed by its account where
   // there are several.
-  const sectionThree = sectionThreeTasksOf(step, ctx)
+  // Prepare the Lockdown Kit's switches and its runbook, as its tab draws them (lockdownKitStep.ts).
+  const sectionThree = sectionThreeTasksOf(step, ctx) ?? lockdownKitProcedureOf(step, ctx, names)
   if (step.id === 's-verify-mfa') lines.splice(0, lines.length, ...campaignProcedureLines(step, cs, ex).map(plain))
   else if (sectionThree !== null) {
     const tasks = sectionThree.tasks

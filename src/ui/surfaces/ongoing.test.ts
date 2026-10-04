@@ -82,7 +82,7 @@ function bodiesOf(name: FixtureName, mapping?: MappingState, shape: (f: Fixture)
 
 test('the spec’s eight steps sit where the roadmap flow places them, and Ongoing takes every unclaimed step', () => {
   assert.deepEqual(ONGOING.map((id) => groupOf(id)?.key), ['remaining-doors', 'extend-mfa', 'prepare', 'prepare', 'ongoing', 'ongoing', 'ongoing', 'ongoing'])
-  assert.deepEqual([...membersOf('ongoing')], ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'])
+  assert.deepEqual([...membersOf('ongoing')], ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'])
   assert.equal(groupOf('s-something-nobody-placed')?.key, 'ongoing')
 })
 
@@ -136,15 +136,14 @@ test('B8: on a free tenant the step says it cannot see everyday use, and still a
 
 const PORTALS = 's-goal-admin-portals-protected'
 
-test('C5: the step reaches no create on the demo, and its Completion Criteria is the author’s', () => {
-  const b = bodiesOf('demo').get(PORTALS)
-  assert.ok(b, 'the demo plan has no admin-portals step')
-  assert.equal(b.empty?.key, 'conflict')
-  assert.ok(b.conflictWords, 'the conflicted step draws no explanation')
-  assert.deepEqual(b.contract.doneWhen, ['The baseline author publishes a version that resolves the contradiction between the policy’s documentation and its definition.'.replace('’', "'")])
-  // Nothing in the body offers a policy to write.
-  const steps = (b.emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps ?? [])
-  assert.equal(steps.length, 0, steps.join('\n'))
+test('C5 (T2-LK): the Admin Portal block is a lockdown switch: no admin-portals step on the demo, and Prepare the Lockdown Kit creates it turned off', () => {
+  const bodies = bodiesOf('demo')
+  assert.equal(bodies.get(PORTALS), undefined, 'the demo plan draws an admin-portals step')
+  const kit = bodies.get('s-lockdown-kit')
+  assert.ok(kit, 'the demo plan has no lockdown kit')
+  const create = kit.emergencyAccountTasks?.tasks.find((t) => t.title === 'Create IAC - ZTCA - GLOBAL – BLOCK – Admin Portal, turned off')
+  assert.ok(create, (kit.emergencyAccountTasks?.tasks ?? []).map((t) => t.title).join('\n'))
+  assert.ok(create.steps.includes('Set **Enable policy** to **Off** and select **Create**.'), create.steps.join('\n'))
 })
 
 // ---------------------------------------------------------------------------

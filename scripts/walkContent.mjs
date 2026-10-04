@@ -144,7 +144,6 @@ export const ACCEPTANCE = [
   // shared.engine.baselineConflict and reaches whichever step the active map
   // hands that source. Which step reads it is the unit tests' acceptance
   // (roadmap/adminPortalConflict.test.ts, roadmap/baselineConflictPlan.test.ts).
-  { item: '16', path: 'shared.engine.baselineConflict.adminPortalNonAdminScope', must: 'Nothing is wrong in your tenant' },
   { item: '16', step: 'admin-portals-protected', path: 'whatToDoReference.steps', must: 'Microsoft Purview Platform, Inforcer (baseline name), My Staff' },
   { item: '18', step: 'register-info-protected', path: 'more.helpDesk', must: 'registers with a Temporary Access Pass', mustNot: 'while they are on the VPN' },
   { item: '18', step: 'register-info-protected', path: 'more.risks', must: 'only with a Temporary Access Pass, including a new starter' },

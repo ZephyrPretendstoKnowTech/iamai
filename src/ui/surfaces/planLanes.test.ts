@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 import { allCuratedFixtures, curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
 import { LANE_ORDER, laneReadings, observe, tenantStateOf } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
 import { isHeld } from '../../roadmap/holds.ts'
@@ -125,7 +126,9 @@ test('a step the plan cannot act on is never Ready: pending mappings, conflicts 
   let checked = 0
   for (const make of RUNS) {
     const f = make()
-    const r = runFixture(f)
+    // Each plan carries the reviewed conflict the mechanism is kept for (fixtures/reviewedConflict.ts):
+    // no product baseline carries one since 2026-10-03.
+    const r = runFixture(f, conflictInput())
     const readings = laneReadings(r.steps)
     for (const s of r.steps) {
       const v = readings.get(s.id)
@@ -158,7 +161,8 @@ test('a step the plan cannot act on is never Ready: pending mappings, conflicts 
 })
 
 test('the graph’s non-step prerequisites are read off the steps they gate, and a graph step this plan lacks is nothing to do', () => {
-  const r = runFixture(fixture('demo'))
+  // The reviewed conflict the mechanism is kept for (fixtures/reviewedConflict.ts).
+  const r = runFixture(fixture('demo'), conflictInput())
   const [tenant, owner] = tenantStateOf(r.steps)
   const portals = r.steps.find((s) => s.id === 's-goal-admin-portals-protected')!
   assert.equal(portals.state.condition, 'baseline-conflict', 'the premise: the demo carries the admin-portals contradiction')

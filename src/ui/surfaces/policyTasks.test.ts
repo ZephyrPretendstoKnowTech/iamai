@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs'
 import { fixture, withReviewRow } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled, withRecoveryTested } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { cleanupEntry } from './cleanupExport.ts'
@@ -163,7 +164,8 @@ test('every step projects its own Entra procedure as its Implementation Task, an
       for (const line of body.emergencyAccountTasks!.tasks.flatMap((t) => t.steps)) assert.ok(portal.text().includes(line), `${id} carries its own lines: ${line}`)
     }
     // A step whose baseline contradicts itself has no task: nothing done in the portal resolves it.
-    const conflict = bodyOf('s-goal-admin-portals-protected')
+    // (The review the mechanism last carried: no product baseline carries one since 2026-10-03, fixtures/reviewedConflict.ts.)
+    const conflict = bodyOf('s-goal-admin-portals-protected', 'demo', false, conflictInput())
     assert.equal(conflict.body.contract.state.condition, 'baseline-conflict', 'the premise')
     assert.equal(conflict.body.emergencyAccountTasks, null)
     const [card] = policySubjectsOf(conflict.body.contract, conflict.body.readiness, conflict.body.emergencyAccountTasks)

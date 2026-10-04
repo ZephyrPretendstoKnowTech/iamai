@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
 import { CONTRACT, implementationEmptyOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { BASELINE_COMMIT, implementationPackageFor, packageReviewFor, packageSourceLine, packageStateOf, reviewedPackageFor } from './stepPackage.ts'
@@ -14,13 +14,14 @@ import { BASELINE_COMMIT, implementationPackageFor, packageReviewFor, packageSou
 test('the Admin Portal source conflict shows its review, its source date, the conflict and why nothing is implemented, and resolves nothing', () => {
   for (const name of ['demo', 'demo-week2'] as const) {
     const f = fixture(name)
-    const r = runFixture(f)
+    // The review the mechanism last carried: no product baseline carries one since 2026-10-03 (fixtures/reviewedConflict.ts).
+    const r = runFixture(f, conflictInput())
     const step = r.steps.find((s) => s.goalId === 'admin-portals-protected')!
     const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
     const c = stepContract(step, ctx)
-    // The conflict, with the reviewed source's own words.
+    // The conflict, naming the reviewed source (its explanation's words left with the product entry).
     assert.equal(c.state.condition, 'baseline-conflict', name)
-    assert.ok(baselineConflictWords(step), `${name}: the conflict carries no explanation`)
+    assert.equal(step.state.conflictSource, 'fafaa50c-0b61-4ac6-a589-f9a1120b2f9e', `${name}: the conflict names no source`)
     // Why nothing is implemented: no operation, the conflict's own empty box, no package projection.
     assert.equal(c.implementation.offered, false)
     assert.equal(c.implementation.offered === false && c.implementation.reason, 'baseline-conflict')

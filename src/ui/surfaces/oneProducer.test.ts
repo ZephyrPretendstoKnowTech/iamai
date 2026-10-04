@@ -11,6 +11,7 @@ import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
 import { applySkips } from '../../roadmap/progress.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -241,9 +242,11 @@ test('a deferred step and a step that does not apply read the decided words on e
   assert.equal(naLane.label, BOARD.lanes.doesntApply)
   assert.equal(badgeLabel(stepContract(na, ctx, undefined, naLane)), BOARD.lanes.doesntApply)
   // A baseline conflict is On Hold · Baseline conflict on every surface (decision 4).
-  const conflict = r.steps.find((s) => s.state.condition === 'baseline-conflict')
+  // (The review the mechanism last carried: no product baseline carries one since 2026-10-03, fixtures/reviewedConflict.ts.)
+  const rc = runFixture(f, conflictInput())
+  const conflict = rc.steps.find((s) => s.state.condition === 'baseline-conflict')
   assert.ok(conflict, 'the premise: the demo carries a baseline conflict')
-  const cl = laneViewFor(conflict, boardReadingsOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null))
+  const cl = laneViewFor(conflict, boardReadingsOf(rc.steps, rc.schedule.cleanup, f.mapping.breakGlassAnswers ?? null))
   const cc = stepContract(conflict, ctx, undefined, cl)
   assert.equal(cl.label, BOARD.lanes.onHold)
   assert.equal(badgeLabel(cc), cl.label)

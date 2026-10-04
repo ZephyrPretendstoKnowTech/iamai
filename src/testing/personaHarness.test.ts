@@ -102,10 +102,12 @@ test('Approve answers keeps an answer the person saved', () => {
 test('no step the product withholds from every customer surface reaches a persona', () => {
   const t = tenant('mid')
   const raw = runFixture({ ...t, mapping: mappingOf(t) })
-  const withheld = raw.steps.filter((s) => !customerPlanSteps([s]).length).map((s) => s.id)
-  assert.ok(withheld.length > 0, 'the engine withholds nothing on mid: this proves nothing')
+  // The pinned map hands the admin-portals policy to the lockdown kit since
+  // 2026-10-03 (T2-LK), so the engine withholds nothing on mid today; the filter
+  // still withholds the admin-portals goal, and the harness shows exactly what it keeps.
+  assert.deepEqual(customerPlanSteps([{ ...raw.steps[0], goalId: 'admin-portals-protected' }]), [], 'the filter no longer withholds the admin-portals step')
   const shown = new Set(plan(t).steps.map((s) => s.id))
-  for (const id of withheld) assert.equal(shown.has(id), false, `${id} is withheld from every surface and the harness shows it`)
+  for (const s of raw.steps) assert.equal(shown.has(s.id), customerPlanSteps([s]).length > 0, `${s.id}: the harness and the customer surfaces disagree`)
 })
 
 test('the board a persona reads is the board the Plan draws: its rows, their titles, their lanes and the Cleanup rows', () => {

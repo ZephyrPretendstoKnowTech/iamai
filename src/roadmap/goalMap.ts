@@ -13,6 +13,7 @@ import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CaPolicy } from '../baseline/types.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { withCorrectedGoals } from '../baseline/authorCorrections.ts'
+import { withLockdownKit } from './lockdownKit.ts'
 
 export { mapGoalsToPolicies }
 export type { GoalMap, GoalMapResult }
@@ -21,9 +22,12 @@ export type { GoalMap, GoalMapResult }
  * The pinned baseline's stored map: goalId → the policy key(s) that implement it,
  * with each policy its author confirmed was meant for a goal the map left empty
  * on that goal (authorCorrections.ts: Jon's UserRegistration policy is Protect
- * Sign-in Method Registration, owner 2026-09-25).
+ * Sign-in Method Registration, owner 2026-09-25), and his three ZTCA incident
+ * switches under `lockdown-kit` and no other goal (lockdownKit.ts; owner,
+ * 2026-10-03: the Admin Portal block is a switch, not Protect the Admin Portals).
  */
-export const PINNED_GOAL_MAP = withCorrectedGoals(((pinnedBaseline as { goalMap?: GoalMap }).goalMap ?? {}) as GoalMap, (pinnedBaseline as { policies: { id: string | null; displayName: string; conditions: unknown }[] }).policies, (p) => policyKey(p)) as GoalMap
+const PINNED_POLICIES = (pinnedBaseline as { policies: { id: string | null; displayName: string; conditions: unknown }[] }).policies
+export const PINNED_GOAL_MAP = withLockdownKit(withCorrectedGoals(((pinnedBaseline as { goalMap?: GoalMap }).goalMap ?? {}) as GoalMap, PINNED_POLICIES, (p) => policyKey(p)), PINNED_POLICIES, (p) => policyKey(p)) as GoalMap
 
 /** The stable key of a policy: its id, or its (unique) display name when the export carries no id. */
 export function policyKey(p: { id?: string | null; displayName: string }): string {

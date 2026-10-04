@@ -93,11 +93,11 @@ test('item 12: with no baseline at all, every create step still carries a body, 
   // With no baseline at all, a goal the pinned map holds is written from the
   // pinned policy (q-pin) and only the floor from its own template. The conflict
   // is a reading of the source a step is planned from, never of the goal map
-  // alone (roadmap/baselineConflict.ts): the one step held for it is the one
-  // written from the reviewed source, and it names that source.
-  const conflicted = r.steps.filter((s) => inBaselineConflict(s))
-  assert.deepEqual(conflicted.map((s) => s.id), ['s-goal-admin-portals-protected'], 'a conflict came from the pinned map, not from the source a step is planned from')
-  assert.deepEqual(conflicted.map((s) => s.state.conflictSource), [REVIEWED_SOURCES[0].key])
+  // alone (roadmap/baselineConflict.ts), and no source is reviewed as
+  // self-contradictory since the Admin Portal block became a lockdown switch
+  // (T2-LK): no step is held for one.
+  assert.deepEqual(REVIEWED_SOURCES, [])
+  assert.deepEqual(r.steps.filter((s) => inBaselineConflict(s)).map((s) => s.id), [], 'a conflict came from the pinned map, not from the source a step is planned from')
   for (const s of r.steps) {
     if (!s.goalId || !goalInMap(PINNED_GOAL_MAP, s.goalId)) continue
     for (const op of s.action.resolution?.policies ?? []) assert.notEqual(op.sourceName, s.goalId, `${s.id}: written from the goal's template, not the pinned policy`)

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { CONFLICT_GOAL_MAP } from '../../roadmap/fixtures/reviewedConflict.ts'
 import { laneReadings } from './planLanes.ts'
 import { boardReadingsOf, laneViewFor } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
@@ -55,7 +56,12 @@ test('a prerequisite never fabricates an update or a completion, and creates exa
 })
 
 test('customer plans omit the admin-portals step without deleting its safety assessment', () => {
-  const { r } = setup()
+  // The pinned map hands the Admin Portal block to the lockdown kit (T2-LK), which every customer plan keeps.
+  const pinned = setup().r
+  assert.equal(pinned.steps.some(s => s.goalId === 'admin-portals-protected'), false)
+  assert.ok(customerPlanSteps(pinned.steps).some(s => s.id === 's-lockdown-kit'))
+  // A map that hands the admin-portals goal a policy of its own (an uploaded baseline's) still has it withheld.
+  const r = runFixture(fixture('demo'), { goalMap: CONFLICT_GOAL_MAP })
   assert.ok(r.steps.some(s => s.goalId === 'admin-portals-protected'))
   const publicSteps = customerPlanSteps(r.steps)
   assert.equal(publicSteps.some(s => s.goalId === 'admin-portals-protected'), false)

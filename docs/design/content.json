@@ -141,6 +141,9 @@
       "$commentCreateOn": "A User Action policy is created On (owner decision 3, Phase 2e; roadmap/evidenceStrategy.ts createdOn): Microsoft does not evaluate it in report-only.",
       "createOn": "Set **Enable policy** to **On** and select **Create**.",
       "turnOn": "Set **Enable policy** to **On** and select **Save**.",
+      "$commentCreateOff": "A lockdown switch is created Off and set Off again when an incident is over (T2-LK, owner 2026-10-03; roadmap/lockdownKit.ts): Off, it blocks no one.",
+      "createOff": "Set **Enable policy** to **Off** and select **Create**.",
+      "turnOff": "Set **Enable policy** to **Off** and select **Save**.",
       "reportOnly": "Set **Enable policy** to **Report-only** and select **Save**.",
       "save": "Select **Save**.",
       "scan": "Return to IAMAI and select **Scan to update the plan**.",
@@ -524,8 +527,7 @@
         "none": "Nothing left to do."
       },
       "baselineConflict": {
-        "$comment": "Shown on a step whose baseline source policy a review found self-contradictory (roadmap/baselineConflict.ts): one entry per reviewed source, named by that record, so the words follow the source policy and not a goal.",
-        "adminPortalNonAdminScope": "The baseline says this policy should block non-admins from admin portals. But the policy it actually defines targets All users and excludes no administrator — by role, account, or group. If IAMAI followed the policy definition literally, it would lock every administrator out of the admin portals. If it followed the documentation, it would need exclusions the policy doesn't have.\n\nIAMAI won't write instructions for either interpretation because one locks admins out and the other is incomplete. Nothing is wrong in your tenant. This step waits for the baseline author to publish a corrected version. The rest of the plan is unaffected."
+        "$comment": "Shown on a step whose baseline source policy a review found self-contradictory (roadmap/baselineConflict.ts): one entry per reviewed source, named by that record, so the words follow the source policy and not a goal. None today: the Admin Portal block's entry went when the owner read it as an incident switch (2026-10-03, Prepare the Lockdown Kit)."
       },
       "observation": {
         "$comment": "What this scan saw against what the last one saw (roadmap/observation.ts). First seen by IAMAI is never written as a transition time.",
@@ -1287,12 +1289,8 @@
           "$comment": "Why a baseline policy is in no step (derive/notInPlan.ts picks one by the policy's own name; a policy with no words of its own reads generic). {step} is a step's title from the content file, never its number, because the numbers move. Drafts from missing-seven.md, for the owner's eye.",
           "$commentAgentBlock": "Jon's two AGENT blocks (HighRiskAgent, NonTrustedAgents): they target AI agent identities, which need Microsoft Entra Agent ID; this release does not plan them.",
           "agentBlock": "Blocks AI agent identities. Needs Microsoft Entra Agent ID. Not in this release.",
-          "$commentAdminPortal": "The ZTCA Admin Portal block, withheld from customer plans (customerPlanSteps.ts): a lockdown switch kept out of this release.",
-          "adminPortal": "A lockdown switch that blocks the Microsoft admin portals. Kept out of this release.",
           "$commentExternalMfaRisk": "The external authentication methods companion of the high-risk remediation policy, scoped to the external MFA group. {step} is the high-risk remediation step's title.",
           "externalMfaRisk": "A version of {step} for people who sign in with an external MFA provider such as Duo. Only needed if you use one.",
-          "$commentLockdown": "The two ZTCA AllApps blocks: incident-response kill switches, created ahead and never switched on (the lockdown kit, v1.1).",
-          "lockdown": "An emergency lockdown switch for a major breach, built ahead and kept off. Not a day-to-day control.",
           "$commentAdminGroupPasskeys": "The passkey policy for the admin group: the same strength as the admin phishing-resistant policy, scoped to a group instead of roles. {step} is that step's title.",
           "adminGroupPasskeys": "The same requirement as {step}, aimed at a group of admin accounts instead of admin roles.",
           "$commentEmergencyAccount": "The trusted-locations policy that names one emergency account: IAMAI keeps emergency accounts out of every policy through the exclusions group instead. {step} is the emergency access group's title.",
@@ -8399,6 +8397,95 @@
         "leftOutBoth": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device, and on a compliant-device policy it can prompt Mac, iOS and Android users for a certificate. Their own steps create those policies.",
         "leftOutUserAction": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device. Their own steps create those policies.",
         "leftOutDeviceCheck": "Some policies aren't listed. On a compliant-device policy, report-only can prompt Mac, iOS and Android users for a certificate. Their own steps create those policies."
+      }
+    },
+    {
+      "id": "s-lockdown-kit",
+      "brief": {
+        "does": "Creates three emergency switches, turned off, that block access during an incident.",
+        "matters": "When an account or an admin session is compromised, a switch prepared ahead shuts the door at once, instead of a policy written under pressure.",
+        "notice": "No one notices a change: a policy that is off blocks no one."
+      },
+      "kind": "object",
+      "title": "Prepare the Lockdown Kit",
+      "$comment": "T2-LK (owner, 2026-10-03; docs/plans/v1.1/plan.md D3): Jon's three ZTCA incident switches, each created Off and never turned on by the plan. Who stays online is the emergency access exclusions group only. Its switches are roadmap/lockdownKit.ts; its cards, rail and tasks ui/surfaces/lockdownKitStep.ts, each create the policy's own create procedure (roadmap/policyProcedure.ts createLines).",
+      "changeLine": null,
+      "why": "Three policies you turn on only during an incident: one blocks the Microsoft admin portals, one blocks devices you don't manage outside the trusted network, and one blocks everything. Created Off, they block no one until you need them.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/authentication/concept-resilient-controls",
+        "checkedOn": "2026-10-03"
+      },
+      "who": {
+        "lead": "No one while the switches are Off. A switch turned on blocks everyone outside the emergency access exclusions group."
+      },
+      "decision": null,
+      "whatToDo": {
+        "lead": "Create each switch its task names, turned off."
+      },
+      "dates": null,
+      "doneWhen": [
+        "IAMAI sees all three switches Off, with every setting as its task states."
+      ],
+      "ifWrong": null,
+      "comms": null,
+      "doesntApply": false,
+      "skip": false,
+      "scanControl": true,
+      "more": {
+        "risks": [],
+        "helpDesk": null,
+        "manager": null
+      },
+      "example": {
+        "n": 3
+      },
+      "aiFocus": "Walk me through creating each lockdown switch turned off, then through turning one on during an incident and back off afterwards.",
+      "card": {
+        "$comment": "No card of its own while open: each switch still to prepare, or found On, is a card (lockdownKitStep.ts). Once all three are Off as planned, the Satisfied cards state each one.",
+        "subject": "Lockdown switches",
+        "check": null,
+        "pointer": false,
+        "satisfied": "All three switches are Off, as planned."
+      },
+      "taskTitle": "Create the switches, turned off",
+      "kit": {
+        "$comment": "Words of Prepare the Lockdown Kit (ui/surfaces/lockdownKitStep.ts, roadmap/lockdownKit.ts). A switch's label heads its card and its runbook line; {policy} is the switch's policy name, {group} the emergency access exclusions group's name, {n} a count.",
+        "satisfiedHeading": "Lockdown switch",
+        "satisfiedDetail": "Off, every setting as planned",
+        "milestoneOnOne": "A lockdown switch is On",
+        "milestoneOnMany": "{n} lockdown switches are On",
+        "milestoneOpenOne": "1 lockdown switch to prepare",
+        "milestoneOpenMany": "{n} lockdown switches to prepare",
+        "switches": {
+          "adminPortals": {
+            "label": "Admin portals switch",
+            "when": "turn it on when an admin account or session is compromised, or an admin's signed-in device is lost. It blocks the Microsoft admin portals while you secure the account."
+          },
+          "unmanagedDevices": {
+            "label": "Unmanaged devices switch",
+            "when": "turn it on when someone is signing in with stolen passwords or tokens from devices you don't manage. It blocks sign-ins from outside the trusted network on any device that isn't compliant, hybrid joined or registered."
+          },
+          "everything": {
+            "label": "Full lockdown switch",
+            "when": "turn it on when you can't contain an attacker any other way, such as a compromised Global Administrator. It blocks every sign-in to every app."
+          }
+        },
+        "tileCreate": "Create turned off",
+        "tileCorrect": "Correct its settings",
+        "tileReportOnly": "In Report-only: set it Off",
+        "tileOn": "On",
+        "$commentTileOnNote": "A switch found On (owner, 2026-10-03): not done, and the card says how to stand down.",
+        "tileOnNote": "This switch is blocking sign-ins. Once the incident is over, set it Off as Stand down after the incident says.",
+        "taskCreate": "Create {policy}, turned off",
+        "taskCorrect": "Correct {policy}",
+        "taskOff": "Set {policy} Off",
+        "taskFlip": "Turn a switch on during an incident",
+        "taskStandDown": "Stand down after the incident",
+        "flipSwitch": "**{label}** ({policy}): {when}",
+        "flipFirst": "Sign in to the Microsoft Entra admin center with an emergency access account in **{group}**. A switch turned on blocks every account outside that group, yours included, and only that group can turn it off again.",
+        "flipTarget": "the switch you need",
+        "standDownTarget": "the switch you turned on",
+        "standDownWho": "Sign in with an emergency access account in **{group}**."
       }
     },
     {

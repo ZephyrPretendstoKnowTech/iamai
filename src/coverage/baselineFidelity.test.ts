@@ -12,6 +12,8 @@ import { PINNED, pinnedPackage } from '../baseline/pinned.ts'
 import { runBaselineValidators } from '../baseline/validators.ts'
 import { PINNED_GOAL_MAP, goalMapFor, policiesForGoal, policyKey } from '../roadmap/goalMap.ts'
 import { baselineConflicts } from '../roadmap/baselineConflict.ts'
+import { ADMIN_PORTAL_REVIEW, CONFLICT_GOAL_MAP, CONFLICT_SOURCE, conflictInput } from '../roadmap/fixtures/reviewedConflict.ts'
+import { LOCKDOWN_KIT_GOAL } from '../roadmap/lockdownKit.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { policyResult } from '../roadmap/operations.ts'
@@ -370,28 +372,35 @@ test('a named placeholder becomes the object the author named, and never reaches
 
 // ------------------------------------------------------ 6. baseline conflict
 
-test('the Admin Portal conflict is bound to the source policy this package carries, not to the goal id', () => {
+test('the pinned baseline carries no reviewed conflict since the Admin Portal block became a lockdown switch (T2-LK)', () => {
   const pkg = pinnedPackage()
-  // It holds for the pinned default, because this baseline maps the goal to the
-  // policy the review read and still carries that policy as the review read it.
-  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, pkg).keys()], ['admin-portals-protected'])
-  assert.deepEqual(PINNED_GOAL_MAP['admin-portals-protected'], ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'])
-  assert.equal(baselineConflicts(PINNED_GOAL_MAP, pkg).get('admin-portals-protected'), 'fafaa50c-0b61-4ac6-a589-f9a1120b2f9e', 'the step is told which source raised it')
+  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, pkg).keys()], [], 'the product map over the pinned package conflicts nothing')
+  assert.equal(PINNED_GOAL_MAP['admin-portals-protected'], undefined, 'the Admin Portal block is no goal of its own')
+  assert.ok(PINNED_GOAL_MAP['lockdown-kit'].includes(CONFLICT_SOURCE), 'it is a switch of the lockdown kit')
+})
+
+test('a reviewed conflict is bound to the source policy this package carries, not to the goal id', () => {
+  const pkg = pinnedPackage()
+  const reviewed = [ADMIN_PORTAL_REVIEW]
+  // It holds where a map hands the goal the policy the review read and the
+  // package still carries that policy as the review read it.
+  assert.deepEqual([...baselineConflicts(CONFLICT_GOAL_MAP, pkg, reviewed).keys()], ['admin-portals-protected'])
+  assert.equal(baselineConflicts(CONFLICT_GOAL_MAP, pkg, reviewed).get('admin-portals-protected'), CONFLICT_SOURCE, 'the step is told which source raised it')
 
   // A baseline whose map hands the same goal to a policy the review did not read
   // is not conflicted: the block is the active baseline's, never the goal's.
-  assert.deepEqual([...baselineConflicts({ 'admin-portals-protected': ['a-different-source-policy'] }, pkg).keys()], [], 'the goal is blocked by its id alone, rather than by the source policy the active baseline maps it to')
-  assert.deepEqual([...baselineConflicts({}, pkg).keys()], [])
+  assert.deepEqual([...baselineConflicts({ 'admin-portals-protected': ['a-different-source-policy'] }, pkg, reviewed).keys()], [], 'the goal is blocked by its id alone, rather than by the source policy the active baseline maps it to')
+  assert.deepEqual([...baselineConflicts({}, pkg, reviewed).keys()], [])
   // And the same source policy under a different goal id still conflicts.
-  assert.deepEqual([...baselineConflicts({ 'some-other-goal': ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'] }, pkg).keys()], ['some-other-goal'])
+  assert.deepEqual([...baselineConflicts({ 'some-other-goal': [CONFLICT_SOURCE] }, pkg, reviewed).keys()], ['some-other-goal'])
 
-  // The package is the other half of the reading: the pinned map over a package
-  // that does not carry the reviewed policy conflicts nothing, because there is
-  // no source there to contradict itself.
-  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, { policies: [] }).keys()], [], 'a package with no reviewed source inherited the conflict from the pinned map')
+  // The package is the other half of the reading: a map over a package that
+  // does not carry the reviewed policy conflicts nothing, because there is no
+  // source there to contradict itself.
+  assert.deepEqual([...baselineConflicts(CONFLICT_GOAL_MAP, { policies: [] }, reviewed).keys()], [], 'a package with no reviewed source inherited the conflict from the map')
 
   // The conflicted step offers nothing and the rest of the plan still works.
-  const r = runFixture(fixture('demo-week2'))
+  const r = runFixture(fixture('demo-week2'), conflictInput())
   const step = r.steps.find((s) => s.goalId === 'admin-portals-protected')
   assert.ok(step, 'the admin-portals step is in the plan')
   const s = step as Step
@@ -485,7 +494,8 @@ test('every pinned member, switched on in the tenant as it stands, is never read
   const snapshot = mkSnapshot({ capabilities: { entraP1: on(true), entraP2: on(true), intune: on(true), workloadIdPremium: on(true), globalSecureAccess: on(true), defenderForCloudApps: on(true), purviewInsiderRisk: on(true), pim: on(true) } })
   const judged: string[] = []
   const narrower: string[] = []
-  for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP)) {
+  // The lockdown kit is no catalogue goal: its switches are created Off and never read as coverage (roadmap/lockdownKit.ts).
+  for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP).filter(([g]) => g !== LOCKDOWN_KIT_GOAL)) {
     const tenantPolicies = PINNED_POLICIES.map(corrected).filter((p) => keys.includes(policyKey(p))).map((p) => ({ ...structuredClone(p), id: `tenant-${policyKey(p)}`, state: 'enabled' }) as unknown as Raw)
     const r = computeCoverage({
       snapshot,

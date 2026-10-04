@@ -17,6 +17,9 @@ import assert from 'node:assert/strict'
 import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
+import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -55,10 +58,10 @@ function once<T>(of: (s: Step) => T): (s: Step) => T {
   }
 }
 
-function load(named: string | Fixture): Case {
+function load(named: string | Fixture, over: { input: Partial<RoadmapInput>; label: string } | null = null): Case {
   const f = typeof named === 'string' ? fixture(named as never) : named
-  const name = typeof named === 'string' ? named : `${f.name} (exclusions unanswered)`
-  const run = typeof named === 'string' ? runFixture(f) : runFixture(f, { mapping: f.mapping })
+  const name = over ? `${f.name} (${over.label})` : typeof named === 'string' ? named : `${f.name} (exclusions unanswered)`
+  const run = over ? runFixture(f, over.input) : typeof named === 'string' ? runFixture(f) : runFixture(f, { mapping: f.mapping })
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const ctx = once((s: Step): StepVarContext =>
     ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext)
@@ -88,8 +91,12 @@ function load(named: string | Fixture): Case {
   return { name, run, ctx, lane, view, prompt: once((s: Step) => stepContext(s, view)), entry, snapshot: f.snapshot }
 }
 
-/** Every fixture the repo ships, each loaded once: the whole state matrix, not a chosen example. */
-const CASES: Case[] = allFixtures().map((f) => load(f.name))
+/**
+ * Every fixture the repo ships, each loaded once: the whole state matrix, not a
+ * chosen example. And the reviewed baseline conflict the mechanism is kept for,
+ * which no product baseline carries since 2026-10-03 (fixtures/reviewedConflict.ts).
+ */
+const CASES: Case[] = [...allFixtures().map((f) => load(f.name)), load('demo-week2', { input: conflictInput(), label: 'a reviewed baseline conflict' })]
 
 // ---- A. the export view is the contract, field for field ----
 
@@ -225,7 +232,11 @@ test('013.B: unresolved operations retain useful portal guidance without invente
         // on alone (stepExport.ts; 005.11): the screen keeps it as the step's
         // task in every state, the export never offers it early.
         const next = body.emergencyAccountTasks?.tasks.find((t) => t.required)
-        if (next?.title !== 'Turn the policy on') assert.ok(v.whatToDo.length > 1, `${where}: useful displayed guidance missing from export`)
+        // A conflict's guidance beside its action is its source's explanation; the
+        // reviewed conflict this sweep plans has none (its content key left with
+        // the product entry, fixtures/reviewedConflict.ts).
+        const unexplained = s.state.condition === 'baseline-conflict' && baselineConflictWords(s) === null
+        if (next?.title !== 'Turn the policy on' && !unexplained) assert.ok(v.whatToDo.length > 1, `${where}: useful displayed guidance missing from export`)
       }
       assert.equal(v.whatToDo[0], stepContract(s, c.ctx(s), undefined, c.lane(s)).whatToDo.text, `${where}: readiness action no longer first`)
       // The completion is one line: the resolution where there is no policy to

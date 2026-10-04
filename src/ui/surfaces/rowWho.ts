@@ -58,6 +58,8 @@ const COUNTED: Readonly<Record<string, readonly [string, string]>> = {
   's-prereq-trusted-location': ['policy', 'policies'],
   // The policies Create the Policies in Report-only lists (roadmap/reportOnlyBatch.ts).
   's-create-report-only': ['policy', 'policies'],
+  // The switches Prepare the Lockdown Kit still has to create, correct or set Off; all three once done (roadmap/lockdownKit.ts).
+  's-lockdown-kit': ['policy', 'policies'],
 }
 export function rowWho(step: Step): string {
   // A preparation cohort names its guests beside its people (owner, 2026-09-19): the lead reads the same words.

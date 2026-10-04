@@ -997,6 +997,12 @@ export type Step = {
     /** Why policies still to create are left out, by type (reportOnlyBatch.ts reportOnlyOutlierOf); absent where none is. No policy names. */
     leftOut?: ('userAction' | 'deviceCheck')[]
   }
+  /**
+   * Prepare the Lockdown Kit's switches as this scan read them
+   * (roadmap/lockdownKit.ts): each of Jon's three ZTCA incident switches, the
+   * tenant's policy that is it, whether it is Off and what differs. Only on that step.
+   */
+  lockdownKit?: { members: import('./lockdownKit.ts').LockdownKitMember[] }
   /** A goal step's own name for its policy, the one its create gives it, whatever the step does now (generate.ts). */
   createName?: string
   /** The differences from the baseline a person accepted on this step, with a reason (MappingState.acceptedDeviations). */

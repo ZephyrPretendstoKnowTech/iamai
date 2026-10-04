@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { FixtureName } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled, withRecoveryTested } from './fixtures/run.ts'
+import { conflictInput } from './fixtures/reviewedConflict.ts'
 import type { Step } from './types.ts'
 import { executableNow, implementationIsCurrent, nextSafeAction } from './nextSafeAction.ts'
 import { unavailableReason } from './operations.ts'
@@ -23,7 +24,9 @@ function answeredWeekTwo() {
 }
 // Until the plan's foundation is settled every policy step is held (roadmap/foundations.ts),
 // so the sweep carries a settled plan too, or half the executability answers are the gate's.
-const PLANS = [...NAMES.map((name) => ({ name: name as string, steps: runFixture(fixture(name)).steps })), { name: 'demo-week2-answered', steps: runFixture(answeredWeekTwo()).steps }, { name: 'demo-week2-settled', steps: runFixture(withRecoveryTested(withFoundationSettled(answeredWeekTwo()))).steps }, { name: 'demo-week2-settled-unanswered', steps: runFixture(withRecoveryTested(withFoundationSettled(fixture('demo-week2')))).steps }, { name: 'small-settled', steps: runFixture(withFoundationSettled(fixture('small'))).steps }]
+// No product baseline contradicts itself since 2026-10-03, so the sweep carries the reviewed
+// conflict the mechanism is kept for (fixtures/reviewedConflict.ts).
+const PLANS = [...NAMES.map((name) => ({ name: name as string, steps: runFixture(fixture(name)).steps })), { name: 'demo-week2-answered', steps: runFixture(answeredWeekTwo()).steps }, { name: 'demo-week2-settled', steps: runFixture(withRecoveryTested(withFoundationSettled(answeredWeekTwo()))).steps }, { name: 'demo-week2-settled-unanswered', steps: runFixture(withRecoveryTested(withFoundationSettled(fixture('demo-week2')))).steps }, { name: 'small-settled', steps: runFixture(withFoundationSettled(fixture('small'))).steps }, { name: 'demo-conflict', steps: runFixture(fixture('demo'), conflictInput()).steps }]
 const all = (): { name: string; step: Step }[] => PLANS.flatMap((p) => p.steps.map((step) => ({ name: p.name, step })))
 const find = (name: string, id: string): Step => PLANS.find((p) => p.name === name)!.steps.find((s) => s.id === id || s.goalId === id)!
 
@@ -65,7 +68,7 @@ test('readiness holds enforcement and not report-only creation; a missing object
   assert.equal(legacy.executable, false)
   assert.notEqual(legacy.blockedBy, null)
   // The source contradicts itself; a decision is a person's.
-  assert.deepEqual(nextSafeAction(find('demo', 'admin-portals-protected')), { kind: 'resolve-source', executable: false, blockedBy: 'baseline-conflict', enforceable: false })
+  assert.deepEqual(nextSafeAction(find('demo-conflict', 'admin-portals-protected')), { kind: 'resolve-source', executable: false, blockedBy: 'baseline-conflict', enforceable: false })
   const decision = all().find(({ step }) => step.state.condition === 'needs-decision')
   assert.ok(decision)
   assert.equal(nextSafeAction(decision.step).kind, 'decide')

@@ -25,6 +25,8 @@ import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolic
 import { applies, effectOf, emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, validOperations, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import { REPORT_ONLY_STEP_ID, batchable } from './reportOnlyBatch.ts'
+import { LOCKDOWN_KIT_GOAL, kitMembersOf, settleLockdownKit, switchOf, switchSource, withoutUnmadeApps } from './lockdownKit.ts'
+import type { LockdownSwitch } from './lockdownKit.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation, SourceReference } from './types.ts'
@@ -50,6 +52,7 @@ function deferredHardeningLines(step: Step, nameOf: (id: string) => string): str
     .map(({ template, values }) => fillText(template, values))
 }
 import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
+import type { ReviewedSource } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, pinnedSource, policiesForGoal, policyKey } from './goalMap.ts'
@@ -309,6 +312,12 @@ export type RoadmapInput = {
    */
   goalMap?: GoalMap
   /**
+   * The baseline sources a review found self-contradictory (baselineConflict.ts
+   * REVIEWED_SOURCES, none today). Absent means that list; a test hands its own
+   * to exercise the mechanism kept for the next reviewed item.
+   */
+  reviewedSources?: readonly ReviewedSource[]
+  /**
    * What the plan's checkpoints record about Cleanup (E3, cleanupDone.ts): each
    * row's completion date, and every drill date, which exempts the matching
    * emergency sign-ins from the recent-sign-in check.
@@ -354,7 +363,7 @@ const EXTRAS = STEP_EXTRAS
 // The step ids live in stepIds.ts (the answer readers name them without
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
-import { idFor, stepIdForGoal, BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
+import { idFor, stepIdForGoal, BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, LOCKDOWN_KIT_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import { passkeyRestrictionReading } from './passkeyRestrictions.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, operatorSignInOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
@@ -559,7 +568,7 @@ export function buildCreateAction(
   planId: string,
   stepId: string,
   goalId: string,
-  opts: { sections?: ReadonlySet<ChangedSection> } = {},
+  opts: { sections?: ReadonlySet<ChangedSection>; createState?: 'disabled' } = {},
 ): Action {
   /**
    * Which member of the step each policy is (observation.ts `memberKeyOf`), from
@@ -591,8 +600,9 @@ export function buildCreateAction(
     // The pinned baseline's own placeholder map names the author's objects; it is not a policy field.
     delete body.placeholders
     // A new policy starts in report-only, save a User Action policy, which is
-    // created On (evidenceStrategy.ts createdOn); a policy already there keeps its state.
-    body.state = p.target ? p.target.state : createdOn(body) ? 'enabled' : 'enabledForReportingButNotEnforced'
+    // created On (evidenceStrategy.ts createdOn), and a lockdown switch, which is
+    // created Off (lockdownKit.ts); a policy already there keeps its state.
+    body.state = p.target ? p.target.state : opts.createState ?? (createdOn(body) ? 'enabled' : 'enabledForReportingButNotEnforced')
     if (p.displayName) body.displayName = p.displayName
     body.description = `${tag}${typeof sourceDescription === 'string' && sourceDescription ? ' ' + sourceDescription : ''}`
     return body
@@ -1209,7 +1219,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // uploaded baseline is judged by its own map and its own policies, never by
   // the pin — and a revised version of a reviewed policy that settles the
   // contradiction is planned like any other.
-  const conflictGoals = baselineConflicts(goalMap, { policies: planPolicies, docs: input.baseline.docs })
+  const conflictGoals = baselineConflicts(goalMap, { policies: planPolicies, docs: input.baseline.docs }, input.reviewedSources)
   const templateNeeds = new Set<TemplatePlaceholder>()
   for (const r of input.coverage.results) {
     if (r.status !== 'absent' || (!inBaseline(r.goal) && !isFloorGoal(r.goal.id)) || sourcesFor(r.goal).length > 0) continue
@@ -3557,6 +3567,44 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // settled once tracking has read every lifecycle (roadmap/reportOnlyBatch.ts,
   // progress.ts applyProgress).
   if (steps.some((s) => batchable(s))) steps.push(prereq(REPORT_ONLY_STEP_ID))
+  // Prepare the Lockdown Kit (T2-LK; owner, 2026-10-03): Jon's three ZTCA
+  // incident switches, each written by the one create path with its state forced
+  // Off (roadmap/lockdownKit.ts). Never in 3.8 and never turned on: its kind is
+  // not a policy step's, so neither the batch nor the turn-on reads it.
+  if (canUseConditionalAccess && goalInMap(goalMap, LOCKDOWN_KIT_GOAL)) {
+    const kit = prereq(LOCKDOWN_KIT_STEP_ID)
+    kit.goalId = LOCKDOWN_KIT_GOAL
+    const pinned = pinnedSource(input.baseline.policies)
+    const sources = (goalMap[LOCKDOWN_KIT_GOAL] ?? []).flatMap((k) => {
+      const own = factsByKey.get(k)
+      if (own) return [{ key: k, policy: own.policy, authors: own.authors }]
+      const stand = pinned.find((p) => policyKey(p) === k)
+      return stand ? [{ key: k, policy: stand as unknown as RawPolicy, authors: pinned as readonly CaPolicy[] }] : []
+    })
+    const switches = sources.map((src) => switchOf(src.key)).filter((x): x is LockdownSwitch => x !== null)
+    const inputs: StepPolicyInput[] = sources.map((src) => ({ sourceName: String(src.policy.displayName ?? src.key), sourceKey: src.key, resolved: namedStrength(resolveTenantPolicy(switchSource(src.policy), tenantObjects, LOCKDOWN_KIT_GOAL, src.authors)) }))
+    if (inputs.length > 0) {
+      const built = buildCreateAction(inputs, mapping, planId, LOCKDOWN_KIT_STEP_ID, LOCKDOWN_KIT_GOAL, { createState: 'disabled' })
+      // An application the tenant does not have and no step makes is not there to block (lockdownKit.ts withoutUnmadeApps).
+      const unmade = new Set((built.missing ?? []).filter((m) => m.stepId === null && !m.decision && !m.unreadable).map((m) => m.token.toLowerCase()))
+      const missing = (built.missing ?? []).filter((m) => !unmade.has(m.token.toLowerCase()))
+      kit.action = { ...built, kind: 'prerequisite', missing }
+      kit.action.resolution = { policies: (built.resolution?.policies ?? []).map((op) => withoutUnmadeApps(op, unmade)), tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId, emergencyIds: [...mapping.breakGlassUserIds] } }
+      // An object a switch names that the tenant does not have yet (the exclusions group): the kit waits on the step that makes it.
+      for (const m of kit.action.missing ?? []) {
+        if (m.stepId && steps.some((x) => x.id === m.stepId) && !kit.blockedBy.includes(m.stepId)) {
+          kit.blockedBy.push(m.stepId)
+          kit.blockers.push({ kind: 'step', stepId: m.stepId, label: 'create-object' })
+        }
+      }
+      const rows = snapshot.config.caPolicies?.status === 'ok' ? snapshot.config.caPolicies.rows ?? [] : []
+      const members = kitMembersOf(kit.action.resolution!.policies, switches, rows, findTaggedPolicies(snapshot, planId, LOCKDOWN_KIT_STEP_ID), mapping.acceptedDeviations?.[LOCKDOWN_KIT_STEP_ID]?.fields ?? {})
+      const words = (stepById[LOCKDOWN_KIT_STEP_ID] as unknown as { kit: { satisfiedHeading: string; satisfiedDetail: string } }).kit
+      const done = settleLockdownKit(kit, members, words.satisfiedHeading, words.satisfiedDetail)
+      setState(kit, { satisfied: done, condition: done ? 'healthy' : conditionFor(kit.blockers) })
+      steps.push(kit)
+    }
+  }
   // One rule in one place, and it is the whole switch.
   if (!canUseConditionalAccess) steps.length = 0
   // Per-answer gating (roadmap/direction.ts gateOnDirection) runs once tracking

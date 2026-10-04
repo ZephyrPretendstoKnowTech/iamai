@@ -9,6 +9,7 @@ import { emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 import { proposedNamesFor } from './proposedNames.ts'
 import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
 import { reportOnlyMilestoneOf, reportOnlyTasksOf } from './reportOnlyStep.ts'
+import { lockdownKitMilestoneOf, lockdownKitProcedureOf } from './lockdownKitStep.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { prepareReadingOf } from './prepareSteps.ts'
 import { existingObjectProcedureOf } from './prepareProcedures.ts'
@@ -461,7 +462,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // holds exactly the picked accounts and nobody has saved it: saving it is the
   // milestone, in the step's own words for that state (whatToDoWhen).
   const serviceGroupFound = step.id === PREREQ_STEP_ID.serviceAccountsGroup && truthy(ex.serviceGroupFound) && typeof w.lead === 'string' && whole(w.lead, ex) ? fillText(w.lead, ex) : null
-  const ownRailWords = choosing ?? prepare?.milestone ?? reportOnlyMilestoneOf(step) ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id, ctx.mapping)
+  const ownRailWords = choosing ?? prepare?.milestone ?? reportOnlyMilestoneOf(step) ?? lockdownKitMilestoneOf(step) ?? serviceGroupFound ?? pkg?.meta.milestone?.actionText ?? directionMilestoneAction(step.id, ctx.mapping)
   // Disable or Confirm Dormant Accounts takes a choice too, the accounts kept:
   // its instruction stands in the same slot while any account is open (walk
   // list item 17), and a finished step draws none (item 29).
@@ -708,7 +709,8 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // (sectionThreeTasks.ts), and the Entra tab carries the same procedure.
   // Create the Policies in Report-only: one task per policy, each that policy's
   // own create procedure, read from its own step's body (reportOnlyStep.ts).
-  const sectionThree = sectionThreeTasksOf(step, ctx) ?? reportOnlyTasksOf(step, ctx, (member) => createTaskOf(member, ctx))
+  // Prepare the Lockdown Kit: one create per switch, turned off, and the runbook (lockdownKitStep.ts).
+  const sectionThree = sectionThreeTasksOf(step, ctx) ?? reportOnlyTasksOf(step, ctx, (member) => createTaskOf(member, ctx)) ?? lockdownKitProcedureOf(step, ctx, portalNames)
   if (sectionThree !== null) {
     for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'portal') produced.splice(i, 1)
     supported.add('portal')

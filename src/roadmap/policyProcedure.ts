@@ -346,8 +346,9 @@ export function createLines(policy: Record<string, unknown>, ctx: ProcedureConte
     openLine(null),
     fill(PROCEDURE.name, { name: opts.name }),
     ...annotated,
-    // A User Action policy is created On (roadmap/evidenceStrategy.ts createdOn): the body says which.
-    policy.state === 'enabled' ? PROCEDURE.createOn : PROCEDURE.create,
+    // A User Action policy is created On (roadmap/evidenceStrategy.ts createdOn), a
+    // lockdown switch Off (roadmap/lockdownKit.ts): the body says which.
+    policy.state === 'enabled' ? PROCEDURE.createOn : policy.state === 'disabled' ? PROCEDURE.createOff : PROCEDURE.create,
     PROCEDURE.scan,
   ]
 }
@@ -373,6 +374,11 @@ export function besideBaseline(lines: readonly string[], baseline: readonly stri
 /** The turn-on: open the policy, set it On (walk list item 17). Two lines. */
 export function turnOnLines(name: string): string[] {
   return [openLine(name), PROCEDURE.turnOn]
+}
+
+/** A lockdown switch set back Off (roadmap/lockdownKit.ts): open it, set it Off, scan. */
+export function turnOffLines(name: string): string[] {
+  return [openLine(name), PROCEDURE.turnOff, PROCEDURE.scan]
 }
 
 /** A policy the tenant switched off goes back to Report-only, never straight to On: open it, set it. */

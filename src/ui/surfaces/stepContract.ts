@@ -83,6 +83,7 @@ import { rowWho } from './rowWho.ts'
 import { pitfallTilesOf } from './pitfalls.ts'
 import { personLines } from './personNext.ts'
 import { reportOnlyNoteOf, reportOnlyTilesOf } from './reportOnlyStep.ts'
+import { lockdownKitTilesOf } from './lockdownKitStep.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -1699,7 +1700,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     pitfalls: pitfallTilesOf(step, ctx, step.state.satisfied, stepLink),
     alsoExcluded: alsoExcludedTile(step, ctx),
     gateNames: adminGateNamesOf(step, ctx),
-    batch: reportOnlyTilesOf(step, ctx),
+    batch: [...reportOnlyTilesOf(step, ctx), ...lockdownKitTilesOf(step)],
     batchNote: reportOnlyNoteOf(step),
     operator,
     whatToDo,

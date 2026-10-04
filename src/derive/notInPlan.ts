@@ -24,7 +24,7 @@ import { notLicensedRows } from './notLicensed.ts'
 
 export type NotInPlanRow = { policy: string; reason: string; text: string }
 
-type Reason = 'agentBlock' | 'adminPortal' | 'externalMfaRisk' | 'lockdown' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'generic'
+type Reason = 'agentBlock' | 'externalMfaRisk' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'generic'
 type FooterCopy = { notInPlan: string; notInPlanRow: string; notInPlanReason: Record<Reason, string> }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
@@ -35,9 +35,7 @@ const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
  */
 const REASONS: { match: RegExp; reason: Reason; step?: string }[] = [
   { match: /IAC\s*-\s*AGENT\s*-\s*BLOCK/i, reason: 'agentBlock' },
-  { match: /\bZTCA\b.*Admin Portal/i, reason: 'adminPortal' },
   { match: /\bEAM\b.*High-Risk/i, reason: 'externalMfaRisk', step: 'user-risk' },
-  { match: /\bZTCA\b.*\bAllApps\b/i, reason: 'lockdown' },
   { match: /MFA-Passkeys\s*-\s*ADM-Users/i, reason: 'adminGroupPasskeys', step: 'admins-phishing-resistant' },
   { match: /BreakGlass/i, reason: 'emergencyAccount', step: EMERGENCY_ACCESS_GROUP },
   // Jon's countries block with no travel exception: optional, on the plan once countries are listed to block outright (coverage/companions.ts; v1.1 D4).

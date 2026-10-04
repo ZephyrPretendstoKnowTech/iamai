@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { stepVars } from './stepVars.ts'
 import { stepInstructions } from './stepInstructions.ts'
@@ -41,9 +42,13 @@ let CACHE: Audited[] | null = null
 function audited(): Audited[] {
   if (CACHE) return CACHE
   const out: Audited[] = []
-  for (const f0 of allFixtures()) {
-    const f = fixture(f0.name)
-    const r = runFixture(f)
+  // And the reviewed conflict the mechanism is kept for: no product baseline
+  // carries one since 2026-10-03 (fixtures/reviewedConflict.ts).
+  const runs = [...allFixtures().map((f0) => ({ name: f0.name, over: {} })), { name: 'demo' as const, over: conflictInput() }]
+  for (const { name, over } of runs) {
+    const f0 = { name: Object.keys(over).length > 0 ? `${name}+reviewed-conflict` : name }
+    const f = fixture(name)
+    const r = runFixture(f, over)
     const ctx = {
       snapshot: f.snapshot,
       mapping: f.mapping,

@@ -2,11 +2,14 @@
 // IAMAI once invented to work around it is gone. The conflict itself (no
 // implementation, no date, the rest of the plan intact) is
 // baselineConflictPlan.test.ts; this holds the retirement of the admins group,
-// on the demo fixture that derives through the pinned package.
+// on the demo fixture that derives through the pinned package, with the map
+// handing the Admin Portal block to its goal again (fixtures/reviewedConflict.ts):
+// the product map hands it to the lockdown kit since 2026-10-03.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { conflictInput } from './fixtures/reviewedConflict.ts'
 import { RETIRED_DECISION_STEPS } from './baselineConflict.ts'
 import { applyStepDecisions, DECISION_STEPS } from './decisions.ts'
 import { decisionsOf } from './progress.ts'
@@ -26,7 +29,7 @@ const AT = '2026-09-04T00:00:00.000Z'
 /** The demo tenant with the pinned baseline, its exclusions group recognised. */
 function run() {
   const f = fixture('demo-week2')
-  const r = runFixture(f)
+  const r = runFixture(f, conflictInput())
   const step = r.steps.find((s) => s.goalId === GOAL)
   assert.ok(step, 'the admin-portals step is in the plan')
   const nameOf = (id: string): string => r.input.names!.label(id)

@@ -9,6 +9,8 @@ import type { CompiledPackage } from '../../content/implementation/protocol.ts'
 import { fixture, withReviewRow } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { CONFLICT_GOAL_MAP, conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { CONTRACT } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { packageSourceLine, sourceCheckedLine } from './stepPackage.ts'
@@ -18,9 +20,9 @@ import { TASK_HEAD } from './stepHeadings.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
-const planOf = (name: FixtureName) => {
+const planOf = (name: FixtureName, over: Partial<RoadmapInput> = {}) => {
   const f = fixture(name)
-  const r = runFixture(f)
+  const r = runFixture(f, over)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   return { r, ctx }
 }
@@ -55,12 +57,14 @@ test('a Learn link shows the day it was checked where no package is current: a s
   // s-goal-admin-portals-protected: its package is set aside (the baseline
   // changed under it) and on the demo its source is also self-contradictory, so
   // the step draws the translator's channels. When the page was checked is a
-  // fact about the page, so the date stays on both plans.
+  // fact about the page, so the date stays on both plans. The pinned map hands
+  // its policy to the lockdown kit since 2026-10-03, so both plans hand it back
+  // (fixtures/reviewedConflict.ts), the demo with the review it last carried.
   const expected = packageSourceLine(PACKAGES['s-goal-admin-portals-protected'], CONTRACT.implementation)
   assert.equal(sourceUpdatedOn(PACKAGES['s-goal-admin-portals-protected']), '2026-09-25')
   assert.ok(expected, 'the package records no checked date')
   for (const name of ['mid', 'demo'] as const) {
-    const { r, ctx } = planOf(name)
+    const { r, ctx } = planOf(name, name === 'demo' ? conflictInput() : { goalMap: CONFLICT_GOAL_MAP })
     const step = r.steps.find((s) => s.id === 's-goal-admin-portals-protected')
     assert.ok(step, `${name}: the step is not on the plan`)
     const b = stepBodyOf(step, ctx)
@@ -69,8 +73,8 @@ test('a Learn link shows the day it was checked where no package is current: a s
   }
   // The demo is the plan whose source contradicts itself; that is what used to
   // take the date away.
-  const demo = planOf('demo')
-  assert.notEqual(stepBodyOf(demo.r.steps.find((s) => s.id === 's-goal-admin-portals-protected')!, demo.ctx).conflictWords, null)
+  const demo = planOf('demo', conflictInput())
+  assert.equal(demo.r.steps.find((s) => s.id === 's-goal-admin-portals-protected')!.state.condition, 'baseline-conflict')
   // Every generated baseline-review row dates the planning page its Learn link points at.
   // The rows are built per tenant (roadmap/workflows.ts PLAN_CA) and have no
   // package, so the date is on the row's own Learn entry, from the source table

@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
 import { app, engine, pages } from '../../content/content.ts'
 import { usesDecisionAnatomy } from '../../roadmap/stepGroups.ts'
 import { SNAPSHOT_FIXTURES, fixtureStepSnapshotsOf } from '../../testing/stepSnapshots.ts'
@@ -115,7 +116,9 @@ test('a dated plan and a long explanation each head with the step’s own words'
   assert.equal(defaults.rail.headline, defaults.emergencyAccountTasks?.tasks[0]?.title)
   assert.equal(defaults.rail.barLead, readinessLeadOf(defaults.contract))
   // A step on hold for its baseline's contradiction heads with the first of its bar's two sentences, and the bar keeps the other.
-  const portals = opened('demo', 's-goal-admin-portals-protected').body.rail
+  // (The review the mechanism last carried: no product baseline carries one since 2026-10-03, fixtures/reviewedConflict.ts.)
+  const demo = structuredClone(fixture('demo'))
+  const portals = openedIn(demo, runFixture(demo, conflictInput(), null, demo.snapshot.asOf), 's-goal-admin-portals-protected').body.rail
   assert.equal(portals.headline, 'This step is on hold until the baseline author resolves a contradiction.')
   assert.equal(portals.barLead, 'There is nothing for you to do.')
 })

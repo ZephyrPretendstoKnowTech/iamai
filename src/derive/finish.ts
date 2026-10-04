@@ -10,6 +10,7 @@ import { holdOf, isHeld } from '../roadmap/holds.ts'
 import { holdWaitsOn } from '../roadmap/stateReason.ts'
 import type { Schedule } from '../roadmap/schedule.ts'
 import type { Step } from '../roadmap/types.ts'
+import { LOCKDOWN_KIT_STEP_ID } from '../roadmap/stepIds.ts'
 import type { EstimatedSpan, PlanForecast } from '../roadmap/forecast.ts'
 import { engine, pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
@@ -48,10 +49,12 @@ export function heldByReadiness(step: Step): boolean {
 /**
  * The steps the plan requires that something holds (roadmap/holds.ts). The
  * floor's recommendations are Microsoft's, not the baseline's: a held one is
- * shown and waits like any other, and does not stop the plan finishing.
+ * shown and waits like any other, and does not stop the plan finishing. Nor
+ * does Prepare the Lockdown Kit: its switches stay Off, and nothing waits on them.
  */
 export function heldRequired(steps: readonly Step[]): Step[] {
-  return steps.filter((s) => !s.floor && isHeld(s))
+  // Nothing waits on the lockdown kit's switches, so a held kit holds no finish (owner, 2026-10-03).
+  return steps.filter((s) => !s.floor && s.id !== LOCKDOWN_KIT_STEP_ID && isHeld(s))
 }
 
 const lastRingEnd = (s: Step): string | null => s.rings.at(-1)?.plannedEnd ?? null

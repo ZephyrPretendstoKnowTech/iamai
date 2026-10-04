@@ -53,6 +53,8 @@ import {
 } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { scannedAt } from '../../roadmap/fixtures/records.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
@@ -106,8 +108,8 @@ function shapeOf(step: Step, c: StepContract): string {
 }
 
 /** Every step of one plan, with the contract the Plan builds for it. */
-function planOf(label: string, f: Fixture, over: { snapshot?: TenantSnapshot; record?: ReturnType<typeof observationsOf> } = {}): Variant[] {
-  const r = over.record ? runFixture(f, over.snapshot ? { snapshot: over.snapshot } : {}, over.record) : runFixture(f)
+function planOf(label: string, f: Fixture, over: { snapshot?: TenantSnapshot; record?: ReturnType<typeof observationsOf>; input?: Partial<RoadmapInput> } = {}): Variant[] {
+  const r = over.record ? runFixture(f, over.snapshot ? { snapshot: over.snapshot } : {}, over.record) : over.input ? runFixture(f, over.input) : runFixture(f)
   const snapshot = over.snapshot ?? f.snapshot
   const ctx = (step: Step): StepVarContext => ({
     snapshot,
@@ -295,6 +297,9 @@ function sweep(): Variant[] {
   // Ready to enforce above all — are reachable nowhere else.
   out.push(...planOf('demo-week2+settled', withDirectionApproved(fixture('demo-week2'))))
   out.push(...owesCorrection(fixture('large')))
+  // The reviewed conflict the mechanism is kept for: no product baseline carries
+  // one since 2026-10-03 (fixtures/reviewedConflict.ts).
+  out.push(...planOf('small+reviewed-conflict', fixture('small'), { input: conflictInput() }))
   SWEEP = out
   return out
 }
@@ -396,7 +401,7 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-goal-avd-trusted-network
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known',
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // small/s-goal-admins-phishing-resistant
-  'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-goal-admin-portals-protected
+  'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small+reviewed-conflict/s-goal-admin-portals-protected
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // small/s-goal-geo-restriction
   'object · prerequisite · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · fix · one-policy · who-none', // small/s-create-report-only
   'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
@@ -435,6 +440,9 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · healthy · open · do:deploy · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-geo-restriction
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-require-managed-device
   'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-token-protection
+  // Prepare the Lockdown Kit (T2-LK): three switches to create Off, waiting on the foundation, then ready.
+  'object · prerequisite · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · fix · members · who-none', // small/s-lockdown-kit
+  'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · members · who-none', // demo-week2+settled/s-lockdown-kit
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

@@ -20,6 +20,8 @@ export const BREAK_GLASS_STEP_ID = 's-prereq-break-glass'
 export const CAMPAIGN_STEP_ID = 's-verify-mfa'
 /** Create the Policies in Report-only (3.8): every policy the plan can create now, created in Report-only at once (roadmap/reportOnlyBatch.ts). */
 export const REPORT_ONLY_STEP_ID = 's-create-report-only'
+/** Prepare the Lockdown Kit (T2-LK): Jon's three ZTCA incident switches, created Off (roadmap/lockdownKit.ts). */
+export const LOCKDOWN_KIT_STEP_ID = 's-lockdown-kit'
 /** Finish Moving Off Per-User MFA: the accounts still on legacy per-user MFA (roadmap/manualWork.ts). */
 export const PER_USER_MFA_STEP_ID = 's-prereq-per-user-mfa'
 

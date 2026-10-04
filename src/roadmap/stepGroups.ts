@@ -144,8 +144,9 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   },
   // What nobody should legitimately use: a sign-in flow, a platform, a place,
   // a service account from outside the office, the sync account from another
-  // address. The admin portals block is hidden from every screen
-  // (customerPlanSteps); released, this is its place.
+  // address. Jon's admin portals block is a lockdown switch since 2026-10-03
+  // (Prepare the Lockdown Kit, Ongoing); an admin-portals step only an uploaded
+  // baseline builds is hidden from every screen (customerPlanSteps), and this is its place.
   {
     key: 'remaining-doors',
     titleKey: 'pages.app.plan.groups.closeDoors.title',
@@ -165,12 +166,14 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     members: ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls'],
     anatomy: 'task',
   },
-  // Care after the rollout: nothing above waits on it.
+  // Care after the rollout: nothing above waits on it. Prepare the Lockdown Kit
+  // (T2-LK) follows Harden Emergency Access: its switches leave only the
+  // emergency access exclusions group online.
   {
     key: 'ongoing',
     titleKey: 'pages.app.plan.groups.ongoing.title',
     completedTitleKey: 'pages.app.plan.groups.ongoing.completedTitle',
-    members: ['cleanup-alerting', 'cleanup-hardening', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'],
+    members: ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'],
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
     anatomy: 'task',

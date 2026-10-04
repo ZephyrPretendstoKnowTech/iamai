@@ -26,6 +26,7 @@ import { awaitsOwnObject, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import { analysisUnknown, effectsOf, familyReading, policiesOverlap } from './strand.ts'
 import type { Step } from './types.ts'
+import { LOCKDOWN_KIT_STEP_ID } from './stepIds.ts'
 
 export type WaveSchedule = {
   wave: number // 1..n = enforcement waves in date order; 0 = day 0 (foundations + report-only creation)
@@ -541,7 +542,10 @@ export function buildSchedule(
   const anchor = options.today ? max(day0, toWeekday(options.today)) : day0
 
   // ---- Day 0: foundation work takes real days before any policy can be created ----
-  const foundationWork = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length
+  // Prepare the Lockdown Kit is dated with the preparation work but never makes
+  // Day 0 longer: nothing waits on its switches, so no other date moves for it
+  // (owner, 2026-10-03: the finish never waits on the kit).
+  const foundationWork = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check') && s.id !== LOCKDOWN_KIT_STEP_ID).length
   const day0Days = foundationWork > 0 ? Math.min(5, 1 + foundationWork) : 0
   // Foundation and window edges land on a working day (prompt 49.1 item 11): a
   // window that opens or closes on a weekend reads wrong on the plan.

@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { laneViewFor, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import { planDates } from './stepVars.ts'
@@ -25,8 +27,8 @@ const CSS = read('../app.css')
 const CONTENT = read('../../../docs/design/content.json')
 
 /** Every step's body on a fixture, composed as the Plan composes it (stepSnapshots.ts). */
-function bodiesOf(f: Fixture): Map<string, StepBody> {
-  const r = runFixture(f, {}, null, f.snapshot.asOf)
+function bodiesOf(f: Fixture, over: Partial<RoadmapInput> = {}): Map<string, StepBody> {
+  const r = runFixture(f, over, null, f.snapshot.asOf)
   const readings = laneReadings(r.steps, [])
   const titleOf = (id: string): string | null => {
     const s = r.steps.find((x) => x.id === id)
@@ -79,7 +81,8 @@ test('machine resources follow supported step capability, including useful prere
 })
 
 test('retained baseline conflict remains a conflict and has no deployment operation', () => {
-  const conflict = [...named('demo').values()].find(b => b.contract.state.condition === 'baseline-conflict')!
+  // The review the mechanism last carried (fixtures/reviewedConflict.ts): no product baseline carries one since 2026-10-03.
+  const conflict = [...bodiesOf(fixture('demo'), conflictInput()).values()].find(b => b.contract.state.condition === 'baseline-conflict')!
   assert.ok(conflict)
   assert.equal(conflict.contract.implementation.offered, false)
   assert.equal(conflict.empty.key, 'conflict')

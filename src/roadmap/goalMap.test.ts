@@ -13,14 +13,20 @@ import type { CaPolicy } from '../baseline/types.ts'
 const policies = pinned.policies as unknown as CaPolicy[]
 const built = goalMapFor(policies, new Map())
 
-test('the stored goalMap matches the strict identity rule on the pinned policies, and the runtime map adds only the author-confirmed correction', () => {
+test('the stored goalMap matches the strict identity rule on the pinned policies, and the runtime map adds only the author-confirmed correction and the lockdown kit', () => {
   assert.deepEqual((pinned as { goalMap: Record<string, string[]> }).goalMap, built.map, 'pinned.json goalMap drifted from goalIdentity — re-pin (node scripts/pin-baseline.ts <full sha>)')
   // Jon's UserRegistration policy, which he confirmed was meant for security-info
   // registration (baseline/authorCorrections.ts; owner, 2026-09-25), is the one
   // key the runtime map adds; the stored map is otherwise the map.
-  const { 'register-info-protected': registration, ...rest } = PINNED_GOAL_MAP
+  // Jon's three ZTCA incident switches sit under the lockdown kit and under no
+  // other goal (roadmap/lockdownKit.ts; owner, 2026-10-03): the stored map's
+  // admin-portals-protected, which held only the Admin Portal block, is gone.
+  const { 'register-info-protected': registration, 'lockdown-kit': kit, ...rest } = PINNED_GOAL_MAP
   assert.deepEqual(registration, ['30a1edce-e832-456b-b2c5-4b1098d3a9b3'])
-  assert.deepEqual(rest, built.map)
+  assert.deepEqual(kit, ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e', '2dd84b12-7900-40f0-b192-027c20aaa83f', '8417ec17-17f5-44c1-b937-85b1917f5d9e'], 'Admin Portal, Unmanaged devices, Full lockdown, in escalation order')
+  const { 'admin-portals-protected': portal, ...stored } = built.map
+  assert.deepEqual(portal, ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'], 'the stored map handed the Admin Portal block to the admin-portals goal')
+  assert.deepEqual(rest, stored)
 })
 
 test('every mapped policy key resolves to a pinned policy, and the spot checks, the guests A/B pair and the reconciled goals (owner: the baseline decides scope and shape) hold', () => {
@@ -31,8 +37,9 @@ test('every mapped policy key resolves to a pinned policy, and the spot checks, 
     }
     assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'mfa-all-users')[0]?.displayName, 'IAC - GLOBAL - GRANT - MFA - AllUsers')
     assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'block-device-code')[0]?.displayName, 'IAC - GLOBAL - BLOCK - Device Code Auth Flow')
-    // Owner fixes: admin portals via block, token protection scoped to the app set.
-    assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'admin-portals-protected')[0]?.displayName, 'IAC - ZTCA - GLOBAL – BLOCK – Admin Portal')
+    // Owner fixes: the admin portals block is a lockdown switch (T2-LK), token protection scoped to the app set.
+    assert.deepEqual(policiesForGoal(PINNED_GOAL_MAP, policies, 'admin-portals-protected'), [])
+    assert.deepEqual(policiesForGoal(PINNED_GOAL_MAP, policies, 'lockdown-kit').map((p) => p.displayName), ['IAC - ZTCA - GLOBAL – BLOCK – Admin Portal', 'IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation', 'IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global'])
     assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'token-protection')[0]?.displayName, 'IAC - GLOBAL - SESSION - Windows - TokenProtection')
   }
 

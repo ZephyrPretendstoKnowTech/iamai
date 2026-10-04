@@ -12,8 +12,8 @@
 //
 // The two truths held apart, both at once:
 //
-//   1. IAMAI's retained pin still contradicts itself about the Microsoft admin
-//      portals, and the step it produces still offers nothing to implement; and
+//   1. a reviewed source still contradicts itself wherever a package carries it,
+//      and the step it produces offers nothing to implement; and
 //   2. an uploaded package that hands the same goal a policy of its own does not
 //      inherit that contradiction, because a goal id is a label and the
 //      contradiction is a fact about a policy.
@@ -22,13 +22,23 @@
 // pinned source's contradiction is not a clean bill of health. The uploaded
 // policy goes through every ordinary authority, and a hold any of them raises
 // still holds it (section 3).
+//
+// Since 2026-10-03 the pin carries no reviewed conflict: the owner read the
+// Admin Portal block as an incident switch (Prepare the Lockdown Kit,
+// roadmap/lockdownKit.ts). The mechanism stays, so this file hands the engine the
+// review it last carried (fixtures/reviewedConflict.ts) as a future entry would
+// be handed. Its explanation left with its content key, so no step here carries
+// words of its own.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { loadPinnedBaseline, loadUploadedBaseline } from '../ui/baseline.ts'
 import type { BaselineResult } from '../ui/baseline.ts'
 import { PINNED } from '../baseline/pinned.ts'
-import { baselineConflictWords, baselineConflicts, inBaselineConflict } from './baselineConflict.ts'
+import { baselineConflictWords, baselineConflicts as conflictsIn, inBaselineConflict } from './baselineConflict.ts'
+import type { ConflictPackage } from './baselineConflict.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
+import type { GoalMap } from './goalMap.ts'
+import { ADMIN_PORTAL_REVIEW, conflictInput } from './fixtures/reviewedConflict.ts'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { implementationOffered, policyResult, unavailableReason } from './operations.ts'
@@ -46,6 +56,10 @@ import type { Step } from './types.ts'
 
 const GOAL = 'admin-portals-protected'
 const SOURCE = 'fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'
+/** The review this file runs on, as a reviewed entry would be listed. */
+const REVIEWED = [ADMIN_PORTAL_REVIEW]
+/** The reading over that review. */
+const baselineConflicts = (map: GoalMap, pkg: ConflictPackage): Map<string, string> => conflictsIn(map, pkg, REVIEWED)
 /** The one key the uploaded alternate uses for its own admin-portals policy. */
 const OWN_KEY = '9d1d3f7a-5c2e-4d18-b0a3-2f6c7e51a4b7'
 
@@ -91,7 +105,7 @@ type Case = { r: ReturnType<typeof runFixture>; step: Step; ctx: StepVarContext;
  */
 function plan(b: BaselineResult, goalId: string = GOAL): Case {
   const f = fixture('demo-week2')
-  const r = runFixture(f, { baseline: b.pkg, goalMap: b.goalMap })
+  const r = runFixture(f, { baseline: b.pkg, goalMap: b.goalMap, reviewedSources: REVIEWED })
   const step = r.steps.find((s) => s.goalId === goalId)
   assert.ok(step, `the ${goalId} step is in the plan`)
   const nameOf = (id: string): string => r.input.names!.label(id)
@@ -115,20 +129,23 @@ function implementationChannels(step: Step, ctx: StepVarContext): { json: string
 
 // ---- 1: the retained pin, loaded the way the product loads it, still conflicts ----
 
-test('the pinned baseline the product loads still contradicts itself, and offers nothing', async () => {
+test('the pinned baseline the product loads carries no conflict; with the review it last carried, its source still contradicts itself and offers nothing', async () => {
   const pin = await loadPinnedBaseline()
   // It really is the retained pin, at the commit the pin records — not a fixture
   // standing in for one.
   assert.equal(pin.origin.kind, 'github')
   assert.equal(pin.origin.kind === 'github' ? pin.origin.commit : null, PINNED.commit)
-  assert.deepEqual([...baselineConflicts(pin.goalMap ?? PINNED_GOAL_MAP, pin.pkg)], [[GOAL, SOURCE]], 'the pinned package no longer reads as self-contradictory')
+  // The product's own reading: no reviewed source, and the Admin Portal block is a lockdown switch.
+  assert.deepEqual([...conflictsIn(pin.goalMap ?? PINNED_GOAL_MAP, pin.pkg)], [], 'the pinned package reads as self-contradictory')
+  assert.ok((pin.goalMap ?? PINNED_GOAL_MAP)['lockdown-kit']?.includes(SOURCE), 'the Admin Portal block left the lockdown kit')
+  const map = conflictInput().goalMap!
+  assert.deepEqual([...baselineConflicts(map, pin.pkg)], [[GOAL, SOURCE]], 'the reviewed source no longer reads as self-contradictory')
 
-  const { step, ctx, contract } = plan(pin)
+  const { step, ctx, contract } = plan({ ...pin, goalMap: map })
   assert.equal(inBaselineConflict(step), true, 'the pinned Admin Portal step lost its conflict')
   assert.equal(step.state.conflictSource, SOURCE, 'the step does not record which source contradicts itself')
   assert.ok(step.blockers.some((b) => b.label === 'baseline-conflict'), 'the conflict blocker is gone')
   assert.equal(step.blockedReason, BLOCKED_REASON.baseline, 'the row blames something other than the baseline')
-  assert.ok(baselineConflictWords(step), 'the step carries no explanation of the contradiction')
 
   // No implementation, on any channel, and no date.
   const result = policyResult(step as never)

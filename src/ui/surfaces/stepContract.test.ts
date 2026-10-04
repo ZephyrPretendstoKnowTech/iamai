@@ -13,6 +13,8 @@ import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { applyProgress } from '../../roadmap/progress.ts'
 import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
@@ -46,9 +48,9 @@ function ctxFor(f: Fixture, r: Run, step: Step, snapshot = f.snapshot): StepVarC
 }
 
 /** Every step of a fixture with its contract: the plan as a person would read it. */
-function contracts(name: Parameters<typeof fixture>[0]): { f: Fixture; r: Run; all: { step: Step; c: StepContract }[] } {
+function contracts(name: Parameters<typeof fixture>[0], over: Partial<RoadmapInput> = {}): { f: Fixture; r: Run; all: { step: Step; c: StepContract }[] } {
   const f = fixture(name)
-  const r = runFixture(f)
+  const r = runFixture(f, over)
   return { f, r, all: r.steps.map((step) => ({ step, c: stepContract(step, ctxFor(f, r, step)) })) }
 }
 
@@ -288,8 +290,9 @@ test('contract 11: a one-policy step stays a one-policy step', () => {
 // ---- 9. a baseline that contradicts itself ----
 
 test('contract 9: a baseline conflict renders with no implementation and nothing to go and fix', () => {
+  // The review the mechanism last carried: no product baseline carries one since 2026-10-03 (fixtures/reviewedConflict.ts).
   for (const name of ['demo', 'demo-week2'] as const) {
-    const { c, step } = contracts(name).all.find(({ c }) => c.state.condition === 'baseline-conflict')!
+    const { c, step } = contracts(name, conflictInput()).all.find(({ c }) => c.state.condition === 'baseline-conflict')!
     assert.equal(c.implementation.offered, false, `${name}/${step.id}: an implementation for a policy the baseline defines twice`)
     assert.equal(c.state.conditionLabel, 'Baseline conflict', 'the condition is named as itself, not as generic blockage')
     assert.equal(c.whatToDo.kind, 'resolve')
@@ -398,7 +401,8 @@ test('a prerequisite waited on short of completion says which milestone, not "fi
 // would have released the chain was named on no surface. Two simulated
 // administrators sat in front of that; one never unlocked the plan at all.
 test('of two prerequisites where one waits on the other, the tile names the one that can be done now', () => {
-  const { f, r, all } = contracts('demo')
+  // (On the demo, the policy step with no step of its own to wait on is the reviewed conflict's, fixtures/reviewedConflict.ts.)
+  const { f, r, all } = contracts('demo', conflictInput())
   const { step, c } = all.find((x) => (x.step.kind === 'create' || x.step.kind === 'adjust') && !x.c.fix.some((fx) => /^(?:step|missing):/.test(fx.key)))!
   assert.ok(f && r, 'the fixture ran')
   // A real one-way pair from the shipped dependency graph: s-verify-mfa waits on

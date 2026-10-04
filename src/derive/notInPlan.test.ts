@@ -66,13 +66,14 @@ test('every pinned baseline policy is shown somewhere in the plan: a step, Not l
 
 test('the list is derived from what the Plan draws, never a fixed set of policies', () => {
   const { run, steps, policies, rows } = planOf('demo')
-  // A step the Plan draws takes its policy off the list: the admin-portal block is
-  // withheld from customer plans today (customerPlanSteps.ts), so it is listed;
-  // drawn, it is not.
-  const portal = policies.find((p) => /ZTCA.*Admin Portal/i.test(p.displayName))!
-  assert.ok(rows.some((r) => r.policy === portal.displayName), 'a withheld step leaves its policy listed')
-  const withPortal = notInPlanRows(policies, run.steps, run.coverage, PINNED_GOAL_MAP)
-  assert.ok(!withPortal.some((r) => r.policy === portal.displayName), 'a drawn step takes its policy off the list')
+  // A step the Plan draws takes its policies off the list: Prepare the Lockdown
+  // Kit claims Jon's three ZTCA switches (T2-LK), so none is listed; without the
+  // step, all three are.
+  const switches = policies.filter((p) => /\bZTCA\b/i.test(p.displayName)).map((p) => p.displayName)
+  assert.equal(switches.length, 3, 'the premise: the pin carries three ZTCA switches')
+  for (const name of switches) assert.ok(!rows.some((r) => r.policy === name), `${name}: a drawn step takes its policy off the list`)
+  const withoutKit = notInPlanRows(policies, steps.filter((s) => s.id !== 's-lockdown-kit'), run.coverage, PINNED_GOAL_MAP)
+  for (const name of switches) assert.ok(withoutKit.some((r) => r.policy === name), `${name}: listed once the step that claims it is gone`)
   // A review row takes its policy off the list; without the review rows, their policies are listed.
   // (Jon's pin draws none since Phase 2b; a baseline carrying a policy no goal holds does.)
   {
@@ -94,12 +95,12 @@ test('the list is derived from what the Plan draws, never a fixed set of policie
   assert.match(rows.find((r) => r.policy === 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations')?.reason ?? '', /keeps emergency accounts out of every policy/)
 })
 
-test('each footer row names its own reason: agent blocks, the withheld Admin Portal, the unused EAM companion', () => {
+test('each footer row names its own reason: agent blocks, the unused EAM companion; the ZTCA switches are no row (T2-LK)', () => {
   const { rows } = planOf('demo')
   const reasonOf = (re: RegExp): string => rows.find((r) => re.test(r.policy))?.reason ?? ''
   assert.equal(reasonOf(/AGENT - BLOCK - HighRiskAgent/), 'Blocks AI agent identities. Needs Microsoft Entra Agent ID. Not in this release.')
   assert.equal(reasonOf(/AGENT - BLOCK - NonTrustedAgents/), 'Blocks AI agent identities. Needs Microsoft Entra Agent ID. Not in this release.')
-  assert.equal(reasonOf(/ZTCA.*Admin Portal/), 'A lockdown switch that blocks the Microsoft admin portals. Kept out of this release.')
+  assert.deepEqual(rows.filter((r) => /\bZTCA\b/.test(r.policy)), [], 'Prepare the Lockdown Kit claims all three switches')
 })
 
 test('on a P2 tenant with no external MFA method, Jon\'s EAM High-Risk Users is listed, read from the same goal map the plan uses', () => {

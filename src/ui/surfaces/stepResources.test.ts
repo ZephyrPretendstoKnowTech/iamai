@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs'
 import { HEAD } from './stepHeadings.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { manualEvidenceLines, stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { planDates } from './stepVars.ts'
@@ -22,10 +24,10 @@ import { nextCell } from './readinessCells.ts'
 import { personLabels } from '../../names.ts'
 
 /** A shipped tenant's plan and step bodies, with any answers saved on top of its own. */
-function opened(name: 'demo' | 'demo-week2' | 'mid', answers: Record<string, string> = {}) {
+function opened(name: 'demo' | 'demo-week2' | 'mid', answers: Record<string, string> = {}, over: Partial<RoadmapInput> = {}) {
   const base = fixture(name)
   const f = { ...base, mapping: { ...base.mapping, questionAnswers: { ...(base.mapping.questionAnswers ?? {}), ...answers } } }
-  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const r = runFixture(f, over, null, f.snapshot.asOf)
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
   return { r, ctx, bodies: new Map(r.steps.map(step => [step.id, stepBodyOf(step, ctx)])) }
 }
@@ -227,7 +229,8 @@ test('removed workflow forms do not leave recording instructions in copied guida
 // review of the policies that affect it and points nowhere. (A step it can state
 // one for draws its procedures in every state: policyTasks.ts policyProcedureOf.)
 test('a read-only policy instruction with nothing matched asks for a review and claims no listing', () => {
-  const { r, bodies } = opened('demo')
+  // The step the plan can state no policy for: the reviewed conflict the mechanism is kept for (fixtures/reviewedConflict.ts).
+  const { r, bodies } = opened('demo', {}, conflictInput())
   const step = r.steps.find(x => x.id === 's-goal-admin-portals-protected')!
   assert.equal((step.tracking?.members ?? []).filter(m => m.policyName).length, 0)
   const text = bodies.get(step.id)!.artifacts.find(a => a.id === 'portal')!.text()

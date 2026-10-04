@@ -27,6 +27,7 @@
 import { allCuratedFixtures, curatedFixture, noExclusionsAnswer } from './index.ts'
 import type { Fixture } from './index.ts'
 import { runFixture, withFoundationSettled } from './run.ts'
+import { conflictInput } from './reviewedConflict.ts'
 import type { FixtureRun } from './run.ts'
 import type { Step } from '../types.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
@@ -298,6 +299,19 @@ export function deliveredUnsettledCase(): Case | null {
   return caseOf(f, 'mid (a delivering policy excludes a group the scan could only sample)')
 }
 
+/**
+ * The same tenant planning a reviewed baseline conflict (roadmap/baselineConflict.ts).
+ * The product carries none since the Admin Portal block became a lockdown switch
+ * (2026-10-03), and the mechanism stays for the next reviewed item, so the
+ * corpus plans the review it last carried (fixtures/reviewedConflict.ts) and
+ * every `baselineConflict` assertion still runs.
+ */
+export function reviewedConflictCase(): Case {
+  const f = curatedFixture('demo-week2')
+  const run = runFixture(f, conflictInput())
+  return { label: 'demo-week2 (a reviewed baseline conflict)', fixture: f, run, steps: run.steps, viability: run.viability, readiness: readinessView(f.snapshot, f.snapshot.asOf, f.mapping) }
+}
+
 function caseOf(f: Fixture, label: string): Case {
   const run = runFixture(f)
   return { label, fixture: f, run, steps: run.steps, viability: run.viability, readiness: readinessView(f.snapshot, f.snapshot.asOf, f.mapping) }
@@ -334,7 +348,7 @@ let cached: Case[] | null = null
  */
 export function corpus(): Case[] {
   if (cached) return cached
-  const extra = [reviewHeldCase(), setAsideCase(), deliveredUnsettledCase()].filter((c): c is Case => c !== null)
+  const extra = [reviewHeldCase(), setAsideCase(), deliveredUnsettledCase(), reviewedConflictCase()].filter((c): c is Case => c !== null)
   cached = [...allCuratedFixtures().map((f) => caseOf(f, f.name)), unansweredSafetyCase(), collidingNamesCase(), ...extra]
   return cached
 }

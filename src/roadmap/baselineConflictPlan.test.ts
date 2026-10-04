@@ -31,6 +31,14 @@
 // carry the reviewed policy, and a reviewed version that keeps its id and
 // settles either side of the contradiction, are planned like anything else —
 // 11 follows one of those to the implementation it earns.
+//
+// Since 2026-10-03 the product carries no reviewed conflict: the owner read the
+// Admin Portal block as an incident switch, and Prepare the Lockdown Kit builds it
+// Off (roadmap/lockdownKit.ts). The mechanism stays for the next reviewed item,
+// so this suite runs on the review it last carried, handed to the engine with a
+// map that gives the policy back to its goal (fixtures/reviewedConflict.ts). The
+// review's explanation left with its content key, so no step here carries words
+// of its own: section 10 reads the screen's and the artifacts' resolve wording.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
@@ -39,8 +47,10 @@ import assert from 'node:assert/strict'
 import { curatedFixture as fixture, withSyntheticBaseline } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
-import { REVIEWED_SOURCES, baselineConflictWords, baselineConflicts, inBaselineConflict } from './baselineConflict.ts'
-import { PINNED_GOAL_MAP } from './goalMap.ts'
+import { baselineConflictWords, baselineConflicts as conflictsIn, inBaselineConflict } from './baselineConflict.ts'
+import type { ConflictPackage } from './baselineConflict.ts'
+import type { GoalMap } from './goalMap.ts'
+import { ADMIN_PORTAL_REVIEW, CONFLICT_GOAL_MAP, conflictInput } from './fixtures/reviewedConflict.ts'
 import { nextMilestone } from './lifecycle.ts'
 import { blockedReasonFor } from './stateReason.ts'
 import { policyResult, unavailableReason } from './operations.ts'
@@ -57,6 +67,13 @@ import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import type { Step } from './types.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
+
+/** The reviewed source this suite runs on, as a reviewed entry would be listed. */
+const REVIEWED_SOURCES = [ADMIN_PORTAL_REVIEW]
+/** The map that hands the reviewed source to its goal, as the pinned map did until 2026-10-03. */
+const PINNED_GOAL_MAP: GoalMap = CONFLICT_GOAL_MAP
+/** The reading over that review. */
+const baselineConflicts = (map: GoalMap, pkg: ConflictPackage): Map<string, string> => conflictsIn(map, pkg, REVIEWED_SOURCES)
 
 /** The line break the artifacts join their lines with. */
 const NEWLINE = '\n'
@@ -175,7 +192,7 @@ function withRevisedBaseline(): Fixture {
 type Case = { f: Fixture; r: ReturnType<typeof runFixture>; step: Step; ctx: StepVarContext; contract: ReturnType<typeof stepContract> }
 
 function run(f: Fixture): Case {
-  const r = runFixture(f)
+  const r = runFixture(f, conflictInput())
   const step = r.steps.find((s) => s.goalId === GOAL)
   assert.ok(step, 'the admin-portals step is in the plan')
   const nameOf = (id: string): string => r.input.names!.label(id)
@@ -198,19 +215,16 @@ test('the conflict is a reading of the active source policy, not of a goal id or
     for (const field of ['includeRoles', 'excludeRoles', 'excludeUsers', 'includeGroups'] as const) {
       assert.deepEqual(users[field] ?? [], [], `${field} is empty, so no administrator is preserved by it`)
     }
-    // Side two, the documented intent, is what the generated step's own words
-    // report; the two cannot both hold, and this is the whole of why the goal is
-    // conflicted. The words belong to the source policy, not to the goal's content
-    // entry, so they are read from the step the run produced.
-    const words = baselineConflictWords(run(f).step)
-    assert.match(String(words), /documentation/i, 'the step states the documented meaning')
-    assert.match(String(words), /All users/, 'and the exported meaning beside it')
+    // Side two, the documented intent, is the review's; the two cannot both hold,
+    // and this is the whole of why the goal is conflicted. The step the run
+    // produced names the source it read.
+    assert.equal(run(f).step.state.conflictSource, SOURCE, 'the step names the reviewed source')
 
     // And the block is bound to that source policy as this package carries it,
     // never to the goal id: the same goal handed to any other source is not
     // conflicted, and the same source under any other goal is.
     assert.ok(REVIEWED_SOURCES.some((r) => r.key === SOURCE))
-    assert.deepEqual(PINNED_GOAL_MAP[GOAL], [SOURCE], 'this pin is why this goal is conflicted')
+    assert.deepEqual(PINNED_GOAL_MAP[GOAL], [SOURCE], 'this map is why this goal is conflicted')
     assert.deepEqual([...baselineConflicts({ [GOAL]: ['some-other-source-policy'] }, f.baseline).keys()], [], 'the goal id alone conflicts nothing')
     assert.deepEqual([...baselineConflicts({ 'a-different-goal': [SOURCE] }, f.baseline).keys()], ['a-different-goal'], 'the source policy conflicts whatever goal carries it')
   }
@@ -464,7 +478,7 @@ test('a package with its own policy for the goal plans it normally; one without 
         false,
         `${name}: the fixture carries the reviewed source policy after all`,
       )
-      const r = runFixture(f)
+      const r = runFixture(f, conflictInput())
       assert.deepEqual(r.steps.filter((s) => inBaselineConflict(s)).map((s) => s.id), [], `${name}: a package with no reviewed source inherited the conflict from the pinned map`)
       const step = r.steps.find((s) => s.goalId === GOAL)
       assert.ok(step, `${name}: the goal is still planned`)
@@ -485,13 +499,12 @@ test('a package with its own policy for the goal plans it normally; one without 
     // comes with it — never from the map alone: the step names the source it is
     // planned from as the one the review read.
     for (const name of ['small', 'hostile'] as const) {
-      const r = runFixture(withSyntheticBaseline(fixture(name)))
+      const r = runFixture(withSyntheticBaseline(fixture(name)), conflictInput())
       const step = r.steps.find((s) => s.goalId === GOAL)
       assert.ok(step, `${name}: the goal is planned`)
       assert.equal(inBaselineConflict(step), true, `${name}: a goal written from the reviewed source planned as though nothing contradicts it`)
       assert.equal(step.state.conflictSource, SOURCE)
       assert.equal(step.action.json, null, `${name}: a body was written from a source that defines the goal two ways`)
-      assert.notEqual(baselineConflictWords(step), null)
     }
   }
 })
@@ -532,7 +545,7 @@ const SWAPPED_MAP = { ...PINNED_GOAL_MAP, [GOAL]: PINNED_GOAL_MAP['admin-session
 /** The same wiring the Plan page uses, planning against that map instead of the pin. */
 function swapped(): { r: ReturnType<typeof runFixture>; ctx: StepVarContext } {
   const f = fixture('demo-week2')
-  const r = runFixture(f, { goalMap: SWAPPED_MAP })
+  const r = runFixture(f, conflictInput(SWAPPED_MAP))
   const nameOf = (id: string): string => r.input.names!.label(id)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   return { r, ctx }
@@ -635,11 +648,10 @@ test('screen, export and prompt all carry the conflict on whichever goal the map
   const s = step as Step
 
   // The screen's paragraph. The explanation belongs to the reviewed source
-  // policy and not to a goal's content entry, so a goal that has no conflict
-  // sentence written for it still states the contradiction — and states the
-  // same one the goal the pinned map blocks states.
+  // policy and not to a goal's content entry, so the goal carrying the source
+  // explains it as the goal the map first handed it does: this review's words
+  // left with its content key, so neither carries any.
   const words = baselineConflictWords(s)
-  assert.equal(typeof words, 'string', 'the conflicted goal has no explanation on the screen')
   assert.equal(words, baselineConflictWords(run(fixture('demo-week2')).step), 'one source policy explains itself two ways')
   assert.equal((contentStepFor(s) as Record<string, unknown>).baselineConflict, undefined, 'the goal carries an explanation of its own after all')
   const contract = stepContract(s, ctx, stepVars(s, ctx))
@@ -650,14 +662,11 @@ test('screen, export and prompt all carry the conflict on whichever goal the map
   // the same problem named, and the same way out of it.
   const view = stepExportView(s, ctx)
   const context = stepContext(s, (x) => stepExportView(x, ctx))
-  const screen = [words, contract.whatToDo.text, ...contract.doneWhen].join(NEWLINE)
+  const screen = [words ?? '', contract.whatToDo.text, ...contract.doneWhen].join(NEWLINE)
   assert.ok(view.whatToDo.length > 0, 'the artifacts carry an empty What to do for a step nobody can implement')
   for (const [where, text] of [['screen', screen], ['export', view.whatToDo.join(NEWLINE)], ['prompt', context]] as const) {
     assert.match(text, /baseline/i, `${where} does not name the baseline`)
     assert.match(text, /baseline author/i, `${where} drops what would end the conflict`)
-  }
-  for (const [where, text] of [['export', view.whatToDo.join(NEWLINE)], ['prompt', context]] as const) {
-    assert.match(text, /Nothing is wrong in your tenant/i, `${where} reads as a tenant failure`)
   }
 
   // And none of them carries an implementation or a rollout. The completion they
@@ -685,7 +694,7 @@ test('a revised source keeping the same id is implemented like any other policy'
   // a revised source does not by itself prove a tenant application exists.
   const app = '708861da-226e-4d65-a57a-24128df64524'
   f.mapping.records[app] = { placeholder: app, kind: 'application', group: 'servicePrincipals', resolvedId: app, resolvedName: 'Reviewed tenant application', provenance: 'confirmed', doesNotExist: false, validation: null }
-  const r = runFixture(f)
+  const r = runFixture(f, conflictInput())
   const step = r.steps.find((x) => x.goalId === GOAL)
   assert.ok(step, 'the admin-portals step is in the plan')
   const s = step as Step

@@ -19,6 +19,8 @@ import { PREREQ_STEP_ID } from './stepIds.ts'
 // to a policy is roadmap/sourceIdentity.test.ts, and the direct cases here.
 import { curatedFixture as fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { conflictInput } from './fixtures/reviewedConflict.ts'
+import type { RoadmapInput } from './generate.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
@@ -69,12 +71,12 @@ const excludeGroupsOf = (body: Record<string, unknown>): string[] => (usersOf(bo
  */
 const OFFICE = (): Partial<MappingState> => ({ questionAnswers: { ...(fixture('demo-week2').mapping.questionAnswers ?? {}), [answerKey(DIRECTION_LOCATIONS_STORAGE, 'officeNetwork')]: 'office' } })
 
-function policySteps(name: Parameters<typeof fixture>[0], mappingOver: Partial<MappingState> = {}) {
+function policySteps(name: Parameters<typeof fixture>[0], mappingOver: Partial<MappingState> = {}, over: Partial<RoadmapInput> = {}) {
   const base = fixture(name)
   const changed = Object.keys(mappingOver).length > 0
   const mapping = changed ? { ...base.mapping, ...mappingOver } : base.mapping
   const f = { ...base, mapping }
-  const r = changed ? runFixture(f, { mapping }) : runFixture(f)
+  const r = changed || Object.keys(over).length > 0 ? runFixture(f, { ...(changed ? { mapping } : {}), ...over }) : runFixture(f)
   const nameOf = (id: string): string => r.input.names!.label(id)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   const rows = r.steps
@@ -776,13 +778,15 @@ test('an unmatched pair is withheld rather than guessed, and it and a contradict
   const f = fixture('demo-week2')
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
   const pair = withTenantPolicies(taggedTwice(exclusions))
-  const cases: { label: string; step: Step; ctx: StepVarContext; says: RegExp }[] = [
+  const cases: { label: string; step: Step; ctx: StepVarContext; says: RegExp | null }[] = [
     { label: 'unmatched pair', step: pair.of('guests-mfa').step, ctx: pair.ctx, says: /cannot match it to the two baseline policies/ },
   ]
-  const plain = policySteps('demo-week2')
+  // The reviewed conflict the mechanism is kept for (fixtures/reviewedConflict.ts):
+  // its explanation's words left with the product entry, so only the rest is read.
+  const plain = policySteps('demo-week2', {}, conflictInput())
   const conflicted = plain.rows.find((x) => x.step.goalId === 'admin-portals-protected')
   assert.ok(conflicted)
-  cases.push({ label: 'baseline conflict', step: conflicted.step, ctx: plain.ctx, says: /one locks admins out and the other is incomplete/ })
+  cases.push({ label: 'baseline conflict', step: conflicted.step, ctx: plain.ctx, says: null })
   for (const c of cases) {
     assert.equal(implementationOffered(c.step), false, `${c.label}: no implementation`)
     assert.equal(jsonOffered(c.step), false, `${c.label}: no JSON, PowerShell or download`)
@@ -797,7 +801,7 @@ test('an unmatched pair is withheld rather than guessed, and it and a contradict
     assert.equal(view.dates, null, `${c.label}: no dates`)
     const cs = contentStepFor(c.step) as Record<string, unknown>
     assert.equal(commsFor(cs, stepVars(c.step, c.ctx) as Record<string, unknown>, c.step), null, `${c.label}: nothing announced`)
-    assert.ok(view.whatToDo.some((l) => c.says.test(l)), `${c.label}: it says what to do — ${view.whatToDo.join(' | ')}`)
+    if (c.says) assert.ok(view.whatToDo.some((l) => c.says!.test(l)), `${c.label}: it says what to do — ${view.whatToDo.join(' | ')}`)
   }
 
   // A pair whose halves the plan cannot tell apart is withheld, not guessed.
