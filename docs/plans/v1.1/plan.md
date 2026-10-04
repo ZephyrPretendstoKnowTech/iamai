@@ -428,17 +428,21 @@ on the integrated branch, and CI ran on each push. Snapshot moves are in their o
 - **The P2 seats line** counts the tenant's active people, so an open policy's words never
   move with its population.
 
-**Still the owner's**
-- **The footer's prose budget** (`docs/qa/page-contracts.json`, which only the owner edits):
-  the demo footer is about 23 sentences and 358 words against 16 and 260.
-- **4.3's JSON and PowerShell** do not carry the session correction, by design (the person's
-  correction). Change it or keep it.
-- **Named-location name modules:** `name.canonical` stays in the trusted-location step and
-  the countries location task. 8.2 renames policies, not locations; removing them is a
-  separate call.
-- **The calendar books 4.3's create before Emergency Access is settled,** as it already does
-  for every fresh tenant's waiting creates (small, hostile, getiamai; Basic Sign-ins too).
-  Fixing it reaches every step.
+**Settled by the owner (2026-10-04), built the same day**
+- **The footer:** the page budget is gone, and the sentence rule still holds each line
+  (`76eda8d7`). Not licensed lists its steps under the licence each needs. Shared reasons
+  are one line. The external-MFA line names P2.
+- **Countries and 3.8:** the countries policies are the one exception to "every created policy
+  is in 3.8", recorded in STATUS; 3.8 names 6.3 in one line (`ca618092`).
+- **Azure Virtual Desktop:** the groups question stays in Confirm What You Use but is
+  optional. Left empty, only 6.7 waits, and the foundation goes ahead (`d51b4c25`).
+- **4.3's session:** no change. An extra session setting can be kept through the accept
+  path, and a test now says so (`d731b914`).
+- **Time up front:** the finish tip says its date assumes the suggested answers, and the
+  briefing prints the plan by day (`f220b022`). The calendar is unchanged.
+- **Location name modules:** stay as they are.
+- **F-015:** every policy step already had PowerShell and JSON. The Lockdown Kit now has them
+  for its switches still to create, each Off (`db6f261a`).
 
 **Done after the first report**
 - **The policy-matching pilot on 4.3 (T4-PM):** `0b2c21ee`, `14617561` and the On wording.
