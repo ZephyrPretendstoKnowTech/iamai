@@ -5,7 +5,7 @@
 // baseline has no stored map, so it is built once at load with the same rule.
 //
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
-import pinnedBaseline from '../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
+import { DEFAULT_BASELINE } from '../baseline/registry.ts'
 import { mapGoalsToPolicies } from '../coverage/goalIdentity.ts'
 import type { GoalMap, GoalMapResult, PolicyForMap } from '../coverage/goalIdentity.ts'
 import { policyFacts } from '../coverage/facts.ts'
@@ -26,6 +26,7 @@ export type { GoalMap, GoalMapResult }
  * switches under `lockdown-kit` and no other goal (lockdownKit.ts; owner,
  * 2026-10-03: the Admin Portal block is a switch, not Protect the Admin Portals).
  */
+const pinnedBaseline = DEFAULT_BASELINE.pinned
 const PINNED_POLICIES = (pinnedBaseline as { policies: { id: string | null; displayName: string; conditions: unknown }[] }).policies
 export const PINNED_GOAL_MAP = withLockdownKit(withCorrectedGoals(((pinnedBaseline as { goalMap?: GoalMap }).goalMap ?? {}) as GoalMap, PINNED_POLICIES, (p) => policyKey(p)), PINNED_POLICIES, (p) => policyKey(p)) as GoalMap
 

@@ -1,7 +1,7 @@
 // The baseline as the UI holds it (moved out of the Baseline page in prompt 47
 // Part 4): the pinned index, loaded at its commit; an uploaded package; and
 // the restore of either on reload.
-import baselineIndex from '../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
+import { DEFAULT_BASELINE } from '../baseline/registry.ts'
 import { loadBaseline, rawUrl } from '../baseline/index.ts'
 import type { BaselineFile, BaselineIndex, BaselinePackage } from '../baseline/index.ts'
 import { shouldSkip } from '../baseline/discover.ts'
@@ -27,7 +27,7 @@ export type BaselineResult = {
   goalMap?: GoalMap
 }
 
-export const PINNED_BASELINE = { ...baselineIndex, label: 'Defense in Depth — Maintained by Jon Hope' } as BaselineIndex
+export const PINNED_BASELINE = { ...DEFAULT_BASELINE.index, label: DEFAULT_BASELINE.label } as BaselineIndex
 
 export { PINNED }
 

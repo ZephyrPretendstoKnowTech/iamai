@@ -5,7 +5,7 @@
 // carries a baseline of its own.
 //
 // Pure: no DOM, no network. Runs in Node tests, in the worker and in the app.
-import pinnedBaseline from '../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
+import { DEFAULT_BASELINE } from './registry.ts'
 import { loadBaseline } from './index.ts'
 import type { BaselineFile, BaselinePackage } from './types.ts'
 import { corrected } from './authorCorrections.ts'
@@ -13,7 +13,7 @@ import { corrected } from './authorCorrections.ts'
 export type PinnedPolicy = { id: string | null; displayName: string; state: string | null; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
 export type PinnedBaseline = { commit: string; generatedAt: string; policies: PinnedPolicy[]; stripped: string[]; goalMap?: Record<string, string[]> }
 
-export const PINNED = pinnedBaseline as unknown as PinnedBaseline
+export const PINNED = DEFAULT_BASELINE.pinned as unknown as PinnedBaseline
 
 /**
  * The pinned policies as baseline files, so loadBaseline builds the package with

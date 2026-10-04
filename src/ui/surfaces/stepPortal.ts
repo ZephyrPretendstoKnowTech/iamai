@@ -25,7 +25,7 @@
 // what is missing, or what it is waiting for, instead.
 //
 // Pure: no DOM, no network.
-import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
+import { DEFAULT_BASELINE } from '../../baseline/registry.ts'
 import { policyFacts } from '../../coverage/facts.ts'
 import type { CaPolicy } from '../../baseline/types.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
@@ -45,7 +45,7 @@ import type { StepVarContext } from './stepVars.ts'
 import type { SelectedPolicyBody } from './stepPackage.ts'
 
 type PinnedPolicy = { id: string | null; displayName: string; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
-const POLICIES = pinned.policies as unknown as PinnedPolicy[]
+const POLICIES = DEFAULT_BASELINE.pinned.policies as unknown as PinnedPolicy[]
 
 /**
  * What the lines need that is not in the policy itself: how to turn an id into

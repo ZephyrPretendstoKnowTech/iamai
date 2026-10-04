@@ -8,7 +8,9 @@
 //
 // Pure: no DOM, no content, no engine import.
 import type { SourceReference, Step } from './types.ts'
-import interpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
+import { DEFAULT_BASELINE } from '../baseline/registry.ts'
+
+const interpretation = DEFAULT_BASELINE.interpretation
 
 const UNEXPLAINED_GROUPS = new Set(interpretation.references.filter(r => r.kind === 'group' && r.classification === 'decisionRequired').map(r => r.id.toLowerCase()))
 

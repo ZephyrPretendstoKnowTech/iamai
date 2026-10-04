@@ -20,7 +20,9 @@ import { DIRECTION_LOCATIONS_STORAGE, DIRECTION_STEP, SERVICE_KEYS, directionDec
 import { serviceReading } from '../workflows.ts'
 import { sharedDeviceUsers } from '../../derive/sharedDevices.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
-import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
+import { DEFAULT_BASELINE } from '../../baseline/registry.ts'
+
+const interpretation = DEFAULT_BASELINE.interpretation
 import { baselineStrength } from '../resolvePolicy.ts'
 import { recoveryAccountBasis, recoveryCredentialBasis } from '../cleanupDone.ts'
 import { APPROVED_KEY, observedRecoveryRecords, withPreparedPasskeys } from './recoveryRecords.ts'
