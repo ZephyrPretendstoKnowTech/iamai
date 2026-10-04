@@ -131,15 +131,6 @@
               "mode": "CorrectSession"
             }
           ]
-        },
-        {
-          "id": "name.canonical",
-          "entra": "entra.correct-name",
-          "json": "json.correct-name",
-          "powershell": {
-            "block": "powershell.run",
-            "mode": "CorrectName"
-          }
         }
       ],
       "sharedAfter": [
@@ -252,10 +243,6 @@
       "id": "session.none",
       "appliesWhen": "session controls are present even though this goal owns none",
       "safety": "the policy keeps its current state; if it is On, this access-affecting correction applies to sign-ins as soon as it is saved"
-    },
-    {
-      "id": "name.canonical",
-      "appliesWhen": "display name differs; stable tenant ID remains update identity"
     }
   ],
   "emailArtifacts": [

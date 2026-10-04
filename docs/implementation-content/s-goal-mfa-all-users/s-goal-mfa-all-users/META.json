@@ -140,15 +140,6 @@
             "block": "powershell.run",
             "mode": "CorrectSession"
           }
-        },
-        {
-          "id": "name.canonical",
-          "entra": "entra.correct-name",
-          "json": "json.correct-name",
-          "powershell": {
-            "block": "powershell.run",
-            "mode": "CorrectName"
-          }
         }
       ],
       "sharedAfter": [
@@ -258,10 +249,6 @@
     {
       "id": "session.none",
       "appliesWhen": "session controls are present"
-    },
-    {
-      "id": "name.canonical",
-      "appliesWhen": "resolved policy name differs from target naming"
     }
   ],
   "emailArtifacts": [

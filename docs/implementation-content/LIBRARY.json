@@ -171,7 +171,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -192,7 +192,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 6,
       "optionalBindings": 11,
       "verifiedSourceCount": 6,
@@ -201,7 +201,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 2,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -257,7 +257,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -278,7 +278,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 6,
       "optionalBindings": 11,
       "verifiedSourceCount": 6,
@@ -287,7 +287,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 3,
       "registered": true,
       "provenance": "microsoft-template-floor",
       "review": "current"
@@ -300,7 +300,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -321,7 +321,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 5,
       "optionalBindings": 11,
       "verifiedSourceCount": 7,
@@ -330,7 +330,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 2,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -343,7 +343,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -364,7 +364,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 5,
       "optionalBindings": 15,
       "verifiedSourceCount": 7,
@@ -373,7 +373,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 2,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -386,7 +386,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -407,7 +407,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 5,
       "optionalBindings": 14,
       "verifiedSourceCount": 6,
@@ -416,7 +416,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 2,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -429,7 +429,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -450,7 +450,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 6,
       "optionalBindings": 9,
       "verifiedSourceCount": 6,
@@ -459,7 +459,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 3,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -514,7 +514,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -535,7 +535,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 6,
       "optionalBindings": 11,
       "verifiedSourceCount": 6,
@@ -544,7 +544,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 2,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -644,7 +644,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 26,
+      "contentBlocks": 24,
       "outputs": {
         "entra": true,
         "json": true,
@@ -665,7 +665,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 4,
       "optionalBindings": 12,
       "verifiedSourceCount": 5,
@@ -674,7 +674,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 5,
+      "strictValidationErrors": 4,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -687,7 +687,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 27,
+      "contentBlocks": 25,
       "outputs": {
         "entra": true,
         "json": true,
@@ -709,7 +709,7 @@
         "notLicensed",
         "configurePrerequisite"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 7,
       "optionalBindings": 11,
       "verifiedSourceCount": 9,
@@ -718,7 +718,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 3,
       "registered": true,
       "provenance": "microsoft-template-floor",
       "review": "current"
@@ -776,7 +776,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -797,7 +797,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 6,
       "optionalBindings": 12,
       "verifiedSourceCount": 7,
@@ -806,7 +806,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 2,
       "registered": true,
       "provenance": "microsoft-template-floor",
       "review": "current"
@@ -819,7 +819,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 26,
+      "contentBlocks": 24,
       "outputs": {
         "entra": true,
         "json": true,
@@ -840,7 +840,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 7,
       "optionalBindings": 13,
       "verifiedSourceCount": 7,
@@ -849,7 +849,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 2,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -1718,7 +1718,7 @@
       "status": "LOCAL-PROJECTION-REVIEW",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 25,
+      "contentBlocks": 23,
       "outputs": {
         "entra": true,
         "json": true,
@@ -1739,7 +1739,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 6,
       "optionalBindings": 11,
       "verifiedSourceCount": 6,
@@ -1748,7 +1748,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 3,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -6034,7 +6034,7 @@
     "packageCount": 42,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 891,
+    "contentBlocks": 867,
     "uniqueBindings": 266,
     "bindingsRequiredByAtLeastOneProjection": 82,
     "bindingsOptionalInAtLeastOnePackage": 186,

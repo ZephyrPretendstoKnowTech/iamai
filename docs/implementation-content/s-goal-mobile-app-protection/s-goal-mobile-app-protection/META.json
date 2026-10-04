@@ -144,15 +144,6 @@
               "mode": "CorrectSession"
             }
           ]
-        },
-        {
-          "id": "name.canonical",
-          "entra": "entra.correct-name",
-          "json": "json.correct-name",
-          "powershell": {
-            "block": "powershell.run",
-            "mode": "CorrectName"
-          }
         }
       ],
       "sharedAfter": [
