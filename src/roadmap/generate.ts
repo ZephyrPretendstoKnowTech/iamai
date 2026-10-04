@@ -55,7 +55,7 @@ import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { ReviewedSource } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
-import { PINNED_GOAL_MAP, goalInMap, pinnedSource, policiesForGoal, policyKey } from './goalMap.ts'
+import { PINNED_GOAL_MAP, goalInMap, goalMapFor, pinnedSource, policiesForGoal, policyKey } from './goalMap.ts'
 import { COVERAGE_JUDGED, memberKeyOf, sameDimension, unwrittenDifferences } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
@@ -1155,6 +1155,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     facts: policyFacts(p, input.strengths),
     authors: input.baseline.policies,
   }))
+  // The package's own goal map, by the pin-time rule (goalMap.ts goalMapFor), read
+  // only where the fallback below runs: it orders the signature matches.
+  let packageMap: GoalMap | null = null
+  const packageMapOf = (): GoalMap => (packageMap ??= goalMapFor(input.baseline.policies, input.strengths).map)
   // Style variants are decided by data, never by a question (prompt 16 §4):
   // "NoExclusions" variants are never matched by signature: Jon's countries one joins its goal only through the goal map, where countries are listed to block outright (coverage/companions.ts; v1.1 D4).
   const baselineMatchesFor = (goal: Goal): typeof baselineFactsList => {
@@ -1162,7 +1166,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // A goal scoped to one service's apps is only that service's policy: the
     // signature's app list also accepts All resources, and the synthetic
     // package's countries block stood in for the AVD and SharePoint blocks (Phase 2b).
-    return baselineFactsList.filter((b) => matchesSignature(b.facts, impl.signature) && scopedToGoalApps(goal.id, b.facts.apps)).filter((b) => !/no[-_ ]?exclusions?/i.test(b.facts.name))
+    const matched = baselineFactsList.filter((b) => matchesSignature(b.facts, impl.signature) && scopedToGoalApps(goal.id, b.facts.apps)).filter((b) => !/no[-_ ]?exclusions?/i.test(b.facts.name))
+    // A broad signature matches several goals' policies (the all-users MFA policy
+    // also meets the guests' signature), and the first match stood for each, so
+    // two goals took one source (T1-6f: getiamai's guest step was "… AllUsers (2)").
+    // The package's own map puts each policy with its goal: the goal's own come
+    // first, then a policy it gives no goal, and last one it gives another goal.
+    const map = packageMapOf()
+    const own = new Set(map[goal.id] ?? [])
+    const elsewhere = new Set(Object.entries(map).flatMap(([id, keys]) => (id === goal.id ? [] : keys)))
+    const rank = (b: (typeof baselineFactsList)[number]): number => (own.has(b.key) ? 0 : elsewhere.has(b.key) ? 2 : 1)
+    return matched.map((b, i) => ({ b, i })).sort((x, y) => rank(x.b) - rank(y.b) || x.i - y.i).map(({ b }) => b)
   }
   // The goal map decides what renders (walk-51 item 9, goalMap.ts): a goal the
   // baseline does not hold never renders, in the demo and the product alike, and

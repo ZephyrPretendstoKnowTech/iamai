@@ -85,3 +85,32 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   assert.deepEqual(PINNED_GOAL_MAP['user-risk'], ['544cd9ef-5e37-4568-9ad8-b8e151be1814', 'bb6a814e-808a-467c-9475-06f89140ce99'])
   assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])
 })
+
+test('T1-6f: where the goal map does not describe the package, each goal takes its own policy, whatever the package order; the pinned path is the map', async () => {
+  const { fixture } = await import('./fixtures/index.ts')
+  const { runFixture } = await import('./fixtures/run.ts')
+  type Run = ReturnType<typeof runFixture>
+  const sources = (r: Run, id: string): string[] => (r.steps.find((s) => s.id === id)?.action.resolution?.policies ?? []).map((o) => o.sourceName)
+  const shared = (r: Run): string[] => {
+    const by = new Map<string, Set<string>>()
+    for (const s of r.steps) for (const o of s.action.resolution?.policies ?? []) by.set(o.sourceName, new Set([...(by.get(o.sourceName) ?? []), s.id]))
+    return [...by].filter(([, ids]) => ids.size > 1).map(([name, ids]) => `${name}: ${[...ids].join(', ')}`)
+  }
+  // getiamai's synthetic package: its guests policy is the guest step's, never the all-users one.
+  const f = fixture('getiamai')
+  const shipped = runFixture(f)
+  assert.deepEqual(sources(shipped, 's-goal-guests-mfa'), ['IAC - GUESTS - GRANT - MFA'], 'the guest step took another goal\'s policy')
+  assert.deepEqual(sources(shipped, 's-goal-mfa-all-users'), ['IAC - GLOBAL - GRANT - MFA - AllUsers'])
+  assert.deepEqual(shared(shipped), [], 'two goals took one source')
+  // The same with the guests policy listed first: the package's order decides nothing.
+  const ps = f.baseline.policies
+  const guestsFirst = { ...f, baseline: { ...f.baseline, policies: [...ps.filter((p) => p.displayName === 'IAC - GUESTS - GRANT - MFA'), ...ps.filter((p) => p.displayName !== 'IAC - GUESTS - GRANT - MFA')] } }
+  const swapped = runFixture(guestsFirst)
+  assert.deepEqual(sources(swapped, 's-goal-guests-mfa'), ['IAC - GUESTS - GRANT - MFA'])
+  assert.deepEqual(sources(swapped, 's-goal-mfa-all-users'), ['IAC - GLOBAL - GRANT - MFA - AllUsers'], 'the all-users step took the guests policy')
+  // Every synthetic fixture: no policy stands for two goals.
+  for (const name of ['small', 'mid', 'large', 'messy', 'midflight', 'hostile'] as const) assert.deepEqual(shared(runFixture(fixture(name))), [], name)
+  // The product path: on the pinned package the guest step's sources are the map's, Jon's two.
+  const demo = runFixture(fixture('demo'))
+  assert.deepEqual(sources(demo, 's-goal-guests-mfa'), policiesForGoal(PINNED_GOAL_MAP, policies, 'guests-mfa').map((p) => p.displayName))
+})

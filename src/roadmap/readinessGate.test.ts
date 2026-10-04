@@ -239,10 +239,13 @@ test('4: a readiness the scan could not measure holds the enforcement; nobody to
   const g = fixture('getiamai')
   const rg = runFixture(g)
   const guests = rg.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify') as Step
-  assert.ok(guests.methodPreparation!.ids.length > 0, 'this policy targets all users despite its guest goal label')
-  // The people MFA Readiness counts, both ready (walk list 4.x L4): the nine
-  // accounts nobody signs in to are not a reason to hold it.
-  assert.equal(guests.readiness.percent, 100, 'actual target registrations are measured')
+  // Its own guests policy (T1-6f: the synthetic package's all-users policy stood
+  // for this goal once, and this case read that policy's people): the tenant's
+  // one guest signs in to nothing, so nobody is there to be ready.
+  assert.deepEqual(rg.steps.find((s) => s.id === guests.id)!.action.resolution?.policies.map((o) => o.sourceName), ['IAC - GUESTS - GRANT - MFA'])
+  assert.equal(guests.methodPreparation?.ids.length ?? 0, 0, 'nobody in scope to be ready')
+  assert.equal(guests.action.readinessGate, undefined, 'no threshold that no number can ever meet')
+  assert.equal(enforcementHeld(guests), false, 'nobody to be ready holds nothing')
 })
 
 // ---- 5 + 6: a policy the tenant already enforces ----
