@@ -40,7 +40,26 @@ Everything else is either a working document it links to, or history in
   column in MFA Readiness, three of Codex's audit fixes, the report-only line under Next and
   five polish fixes. What landed, the calls made and the live tests still owed are in the
   plan, sections 7 and 8.
-- **Next:** the live tests in plan section 8, then the rest of Track 1.
+- **The overnight build (2026-10-03/04, on the owner's go-ahead):**
+  - **Tenants:** switching between tenants in one browser (Tier A).
+  - **The lockdown kit:** Jon's three switches, created Off; the emergency exclusions group
+    stays online.
+  - **Countries:** the turn-on waits on its lockout warnings, with a way to mark a country
+    left out on purpose; Jon's NoExclusions block is 6.3's optional second half.
+  - **Groups:** the AVD allowed-users question and step; the external-MFA group filled from
+    the tenant's own settings.
+  - **The footer:** a specific reason for every pinned policy.
+  - **Fixes:**
+    - Codex's audit items 6a–6f;
+    - eleven Needs attention items;
+    - three engine defects;
+    - dormant synced accounts, partial P2 seats and 4.3's correction modules.
+  - **The sample:** on passkey profiles, so it shows 1.3's list.
+  - **CI:** the unit job's timeout raised to 35 minutes.
+  - **Where it is recorded:** plan section 9 holds the list, the calls made and what is
+    still the owner's.
+- **Next:** the owner's review of plan section 9, the live tests in plan section 8, then a
+  decision on merging `v1.1` to `main`.
 - **Owner decisions of 2026-10-03, binding for v1.1:**
   - **Passkeys:** device-bound and attested for all users, with no AAGUID key restrictions.
     A tenant's own allow list is left as it is.
@@ -48,6 +67,8 @@ Everything else is either a working document it links to, or history in
     change.
   - **Tenants:** v1.1 adds switching between tenants in one browser, then sign-in to a named
     tenant. One tenant per session at a time.
+  - **Lockdown kit:** whoever is in the emergency exclusions group stays online when a switch
+    is flipped; nobody else does (owner, 2026-10-03).
   - **Jon's baseline:**
     - the lockdown kit is created Off: both All Apps switches and the Admin Portal block,
       which is read as a switch, not a contradiction;
@@ -160,7 +181,9 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   WITHHELD_CLEANUP; taking a kind out brings it back). Align Policy Names stays (2026-09-28).
 - Polish, not features. The polish research waits for v1.5 or v2 (2026-09-26).
 - Out of v1.0: Jon's AVD allowed-users block (its group is unidentified); the ZTCA Admin
-  Portal block stays hidden (2026-09-24). WindowsAzureAD-BaselineScopes is in (2026-09-29):
+  Portal block stays hidden (2026-09-24). Both are in v1.1 (2026-10-03): AVD behind a
+  Direction question, the Admin Portal block as the lockdown kit's third switch.
+  WindowsAzureAD-BaselineScopes is in (2026-09-29):
   Require Phishing-Resistant MFA for Basic Sign-ins, in Extend MFA right after Require MFA
   to Register a Device, created in Report-only and turned on only when everyone has a
   method that meets the strength.

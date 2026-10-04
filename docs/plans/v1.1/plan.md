@@ -374,3 +374,65 @@ Unit tests cannot prove these; each needs a real tenant, and most a test user.
 7. **The MFA Readiness CSV opens in Excel** with the new Passkey type column.
 8. **The preview channel:** a `VITE_CHANNEL=preview` build deployed where the owner hosts it,
    with the banner, noindex, and no CNAME.
+
+## 9. The overnight build (2026-10-03/04, owner's go-ahead: "you decide")
+Built on `v1.1` by parallel agents and integrated one item at a time. The full preflight passed
+on the integrated branch, and CI ran on each push. Snapshot moves are in their own
+`[snapshots]` commits, each saying why.
+
+**Tracks**
+- **Tenants (T3-A):** `35080be3`…`34db2bfa`.
+  - Switch between the tenants stored in this browser, from the Account menu.
+  - Sign out of the open account only.
+  - Forget a tenant that is not open.
+  - The restore bug, where the previous tenant's scan could show, fixed first.
+- **The lockdown kit (T2-LK):** `5d318bcf`, `13f9b37f`.
+  - Prepare the Lockdown Kit, in section 8: Jon's three ZTCA switches, created Off, with a
+    runbook.
+  - Who stays online: the emergency exclusions group (owner).
+  - The Admin Portal block is no longer a conflict.
+- **Countries (T1-2, T2-NE):** `696dec64`, `98f81873`, `e914166b`, `e99c9748`.
+  - 6.3's turn-on waits on its lockout warnings.
+  - "Left out on purpose" clears that wait.
+  - "Countries to block outright" builds Jon's NoExclusions block.
+- **Jon's groups (T2-EAM, T2-AVD, T2-GRP):** `09514933`, `d23cad40`, `11e84063`, `2226058d`,
+  `b152c79b`.
+  - The external-MFA group comes from the tenant's own External authentication method.
+  - "Which groups may use Azure Virtual Desktop?" builds the AVD allow-list block.
+  - The travellers and device-exception groups stay out, with the reason recorded.
+- **The footer (T2-FTR):** `62fad1ad`. A specific reason for every pinned policy, keyed on its
+  id.
+- **Track 1 fixes:**
+  - T1-3 `a5a85006`, synced dormant accounts;
+  - T1-4 `78372838`, `1a4f314b`, P2 seats;
+  - T1-5 `e7295033`, 4.3's modules;
+  - T1-6b/6d/6f `3f7b00f6`, `1a6be812`, `9ad06098`;
+  - ENG-1/2/3 `173ef5f3`, `560f50c5`, `630f82ed`;
+  - the Needs attention items F-066, F-010, F-101, F-037, F-130, F-107, F-063, F-111, F-121,
+    OWN-W5 and F-180.
+- **The sample (DEMO-SP):** `63ad283b`.
+  - The demo is on passkey profiles and shows 1.3's list: one person whose synced passkey
+    stops, keeping Microsoft Authenticator.
+  - Two MFA Readiness defects fixed on the way.
+- **CI:** the unit job gets 35 minutes (`614648ac`).
+
+**Calls made (the owner said to decide)**
+- **The lockdown kit** is a section 8 preparation step. It does not hold the finish date.
+- **Countries NoExclusions** is created from 6.3's own task, not listed in 3.8: the countries
+  goal was already kept out of 3.8 by design. This sits against the 2026-09-29 rule that every
+  created policy is listed in 3.8; the rule or the exception should be settled.
+- **AVD:** a tenant that uses Azure Virtual Desktop holds its foundation until it names the
+  allowed groups. It is a Direction question, and those gate creates.
+- **The travellers and device-exception groups** stay out: their Direction questions were
+  retired in Stage 3, and a device group in a users slot excuses no one.
+- **The P2 seats line** counts the tenant's active people, so an open policy's words never
+  move with its population.
+
+**Still the owner's**
+- **The footer's prose budget** (`docs/qa/page-contracts.json`, which only the owner edits):
+  the demo footer is about 23 sentences and 358 words against 16 and 260.
+- **4.3's JSON and PowerShell** do not carry the session correction, by design (the person's
+  correction). Change it or keep it.
+- **Unreachable name-correction modules** remain in other policy packages besides 4.3; a
+  cleanup, not a defect.
+- **The policy-matching pilot on 4.3 (T4-PM):** see its own entry below when it lands.
