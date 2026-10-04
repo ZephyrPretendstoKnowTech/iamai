@@ -21,8 +21,8 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate, absoluteLocal, scanAgeDays, STALE_SCAN_DAYS } from '../../copy/dates.ts'
 import { Button } from '../components/index.ts'
 import { BrandMark } from '../components/Mark.tsx'
-import { forgetTenant, listTenants, showDemoSnapshot, signInAnother, signOut, stopScan, switchTenant } from '../actions.ts'
-import { tenantLabel } from '../tenants.ts'
+import { forgetStoredTenant, forgetTenant, listTenants, showDemoSnapshot, signInAnother, signOut, stopScan, switchTenant } from '../actions.ts'
+import { forgettable, tenantLabel } from '../tenants.ts'
 import type { TenantEntry } from '../tenants.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
@@ -146,22 +146,28 @@ function Tab({ href, active, enabled, children }: { href: string; active: boolea
  * Sign out and Forget this tenant (ui/actions.ts); an error renders in the
  * menu, under the button that raised it. Forget deletes the scan and the whole
  * plan on this browser, so it asks first, in the menu: what goes, a way to save
- * the plan file, and Cancel, focused (F-160: one click deleted it all).
+ * the plan file, and Cancel, focused (F-160: one click deleted it all). A
+ * tenant that is not open is forgotten from its own row, behind the same
+ * question, without signing in to it.
  */
 function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName: string | null }) {
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [tenants, setTenants] = useState<TenantEntry[]>([])
+  // The tenant the question is about when it is not the open one; null while it is the open one.
+  const [other, setOther] = useState<TenantEntry | null>(null)
   const ref = useRef<HTMLDivElement>(null)
-  // Where focus goes back to: the Account button after Escape, the Forget item after Cancel.
+  // Where focus goes back to: the Account button after Escape, the Forget item that asked after Cancel.
   const accountButton = useRef<HTMLButtonElement>(null)
   const forgetItem = useRef<HTMLButtonElement>(null)
   const backToForget = useRef(false)
   const { run, error } = useAction()
   const tenant = tenantName ?? SHELL.forgetThisTenant
+  const otherName = other ? tenantLabel(other) : ''
   const close = (): void => {
     setOpen(false)
     setConfirming(false)
+    setOther(null)
     // Read afresh on the next open: the open tenant may have changed by then.
     setTenants([])
   }
@@ -169,11 +175,17 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
     backToForget.current = true
     setConfirming(false)
   }
+  const askOther = (entry: TenantEntry): void => {
+    setOther(entry)
+    setConfirming(true)
+  }
   useEffect(() => {
     if (confirming || !backToForget.current) return
     backToForget.current = false
-    forgetItem.current?.focus()
-  }, [confirming])
+    const asked = other ? ref.current?.querySelector<HTMLButtonElement>(`[data-forget="${other.tenantId}"]`) : forgetItem.current
+    asked?.focus()
+    setOther(null)
+  }, [confirming, other])
   // The tenants are read each time the menu opens: a scan, a sign-in or a forget may have changed them.
   useEffect(() => {
     if (!open) return
@@ -213,11 +225,14 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
         <div className={confirming ? 'menu-list menu-confirm' : 'menu-list'} role={confirming ? 'alertdialog' : 'menu'} aria-labelledby={confirming ? 'forget-confirm-text' : undefined}>
           {confirming ? (
             <>
-              <p id="forget-confirm-text">{fillText(SHELL.forgetConfirm, { tenant })}</p>
-              <a className="inline-link" href="#/export" onClick={close}>{SHELL.forgetSaveFirst}</a>
+              <p id="forget-confirm-text">{fillText(SHELL.forgetConfirm, { tenant: other ? otherName : tenant })}</p>
+              {/* Export saves the open tenant's plan file, so the link is the open tenant's only; another tenant's is saved by opening it. */}
+              {!other && <a className="inline-link" href="#/export" onClick={close}>{SHELL.forgetSaveFirst}</a>}
+              {other && <p>{SHELL.forgetOtherSaveFirst}</p>}
               <div className="menu-confirm-actions">
                 <Button variant="secondary" autoFocus onClick={cancel}>{SHELL.forgetCancel}</Button>
-                <Button variant="secondary" className="forget-confirm" onClick={() => run(forgetTenant().then(close))}>{fillText(SHELL.forgetYes, { tenant })}</Button>
+                {!other && <Button variant="secondary" className="forget-confirm" onClick={() => run(forgetTenant().then(close))}>{fillText(SHELL.forgetYes, { tenant })}</Button>}
+                {other && <Button variant="secondary" className="forget-confirm" onClick={() => run(forgetStoredTenant(other.tenantId).then(close))}>{fillText(SHELL.forgetYes, { tenant: otherName })}</Button>}
               </div>
             </>
           ) : (
@@ -238,6 +253,11 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
                         >
                           {t.current ? fillText(SHELL.tenantCurrent, { tenant: name }) : t.account ? name : fillText(SHELL.tenantSignIn, { tenant: name })}
                         </Button>
+                        {forgettable(t) && (
+                          <Button variant="tertiary" role="menuitem" className="menu-tenant-forget" data-forget={t.tenantId} aria-label={fillText(SHELL.forgetYes, { tenant: name })} title={SHELL.forgetTooltip} onClick={() => askOther(t)}>
+                            {SHELL.forgetShort}
+                          </Button>
+                        )}
                       </div>
                     )
                   })}

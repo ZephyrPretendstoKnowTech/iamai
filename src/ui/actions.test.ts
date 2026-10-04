@@ -657,6 +657,32 @@ test("the menu's tenants: the store's tenant ids (the sample's left out), each n
   assert.deepEqual((await actions.listTenants()).map((r) => r.tenantId), [GUID_A])
 })
 
+test('a tenant that is not open is forgotten by its own id without signing in to it; the open tenant is never forgotten through it', async () => {
+  const deleted: string[] = []
+  const calls: string[] = []
+  actions.storeLib.forgetTenant = async (tenantId: string) => { deleted.push(tenantId) }
+  actions.authLib.signInTo = async () => { calls.push('signIn') }
+  actions.authLib.openAccount = async () => { calls.push('open') }
+  actions.authLib.signOut = async () => { calls.push('signOut') }
+  setSession({ account: tenantA, tenantName: 'Contoso', lastScan: record, baseline: uploaded })
+  const { tenantTurn, stillThisTurn } = await import('./session.ts')
+  const began = tenantTurn()
+  await actions.forgetStoredTenant(GUID_C)
+  assert.deepEqual(deleted, [GUID_C], 'another id was deleted')
+  assert.deepEqual(calls, [], 'forgetting a stored tenant signed in, opened or signed out an account')
+  // The open tenant is untouched: its turn goes on and everything it holds stays.
+  assert.equal(stillThisTurn(began), true)
+  const s = getSession()
+  assert.deepEqual([s.account, s.tenantName, s.lastScan, s.baseline], [tenantA, 'Contoso', record, uploaded])
+  // The open tenant is refused, whatever row asked: nothing is deleted.
+  await assert.rejects(actions.forgetStoredTenant(GUID_A))
+  assert.deepEqual(deleted, [GUID_C])
+  assert.equal(getSession().lastScan, record)
+  // A store that cannot be cleared rejects, so the menu shows it.
+  actions.storeLib.forgetTenant = async () => { throw new Error('store blocked') }
+  await assert.rejects(actions.forgetStoredTenant(GUID_B), /store blocked/)
+})
+
 test('R4-37: a scan saved before the PIM capability existed reopens with it, from the licence rows that scan read', async () => {
   // `pim` (licensing/capabilities.ts) arrived after scans were being kept. A
   // kept scan has no entry for it, and every reading of

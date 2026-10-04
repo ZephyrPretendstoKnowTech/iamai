@@ -140,7 +140,8 @@ test('Forget this tenant needs a second action, from a confirm that says what go
   assert.match(confirm, /<Button variant="secondary" autoFocus onClick=\{cancel\}>\{SHELL\.forgetCancel\}<\/Button>/, 'Cancel is focused')
   // A Forget that worked closes the menu; Cancel hands focus back to the Forget item, Escape to the Account button (review, 2026-09-27).
   assert.match(confirm, /run\(forgetTenant\(\)\.then\(close\)\)/)
-  assert.match(menu, /backToForget\.current = false\n\s+forgetItem\.current\?\.focus\(\)/)
+  // T3-A: the Forget item that asked, which for a tenant that is not open is the Forget on its own row.
+  assert.match(menu, /backToForget\.current = false\n\s+const asked = other \? ref\.current\?\.querySelector<HTMLButtonElement>\(`\[data-forget="\$\{other\.tenantId\}"\]`\) : forgetItem\.current\n\s+asked\?\.focus\(\)/)
   assert.match(menu, /if \(e\.key === 'Escape'\) \{\n\s+close\(\)\n\s+accountButton\.current\?\.focus\(\)/)
   assert.match(confirm, /href="#\/export"[^>]*>\{SHELL\.forgetSaveFirst\}/, 'the plan file can be saved first')
   const { app } = await import('../content/content.ts')

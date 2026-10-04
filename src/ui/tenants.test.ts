@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import type { AccountInfo } from '@azure/msal-browser'
-import { isTenantId, storedTenantOf, switchMove, tenantEntries, tenantLabel } from './tenants.ts'
+import { forgettable, isTenantId, storedTenantOf, switchMove, tenantEntries, tenantLabel } from './tenants.ts'
 import { DEMO_SNAPSHOT_STATE_ID, DEMO_TENANT_ID } from './demoMode.ts'
 
 // Synthetic tenant ids: GUID-shaped, as Entra's are.
@@ -88,6 +88,9 @@ test('choosing a row: the open tenant stays, a signed-in tenant opens with its o
   assert.deepEqual(switchMove(by(B)), { kind: 'open', account: fabrikam })
   assert.deepEqual(switchMove(by(C)), { kind: 'signIn', loginHint: 'ops@northwind.example' })
   assert.deepEqual(switchMove(by(D)), { kind: 'signIn', loginHint: null })
+  // Forget is offered from a row only for a stored tenant that is not open: the open one has the menu's own Forget this tenant.
+  // B is signed in with nothing stored, so there is nothing to forget.
+  assert.deepEqual(rows.map((r) => [r.tenantId, forgettable(r)]), [[A, false], [B, false], [C, true], [D, true]])
 })
 
 test('the stored tenants are read from the keys of the existing stores: no new store, no version change, nothing written', () => {
@@ -122,6 +125,26 @@ test('the Account menu draws the switcher from the action module: the tenants wh
   assert.equal(fillText(app.shell.tenantCurrent, { tenant: 'Contoso' }), 'Contoso · open now')
   assert.equal(fillText(app.shell.tenantSignIn, { tenant: 'Northwind' }), 'Northwind · sign in')
   assert.equal(app.shell.addTenant, 'Add another tenant')
+})
+
+test("a tenant that is not open is forgotten from its row behind the same question, never the open tenant's Forget", async () => {
+  const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8').replace(/\r\n/g, '\n')
+  const menu = shell.slice(shell.indexOf('function AccountMenu('), shell.indexOf('\n}\n', shell.indexOf('function AccountMenu(')))
+  // The row's Forget only asks, and only on a row forgettable() allows.
+  assert.match(menu, /\{forgettable\(t\) && \(\n\s+<Button variant="tertiary" role="menuitem" className="menu-tenant-forget" data-forget=\{t\.tenantId\} aria-label=\{fillText\(SHELL\.forgetYes, \{ tenant: name \}\)\} title=\{SHELL\.forgetTooltip\} onClick=\{\(\) => askOther\(t\)\}>/)
+  // The question names the tenant asked about; its Forget deletes that tenant by its id, and the open tenant's Forget stays its own.
+  assert.match(menu, /fillText\(SHELL\.forgetConfirm, \{ tenant: other \? otherName : tenant \}\)/)
+  assert.match(menu, /\{other && <Button variant="secondary" className="forget-confirm" onClick=\{\(\) => run\(forgetStoredTenant\(other\.tenantId\)\.then\(close\)\)\}>/)
+  assert.match(menu, /\{!other && <Button variant="secondary" className="forget-confirm" onClick=\{\(\) => run\(forgetTenant\(\)\.then\(close\)\)\}>/)
+  // Export saves the open tenant's plan, so its link is not offered for another tenant.
+  assert.match(menu, /\{!other && <a className="inline-link" href="#\/export"/)
+  assert.match(menu, /\{other && <p>\{SHELL\.forgetOtherSaveFirst\}<\/p>\}/)
+  // Cancel and Forget both let go of which tenant was asked about.
+  assert.match(menu, /setConfirming\(false\)\n\s+setOther\(null\)/)
+  const { app } = await import('../content/content.ts')
+  assert.equal(app.shell.forgetShort, 'Forget')
+  assert.equal(app.shell.forgetOtherSaveFirst, 'To save its plan file first, open it and use Export.')
+  assert.equal(app.shell.forgetOpenTenant, 'This tenant is open: use Forget this tenant.')
 })
 
 test('Sign out says it signs out the open account only', async () => {

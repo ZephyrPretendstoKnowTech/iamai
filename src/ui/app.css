@@ -622,6 +622,11 @@ details > *:not(summary) {
 .menu-tenant .btn {
   white-space: nowrap;
 }
+/* A tenant that is not open is forgotten from its own row: the Forget beside its name takes only its own width. */
+.menu-list .menu-tenant .menu-tenant-forget {
+  width: auto;
+  flex: none;
+}
 
 /* ================= the shell ================= */
 

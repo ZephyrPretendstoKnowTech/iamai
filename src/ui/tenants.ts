@@ -108,3 +108,8 @@ export function switchMove(entry: TenantEntry): SwitchMove {
   return { kind: 'signIn', loginHint: entry.loginHint }
 }
 
+/** A row Forget may delete from the switcher: stored here, and not the open tenant (that one is the menu's own Forget this tenant). */
+export function forgettable(entry: TenantEntry): boolean {
+  return entry.stored && !entry.current
+}
+

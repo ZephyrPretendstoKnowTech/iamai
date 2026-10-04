@@ -251,6 +251,23 @@ export async function forgetTenant(): Promise<void> {
 }
 
 /**
+ * Forget a tenant that is not open, from its row in the Account menu (T3-A),
+ * without signing in to it: every record this browser stored for it, by its
+ * own id (the store's per-tenant delete, as Forget this tenant uses). Nothing
+ * of the open tenant is touched: no turn ends, nothing in the session changes.
+ * The open tenant is refused here, never deleted by accident through a stale
+ * row: its own Forget this tenant also lets go of it in memory. Rejects when
+ * the store cannot be cleared.
+ */
+export async function forgetStoredTenant(tenantId: string): Promise<void> {
+  if (tenantId === getSession().account?.tenantId) throw new Error(app.shell.forgetOpenTenant)
+  await storeLib.forgetTenant(tenantId)
+  // Another tab that has this tenant open must not write its plan back (planSync.ts, F-161).
+  announceSaved(tenantId, 'replaced')
+  storedNames.delete(tenantId)
+}
+
+/**
  * What each stored tenant's scan names (its organisation, who scanned it), read
  * once per page load: a stored scan is large, and the switcher only needs those
  * two lines of it. A tenant with no stored scan is not remembered, so its first
