@@ -322,18 +322,22 @@ export async function switchTenant(entry: TenantEntry): Promise<void> {
   const leaving = getSession().account
   stopScan()
   endTenantTurn()
-  setSession({ tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
+  setSession({ tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false, restoring: true })
   // A decision's unapproved changes and a plan file's notice belong to the tenant being left.
   clearDrafts()
   clearPlanNotice()
   if (leaving) letGo(leaving.tenantId)
   try {
-    await authLib.openAccount(move.account)
-  } catch (e) {
-    await restoreSession(leaving)
-    throw e
+    try {
+      await authLib.openAccount(move.account)
+    } catch (e) {
+      await restoreSession(leaving)
+      throw e
+    }
+    await restoreSession(move.account)
+  } finally {
+    setSession({ restoring: false })
   }
-  await restoreSession(move.account)
   go(getSession().lastScan ? PLAN_HREF : CONNECT_HREF)
 }
 

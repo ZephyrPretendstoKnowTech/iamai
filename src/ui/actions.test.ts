@@ -577,6 +577,9 @@ test('switching to a signed-in tenant stops the scan, ends the turn, lets go of 
   assert.equal(getSession().baseline, null)
   assert.equal(getSession().tenantName, null)
   assert.equal(getSession().scan.error, null)
+  // And the page waits for the chosen tenant's state, as on load: nothing draws on the empty session.
+  assert.equal(getSession().restoring, true, 'the page draws on the empty session while tenant B is restored')
+  assert.match(readFileSync('src/ui/App.tsx', 'utf8'), /\{!ready \|\| restoring \? \(\n\s+app\.shell\.loading/)
   h.snapshot.settle(otherRecord)
   h.origin.settle(null)
   h.name.settle('Fabrikam')
@@ -588,6 +591,7 @@ test('switching to a signed-in tenant stops the scan, ends the turn, lets go of 
   assert.equal(s.lastScan?.at, otherRecord.at, "tenant B's own stored scan")
   assert.equal(s.baseline, pinnedResult)
   assert.equal(fakeWindow.location.hash, '#/plan', 'a tenant with a stored scan lands on its Plan')
+  assert.equal(s.restoring, false, 'the page is still waiting after the restore')
   // A tenant with nothing stored lands on Connect.
   fresh()
   const h2 = hydration()
@@ -627,6 +631,7 @@ test("an account gone from the cache is not half-opened: the switch rejects and 
   setSession({ account: tenantA, tenantName: 'Contoso', lastScan: record })
   await assert.rejects(actions.switchTenant(entryB), /Not signed in/)
   await flush()
+  assert.equal(getSession().restoring, false, 'a switch that failed left the page waiting')
   assert.equal(getSession().account, tenantA)
   assert.equal(getSession().lastScan?.at, record.at)
   assert.equal(getSession().tenantName, 'Contoso')

@@ -73,7 +73,7 @@ export function App() {
   // from any page's button; this reads it. Every tenant fact is held there and
   // nowhere in this component, so Sign out and Forget this tenant let go of all
   // of it at once and no page goes on rendering a tenant the operator has left.
-  const { account, tenantName, lastScan, scan, demoWeek2, baseline, baselineRestoreError } = useSession()
+  const { account, tenantName, lastScan, scan, demoWeek2, baseline, baselineRestoreError, restoring } = useSession()
   const [ready, setReady] = useState(false)
   // Which week of the sample is on screen, as against which week the visitor
   // asked for. `demoWeek2` is the request: Scan again flips it, and the effect
@@ -335,7 +335,8 @@ export function App() {
       snapshot={lastScan?.snapshot ?? null}
       demoWeek2={demoWeekShown}
     >
-      {!ready ? (
+      {/* A tenant opened from the Account menu waits for its restored state, as the first load does (T3-A). */}
+      {!ready || restoring ? (
         app.shell.loading
       ) : (
         // Keyed by the tenant too: switching tenants (T3-A) draws the page afresh, so no state a page holds of one tenant is shown for another.

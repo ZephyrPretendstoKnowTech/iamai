@@ -61,11 +61,18 @@ export type Session = {
   demoWeek2: boolean
   /** The mock's token stand-in; MSAL otherwise. Never set outside the mock. */
   getToken: TokenSource | null
+  /**
+   * A tenant chosen in the Account menu is being restored (T3-A): the page waits
+   * for its stored state, as it does on load, so nothing draws on the empty
+   * session in between (Connect would load the default baseline over the one
+   * the tenant chose).
+   */
+  restoring: boolean
 }
 
 export const IDLE_SCAN: ScanState = { state: 'idle', sections: {}, laneB: null, slow: false, error: null, gaps: [], unread: [], roleGap: null, startedAt: null, nowTick: 0, returnTo: null }
 
-const initial = (): Session => ({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false, getToken: null })
+const initial = (): Session => ({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false, getToken: null, restoring: false })
 
 let session: Session = initial()
 const listeners = new Set<() => void>()
