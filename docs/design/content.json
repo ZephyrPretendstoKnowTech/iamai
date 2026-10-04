@@ -3542,7 +3542,7 @@
               "label": "Which groups may use Azure Virtual Desktop?",
               "chosen": "Everyone outside these groups and the exclusions group is blocked from Azure Virtual Desktop.",
               "$commentOptional": "Owner, 2026-10-04: the answer is optional. Left empty, only the AVD allow-list step waits, and the rest of the plan goes ahead; answered now, that policy is created with the others.",
-              "optional": "Optional. Leave it empty and only Limit Azure Virtual Desktop to Its Allowed Groups waits for it."
+              "optional": "Leave it empty and only Limit Azure Virtual Desktop to Its Allowed Groups waits for it."
             },
             "accountOptions": {
               "none": "None",

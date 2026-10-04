@@ -51,8 +51,14 @@ test('a session control the tenant adds is a Stricter line with its value', () =
   const row = (f.snapshot.config.caPolicies.rows as Row[]).find((p) => p.id === id)!
   row.sessionControls = { signInFrequency: { isEnabled: true, type: 'days', value: 7, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication' } }
   const { step, ctx } = open(f, ADMINS)
-  const lines = acceptPanelOf(step, ctx)!.lines
+  const panel = acceptPanelOf(step, ctx)!
+  const lines = panel.lines
   assert.ok(lines.some((l) => l.tag === 'stricter' && l.text === 'Also sets sign-in frequency: 7 days'), JSON.stringify(lines))
+  // Owner, 2026-10-04: the step's JSON and PowerShell never write the session, and
+  // removing a stricter setting would weaken admin sessions before 7.1 is on, so
+  // the person may keep it: it is acceptable, never a must-correct line.
+  assert.ok('sessionControls' in panel.acceptable, JSON.stringify(panel.acceptable))
+  assert.ok(!lines.some((l) => l.tag === 'required' && /session/i.test(l.text)), JSON.stringify(lines))
 })
 
 test('the exclusions group missing is marked Required and is never offered for acceptance', () => {
