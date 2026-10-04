@@ -99,7 +99,10 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
           // A reference awaiting its Baseline mapping (Plan settings) holds the policy; no step ends it either.
           if (missing.some((m) => m.decision)) return BLOCKED_REASON.sourceMapping
           // An object the step makes itself is named by its own task (Stage 3: the countries location).
-          return missing.map((m) => (m.stepId === step.id && step.objectTask ? BLOCKED_REASON.after(contentTitle(step.objectTask)) : after(m.stepId))).find((r): r is string => r !== null) ?? blockedReasonFor(step, stepById)
+          // A foundation object (the exclusions group) is named before an answer a Direction
+          // step asks (T2-AVD's groups): the safety floor is the first thing to finish.
+          const ordered = [...missing.filter((m) => !isDirectionStep(m.stepId ?? '')), ...missing.filter((m) => isDirectionStep(m.stepId ?? ''))]
+          return ordered.map((m) =>(m.stepId === step.id && step.objectTask ? BLOCKED_REASON.after(contentTitle(step.objectTask)) : after(m.stepId))).find((r): r is string => r !== null) ?? blockedReasonFor(step, stepById)
         }
         case 'escape-hatch-unverified':
           return after(step.action.escapeHatch?.stepId) ?? blockedReasonFor(step, stepById)
