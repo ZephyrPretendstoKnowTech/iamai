@@ -5,6 +5,7 @@
 // policy waiting on an unanswered reference says so rather than that an object is
 // missing.
 import { test } from 'node:test'
+import { isDirectionStep } from './directionAnswers.ts'
 import assert from 'node:assert/strict'
 import { fixture, withExternalMfa, withUnsettledGroups } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
@@ -146,7 +147,9 @@ test('each reference says the part it plays, and a policy waiting on an unanswer
         if (s.kind !== 'create' && s.kind !== 'adjust') assert.ok(stepContract(s, ctx).doneWhen.some((d) => d.includes(CONTRACT.doneMissingDecision.split('{tenant}')[0].trim())), `${s.id}: Done when does not say the answer`)
       }
       if (kinds.has('objectMissing')) objects += 1
-      assert.equal(line.includes(missingWords), kinds.has('objectMissing'), `${s.id}: "${line}" says an object is missing exactly where one is`)
+      // An answer a Direction step asks (T2-AVD's groups) is waited on as an answer, never as an object the tenant lacks.
+      const objectWait = (s.action.missing ?? []).some((m) => waitKindOf(m) === 'objectMissing' && !(m.stepId && isDirectionStep(m.stepId)))
+      assert.equal(line.includes(missingWords), objectWait, `${s.id}: "${line}" says an object is missing exactly where one is`)
     }
   }
   assert.ok(references > 0 && objects > 0, `references ${references}, objects ${objects}`)
