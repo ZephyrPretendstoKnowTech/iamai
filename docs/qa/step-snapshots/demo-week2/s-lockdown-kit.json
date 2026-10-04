@@ -1,0 +1,38 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Confirm What You Use",
+  "fact": null,
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "3 lockdown switches to prepare",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Admin portals switch",
+      "state": "Create turned off"
+    },
+    {
+      "label": "Unmanaged devices switch",
+      "state": "Create turned off"
+    },
+    {
+      "label": "Full lockdown switch",
+      "state": "Create turned off"
+    },
+    {
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Sep 7, 2026"
+}

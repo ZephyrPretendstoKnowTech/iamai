@@ -1,0 +1,42 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Prepare Emergency Access Accounts",
+  "fact": null,
+  "badge": "Up Next",
+  "bar": "After Configure Emergency Exclusions",
+  "rail": "3 lockdown switches to prepare",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Admin portals switch",
+      "state": "Create turned off"
+    },
+    {
+      "label": "Unmanaged devices switch",
+      "state": "Create turned off"
+    },
+    {
+      "label": "Full lockdown switch",
+      "state": "Create turned off"
+    },
+    {
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Sep 7, 2026"
+}
