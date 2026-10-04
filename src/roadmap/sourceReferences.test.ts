@@ -63,7 +63,8 @@ test('every interpretation record says what adopting its reference takes, and it
   assert.ok(read.references.length > 10)
   for (const r of read.references) assert.equal(r.classification, classificationFor(r.meaning), `${r.id} is classified against its meaning`)
   const decisions = read.references.filter((r) => r.classification === 'decisionRequired').map((r) => r.id)
-  assert.ok(decisions.includes(EAM), 'the EAM population, the only include of its policy, needs a person’s answer')
+  assert.equal(decisions.includes(EAM), false, 'the EAM population is the tenant’s own external method’s targets (T2-EAM, v1.1 D6): nobody is asked')
+  assert.equal(read.references.find((r) => r.id === EAM)?.meaning, 'externalAuthGroup')
   // Jon's README at 8af3b118 names these, so nobody is asked: his own environment, and his break-glass group.
   for (const id of [BROAD, COUNTRIES_ONLY]) assert.equal(read.references.find((r) => r.id === id)?.classification, 'sourceOnly', `${id} is the author's own`)
   assert.equal(read.references.find((r) => r.id === SECOND_BREAK_GLASS)?.meaning, 'exclusionsGroup', 'the second break-glass group is the exclusions group')

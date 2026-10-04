@@ -1,7 +1,7 @@
 import { networkDraftOf } from '../mapping/networkDraft.ts'
 import { emergencyAccountPreparationComplete, emergencyAccountPreparationOf } from './emergencyAccountPreparation.ts'
 import { REGISTER_DEVICE, createdOn } from './evidenceStrategy.ts'
-import { blockedCountriesCompanion, goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
+import { blockedCountriesCompanion, externalAuthTargetsOf, goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
@@ -1016,7 +1016,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // the allowed one is, by exactly its countries; null while the tenant has
   // none, and the policy then names the slot 6.3 fills (resolvePolicy.ts).
   const blockedCountriesLocationId = tenantCountryLocation(snapshot, mapping.countriesBlockedOutright ?? [])?.id ?? null
-  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId }
+  // Whoever the tenant's own External authentication method targets: the
+  // counterpart of Jon's EAM group (interpretation externalAuthGroup; v1.1 D6).
+  const externalAuthTargets = externalAuthTargetsOf(snapshot)
+  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId, externalAuthTargets }
   const tenantObjects = companionTargets.length === 0 ? tenantObjectsBase : { ...tenantObjectsBase, omitted: new Set([...(tenantObjectsBase.omitted ?? []), ...companionTargets]) }
   /**
    * The resolved policy with its authentication strength as the request may

@@ -60,6 +60,15 @@ export type SourceMeaning =
    * outright (roadmap/resolvePolicy.ts); never the allowed-countries location.
    */
   | 'blockedCountries'
+  /**
+   * The population the author routes to an external authentication method
+   * (Jon's SG-Entra-AUG-MFA-AuthEAM; v1.1 D6). The tenant's counterpart is
+   * whoever the tenant's own External authentication method already targets in
+   * the authentication methods policy, which the scan reads
+   * (coverage/companions.ts externalAuthTargetsOf; roadmap/resolvePolicy.ts):
+   * its groups, or All users where it targets everyone. Nobody is asked.
+   */
+  | 'externalAuthGroup'
   | 'trustedLocation'
   | 'authorEnvironment'
   | 'unknown'
@@ -188,7 +197,7 @@ export type ReferenceUsage = {
   context: Record<string, string>
 }
 
-const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
+const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
 const CLASSIFICATIONS: ReferenceClassification[] = ['knownSemantic', 'sourceOnly', 'decisionRequired', 'invalidSource']
 
 /** The one classification each meaning allows: a record whose two fields disagree cannot be checked by a reviewer. */

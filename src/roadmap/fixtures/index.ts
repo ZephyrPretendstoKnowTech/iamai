@@ -1121,13 +1121,16 @@ export function withReviewRow(f: Fixture): Fixture {
 /**
  * The fixture with an external MFA provider enabled in its authentication
  * methods policy: Jon's EAM High-Risk Users joins Remediate High-Risk Users as
- * its companion, and the population it targets waits on a person's mapping
- * (coverage/companions.ts). Without one, that population is left out.
+ * its companion (coverage/companions.ts). `targets` is who the method targets
+ * (its includeTargets ids, `all_users` for everyone): the EAM population then
+ * resolves to them (v1.1 D6). Without targets the method's targets were not
+ * read, and the population waits on a person's mapping. Without a method, that
+ * population is left out.
  */
-export function withExternalMfa(f: Fixture): Fixture {
+export function withExternalMfa(f: Fixture, targets?: readonly string[]): Fixture {
   const g = structuredClone(f)
   const methods = g.snapshot.config.authMethodsPolicy
-  const external = { '@odata.type': '#microsoft.graph.externalAuthenticationMethodConfiguration', id: 'external-mfa', state: 'enabled' }
+  const external = { '@odata.type': '#microsoft.graph.externalAuthenticationMethodConfiguration', id: 'external-mfa', state: 'enabled', ...(targets ? { includeTargets: targets.map((id) => ({ id, targetType: 'group' })) } : {}) }
   const rows = (methods?.status === 'ok' ? methods.rows : []) as { authenticationMethodConfigurations?: unknown[] }[]
   if (rows.length > 0) rows[0].authenticationMethodConfigurations = [...(rows[0].authenticationMethodConfigurations ?? []), external]
   else g.snapshot.config.authMethodsPolicy = { status: 'ok', reason: null, rows: [{ authenticationMethodConfigurations: [external] }] } as never

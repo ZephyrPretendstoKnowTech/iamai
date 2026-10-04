@@ -29,6 +29,24 @@ export function externalMethodsEnabled(snapshot: Pick<TenantSnapshot, 'config'>)
   return methods === null ? null : methods.some((row) => ((row as { authenticationMethodConfigurations?: { '@odata.type'?: string; state?: string }[] }).authenticationMethodConfigurations ?? []).some((c) => /externalAuthenticationMethod/i.test(c['@odata.type'] ?? '') && c.state === 'enabled'))
 }
 
+/**
+ * Who the tenant's enabled External authentication methods target, as the
+ * authentication methods policy the scan read names them: group ids, lowercased,
+ * and `all_users` where a method targets everyone (Graph's own id). This is the
+ * tenant's counterpart of Jon's EAM group (interpretation `externalAuthGroup`;
+ * v1.1 D6). Null where the policy was not read, no method is enabled, or an
+ * enabled method's targets were not read.
+ */
+export function externalAuthTargetsOf(snapshot: Pick<TenantSnapshot, 'config'>): string[] | null {
+  if (externalMethodsEnabled(snapshot) !== true) return null
+  const rows = snapshot.config.authMethodsPolicy?.status === 'ok' ? (snapshot.config.authMethodsPolicy.rows ?? []) : []
+  type Config = { '@odata.type'?: string; state?: string; includeTargets?: { id?: unknown }[] }
+  const enabled = rows.flatMap((row) => ((row as { authenticationMethodConfigurations?: Config[] }).authenticationMethodConfigurations ?? []).filter((c) => /externalAuthenticationMethod/i.test(c['@odata.type'] ?? '') && c.state === 'enabled'))
+  if (enabled.some((c) => !Array.isArray(c.includeTargets))) return null
+  const ids = [...new Set(enabled.flatMap((c) => (c.includeTargets ?? []).map((t) => (typeof t?.id === 'string' ? t.id.toLowerCase() : '')).filter((id) => id !== '')))]
+  return ids.length > 0 ? ids : null
+}
+
 /** True where the goal's companion belongs on this tenant's plan. */
 export function companionInUse(goalId: string, snapshot: Pick<TenantSnapshot, 'config'>): boolean {
   return COMPANION_GOALS.has(goalId) && externalMethodsEnabled(snapshot) === true

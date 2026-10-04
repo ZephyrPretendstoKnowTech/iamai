@@ -223,11 +223,13 @@ test('a group of the author’s that nothing settles waits on a person’s answe
     const demo = runFixture(fixture('demo-week2')).steps.find((s) => s.id === 's-goal-device-registration-mfa')!
     assert.deepEqual((demo.action.missing ?? []).filter((m) => unsettledGroups().includes(m.token.toLowerCase())), [], 'Device Registration waits on no unexplained group')
   }
-  // mid with an external MFA provider: Jon's EAM companion is on the plan and its population waits on a person's mapping (coverage/companions.ts).
+  // mid with an external MFA provider whose targets the scan did not read: Jon's EAM companion is on the plan and its
+  // population waits on a person's mapping (coverage/companions.ts). With its targets read it is those targets (T2-EAM,
+  // riskyUsersAndEam.test.ts), so the interpretation settles it (externalAuthGroup) and it is listed here by id.
   const r = runFixture(withExternalMfa(fixture('mid')))
   const step = r.steps.find((s) => s.id === 's-goal-user-risk')
   assert.ok(step, 'the high-risk users step is on the mid plan')
-  const unsettled = unsettledGroups()
+  const unsettled = [...unsettledGroups(), '8d0564e5-ab28-4283-9a94-9883c581adde']
   const held = (step.action.missing ?? []).filter((m) => unsettled.includes(m.token.toLowerCase()))
   assert.deepEqual(held.map(m => m.token.toLowerCase()), ['8d0564e5-ab28-4283-9a94-9883c581adde'], 'the EAM population is not guessed away')
   assert.ok(held.every((m) => m.decision === true && m.stepId === null && m.unreadable === undefined), 'each waits on a person’s mapping, and on no step')

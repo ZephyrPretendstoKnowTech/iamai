@@ -62,6 +62,15 @@ export type TenantObjects = {
    * (`BLOCKED_COUNTRIES_SLOT`), never the allowed-countries location.
    */
   blockedCountriesLocationId?: string | null
+  /**
+   * Who the tenant's own External authentication method targets in the
+   * authentication methods policy, as the scan read it
+   * (coverage/companions.ts externalAuthTargetsOf; v1.1 D6): group ids, or
+   * `ALL_USERS_TARGET` where it targets everyone. Absent, null or empty: no
+   * enabled method's targets were read, and a reference the interpretation
+   * settles as `externalAuthGroup` falls back to a person's mapping.
+   */
+  externalAuthTargets?: readonly string[] | null
   /** The named locations the tenant marked as its trusted network; empty until it names one. */
   trustedLocationIds?: readonly string[]
   /**
@@ -491,6 +500,19 @@ export const BLOCKED_COUNTRIES_SLOT = '{blockedCountriesLocation}'
 const BLOCKED_COUNTRIES = 'blockedCountries'
 
 /**
+ * The population the author routes to an external authentication method
+ * (src/baseline/interpretation.ts `externalAuthGroup`; v1.1 D6): whoever the
+ * tenant's own External authentication method targets. Its groups stand where
+ * the author's one stood; a method that targets everyone makes the policy that
+ * includes the population a policy for All users, and the policy that excludes
+ * it keeps everyone (Graph cannot exclude All users, and leaving the exclusion
+ * out keeps the stronger grant on everybody rather than dropping it for anyone).
+ */
+const EXTERNAL_AUTH = 'externalAuthGroup'
+/** Graph's own id for "All users" in an authentication method's targets. */
+export const ALL_USERS_TARGET = 'all_users'
+
+/**
  * The pin's token for a source reference this baseline's interpretation settles
  * as the author's own environment: something identified by evidence as theirs,
  * which this tenant does not have and does not need
@@ -581,6 +603,7 @@ function substitutionsFor(
   unsettled: Set<string>
   decisions: Map<string, { kind: 'group' | 'namedLocation'; answer: SourceReferenceAnswer }>
   omitted: Set<string>
+  allUsers: Set<string>
 } {
   const ids = new Map<string, string[]>()
   const unresolved = new Map<string, string | null>()
@@ -588,11 +611,22 @@ function substitutionsFor(
   const unsettled = new Set<string>()
   const decisions = new Map<string, { kind: 'group' | 'namedLocation'; answer: SourceReferenceAnswer }>()
   const omitted = new Set<string>()
+  const allUsers = new Set<string>()
+  const externalTargets = [...new Set((tenant.externalAuthTargets ?? []).map((t) => t.toLowerCase()))]
   for (const r of refs) {
     // Graph's own words for a location ("All", "AllTrusted") are not objects:
     // nothing resolves them and nothing is missing while they stand.
     if (r.kind === 'namedLocation' && LOCATION_KEYWORDS.has(r.id)) continue
-    const token = tokens.get(r.id) ?? null
+    const read = tokens.get(r.id) ?? null
+    // The external-authentication population: whoever the tenant's own method
+    // targets, read from the scan, and nothing a person saved before it was read.
+    // With no targets read it is a reference only a person can answer, as it was.
+    if (read === EXTERNAL_AUTH && r.kind === 'group' && externalTargets.length > 0) {
+      if (externalTargets.includes(ALL_USERS_TARGET)) allUsers.add(r.id)
+      else ids.set(r.id, externalTargets)
+      continue
+    }
+    const token = read === EXTERNAL_AUTH ? null : read
     // A reference only a person can answer: a group, or a named location no
     // Preparation step of this tenant's makes, that no settled reading of the
     // baseline explains. IAMAI cannot say what the author's object is, so it
@@ -695,7 +729,28 @@ function substitutionsFor(
     }
     leave()
   }
-  return { ids, unresolved, authorOnly, unsettled, decisions, omitted }
+  return { ids, unresolved, authorOnly, unsettled, decisions, omitted, allUsers }
+}
+
+/**
+ * A population that is everyone (an external authentication method that targets
+ * All users; `EXTERNAL_AUTH`): where a policy includes it, the policy includes
+ * All users; where a policy excludes it, the exclusion goes, because Graph
+ * cannot exclude All users and the policy then keeps its grant on everybody.
+ */
+function widenToAllUsers(body: RawPolicy, everyone: ReadonlySet<string>): void {
+  if (everyone.size === 0) return
+  const users = ((body.conditions as RawPolicy | undefined)?.users ?? null) as RawPolicy | null
+  if (users === null) return
+  const strip = (key: string): boolean => {
+    const list = users[key]
+    if (!Array.isArray(list)) return false
+    const kept = list.filter((x) => !(typeof x === 'string' && everyone.has(x.toLowerCase())))
+    users[key] = kept
+    return kept.length !== list.length
+  }
+  if (strip('includeGroups')) users.includeUsers = ['All']
+  strip('excludeGroups')
 }
 
 /**
@@ -764,7 +819,7 @@ function dedupeCollections(value: unknown): unknown {
 export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, goalId: string, policies: readonly CaPolicy[] = []): ResolvedPolicy {
   const assumptions = assumedAbsentSourceGroups(policy, policies)
   const effectiveTenant = assumptions.length ? { ...tenant, omitted: new Set([...(tenant.omitted ?? []), ...assumptions]) } : tenant
-  const { ids, unresolved, authorOnly, unsettled, decisions: packageDecisions, omitted } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), effectiveTenant, goalId)
+  const { ids, unresolved, authorOnly, unsettled, decisions: packageDecisions, omitted, allUsers } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), effectiveTenant, goalId)
   // "None needed here" is an answer about an exception or about part of who a
   // policy reaches. Where the references left out are the whole of who or where
   // this policy applies, it would not narrow the policy, it would empty the
@@ -782,6 +837,7 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
   const named = stringsIn(policy)
   const decisions = new Map([...packageDecisions].filter(([id]) => named.has(id)))
   const body = substitute(structuredClone(policy), ids) as RawPolicy
+  widenToAllUsers(body, allUsers)
   // The exclusions group is excluded from every policy the plan writes; it is
   // added before the de-duplication, so a policy that already excludes it (the
   // author's own exclusions group resolved to it) still names it once.

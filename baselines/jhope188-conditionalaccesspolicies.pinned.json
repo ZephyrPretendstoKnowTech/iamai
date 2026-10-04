@@ -1776,6 +1776,7 @@
         }
       },
       "placeholders": {
+        "8d0564e5-ab28-4283-9a94-9883c581adde": "externalAuthGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "exclusionsGroup"
       }
@@ -1918,6 +1919,7 @@
       },
       "placeholders": {
         "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "exclusionsGroup",
+        "8d0564e5-ab28-4283-9a94-9883c581adde": "externalAuthGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },

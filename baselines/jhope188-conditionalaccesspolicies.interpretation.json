@@ -183,15 +183,19 @@
     {
       "id": "8d0564e5-ab28-4283-9a94-9883c581adde",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "externalAuthGroup",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names this id as SG-Entra-AUG-MFA-AuthEAM, the population the author routes to external authentication, and the refresh maps it to the Direction answer D1 External authentication methods. It stays unknown: it is the only include of the EAM variant, so the body cannot go without it, and no meaning here answers it from a Direction answer.",
+      "classification": "knownSemantic",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names this id as SG-Entra-AUG-MFA-AuthEAM, the population the author routes to external authentication: the only include of IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation, and excluded from its pair, IAC - P2 - GLOBAL - GRANT - High-Risk Users - Risk Remediation. Its tenant counterpart is whoever the tenant's own External authentication method already targets in the authentication methods policy, read from the scan: its groups, or All users where it targets everyone (v1.1 D6, owner 2026-10-03). No question is asked; where the scan reads no targets the reference falls back to a person's mapping.",
       "includedIn": [
         "bb6a814e-808a-467c-9475-06f89140ce99"
       ],
+      "excludedFrom": [
+        "544cd9ef-5e37-4568-9ad8-b8e151be1814"
+      ],
       "context": {
-        "bb6a814e-808a-467c-9475-06f89140ce99": "1614e8b12f60057f"
+        "bb6a814e-808a-467c-9475-06f89140ce99": "1614e8b12f60057f",
+        "544cd9ef-5e37-4568-9ad8-b8e151be1814": "4dd74f652e34dcf0"
       }
     },
     {

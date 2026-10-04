@@ -32,9 +32,38 @@ test('no external MFA provider: Remediate High-Risk Users is one policy and the 
   assert.equal((step.action.missing ?? []).some((m) => m.token.toLowerCase() === EAM_GROUP), false)
 })
 
-test('an external MFA provider: the EAM policy is its second policy, and its population waits on a person’s mapping', () => {
+test('an external MFA provider whose targets the scan did not read: the EAM policy is its second policy, and its population waits on a person’s mapping', () => {
   const step = userRisk(withExternalMfa(mid()))
   const names = [...(step.action.resolution?.policies ?? []), ...(step.action.planned?.policies ?? [])].map((p) => p.sourceName)
   assert.ok(names.includes('IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation'), names.join(' | '))
   assert.equal(step.action.sourceReferences?.find((r) => r.id.toLowerCase() === EAM_GROUP)?.answer, 'pending')
+})
+
+// T2-EAM (v1.1 D6): Jon's EAM group is whoever the tenant's own External
+// authentication method targets, read from the scan; nobody is asked.
+const EAM_TARGET = '0000eaa0-0000-4000-8000-0000000000e1'
+type Users = { includeUsers?: string[]; includeGroups?: string[]; excludeGroups?: string[] }
+const bodies = (step: ReturnType<typeof userRisk>) => new Map([...(step.action.resolution?.policies ?? []), ...(step.action.planned?.policies ?? [])].map((p) => [p.sourceName, ((p.pending ?? p.body) as { conditions?: { users?: Users } }).conditions?.users ?? {}]))
+const EAM_POLICY = 'IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation'
+const MAIN_POLICY = 'IAC - P2 - GLOBAL - GRANT - High-Risk Users - Risk Remediation'
+
+test('T2-EAM: the method targets a group: the EAM policy includes it, its pair excludes it, and nothing waits on a mapping', () => {
+  const step = userRisk(withExternalMfa(mid(), [EAM_TARGET]))
+  const by = bodies(step)
+  assert.deepEqual(by.get(EAM_POLICY)?.includeGroups, [EAM_TARGET])
+  assert.ok(by.get(MAIN_POLICY)?.excludeGroups?.includes(EAM_TARGET), JSON.stringify(by.get(MAIN_POLICY)))
+  assert.equal(step.action.sourceReferences?.some((r) => r.id.toLowerCase() === EAM_GROUP) ?? false, false, 'no question for the operator')
+  assert.equal((step.action.missing ?? []).some((m) => m.token.toLowerCase() === EAM_GROUP), false)
+  assert.equal(JSON.stringify([...by.values()]).toLowerCase().includes(EAM_GROUP), false, 'the author’s group is in no body')
+})
+
+test('T2-EAM: the method targets All users: the EAM policy is for All users, and its pair keeps everyone (Graph cannot exclude All users)', () => {
+  const step = userRisk(withExternalMfa(mid(), ['all_users']))
+  const by = bodies(step)
+  assert.deepEqual(by.get(EAM_POLICY)?.includeUsers, ['All'])
+  assert.deepEqual(by.get(EAM_POLICY)?.includeGroups ?? [], [])
+  assert.deepEqual(by.get(MAIN_POLICY)?.includeUsers, ['All'])
+  assert.equal(JSON.stringify([...by.values()]).toLowerCase().includes(EAM_GROUP), false)
+  assert.equal(JSON.stringify([...by.values()]).includes('all_users'), false, 'Graph’s method-target id is never written into a policy')
+  assert.equal(step.action.sourceReferences?.some((r) => r.id.toLowerCase() === EAM_GROUP) ?? false, false)
 })
