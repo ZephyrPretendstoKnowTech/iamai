@@ -259,6 +259,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // draws the line that selects them by name, as the product does.
   '.steps[7].whatToDo.steps[1]',
   '.steps[9].who.match',
+  // Prepare Your Team's campaign settings that differ from its Set line (F-107):
+  // the example's campaign is Microsoft managed, so no setting is named.
+  '.steps[12].campaign.differs.limit',
+  '.steps[12].campaign.differs.snooze',
   '.steps[13].who.evidence[0]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // two admin policies that still name them (23, 33); the examples list none. The

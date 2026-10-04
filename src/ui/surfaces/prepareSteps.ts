@@ -44,7 +44,7 @@ type TeamWords = {
   card: { notReady: string; ready: string; link: string }
   milestone: string
   instruction: string
-  campaign: { managed: string; off: string; on: string; nudging: string; fido2: string; microsoftAuthenticator: string; allUsers: string }
+  campaign: { managed: string; off: string; on: string; noMethod: string; nudging: string; differ: string; differs: Record<'snooze' | 'limit' | 'exclude', string>; fido2: string; microsoftAuthenticator: string; allUsers: string }
 }
 const words = <T>(step: Step): T => contentStepFor(step) as unknown as T
 
@@ -154,15 +154,44 @@ function campaignOf(ctx: StepVarContext): CampaignRead | null {
 
 const ALL_USERS = 'all_users'
 
-/** The campaign in the procedure's Today line: Microsoft managed, off, or on and what it nudges to whom. */
-function campaignToday(c: CampaignRead, W: TeamWords['campaign'], ctx: StepVarContext): string {
+/** A setting of the campaign that differs from the one the procedure's Set line names. */
+type CampaignGap = 'state' | 'target' | 'snooze' | 'limit' | 'exclude'
+
+/**
+ * Where the campaign the scan read differs from the procedure's Set line (State
+ * Enabled, Passkey for All users, the exclusions group excluded, one day to
+ * snooze, snoozes not limited). None: the campaign is already set as the line
+ * says, and the line drops (item 50).
+ */
+function campaignGaps(c: CampaignRead, groupId: string | null): CampaignGap[] {
+  const gaps: CampaignGap[] = []
+  if (c.state !== 'enabled') gaps.push('state')
+  if (!(c.include.length === 1 && c.include[0].id.toLowerCase() === ALL_USERS && (c.include[0].targetedAuthenticationMethod ?? '').toLowerCase() === 'fido2')) gaps.push('target')
+  if (c.snooze !== 1) gaps.push('snooze')
+  if (c.enforce !== false) gaps.push('limit')
+  if (groupId !== null && !c.exclude.some((t) => t.id.toLowerCase() === groupId.toLowerCase())) gaps.push('exclude')
+  return gaps
+}
+
+/**
+ * The campaign in the procedure's Today line: Microsoft managed, off, or on and
+ * what it nudges to whom. A campaign that is on says what the Set line below it
+ * changes (F-107): "on" alone, over a line that sets State to Enabled, read as
+ * already on and then turned on again. On with no method or people set says so;
+ * on and nudging the line's method to its people names the settings that differ.
+ */
+function campaignToday(c: CampaignRead, W: TeamWords['campaign'], ctx: StepVarContext, gaps: readonly CampaignGap[]): string {
   if (c.state === 'default') return W.managed
   if (c.state !== 'enabled') return W.off
   if (c.include.length === 0) return W.on
-  const byKey = new Map(Object.entries(W as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]))
+  const byKey = new Map(Object.entries(W as unknown as Record<string, unknown>).flatMap(([k, v]) => (typeof v === 'string' ? [[k.toLowerCase(), v] as const] : [])))
   const methods = [...new Set(c.include.map((t) => (t.targetedAuthenticationMethod ?? '').toLowerCase()))].filter((m) => m !== '').map((m) => byKey.get(m) ?? m)
   const scope = c.include.map((t) => (t.id.toLowerCase() === ALL_USERS ? W.allUsers : ctx.nameOf(t.id)))
-  return methods.length === 0 ? W.on : fillText(W.nudging, { method: list(methods), scope: list(scope) })
+  if (methods.length === 0) return fillText(W.noMethod, { scope: list(scope) })
+  const today = fillText(W.nudging, { method: list(methods), scope: list(scope) })
+  // A different method or audience is already in the words above; the rest is named.
+  const rest = gaps.includes('target') ? [] : gaps.flatMap((g) => (g === 'snooze' || g === 'limit' || g === 'exclude' ? [W.differs[g]] : []))
+  return rest.length === 0 ? today : fillText(W.differ, { today, settings: list(rest) })
 }
 
 /**
@@ -193,11 +222,9 @@ function teamVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
   const choice = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory })
   const groupId = choice.actionableId
   const c = campaignOf(ctx)
-  if (c !== null) out.campaignToday = campaignToday(c, W.campaign, ctx)
-  const matches = c !== null && c.state === 'enabled'
-    && c.include.length === 1 && c.include[0].id.toLowerCase() === ALL_USERS && (c.include[0].targetedAuthenticationMethod ?? '').toLowerCase() === 'fido2'
-    && c.snooze === 1 && c.enforce === false
-    && (groupId === null || c.exclude.some((t) => t.id.toLowerCase() === groupId.toLowerCase()))
+  const gaps = c === null ? null : campaignGaps(c, groupId)
+  if (c !== null && gaps !== null) out.campaignToday = campaignToday(c, W.campaign, ctx, gaps)
+  const matches = gaps !== null && gaps.length === 0
   if (!matches) out.campaignExclude = groupId !== null ? (choice.actionableName ?? ctx.nameOf(groupId)) : proposedNamesFor(ctx).exclusionsGroup
   return out
 }

@@ -5365,8 +5365,16 @@
         "$comment": "The registration campaign as the scan read it (authenticationMethodsPolicy.registrationEnforcement, walk list section 3 item 50): {campaignToday} in the procedure's Today line. Graph's state `default` is the portal's Microsoft managed.",
         "managed": "Microsoft managed",
         "off": "off",
-        "on": "on",
+        "$commentOn": "F-107: a campaign that is on says what the Set line below it changes. \"on\" alone, over a line that sets State to Enabled, read as already on and then turned on again. on: the scan read no method and nobody it nudges; noMethod: people and no method; differ: the line's method to its people, with the other settings that differ named from differs.",
+        "on": "on, with no method or people set",
+        "noMethod": "on for {scope}, with no method set",
         "nudging": "on, nudging {method} to {scope}",
+        "differ": "{today}, with different {settings}",
+        "differs": {
+          "snooze": "days allowed to snooze",
+          "limit": "limits on snoozes",
+          "exclude": "exclusions"
+        },
         "fido2": "passkeys",
         "microsoftAuthenticator": "Microsoft Authenticator",
         "allUsers": "all users"

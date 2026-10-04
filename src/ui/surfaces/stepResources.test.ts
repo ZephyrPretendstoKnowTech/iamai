@@ -13,6 +13,9 @@ import { QUESTION_STEP, answerKey, questionLabels } from '../../roadmap/answers.
 import { BASELINE_COMMIT, memberBindings, packageForEntry } from './stepPackage.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { fillText } from '../../content/render.ts'
+import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
 
 /** A shipped tenant's plan and step bodies, with any answers saved on top of its own. */
 function opened(name: 'demo' | 'demo-week2' | 'mid', answers: Record<string, string> = {}) {
@@ -69,6 +72,42 @@ test('MFA preparation retains useful campaign guidance and audience emails witho
   assert.match(body.artifacts.find(a => a.id === 'portal')!.text(), /Registration campaign/)
   assert.match(body.artifacts.find(a => a.id === 'email')!.text(), /Administrator message/)
   assert.equal(body.artifacts.some(a => a.id === 'json'), false)
+})
+
+// F-107: "Today: the registration campaign is on." sat over "Set the registration
+// campaign: … State: Enabled", so the step said the campaign was on and then told
+// the reader to turn it on. A campaign that is on says what the Set line changes.
+test('Prepare Your Team says what the registration campaign it read is missing, never on and then turn it on', () => {
+  const W = (stepById['s-verify-mfa'] as unknown as { campaign: { on: string; noMethod: string; nudging: string; differ: string; differs: Record<string, string> } }).campaign
+  const { r, ctx } = opened('demo')
+  const step = r.steps.find(s => s.id === 's-verify-mfa')!
+  const portal = (c: StepVarContext): string => stepBodyOf(step, c).artifacts.find(a => a.id === 'portal')!.text()
+  // The sample's campaign is enabled with nothing set: the line says so.
+  assert.ok(portal(ctx).includes(`Today: the registration campaign is ${W.on}.`), portal(ctx))
+  assert.doesNotMatch(portal(ctx), /registration campaign is on\./)
+  assert.match(portal(ctx), /Set the registration campaign/)
+  const withCampaign = (campaign: Record<string, unknown>): StepVarContext => {
+    const section = ctx.snapshot.config.authMethodsPolicy
+    const row = { ...(section.rows[0] as Record<string, unknown>), registrationEnforcement: { authenticationMethodsRegistrationCampaign: campaign } }
+    return { ...ctx, snapshot: { ...ctx.snapshot, config: { ...ctx.snapshot.config, authMethodsPolicy: { ...section, rows: [row] } } } } as StepVarContext
+  }
+  const exclusions = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }).actionableId
+  assert.ok(exclusions, 'the premise: the sample has an exclusions group')
+  const passkeysToAll = { state: 'enabled', includeTargets: [{ id: 'all_users', targetType: 'group', targetedAuthenticationMethod: 'fido2' }], excludeTargets: [{ id: exclusions, targetType: 'group' }] }
+  // On for everyone with passkeys, its snooze settings left as Microsoft's: those are named.
+  const snoozes = portal(withCampaign({ ...passkeysToAll, snoozeDurationInDays: 3, enforceRegistrationAfterAllowedSnoozes: true }))
+  const today = fillText(W.nudging, { method: 'passkeys', scope: 'all users' })
+  assert.ok(snoozes.includes(fillText(W.differ, { today, settings: `${W.differs.snooze} and ${W.differs.limit}` })), snoozes)
+  // Its exclusions left out: named alone.
+  const noExclusions = portal(withCampaign({ ...passkeysToAll, excludeTargets: [], snoozeDurationInDays: 1, enforceRegistrationAfterAllowedSnoozes: false }))
+  assert.ok(noExclusions.includes(fillText(W.differ, { today, settings: W.differs.exclude })), noExclusions)
+  // On with people and no method.
+  const noMethod = portal(withCampaign({ state: 'enabled', includeTargets: [{ id: 'all_users', targetType: 'group' }] }))
+  assert.ok(noMethod.includes(fillText(W.noMethod, { scope: 'all users' })), noMethod)
+  // Already set as the line says: the Today line names it and the Set line drops.
+  const set = portal(withCampaign({ ...passkeysToAll, snoozeDurationInDays: 1, enforceRegistrationAfterAllowedSnoozes: false }))
+  assert.ok(set.includes(`Today: the registration campaign is ${today}.`), set)
+  assert.doesNotMatch(set, /Set the registration campaign/)
 })
 
 test('a policy ID in portal instructions includes its actual tenant name', () => {
