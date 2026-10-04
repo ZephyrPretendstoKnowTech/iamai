@@ -216,3 +216,35 @@ test('the kit moves no other date and never holds the finish', () => {
   assert.equal(isHeld(kit), true, 'the premise: the kit is held on the demo')
   assert.equal(heldRequired(r.steps).some((s) => s.id === kit.id), false, 'the finish waits on the lockdown kit')
 })
+
+test('F-015 (owner, 2026-10-04): the switches still to create are also PowerShell and JSON, each Off, in the scanned tenant only; none while the exclusions group is still to make or once a switch exists', () => {
+  const f = fixture('demo-week2')
+  const r = runFixture(f)
+  const kit = kitOf(r.steps)
+  assert.deepEqual(kit.action.missing ?? [], [], 'the premise: every object the switches name exists')
+  const body = stepBodyOf(kit, ctxOf(f, r))
+  const ps = body.artifacts.find((a) => a.id === 'ps')
+  const json = body.artifacts.find((a) => a.id === 'json')
+  assert.ok(ps && json, `the kit's tabs: ${body.artifacts.map((a) => a.id).join(', ')}`)
+  const bodies = JSON.parse(json.text()) as Json[]
+  assert.deepEqual(bodies.map((b) => b.displayName), SWITCH_NAMES)
+  for (const b of bodies) assert.equal(b.state, 'disabled', `${String(b.displayName)}: created Off`)
+  const script = ps.text()
+  assert.match(script, new RegExp(`Connect-MgGraph -TenantId '${f.snapshot.tenantId}'`), 'pinned to the scanned tenant')
+  assert.equal(script.match(/New-MgIdentityConditionalAccessPolicy -BodyParameter/g)?.length, 3)
+  assert.doesNotMatch(script, /"state": "enabled"/)
+  // A switch the tenant already has is not created again: only the others are.
+  const one = withSwitches(f, (b, i) => (i === 0 ? b : null))
+  const rOne = runFixture(one)
+  const left = JSON.parse(stepBodyOf(kitOf(rOne.steps), ctxOf(one, rOne)).artifacts.find((a) => a.id === 'json')!.text()) as Json[]
+  assert.deepEqual(left.map((b) => b.displayName), SWITCH_NAMES.slice(1))
+  // All three there: nothing to create, so no PowerShell or JSON.
+  const all = withSwitches(f)
+  const rAll = runFixture(all)
+  assert.deepEqual(stepBodyOf(kitOf(rAll.steps), ctxOf(all, rAll)).artifacts.filter((a) => a.id === 'ps' || a.id === 'json'), [])
+  // The exclusions group still to make (messy): the Entra tasks name the proposed group; nothing runnable is handed over.
+  const messy = fixture('messy')
+  const rMessy = runFixture(messy)
+  assert.ok((kitOf(rMessy.steps).action.missing ?? []).some((m) => m.stepId === 's-prereq-exclusion-group'), 'the premise: messy has no exclusions group yet')
+  assert.deepEqual(stepBodyOf(kitOf(rMessy.steps), ctxOf(messy, rMessy)).artifacts.filter((a) => a.id === 'ps' || a.id === 'json'), [])
+})

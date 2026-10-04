@@ -11,7 +11,7 @@
 // who stays online, and how to stand down.
 //
 // Pure: no DOM, no React, no network.
-import type { Step } from '../../roadmap/types.ts'
+import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { LockdownKitMember, LockdownSwitch } from '../../roadmap/lockdownKit.ts'
 import { switchReady } from '../../roadmap/lockdownKit.ts'
 import type { CorrectionSection, ProcedureContext } from '../../roadmap/policyProcedure.ts'
@@ -124,6 +124,23 @@ export function lockdownKitTasksOf(step: Step, ctx: ProcedureContext, group: str
   tasks.push(task('stand-down', w.taskStandDown, [fillText(w.standDownWho, { group }), ...turnOffLines(w.standDownTarget)], false))
   const next = tasks.find((t) => t.required) ?? null
   return { tasks, recommendedTaskId: next ? next.id : null, printAll: true }
+}
+
+/**
+ * The switches still to create as the JSON and PowerShell tabs write them
+ * (owner, 2026-10-04: F-015, every step that creates a policy hands over its
+ * JSON and PowerShell): each create Off, whatever the baseline's own state.
+ * None while an object they name is still to be made (the exclusions group),
+ * and none for a switch the tenant has: its correction and Set Off are the
+ * Entra procedure's, as a policy step's turn-on of something already there is.
+ */
+export function lockdownKitCreatesOf(step: Step): PolicyOperation[] {
+  if (step.id !== LOCKDOWN_KIT_STEP_ID || (step.action.missing ?? []).length > 0) return []
+  const ops = step.action.resolution?.policies ?? []
+  return membersOf(step).filter((m) => m.state === 'absent').flatMap((m) => {
+    const op = ops.find((o) => o.memberKey === m.key && o.mode === 'create')
+    return op ? [{ ...op, body: { ...op.body, state: 'disabled' } }] : []
+  })
 }
 
 /** The names a procedure line is written with (stepPortal.ts portalNamesFor). */
