@@ -193,7 +193,7 @@ test('a tenant that is not open says how long ago it was scanned; the open one a
   )
   const by = (id: string) => rows.find((r) => r.tenantId === id)!
   assert.equal(tenantScanAge(by(A), now), null, 'the header already says it')
-  assert.equal(tenantScanAge(by(C), now), 'Scanned 12 days ago')
+  assert.equal(tenantScanAge(by(C), now), 'Last scan 12 days ago')
   assert.equal(tenantScanAge(by(D), now), null)
   assert.ok(readFileSync('src/ui/shell/AppShell.tsx', 'utf8').includes('{age && <span className="menu-tenant-age">{age}</span>}'))
 })

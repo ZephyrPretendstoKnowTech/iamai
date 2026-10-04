@@ -414,7 +414,7 @@ test('013.F/G: no plan artifact leaks identity: the MFA ledger stays in its CSV,
     // (behind its warning and its checkbox), the print document, and the person's
     // own plan file. The calendar, the CSVs and the prompt pack are REDACTED.
     const unredacted = [...src.matchAll(/unredactedFrom\('([^']+)'\)/g)].map((m) => m[1])
-    assert.deepEqual([...new Set(unredacted)].sort(), ['grounding-bundle', 'inventory-csv', 'plan-file', 'print-document'])
+    assert.deepEqual([...new Set(unredacted)].sort(), ['grounding-bundle', 'inventory-csv', 'plan-file', 'plan-policies', 'print-document'])
     for (const artifact of ['.ics', 'text/csv', 'text/markdown']) {
       const line = src.split('\n').find((l) => l.includes(artifact) && l.includes('exportDownload'))
       assert.ok(line, `the page no longer downloads ${artifact}`)

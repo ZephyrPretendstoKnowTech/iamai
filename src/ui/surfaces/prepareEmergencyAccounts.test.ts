@@ -108,7 +108,8 @@ const decisionOf = (stepId: string): Record<string, unknown> => entryOf(stepId).
 test('#15 every picker saves from the list: Done saves and closes, taking a chip off saves, and no Save stands beside a picker alone', () => {
   const picker = read('src/ui/components/Picker.tsx')
   // Done saves the selection as it stands and closes the list.
-  assert.match(picker, /const done = \(\): void => \{\n\s+setOpen\(false\)\n\s+save\(latest\.current\)\n\s+\}/)
+  // Done hands focus to the search field first (F-065), then closes and saves.
+  assert.match(picker, /const done = \(\): void => \{\n\s+focusAfter\.current = `\$\{base\}-search`\n\s+setOpen\(false\)\n\s+save\(latest\.current\)\n\s+\}/)
   assert.match(picker, /<Button size="sm" variant="tertiary" onClick=\{done\}>\n\s+\{T\.done\}/)
   // Taking a chip off saves what is left; a single-choice pick saves the pick.
   assert.match(picker, /const next = selected\.filter\(\(s\) => s\.id !== id\)\n\s+onChange\(next\)\n\s+save\(next\)/)
@@ -253,7 +254,7 @@ test('taking an emergency access account off asks first, and only there', async 
   const { app } = await import('../../content/content.ts')
   const { fillText } = await import('../../content/render.ts')
   const picker = read('src/ui/components/Picker.tsx')
-  assert.match(picker, /onClick=\{\(\) => \(confirmRemoval \? setPending\(s\) : remove\(s\.id\)\)\}/, '× asks where the caller asks for it, and removes at once elsewhere')
+  assert.match(picker, /onClick=\{\(\) => \(confirmRemoval \? setPending\(s\) : removeNow\(s\.id\)\)\}/, '× asks where the caller asks for it, and removes at once elsewhere (handing focus on, F-065)')
   assert.match(picker, /<Button size="sm" variant="secondary" autoFocus onClick=\{keep\}>\n\s+\{T\.keep\}/, 'Keep is focused and changes nothing')
   assert.match(picker, /<Button size="sm" variant="secondary" onClick=\{takeOff\}>\n\s+\{T\.takeOff\}/, 'Take it off removes and saves')
   // Focus goes back where it was (review, 2026-09-27): Keep to the chip's ×, Take it off to the next chip's × or the

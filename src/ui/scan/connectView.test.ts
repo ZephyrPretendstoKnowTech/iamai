@@ -529,7 +529,10 @@ test("the page renders the scan's age from the one stored timestamp: Scan says c
   assert.equal((page.match(/\b\d+ minutes ago\b/g) ?? []).length, 2, 'the age renders in the Scan and the Plan tile, nowhere else')
   assert.ok(!/scanned/i.test(page), 'the tiles do not say scanned')
   // The header and the Plan surface carry neither the scan's age nor the tenant: Connect alone does (docs/design/connect-mockup.html).
-  const shell = JSON.stringify(app.shell)
+  // Not the switcher's age of a tenant that is NOT open (owner, 2026-10-04, ui/tenants.ts tenantScanAge):
+  // the open tenant's own age stays on Connect alone.
+  const { tenantScanned: _switcherAge, ...headerWords } = app.shell as Record<string, unknown>
+  const shell = JSON.stringify(headerWords)
   assert.ok(!/scanned|Re-scan|\{age\}/.test(shell), 'the header words carry no scan age or scan control')
   // The Plan's header words: the steps line and its variants, never the tenant or the scan's age (its second line left with docs/design/mockups/plan-top-v2.html).
   const planWords = JSON.stringify(pages.plan)

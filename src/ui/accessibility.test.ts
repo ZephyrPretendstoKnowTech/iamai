@@ -895,8 +895,7 @@ test('F-097: in forced colours the selected tab, a pressed toggle, the track and
 
 test('F-065: after Defer, Put back, Approve answers, Done or a chip taken off, focus goes to the control that replaced the pressed one, never the page body', () => {
   const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  assert.ok(step.includes(`stepRef.current?.querySelector<HTMLElement>('.rail-exceptions button')?.focus()`), 'Defer and Put back hand focus to the control that replaced them')
-  assert.ok(step.includes('<article className="step panel panel-key" ref={stepRef}'))
+  assert.ok(step.includes('.rail-exceptions button`)?.focus()') && step.includes('article.step[data-step-id='), 'Defer and Put back hand focus to the control that replaced them')
   const direction = readFileSync('src/ui/surfaces/DirectionQuestions.tsx', 'utf8')
   assert.ok(direction.includes('<h4 tabIndex={-1}>{heading}</h4>'), 'the questions heading can take focus')
   assert.ok(direction.includes(`querySelector<HTMLElement>('.direction-section h4')`) && direction.includes('requestAnimationFrame(() => heading.focus())'), 'Approve answers hands focus to the heading')
