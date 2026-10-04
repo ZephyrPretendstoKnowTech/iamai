@@ -6,6 +6,7 @@
 //
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 import { DEFAULT_BASELINE } from '../baseline/registry.ts'
+import type { BaselineDefinition } from '../baseline/registry.ts'
 import { mapGoalsToPolicies } from '../coverage/goalIdentity.ts'
 import type { GoalMap, GoalMapResult, PolicyForMap } from '../coverage/goalIdentity.ts'
 import { policyFacts } from '../coverage/facts.ts'
@@ -26,9 +27,19 @@ export type { GoalMap, GoalMapResult }
  * switches under `lockdown-kit` and no other goal (lockdownKit.ts; owner,
  * 2026-10-03: the Admin Portal block is a switch, not Protect the Admin Portals).
  */
-const pinnedBaseline = DEFAULT_BASELINE.pinned
-const PINNED_POLICIES = (pinnedBaseline as { policies: { id: string | null; displayName: string; conditions: unknown }[] }).policies
-export const PINNED_GOAL_MAP = withLockdownKit(withCorrectedGoals(((pinnedBaseline as { goalMap?: GoalMap }).goalMap ?? {}) as GoalMap, PINNED_POLICIES, (p) => policyKey(p)), PINNED_POLICIES, (p) => policyKey(p)) as GoalMap
+const goalMaps = new Map<string, GoalMap>()
+
+/** A curated baseline's stored map, with its author's corrections and its lockdown switches laid on (v2.0 prep, item 2). */
+export function goalMapOf(def: BaselineDefinition): GoalMap {
+  const hit = goalMaps.get(def.id)
+  if (hit) return hit
+  const pinned = def.pinned as { policies: { id: string | null; displayName: string; conditions: unknown }[]; goalMap?: GoalMap }
+  const map = withLockdownKit(withCorrectedGoals((pinned.goalMap ?? {}) as GoalMap, pinned.policies, (p) => policyKey(p)), pinned.policies, (p) => policyKey(p)) as GoalMap
+  goalMaps.set(def.id, map)
+  return map
+}
+
+export const PINNED_GOAL_MAP = goalMapOf(DEFAULT_BASELINE)
 
 /** The stable key of a policy: its id, or its (unique) display name when the export carries no id. */
 export function policyKey(p: { id?: string | null; displayName: string }): string {

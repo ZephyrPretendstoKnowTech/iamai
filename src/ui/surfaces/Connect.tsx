@@ -55,6 +55,8 @@ import SAMPLE_FACTS from 'virtual:demo-facts'
 import { elapsedLabel } from '../format.ts'
 import { Button, LinkButton } from '../components/index.ts'
 import { PINNED_BASELINE, baselineReview, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
+import { DEFAULT_BASELINE, baselineOfOrigin } from '../../baseline/registry.ts'
+import type { BaselineDefinition } from '../../baseline/registry.ts'
 import type { BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
 import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
@@ -439,7 +441,8 @@ function baselinePin(baseline: BaselineResult | null): BaselinePin | null {
   const { owner, repo, commit } = baseline.origin
   // The URL is the owner and repo the package was actually fetched from, so the
   // link and the commit beside it can never name different repositories.
-  return { repo: `${owner}/${repo}`, url: `https://github.com/${owner}/${repo}`, commit, readAt: PINNED_BASELINE.generatedAt }
+  // Read at: the loaded baseline's own index, not the default's (v2.0 prep, item 2).
+  return { repo: `${owner}/${repo}`, url: `https://github.com/${owner}/${repo}`, commit, readAt: (baselineOfOrigin(baseline.origin) ?? DEFAULT_BASELINE).index.generatedAt }
 }
 
 function baselineStrings(baseline: BaselineResult | null, loading: string | null): { title: string; state: string; tone: Tone } {
@@ -622,7 +625,7 @@ function SignedIn({
  * one runtime network call and its compare both fail closed, so the line never
  * appears without real changes behind it.
  */
-function useAuthorUpdate(mock: BaselineUpdate | null | undefined): { update: BaselineUpdate | null; unchecked: boolean } {
+function useAuthorUpdate(mock: BaselineUpdate | null | undefined, def: BaselineDefinition | null): { update: BaselineUpdate | null; unchecked: boolean } {
   const [update, setUpdate] = useState<BaselineUpdate | null>(null)
   // The check could not run (no network, GitHub's rate limit): the disclosure
   // says so, because silence here reads exactly like "no update".
@@ -632,11 +635,13 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): { update: Bas
       setUpdate(mock)
       return
     }
+    // An uploaded package has no author to check (v2.0 prep, item 2).
+    if (def === null) return
     let live = true
-    void checkAuthorHead().then(async (head) => {
+    void checkAuthorHead(fetch, def).then(async (head) => {
       if (live && !head.checked) setUnchecked(true)
       if (!live || !head.updated || !head.head || !head.date) return
-      const review = await baselineReview(head.head)
+      const review = await baselineReview(head.head, fetch, def)
       // An incomplete review still renders: a compare IAMAI could not finish is
       // never reported as a baseline with nothing in it.
       if (!live || (review.changes.length === 0 && !review.incomplete)) return
@@ -645,7 +650,7 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): { update: Bas
     return () => {
       live = false
     }
-  }, [mock])
+  }, [mock, def])
   return { update, unchecked }
 }
 
@@ -668,7 +673,8 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage, bus
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const loadingRef = useRef(false)
-  const author = useAuthorUpdate(authorUpdate)
+  // The author of the baseline in use (v2.0 prep, item 2): the default until one is loaded, none for an upload.
+  const author = useAuthorUpdate(authorUpdate, !baseline ? DEFAULT_BASELINE : baseline.origin.kind === 'github' ? baselineOfOrigin(baseline.origin) ?? DEFAULT_BASELINE : null)
   const update = author.update
 
   const loadPinned = async (chosen: boolean) => {

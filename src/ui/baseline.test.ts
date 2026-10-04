@@ -124,7 +124,8 @@ test('I. the update is measured from the pinned snapshot commit, never from the 
   // guard is on where the review reads its base rather than on the divergence.
   assert.equal(PINNED_BASELINE.commit, PINNED.commit, 'the pair disagrees again')
   const source = readFileSync('src/ui/baseline.ts', 'utf8')
-  assert.match(source, /const base = PINNED\.commit/, 'the review no longer measures from the snapshot commit')
+  // The baseline's own pinned snapshot (v2.0 prep, item 2: per baseline; PINNED is the default's).
+  assert.match(source, /const base = def\.pinned\.commit/, 'the review no longer measures from the snapshot commit')
   const seen: string[] = []
   await baselineReview(HEAD, githubAt(AUDITED, seen))
   const trees = seen.filter((u) => u.includes('/git/trees/'))

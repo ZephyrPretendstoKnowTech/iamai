@@ -1,14 +1,15 @@
 // The baseline as the UI holds it (moved out of the Baseline page in prompt 47
 // Part 4): the pinned index, loaded at its commit; an uploaded package; and
 // the restore of either on reload.
-import { DEFAULT_BASELINE } from '../baseline/registry.ts'
+import { DEFAULT_BASELINE, baselineOfOrigin } from '../baseline/registry.ts'
+import type { BaselineDefinition, BaselineId } from '../baseline/registry.ts'
 import { loadBaseline, rawUrl } from '../baseline/index.ts'
 import type { BaselineFile, BaselineIndex, BaselinePackage } from '../baseline/index.ts'
 import { shouldSkip } from '../baseline/discover.ts'
 import { policyChanges, sourceSet } from '../derive/baselineDiff.ts'
 import type { PolicyChange, SourceArtifact } from '../derive/baselineDiff.ts'
 import { PINNED, pinnedFiles, pinnedPackage } from '../baseline/pinned.ts'
-import { PINNED_GOAL_MAP, goalMapFor } from '../roadmap/goalMap.ts'
+import { goalMapFor, goalMapOf } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
 import { app } from '../content/content.ts'
 
@@ -17,7 +18,7 @@ export type BaselineResult = {
   pkg: BaselinePackage
   fetchFailures: number
   /** How to restore it on reload (prompt 14 §6). The pinned baseline keeps its fetched files so a reload restores it without the network. */
-  origin: { kind: 'github'; owner: string; repo: string; commit: string; files?: BaselineFile[] } | { kind: 'upload'; files: BaselineFile[] }
+  origin: { kind: 'github'; id?: BaselineId; owner: string; repo: string; commit: string; files?: BaselineFile[] } | { kind: 'upload'; files: BaselineFile[] }
   /**
    * The goal map of this baseline (walk-51 item 9): which goals it holds and the
    * policy that stands for each. The pinned baseline's is stored in pinned.json;
@@ -27,7 +28,10 @@ export type BaselineResult = {
   goalMap?: GoalMap
 }
 
-export const PINNED_BASELINE = { ...DEFAULT_BASELINE.index, label: DEFAULT_BASELINE.label } as BaselineIndex
+/** A curated baseline's index under the name the product shows (registry.ts). */
+export const indexOf = (def: BaselineDefinition): BaselineIndex => ({ ...def.index, label: def.label }) as BaselineIndex
+
+export const PINNED_BASELINE = indexOf(DEFAULT_BASELINE)
 
 export { PINNED }
 
@@ -38,15 +42,17 @@ export { PINNED }
  * (baselineReview), which together drive the "Baseline updated" line.
  * The package is the one src/baseline/pinned.ts builds, shared with the demo.
  */
-export async function loadPinnedBaseline(onProgress?: (done: number, total: number) => void): Promise<BaselineResult> {
-  const files = pinnedFiles()
+export async function loadPinnedBaseline(onProgress?: (done: number, total: number) => void, def: BaselineDefinition = DEFAULT_BASELINE): Promise<BaselineResult> {
+  const files = pinnedFiles('corrected', def)
   onProgress?.(files.length, files.length)
+  const index = indexOf(def)
   return {
-    source: PINNED_BASELINE.label,
-    pkg: pinnedPackage(),
+    source: index.label,
+    pkg: pinnedPackage(def),
     fetchFailures: 0,
-    origin: { kind: 'github', owner: PINNED_BASELINE.owner, repo: PINNED_BASELINE.repo, commit: PINNED.commit, files },
-    goalMap: PINNED_GOAL_MAP,
+    // The id says which curated baseline this is, so a reload restores it and not another (v2.0 prep, item 2).
+    origin: { kind: 'github', id: def.id, owner: index.owner, repo: index.repo, commit: def.pinned.commit, files },
+    goalMap: goalMapOf(def),
   }
 }
 
@@ -62,10 +68,10 @@ export type AuthorHead = { updated: boolean; checked: boolean; pinned: string; h
  * network never blocks the plan — and carry `checked: false`, so the page can
  * say the check could not be made rather than read as nothing to report.
  */
-export async function checkAuthorHead(fetchImpl: typeof fetch = fetch): Promise<AuthorHead> {
-  const pinned = PINNED.commit
+export async function checkAuthorHead(fetchImpl: typeof fetch = fetch, def: BaselineDefinition = DEFAULT_BASELINE): Promise<AuthorHead> {
+  const pinned = def.pinned.commit
   try {
-    const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/commits?per_page=1`, { headers: { Accept: 'application/vnd.github+json' } })
+    const res = await fetchImpl(`https://api.github.com/repos/${def.index.owner}/${def.index.repo}/commits?per_page=1`, { headers: { Accept: 'application/vnd.github+json' } })
     if (!res.ok) return { updated: false, checked: false, pinned, head: null, date: null }
     const body = (await res.json()) as { sha?: string; commit?: { author?: { date?: string } } }[]
     const head = body[0]?.sha ?? null
@@ -109,9 +115,9 @@ type Inventory = Map<string, string>
  * not load, or GitHub truncated it — and makes the review incomplete rather
  * than a review of whatever subset came back.
  */
-async function inventoryAt(commit: string, fetchImpl: typeof fetch): Promise<Inventory | null> {
+async function inventoryAt(commit: string, fetchImpl: typeof fetch, def: BaselineDefinition): Promise<Inventory | null> {
   try {
-    const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/git/trees/${commit}?recursive=1`, { headers: { Accept: 'application/vnd.github+json' } })
+    const res = await fetchImpl(`https://api.github.com/repos/${def.index.owner}/${def.index.repo}/git/trees/${commit}?recursive=1`, { headers: { Accept: 'application/vnd.github+json' } })
     if (!res.ok) return null
     const body = (await res.json()) as { tree?: { path?: string; type?: string; sha?: string }[]; truncated?: boolean }
     if (body.truncated === true || !Array.isArray(body.tree)) return null
@@ -154,9 +160,9 @@ async function inventoryAt(commit: string, fetchImpl: typeof fetch): Promise<Inv
  * the blobs the commit holds, so a body that will not come back is always
  * unread source, never an addition, a removal, or a silence.
  */
-export async function baselineReview(head: string, fetchImpl: typeof fetch = fetch): Promise<BaselineReview> {
-  const base = PINNED.commit
-  const [baseInv, headInv] = await Promise.all([inventoryAt(base, fetchImpl), inventoryAt(head, fetchImpl)])
+export async function baselineReview(head: string, fetchImpl: typeof fetch = fetch, def: BaselineDefinition = DEFAULT_BASELINE): Promise<BaselineReview> {
+  const base = def.pinned.commit
+  const [baseInv, headInv] = await Promise.all([inventoryAt(base, fetchImpl, def), inventoryAt(head, fetchImpl, def)])
   if (!baseInv || !headInv) return { changes: [], incomplete: true }
 
   const moved = [...new Set([...baseInv.keys(), ...headInv.keys()])].filter((p) => baseInv.get(p) !== headInv.get(p))
@@ -182,7 +188,7 @@ export async function baselineReview(head: string, fetchImpl: typeof fetch = fet
       let url: string
       try {
         // The same path check every runtime fetch goes through (baseline/github.ts).
-        url = rawUrl({ ...PINNED_BASELINE, commit: where.commit }, where.path)
+        url = rawUrl({ ...indexOf(def), commit: where.commit }, where.path)
       } catch {
         failed = true
         continue
@@ -222,7 +228,9 @@ export async function baselineReview(head: string, fetchImpl: typeof fetch = fet
  */
 export async function restoreBaseline(origin: BaselineResult['origin']): Promise<BaselineResult> {
   if (origin.kind === 'upload') return loadUploadedBaseline(origin.files)
-  return loadPinnedBaseline()
+  // The curated baseline the origin names (by id, else by repository); one IAMAI
+  // no longer ships falls back to the default, as a record from before ids did.
+  return loadPinnedBaseline(undefined, baselineOfOrigin(origin) ?? DEFAULT_BASELINE)
 }
 
 export function loadUploadedBaseline(files: BaselineFile[]): BaselineResult {

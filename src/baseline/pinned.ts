@@ -6,6 +6,7 @@
 //
 // Pure: no DOM, no network. Runs in Node tests, in the worker and in the app.
 import { DEFAULT_BASELINE } from './registry.ts'
+import type { BaselineDefinition } from './registry.ts'
 import { loadBaseline } from './index.ts'
 import type { BaselineFile, BaselinePackage } from './types.ts'
 import { corrected } from './authorCorrections.ts'
@@ -22,14 +23,15 @@ export const PINNED = DEFAULT_BASELINE.pinned as unknown as PinnedBaseline
  * 'published' is the export as its author published it, which is what
  * interpretation.json reads the source's references against.
  */
-export function pinnedFiles(read: 'corrected' | 'published' = 'corrected'): BaselineFile[] {
-  return PINNED.policies.map((p) => (read === 'corrected' ? corrected(p) : p)).map((p, i) => ({ path: `Policies/${(p.displayName || p.id || `policy-${i}`).replace(/[^\w-]+/g, '-')}.json`, text: JSON.stringify(p) }))
+export function pinnedFiles(read: 'corrected' | 'published' = 'corrected', def: BaselineDefinition = DEFAULT_BASELINE): BaselineFile[] {
+  return (def.pinned as unknown as PinnedBaseline).policies.map((p) => (read === 'corrected' ? corrected(p) : p)).map((p, i) => ({ path: `Policies/${(p.displayName || p.id || `policy-${i}`).replace(/[^\w-]+/g, '-')}.json`, text: JSON.stringify(p) }))
 }
 
-let cached: BaselinePackage | null = null
+const cached = new Map<string, BaselinePackage>()
 
-/** The pinned baseline as one package, built once and shared; never mutated by its readers. */
-export function pinnedPackage(): BaselinePackage {
-  if (cached === null) cached = loadBaseline(pinnedFiles())
-  return cached
+/** A curated baseline's pinned policies as one package (Jon Hope's by default), built once and shared; never mutated by its readers. */
+export function pinnedPackage(def: BaselineDefinition = DEFAULT_BASELINE): BaselinePackage {
+  let pkg = cached.get(def.id)
+  if (pkg === undefined) cached.set(def.id, (pkg = loadBaseline(pinnedFiles('corrected', def))))
+  return pkg
 }

@@ -33,6 +33,17 @@ export const BASELINES: Readonly<Record<BaselineId, BaselineDefinition>> = {
 export const DEFAULT_BASELINE_ID: BaselineId = 'jhope188'
 export const DEFAULT_BASELINE: BaselineDefinition = BASELINES[DEFAULT_BASELINE_ID]
 
+/**
+ * The curated baseline a stored origin names (v2.0 prep, item 2): by its id
+ * where the origin carries one, else by the repository it was read from (an
+ * origin stored before ids existed). Null for one IAMAI does not ship.
+ */
+export function baselineOfOrigin(origin: { id?: string; owner: string; repo: string }): BaselineDefinition | null {
+  if (origin.id !== undefined) return baselineById(origin.id)
+  const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase()
+  return Object.values(BASELINES).find((d) => same(d.index.owner, origin.owner) && same(d.index.repo, origin.repo)) ?? null
+}
+
 /** A curated baseline by its id; null for an id IAMAI does not ship. */
 export function baselineById(id: string): BaselineDefinition | null {
   return Object.prototype.hasOwnProperty.call(BASELINES, id) ? BASELINES[id as BaselineId] : null
