@@ -622,6 +622,12 @@ details > *:not(summary) {
 .menu-tenant .btn {
   white-space: nowrap;
 }
+/* How long ago a tenant that is not open was scanned: quiet, after its name. */
+.menu-tenant .menu-tenant-age {
+  margin-left: 8px;
+  color: var(--secondary-text);
+  font-size: 0.85em;
+}
 /* A tenant that is not open is forgotten from its own row: the Forget beside its name takes only its own width. */
 .menu-list .menu-tenant .menu-tenant-forget {
   width: auto;

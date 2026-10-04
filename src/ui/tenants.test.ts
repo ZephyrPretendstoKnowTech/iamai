@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import type { AccountInfo } from '@azure/msal-browser'
-import { forgettable, isTenantId, storedTenantOf, switchMove, tenantEntries, tenantLabel } from './tenants.ts'
+import { forgettable, isTenantId, storedTenantOf, switchMove, tenantEntries, tenantLabel, tenantScanAge } from './tenants.ts'
 import { DEMO_SNAPSHOT_STATE_ID, DEMO_TENANT_ID } from './demoMode.ts'
 
 // Synthetic tenant ids: GUID-shaped, as Entra's are.
@@ -23,12 +23,12 @@ const scanOf = (name: string | null, upn: string | null) => ({
 })
 
 test("a stored scan names its tenant and who scanned it, and nothing else of it is read", () => {
-  assert.deepEqual(storedTenantOf(A, scanOf('Contoso', 'admin@contoso.example')), { tenantId: A, name: 'Contoso', signedInAs: 'admin@contoso.example' })
+  assert.deepEqual(storedTenantOf(A, scanOf('Contoso', 'admin@contoso.example')), { tenantId: A, name: 'Contoso', signedInAs: 'admin@contoso.example', scannedAt: '2026-10-01T00:00:00.000Z' })
   // No stored scan (a plan file loaded, a scan that ended with gaps): the id alone.
-  assert.deepEqual(storedTenantOf(B, null), { tenantId: B, name: null, signedInAs: null })
+  assert.deepEqual(storedTenantOf(B, null), { tenantId: B, name: null, signedInAs: null, scannedAt: null })
   // A scan whose organization or me read failed has no rows: nothing is invented.
-  assert.deepEqual(storedTenantOf(C, scanOf(null, null)), { tenantId: C, name: null, signedInAs: null })
-  assert.deepEqual(storedTenantOf(C, { snapshot: { config: { organization: { rows: [{ displayName: '  ' }] } } } }), { tenantId: C, name: null, signedInAs: null })
+  assert.deepEqual(storedTenantOf(C, scanOf(null, null)), { tenantId: C, name: null, signedInAs: null, scannedAt: '2026-10-01T00:00:00.000Z' })
+  assert.deepEqual(storedTenantOf(C, { snapshot: { config: { organization: { rows: [{ displayName: '  ' }] } } } }), { tenantId: C, name: null, signedInAs: null, scannedAt: null })
 })
 
 test('the sample shares the database under ids that are not tenants, and is never listed', () => {
@@ -153,4 +153,47 @@ test('Sign out says it signs out the open account only', async () => {
   const { app } = await import('../content/content.ts')
   const { fillText } = await import('../content/render.ts')
   assert.equal(fillText(app.shell.signOutTooltip, { username: 'admin@contoso.example' }), 'Signs admin@contoso.example out; an account signed in to another tenant here stays signed in')
+})
+
+test('two tenants that read the same name carry the domain of their account, or the start of their id where the domains match too (owner, 2026-10-04)', () => {
+  const rows = tenantEntries(
+    [
+      { tenantId: B, name: 'Contoso', signedInAs: 'it@contoso-au.example' },
+      { tenantId: C, name: 'Contoso', signedInAs: 'it@contoso-nz.example' },
+      { tenantId: D, name: 'Northwind', signedInAs: 'ops@northwind.example' },
+    ],
+    [],
+    null,
+    null,
+  )
+  assert.deepEqual(rows.map((r) => r.label), ['Contoso (contoso-au.example)', 'Contoso (contoso-nz.example)', 'Northwind'])
+  // The same domain on both: the start of each tenant id tells them apart.
+  const same = tenantEntries([{ tenantId: B, name: 'Contoso', signedInAs: 'a@contoso.example' }, { tenantId: C, name: 'contoso', signedInAs: 'b@contoso.example' }], [], null, null)
+  assert.deepEqual(same.map((r) => r.label), [`Contoso (${B.slice(0, 8)})`, `contoso (${C.slice(0, 8)})`])
+  // A name nobody shares is left as it is.
+  assert.equal(rows.find((r) => r.tenantId === D)!.label, tenantLabel(rows.find((r) => r.tenantId === D)!))
+  // The menu draws the label, never the bare name.
+  const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
+  assert.ok(shell.includes('const name = t.label'))
+  assert.ok(shell.includes("const otherName = other ? other.label : ''"))
+})
+
+test('a tenant that is not open says how long ago it was scanned; the open one and one never scanned say nothing (owner, 2026-10-04)', () => {
+  const now = Date.parse('2026-10-13T12:00:00.000Z')
+  const current = acct(A, 'admin@contoso.example')
+  const rows = tenantEntries(
+    [
+      { tenantId: A, name: 'Contoso', signedInAs: null, scannedAt: '2026-10-12T09:00:00.000Z' },
+      { tenantId: C, name: 'Northwind', signedInAs: null, scannedAt: '2026-10-01T12:00:00.000Z' },
+      { tenantId: D, name: 'Woodgrove', signedInAs: null, scannedAt: null },
+    ],
+    [current],
+    current,
+    'Contoso',
+  )
+  const by = (id: string) => rows.find((r) => r.tenantId === id)!
+  assert.equal(tenantScanAge(by(A), now), null, 'the header already says it')
+  assert.equal(tenantScanAge(by(C), now), 'Scanned 12 days ago')
+  assert.equal(tenantScanAge(by(D), now), null)
+  assert.ok(readFileSync('src/ui/shell/AppShell.tsx', 'utf8').includes('{age && <span className="menu-tenant-age">{age}</span>}'))
 })

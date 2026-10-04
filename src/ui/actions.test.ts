@@ -557,7 +557,7 @@ const GUID_B = 'bbbbbbbb-0000-4000-8000-000000000002'
 const GUID_C = 'cccccccc-0000-4000-8000-000000000003'
 const tenantA = { ...account, tenantId: GUID_A } as AccountInfo
 const tenantB = { ...otherAccount, tenantId: GUID_B } as AccountInfo
-const entryB = { tenantId: GUID_B, name: 'Fabrikam', account: tenantB, loginHint: tenantB.username, stored: true, current: false }
+const entryB = { tenantId: GUID_B, name: 'Fabrikam', account: tenantB, loginHint: tenantB.username, stored: true, current: false, scannedAt: null, label: 'Fabrikam' }
 
 test('switching to a signed-in tenant stops the scan, ends the turn, lets go of the tenant being left, makes the account active and restores the chosen tenant', async () => {
   const calls: string[] = []

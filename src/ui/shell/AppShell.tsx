@@ -22,7 +22,7 @@ import { absoluteDate, absoluteLocal, scanAgeDays, STALE_SCAN_DAYS } from '../..
 import { Button } from '../components/index.ts'
 import { BrandMark } from '../components/Mark.tsx'
 import { forgetStoredTenant, forgetTenant, listTenants, showDemoSnapshot, signInAnother, signOut, stopScan, switchTenant } from '../actions.ts'
-import { forgettable, tenantLabel } from '../tenants.ts'
+import { forgettable, tenantScanAge } from '../tenants.ts'
 import type { TenantEntry } from '../tenants.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
@@ -163,7 +163,7 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
   const backToForget = useRef(false)
   const { run, error } = useAction()
   const tenant = tenantName ?? SHELL.forgetThisTenant
-  const otherName = other ? tenantLabel(other) : ''
+  const otherName = other ? other.label : ''
   const close = (): void => {
     setOpen(false)
     setConfirming(false)
@@ -241,7 +241,9 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
                 <div className="menu-tenants" role="group" aria-labelledby="menu-tenants-label">
                   <p className="menu-label" id="menu-tenants-label" aria-hidden="true">{SHELL.tenantsLabel}</p>
                   {tenants.map((t) => {
-                    const name = tenantLabel(t)
+                    const name = t.label
+                    // How long ago a tenant that is not open was scanned (owner, 2026-10-04).
+                    const age = tenantScanAge(t)
                     return (
                       <div className="menu-tenant" key={t.tenantId}>
                         <Button
@@ -252,6 +254,7 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
                           onClick={() => (t.current ? close() : run(switchTenant(t).then(close)))}
                         >
                           {t.current ? fillText(SHELL.tenantCurrent, { tenant: name }) : t.account ? name : fillText(SHELL.tenantSignIn, { tenant: name })}
+                          {age && <span className="menu-tenant-age">{age}</span>}
                         </Button>
                         {forgettable(t) && (
                           <Button variant="tertiary" role="menuitem" className="menu-tenant-forget" data-forget={t.tenantId} aria-label={fillText(SHELL.forgetYes, { tenant: name })} title={SHELL.forgetTooltip} onClick={() => askOther(t)}>
