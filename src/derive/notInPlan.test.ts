@@ -98,8 +98,8 @@ test('the list is derived from what the Plan draws, never a fixed set of policie
 test('each footer row names its own reason: agent blocks, the unused EAM companion; the ZTCA switches are no row (T2-LK)', () => {
   const { rows } = planOf('demo')
   const reasonOf = (re: RegExp): string => rows.find((r) => re.test(r.policy))?.reason ?? ''
-  assert.equal(reasonOf(/AGENT - BLOCK - HighRiskAgent/), 'Blocks AI agent identities. Needs Microsoft Entra Agent ID. Not in this release.')
-  assert.equal(reasonOf(/AGENT - BLOCK - NonTrustedAgents/), 'Blocks AI agent identities. Needs Microsoft Entra Agent ID. Not in this release.')
+  assert.equal(reasonOf(/AGENT - BLOCK - HighRiskAgent/), 'Blocks AI agent identities, which need Microsoft Entra Agent ID. Not in this release.')
+  assert.equal(reasonOf(/AGENT - BLOCK - NonTrustedAgents/), 'Blocks AI agent identities, which need Microsoft Entra Agent ID. Not in this release.')
   assert.deepEqual(rows.filter((r) => /\bZTCA\b/.test(r.policy)), [], 'Prepare the Lockdown Kit claims all three switches')
 })
 
@@ -117,4 +117,40 @@ test('on a P2 tenant with no external MFA method, Jon\'s EAM High-Risk Users is 
     return
   }
   assert.fail('the premise: a fixture draws the user-risk step without an external MFA method')
+})
+
+// T2-FTR: no row of the pinned baseline falls back to the generic reason.
+test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keeps them off; ADM-Users and BreakGlass say why the plan does without them; nothing reads the generic reason', () => {
+  const generic = 'No step in this plan covers it for this tenant.'
+  let sawServiceAccounts = false
+  let sawSync = false
+  for (const name of [...TENANTS, 'large', 'messy', 'hostile', 'midflight', 'demo-week2'] as FixtureName[]) {
+    const { rows } = planOf(name)
+    for (const r of rows) assert.notEqual(r.reason, generic, `${name}: ${r.policy} reads the generic reason`)
+    const sa = rows.find((r) => /BLOCK – Service Accounts$/.test(r.policy))
+    if (sa) {
+      sawServiceAccounts = true
+      assert.equal(sa.reason, 'Keeps service accounts to the office network. No service account is named in Identify Service and Shared Accounts.')
+    }
+    const sync = rows.find((r) => /EntraConnectIDSync/.test(r.policy))
+    if (sync) {
+      sawSync = true
+      assert.equal(sync.reason, 'Keeps the directory sync account to its own network. No account here holds the Directory Synchronization Accounts role.')
+    }
+  }
+  assert.ok(sawServiceAccounts && sawSync, 'the premise: a fixture lists both')
+  const { rows } = planOf('demo')
+  assert.equal(rows.find((r) => /MFA-Passkeys - ADM-Users/.test(r.policy))?.reason, 'Duplicates Require Phishing-Resistant MFA for Admins for a group of admins. The plan targets the admin roles instead, which cover every admin.')
+  assert.equal(rows.find((r) => /BreakGlass - TrustedLocations/.test(r.policy))?.reason, 'Limits one emergency account outside the office network. The plan keeps emergency accounts out of every policy through the exclusions group (Establish Emergency Access).')
+})
+
+test('T2-FTR: a pinned policy keeps its reason by its stable id whatever it is called; a policy of another baseline is read by its name', () => {
+  const { run, steps, policies } = planOf('demo')
+  const adm = policies.find((p) => p.id === 'a53c4c2b-b577-4d88-b64d-36b92f8f3ca0')!
+  const renamed = policies.map((p) => (p === adm ? { ...p, displayName: 'Admins with passkeys' } : p))
+  const byId = notInPlanRows(renamed, steps, run.coverage, PINNED_GOAL_MAP).find((r) => r.policy === 'Admins with passkeys')
+  assert.match(byId?.reason ?? '', /^Duplicates Require Phishing-Resistant MFA for Admins/)
+  // An upload's own copy, under another id, still reads its words by Jon's name.
+  const uploaded = [{ id: 'upload-0001', displayName: 'IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users' }]
+  assert.match(notInPlanRows(uploaded, [], run.coverage, {}).at(0)?.reason ?? '', /^Duplicates Require Phishing-Resistant MFA for Admins/)
 })

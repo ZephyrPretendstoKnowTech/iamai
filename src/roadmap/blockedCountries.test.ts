@@ -66,7 +66,7 @@ test('T2-NE: with no country to block outright nothing changes, and Jon\'s NoExc
   const map = goalMapInUse(PINNED_GOAL_MAP, f.snapshot, null)
   const row = notInPlanRows(f.baseline.policies, r.steps, r.coverage, map).find((x) => x.policy === NO_EXCLUSIONS)
   assert.ok(row, 'the policy left the footer with nothing listed')
-  assert.match(row.reason, /^Blocks a list of countries outright, even for travellers\. Optional: list them under Countries to block outright in Block Sign-ins From Countries Not Allowed/)
+  assert.match(row.reason, /^Blocks countries outright, travellers included\. Optional: list them under Countries to block outright in Block Sign-ins From Countries Not Allowed/)
 })
 
 test('T2-NE: countries listed to block outright add Jon\'s NoExclusions block to 6.3 by its baseline name, excluding only the exclusions group, and a location holding them that 6.3 makes first; it leaves the footer', () => {

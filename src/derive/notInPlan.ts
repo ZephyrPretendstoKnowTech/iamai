@@ -7,15 +7,23 @@
 //
 // One rule: a policy is shown when a drawn step's goal maps to it, a Not licensed
 // row's goal maps to it, or a review row carries it. Every other policy is listed
-// here. The rule never names a policy; only the words do, by the baseline's own
-// name, and a policy with no words of its own reads the generic reason.
+// here. The rule never names a policy; only the words do, and a policy with no
+// words of its own reads the generic reason.
+//
+// Which words (T2-FTR): a pinned policy by its stable id, a policy of another
+// baseline (an upload) by its own name; then a policy whose goal the tenant's
+// own facts switched off says which fact (no service account confirmed, no
+// directory sync account), read off the goal's coverage, so it holds for any
+// baseline that maps the goal. A goal a licence switched off is a Not licensed
+// row (notLicensed.ts) and never reaches this list.
 //
 // Pure: no DOM, no network.
-import { pages, stepById } from '../content/content.ts'
+import { directionWords, pages, stepById } from '../content/content.ts'
 import { HIDDEN_V1_POLICY } from '../roadmap/workflows.ts'
 import { fillText } from '../content/render.ts'
 import { goalInMap, policyKey } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
+import { WORKLOAD_REASON } from '../coverage/applicability.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import type { Step } from '../roadmap/types.ts'
 import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS } from '../roadmap/stepGroups.ts'
@@ -24,33 +32,56 @@ import { notLicensedRows } from './notLicensed.ts'
 
 export type NotInPlanRow = { policy: string; reason: string; text: string }
 
-type Reason = 'agentBlock' | 'externalMfaRisk' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'generic'
+type Reason = 'agentBlock' | 'externalMfaRisk' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'noServiceAccounts' | 'syncNoAccount' | 'generic'
 type FooterCopy = { notInPlan: string; notInPlanRow: string; notInPlanReason: Record<Reason, string> }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
+/** The Direction step that confirms the service accounts: its title fills {step} on the service-accounts reason. */
+const ACCOUNTS_DIRECTION = 'direction:accounts'
+
 /**
- * Which words a policy reads, by the baseline's own name (as workflows.ts picks a
- * review row's words), and the step whose title fills {step}: a content step id,
- * or a step group's key (stepGroups.ts) for a group's title. First match wins.
+ * Which words a policy reads: by the pinned baseline's stable policy ids, and
+ * by the baseline's own name for a policy of any other baseline (as workflows.ts
+ * picks a review row's words); and the step whose title fills {step}: a content
+ * step id, a step group's key (stepGroups.ts) for a group's title, or a
+ * Direction step. First match wins.
  */
-const REASONS: { match: RegExp; reason: Reason; step?: string }[] = [
-  { match: /IAC\s*-\s*AGENT\s*-\s*BLOCK/i, reason: 'agentBlock' },
-  { match: /\bEAM\b.*High-Risk/i, reason: 'externalMfaRisk', step: 'user-risk' },
-  { match: /MFA-Passkeys\s*-\s*ADM-Users/i, reason: 'adminGroupPasskeys', step: 'admins-phishing-resistant' },
-  { match: /BreakGlass/i, reason: 'emergencyAccount', step: EMERGENCY_ACCESS_GROUP },
+const REASONS: { ids: readonly string[]; match: RegExp; reason: Reason; step?: string }[] = [
+  { ids: ['0ab1380f-3863-40a5-ab97-24250e1cf44e', '1d8beea4-2ea1-4758-8e22-d6310a60220a'], match: /IAC\s*-\s*AGENT\s*-\s*BLOCK/i, reason: 'agentBlock' },
+  { ids: ['bb6a814e-808a-467c-9475-06f89140ce99'], match: /\bEAM\b.*High-Risk/i, reason: 'externalMfaRisk', step: 'user-risk' },
+  { ids: ['a53c4c2b-b577-4d88-b64d-36b92f8f3ca0'], match: /MFA-Passkeys\s*-\s*ADM-Users/i, reason: 'adminGroupPasskeys', step: 'admins-phishing-resistant' },
+  { ids: ['1588fdc7-f34a-468e-8023-4d788ef5d226'], match: /BreakGlass/i, reason: 'emergencyAccount', step: EMERGENCY_ACCESS_GROUP },
   // Jon's countries block with no travel exception: optional, on the plan once countries are listed to block outright (coverage/companions.ts; v1.1 D4).
-  { match: /Countries.*no[-_ ]?exclusions?/i, reason: 'blockedCountries', step: 'geo-restriction' },
+  { ids: ['1eaf943a-abad-4c77-b101-0c5342fc1044'], match: /Countries.*no[-_ ]?exclusions?/i, reason: 'blockedCountries', step: 'geo-restriction' },
 ]
 
 function titleOf(step: string): string {
+  if (step === ACCOUNTS_DIRECTION) return directionWords.steps.accounts.title
   const group = STEP_GROUPS.find((g) => g.key === step)
   if (group) return groupTitleOf(group, false)
   return stepById[step]?.title ?? step
 }
 
-function reasonFor(displayName: string): string {
+/**
+ * The reason a goal the tenant's own facts switched off gives every policy it
+ * maps: the facet coverage recorded for it (coverage.ts evaluateGoal), or null.
+ */
+function factReason(p: { id?: string | null; displayName: string }, coverage: CoverageReport, goalMap: GoalMap): { reason: Reason; step?: string } | null {
+  const key = policyKey(p)
+  const goals = new Set(Object.entries(goalMap).filter(([, keys]) => keys.includes(key)).map(([g]) => g))
+  for (const r of coverage.results) {
+    if (!goals.has(r.goal.id) || r.status !== 'not-applicable' || !r.applicability) continue
+    if (r.applicability.facet === 'serviceAccounts') return { reason: 'noServiceAccounts', step: ACCOUNTS_DIRECTION }
+    // Without the licence it is a Not licensed row (notLicensed.ts), never listed here.
+    if (r.applicability.facet === 'workload' && r.applicability.reason === WORKLOAD_REASON.noSyncAccount) return { reason: 'syncNoAccount' }
+  }
+  return null
+}
+
+function reasonFor(p: { id?: string | null; displayName: string }, coverage: CoverageReport, goalMap: GoalMap): string {
   const P = footer()
-  const hit = REASONS.find((r) => r.match.test(displayName))
+  const id = (p.id ?? '').toLowerCase()
+  const hit = REASONS.find((r) => r.ids.includes(id)) ?? REASONS.find((r) => r.match.test(p.displayName)) ?? factReason(p, coverage, goalMap)
   if (!hit) return P.notInPlanReason.generic
   return fillText(P.notInPlanReason[hit.reason], hit.step ? { step: titleOf(hit.step) } : {})
 }
@@ -79,7 +110,7 @@ export function notInPlanRows(policies: readonly { id?: string | null; displayNa
   return policies
     .filter((p) => !shown.has(policyKey(p)) && !reviewed.has(p.displayName) && !HIDDEN_V1_POLICY.test(p.displayName))
     .map((p) => {
-      const reason = reasonFor(p.displayName)
+      const reason = reasonFor(p, coverage, goalMap)
       return { policy: p.displayName, reason, text: fillText(P.notInPlanRow, { policy: p.displayName, reason }) }
     })
 }

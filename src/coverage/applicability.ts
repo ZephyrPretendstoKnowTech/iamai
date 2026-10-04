@@ -64,14 +64,24 @@ export function detectFacets(snapshot: TenantSnapshot, overrides: FacetOverrides
     'workload',
     syncAccount && workloadLicensed,
     !syncAccount
-      ? 'no directory synchronization account found; sync identity support not assessed'
-      : !workloadLicensed ? 'no Workload Identities Premium licence'
+      ? WORKLOAD_REASON.noSyncAccount
+      : !workloadLicensed ? WORKLOAD_REASON.noLicence
       : 'Directory Synchronization Accounts role found; confirm the sync service and identity type',
   )
   out.workload.observedUsage = syncAccount
   if (syncAccount) out.workload.evidence = 'Directory Synchronization Accounts role found; confirm the sync service and identity type'
   return out
 }
+
+/**
+ * Why the workload goal is off, as its facet records it: no account holds the
+ * Directory Synchronization Accounts role, or no Workload Identities Premium
+ * licence. The Plan's footer reads these to say which (derive/notInPlan.ts).
+ */
+export const WORKLOAD_REASON = {
+  noSyncAccount: 'no directory synchronization account found; sync identity support not assessed',
+  noLicence: 'no Workload Identities Premium licence',
+} as const
 
 /** Directory Synchronization Accounts (data/role-templates.json). */
 export const DIR_SYNC_ROLE = 'd29b2b05-8046-44ba-8758-1e26182fcf32'
