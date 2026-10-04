@@ -419,6 +419,13 @@ export function pickerUniverse(stepId: string, source: string | null, ctx: Picke
     const offered = mailPickable(snapshot, mapping)
     return snapshot.users.filter((u) => offered(u.id)).map((u) => ({ id: u.id, name: nameOf(u.id), secondary: u.userPrincipalName ?? undefined, ...(senders.has(u.id) ? { why: directionWords.questions.mailDevices.why } : {}) }))
   }
+  // The service and shared-device accounts: the emergency access accounts are
+  // never offered, as the card that offers them says (F-066). The emergency
+  // pickers themselves offer every account.
+  if (kind === 'accounts' && (stepId === DECISION_STEPS.serviceAccounts || stepId === DECISION_STEPS.sharedDevices)) {
+    const emergency = new Set(mapping.breakGlassUserIds.map(lc))
+    return snapshot.users.filter((u) => !emergency.has(lc(u.id))).map((u) => ({ id: u.id, name: nameOf(u.id), secondary: u.userPrincipalName ?? undefined }))
+  }
   if (kind === 'accounts') return snapshot.users.map((u) => ({ id: u.id, name: nameOf(u.id), secondary: u.userPrincipalName ?? undefined }))
   if (kind === 'groups') {
     const known = new Map<string, string>()

@@ -6,11 +6,11 @@ import test from 'node:test'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { applyStepDecisions } from '../../roadmap/decisions.ts'
+import { applyStepDecisions, DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directoryEvidenceFromGroups, exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import { laneReadings } from './planLanes.ts'
-import { initialPicked, pickerVars } from './pickerRows.ts'
+import { filterPickerObjects, initialPicked, pickerUniverse, pickerVars } from './pickerRows.ts'
 
 const STEP = PREREQ_STEP_ID.exclusionsGroup
 const LEGACY = 's-goal-block-legacy-auth'
@@ -77,4 +77,19 @@ test('U27: a policy that already excludes a qualifying group waits on the unansw
   assert.deepEqual((before?.action.missing ?? []).map((m) => m.token), ['{exclusionsGroup}'], 'unanswered, the policy waits on the exclusions group')
   const after = runFixture(saveGroup(f, inPolicy.id, 'mid-b6-answered')).steps.find((s) => s.id === LEGACY)
   assert.equal((after?.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}'), false, 'answered, the exclusion the policy already carries counts')
+})
+
+test('F-066: the service and shared-device account pickers never offer an emergency access account; the emergency picker still does', () => {
+  const f = fixture('demo-week2')
+  assert.ok(f.mapping.breakGlassUserIds.length > 0, 'demo-week2 saves its emergency access accounts')
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => f.snapshot.users.find((u) => u.id === id)?.displayName ?? id, groups: f.groups }
+  const emergency = new Set(f.mapping.breakGlassUserIds.map(lc))
+  for (const step of [DECISION_STEPS.serviceAccounts, DECISION_STEPS.sharedDevices]) {
+    const universe = pickerUniverse(step, null, ctx)
+    assert.ok(universe.length > 0, `${step} offers accounts`)
+    assert.deepEqual(universe.filter((o) => emergency.has(lc(o.id))), [], `${step} offers no emergency access account`)
+    assert.deepEqual(filterPickerObjects(universe, 'Break'), [], `searching "Break" in ${step} finds nothing`)
+  }
+  const emergencyPicker = pickerUniverse([...DECISION_STEPS.emergency][0], null, ctx)
+  assert.equal(emergencyPicker.filter((o) => emergency.has(lc(o.id))).length, emergency.size, 'the emergency picker offers them')
 })
