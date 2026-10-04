@@ -1924,6 +1924,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const pairAccepted = mapping.acceptedDeviations?.[stepId]?.fields ?? {}
     const pairExact = (h: PairHalf): boolean => h.policy !== null && h.intent !== null && unwrittenDifferences(h.intent, null, h.policy as Record<string, unknown>).every((d) => pairAccepted[d] !== undefined)
     const pairDone = pair !== null && !pair.ambiguous && pair.halves.every((h) => h.policy?.state === 'enabled' && pairExact(h))
+    // A tenant policy stands for a half (or for one nothing tells apart): the pair
+    // is never created whole, whatever coverage reads of the goal (ENG-3). A half
+    // that is not a coverage candidate — Mixed-Guests in Report-only for Office 365
+    // only — left the goal `absent`, and the absent branch created both halves
+    // while pairMembers tied Mixed-Guests to the tenant's policy: a duplicate. The
+    // pair branch below corrects the matched half and creates only the other.
+    const pairHasPolicy = pair !== null && (pair.ambiguous || pair.halves.some((h) => h.policy !== null))
 
     const whoKey = impl.expectedWho.kind
     // The service accounts are the mapping's, and the one population every other
@@ -2152,7 +2159,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const one = named(stepPolicies(), String(claimed.displayName ?? planName))
       one[0] = { ...one[0], target: { policyId: String(claimed.id), state: String(claimed.state ?? 'enabled'), policy: claimed } }
       action = changesFor(buildCreateAction(one, mapping, planId, stepId, goal.id, { sections: new Set() }), new Set(), claimed)
-    } else if (result.status === 'absent' || anotherJobOnly || (pair !== null && !pair.ambiguous && pair.halves.every((h) => h.policy === null))) {
+    } else if (!pairHasPolicy && (result.status === 'absent' || anotherJobOnly || pair !== null)) {
       // Or the guest pair with neither of Jon's halves on the tenant: both are
       // created exactly as on a tenant with no guest policy, whatever guest
       // policy of its own the tenant has (named as existing coverage, never edited).

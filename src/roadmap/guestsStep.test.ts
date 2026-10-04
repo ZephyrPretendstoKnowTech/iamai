@@ -125,6 +125,29 @@ test('T1-6b: a half in Report-only beside an absent half is never turned On; the
   assert.deepEqual((result.kind === 'held' ? result.operations : []).map((o) => [o.mode, o.body]), [['update', { state: 'enabled' }], ['update', { state: 'enabled' }]], 'the switch is both halves, once the week is served')
 })
 
+test('ENG-3: a half matched by its earlier name that coverage does not count is never also created: no duplicate Mixed-Guests', () => {
+  // demo-week2 with Mixed-Guests under the name IAMAI gave it before it used the
+  // baseline's, in Report-only for Office 365 only (so coverage counts it for
+  // nothing), untagged, and no other policy that reaches guests: the goal reads
+  // absent. The absent branch created both halves while pairMembers tied
+  // Mixed-Guests to the tenant's policy.
+  const f0 = fixture('demo-week2')
+  const first = guestStep(f0).step
+  const [mixedHalf] = first.action.pairMembers ?? []
+  assert.ok(mixedHalf?.earlierName && mixedHalf.intent, 'the premise: the pair keys its halves')
+  const earlier = structuredClone(mixedHalf.intent) as Row & { conditions: { applications: Record<string, unknown> }; description?: string }
+  delete earlier.description
+  earlier.conditions.applications = { ...earlier.conditions.applications, includeApplications: ['Office365'] }
+  const day = new Date(Date.parse(f0.snapshot.asOf) - 86_400_000).toISOString()
+  const f = withRows(f0, (rows) => [...rows.filter((p) => !/guest|all users/i.test(p.displayName)), { ...earlier, id: 'earlier-mixed', displayName: mixedHalf.earlierName!, state: 'enabledForReportingButNotEnforced', createdDateTime: day, modifiedDateTime: day }])
+  const { step, run } = guestStep(f)
+  assert.equal(run.coverage.results.find((r) => r.goal.id === 'guests-mfa')?.status, 'absent', 'the premise: coverage counts the half for nothing')
+  assert.deepEqual((step.action.pairMembers ?? []).map((h) => [h.name, h.policyId]), [[MIXED, 'earlier-mixed'], [B2B, null]], 'Mixed-Guests is the tenant’s policy')
+  const ops = step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.filter((o) => o.mode === 'create').map((o) => o.sourceName), [B2B], `only B2B-Guest is created: ${JSON.stringify(ops.map((o) => [o.mode, o.sourceName]))}`)
+  assert.equal(ops.some(submitsEnforcement), false, 'and nothing is turned On beside it')
+})
+
 test('both halves present, On and exact: Completed, tracked by both halves under their own names, and B2B-Guest is proposed no rename', () => {
   const f0 = ownerShape()
   const p1 = guestStep(f0)
