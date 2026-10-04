@@ -580,6 +580,15 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // Every step can explain its purpose, facts, decisions and remaining work,
   // even when no executable change can be offered yet.
   if (createWithheld) for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'ai') produced.splice(i, 1)
+  // Configure Emergency Exclusions' package writes its `missing` AI Info for a
+  // tenant with no exclusions group (`ai.create`, its `groupMissing` state), and
+  // the runtime reaches `missing` whenever the step is unfinished. With a group
+  // chosen and only the policies' exclusions left, it said "no confirmed
+  // exclusions group exists" beside a card showing the group selected (F-010).
+  // There it hands over the step's own briefing, which names the group and the
+  // policies still to exclude it.
+  const groupChosen = exclusions && pkgState === 'missing' && typeof pkgBindings?.['emergency.target.exclusionsGroupId'] === 'string'
+  if (groupChosen) for (let i = produced.length - 1; i >= 0; i--) if (produced[i].id === 'ai') produced.splice(i, 1)
   supported.add('ai')
   if (!produced.some((a) => a.id === 'ai')) produced.push({ id: 'ai', form: 'code', lines: [], text: () => aiBriefingText('', grounding('')), note: null })
   if (step.id === 's-prereq-break-glass') supported.delete('email')

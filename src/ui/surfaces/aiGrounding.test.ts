@@ -5,7 +5,7 @@
 // and in-place states, and test facts and contradictions rather than an opening sentence.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
@@ -127,4 +127,22 @@ test('a finished step asks the assistant for nothing: no Focus line on any Compl
     }
   }
   assert.ok(seen > 5, 'the premise: the samples finish steps')
+})
+
+test('F-010: with an exclusions group chosen, the Configure Emergency Exclusions briefing never says no group exists and names the group; with none chosen, the package still says so', () => {
+  for (const name of ['demo', 'messy'] as const) {
+    const o = opened(name, 's-prereq-exclusion-group')
+    assert.equal(o.step.state.satisfied, false, `${name}: the premise, the policies still miss the exclusion`)
+    const group = stepBodyOf(o.step, o.ctx).pkgBindings?.['exclusions.group.displayName']
+    assert.equal(typeof group, 'string', `${name}: the premise, a group is chosen`)
+    assert.ok(!/no confirmed exclusions group/i.test(o.ai), `${name}: ${o.ai.split('\n').find((l) => /exclusions group exists/i.test(l))}`)
+    assert.ok(o.ai.includes(F.heading), `${name}: the briefing carries IAMAI's facts`)
+    assert.ok(o.ai.includes(group as string), `${name}: the briefing names ${group}`)
+  }
+  const f = noExclusionsAnswer(fixture('demo'))
+  const run = runFixture(f, {}, null, f.snapshot.asOf)
+  const step = run.steps.find((s) => s.id === 's-prereq-exclusion-group')!
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (i: string) => run.input.names!.label(i), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null } as unknown as StepVarContext
+  const ai = stepBodyOf(step, ctx).artifacts.find((a) => a.id === 'ai')!.text()
+  assert.match(ai, /no confirmed exclusions group/i, 'nobody has chosen a group: the package says none is confirmed')
 })
