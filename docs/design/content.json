@@ -1073,7 +1073,9 @@
         "started": "Started",
         "none": "—",
         "$commentNext": "OWN-W1 (owner, 2026-09-27): under the tiles, the first Ready row in All work order by its number and title, a link that opens it (planBoard.ts nextReadyOf). Hidden where nothing is Ready. One link, not the status sentence the owner removed on 2026-09-11.",
-        "next": "Next: {step} →"
+        "next": "Next: {step} →",
+        "$commentReportOnlyReview": "Under Next (owner, 2026-10-03, his idea of 2026-09-24): the policies whose report-only results are in and can be acted on now, each a link (planBoard.ts reportOnlyToReviewOf).",
+        "reportOnlyReview": "Report-only results to review:"
       },
       "howTo": {
         "link": "How to use this plan",

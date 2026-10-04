@@ -221,3 +221,41 @@ test('the In report-only tile counts every step whose chip reads Report-only', a
   const legend = (pages.plan as unknown as { howTo: { legend: { label: string; description: string }[] } }).howTo.legend
   assert.match(legend.find((e) => e.label.startsWith('Create'))?.description ?? '', /create something new \(a policy, group, location, account or alert\), correct something that already exists/)
 })
+
+// The owner's idea of 2026-09-24, placed on 2026-10-03: under Next, the policies whose
+// report-only results are in and can be acted on now, each a link. Nothing where none is.
+test('under Next, the Plan links the policies whose report-only results are ready to act on, and nothing else', async () => {
+  const { reportOnlyToReviewOf, rowNumbersOf, sectionNumbersOf, nextReadyOf } = await import('./planBoard.ts')
+  const { customerPlanSteps } = await import('./customerPlanSteps.ts')
+  const f = fixture('demo-week2')
+  const r = runFixture(f)
+  const steps = customerPlanSteps(r.steps)
+  const items = boardOf(steps, r.schedule.cleanup ?? null, f.mapping.breakGlassAnswers ?? null).rows.map((row) => row.item)
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  const rows = rowNumbersOf(items), sections = sectionNumbersOf(items)
+  // A policy in its report-only week: the premise, and not listed while the week runs.
+  const watched = steps.find((s) => s.state.lifecycle === 'report-only' && items.some((i) => i.id === s.id))
+  assert.ok(watched, 'the premise: the follow-up scan has a policy in report-only')
+  assert.equal(reportOnlyToReviewOf(items, byId, rows, sections).some((x) => x.id === watched.id), false, 'a week still running is not listed')
+  // Its week over and its row Ready: listed, by the number and title the board shows.
+  const over = new Map(byId); over.set(watched.id, { ...watched, state: { ...watched.state, lifecycle: 'ready-to-enforce' as const } })
+  const ready = items.map((i) => (i.id === watched.id ? { ...i, lane: 'Ready' as const } : i))
+  const listed = reportOnlyToReviewOf(ready, over, rows, sections)
+  const entry = listed.find((x) => x.id === watched.id)
+  assert.ok(entry, 'a policy ready to turn on is listed')
+  assert.equal(entry.title, items.find((i) => i.id === watched.id)!.title)
+  assert.match(entry.number ?? '', /^\d+\.\d+$/)
+  // Held by something else: not listed (only what can be acted on now). The Next row is not repeated.
+  assert.equal(reportOnlyToReviewOf(ready.map((i) => (i.id === watched.id ? { ...i, lane: 'On Hold' as const } : i)), over, rows, sections).some((x) => x.id === watched.id), false)
+  assert.equal(reportOnlyToReviewOf(ready, over, rows, sections, watched.id).some((x) => x.id === watched.id), false)
+  // Who report-only would have stopped is the same reading the card's turn-on wait names.
+  assert.match(readFileSync('src/ui/surfaces/policyTasks.ts', 'utf8'), /if \(\(readyWhen\(step\)\?\.failures \?\? 0\) > 0 && step\.state\.lifecycle === 'report-only'\)/)
+  assert.match(readFileSync('src/ui/surfaces/planBoard.ts', 'utf8'), /const stopped = step\.state\.lifecycle === 'report-only' && \(ready\?\.failures \?\? 0\) > 0/)
+  // The page draws it under Next, as links, only when there is one.
+  const page = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  assert.match(page, /const toReview = reportOnlyToReviewOf\(items, new Map\(rowSteps\.map\(\(s\) => \[s\.id, s\]\)\), rowNumbers, sectionNumbers, nextReady\?\.id \?\? null\)/)
+  assert.match(page, /\{toReview\.length > 0 && \(\s*<p className="line no-print plan-next plan-report-only">/)
+  assert.ok(page.indexOf('plan-report-only') > page.indexOf('className="line no-print plan-next"'), 'under Next')
+  assert.equal((pages.plan.progress as { reportOnlyReview: string }).reportOnlyReview, 'Report-only results to review:')
+  assert.ok(nextReadyOf(items, rows, sections) !== undefined)
+})

@@ -54,6 +54,7 @@ import { planForecast } from '../../roadmap/forecast.ts'
 import type { ForecastRow, ForecastWait, PlanForecast } from '../../roadmap/forecast.ts'
 import { cleanupTitleOf } from './stepContract.ts'
 import { sectionPositions } from '../../roadmap/stepGroups.ts'
+import { readyWhen } from '../../derive/readyWhen.ts'
 
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string; reportOnly: string } }).when
@@ -1225,6 +1226,32 @@ export function nextReadyOf(board: readonly BoardItem[], rowNumbers: ReadonlyMap
     return { id: item.id, number: section !== null && row !== undefined ? `${section}.${row}` : null, title: item.title }
   }
   return null
+}
+
+/**
+ * The policies whose report-only results are in, for the line under Next (the owner's
+ * idea of 2026-09-24, placed there on 2026-10-03): a Ready row whose report-only week
+ * is over and that stopped nobody, or a policy whose report-only results show sign-ins
+ * it would have stopped (policyTasks.ts turnOnWaitsOf names them on its card). Only
+ * what can be acted on now: a row whose turn-on something else holds is not listed.
+ * In All work order, by number; the Next row itself is not repeated. Pure.
+ */
+export function reportOnlyToReviewOf(board: readonly BoardItem[], steps: ReadonlyMap<string, Step>, rowNumbers: ReadonlyMap<string, number>, sectionNumbers: ReadonlyMap<string, number>, except: string | null = null, groups: readonly StepGroup[] = STEP_GROUPS): { id: string; number: string | null; title: string }[] {
+  const out: { id: string; number: string | null; title: string }[] = []
+  for (const g of allWorkGroups(board, board, groups)) {
+    const section = groupNumberOf(g, sectionNumbers, groups)
+    for (const item of g.items) {
+      const step = steps.get(item.id)
+      if (!step || item.id === except) continue
+      const ready = readyWhen(step)
+      const stopped = step.state.lifecycle === 'report-only' && (ready?.failures ?? 0) > 0
+      const weekOver = item.lane === 'Ready' && (step.state.lifecycle === 'ready-to-enforce' || (step.state.lifecycle === 'report-only' && ready?.kind === 'now' && (ready.failures ?? 0) === 0))
+      if (!stopped && !weekOver) continue
+      const row = rowNumbers.get(item.id)
+      out.push({ id: item.id, number: section !== null && row !== undefined ? `${section}.${row}` : null, title: item.title })
+    }
+  }
+  return out
 }
 
 /** One section of the board as All work draws it whole: the drawn group, its registry key and number, and whether the board reads it finished. */

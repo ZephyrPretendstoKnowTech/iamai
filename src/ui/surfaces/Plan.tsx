@@ -4,7 +4,7 @@ import { structuralWords } from '../../content/content.ts'
 // exists: two header lines, the phases as rows, the footer. Clicking a row opens
 // the step under it. Nothing sits above the plan but its two header lines; every
 // decision the plan needs is made in the step that needs it (§5, §6.4).
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -29,7 +29,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TILE_TAB, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, inputStepIds, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, pressKeyOf, releaseFor } from './planBoard.ts'
+import { ALL_WORK_TAB, BOARD, DEFAULT_TAB, NO_FOCUS, TILE_TAB, TABS, TYPE_ORDER, WHEN, allWorkGroups, applyFocus, boardHolds, boardOf, boardWhenOf, focusActive, focusCounts, groupKeyOf, groupNumberOf, groupSummary, groupTotalsOf, groupsFor, inputStepIds, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, nothingReadyLine, rowNumbersOf, sectionNumbersOf, tileSections, waveStartOf, drawsCompact, drawsImpact, finishedDayOf, followOpenStep, followLaneChange, groupClosed, nextInPlanOrder, nextReadyOf, reportOnlyToReviewOf, pressKeyOf, releaseFor } from './planBoard.ts'
 import type { BoardGroup, BoardItem, BoardTab, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -63,7 +63,7 @@ type PlanPage = {
   settingsLink: string
   settings: { h3: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; scheduling: string; communications: string; saveFreeze: string; removeFreeze: string; cancelFreeze: string; freezeSaved: string; close: string }
   blocked: { after: string }
-  progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string; next: string }
+  progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string; next: string; reportOnlyReview: string }
   howTo: { link: string; intro: string; legend?: { label: string; description: string }[]; legendHeading: string }
 }
 const PP = pages.plan as unknown as PlanPage
@@ -312,6 +312,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // (`<section>.<row>`), the same on every tab and while a focus filters rows.
   const sectionNumbers = sectionNumbersOf(items)
   const nextReady = nextReadyOf(items, rowNumbers, sectionNumbers)
+  // The policies whose report-only results are in and can be acted on now, under Next (owner, 2026-10-03).
+  const toReview = reportOnlyToReviewOf(items, new Map(rowSteps.map((s) => [s.id, s])), rowNumbers, sectionNumbers, nextReady?.id ?? null)
   // What the last Save, scan or approval changed: one line, above the board or at
   // the top of the step the page moved to (planChanges.ts changeLinePlace).
   const lineView = changeLine !== null ? <ChangeLine line={changeLine} whole={changeWhole} showWhole={showWhole} onShowAll={() => setShowWhole(true)} /> : null
@@ -485,6 +487,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
       {nextReady && (
         <p className="line no-print plan-next">
           <a href={`#/plan/${encodeURIComponent(nextReady.id)}`}>{fillText(PP.progress.next, { step: nextReady.number ? `${nextReady.number} ${nextReady.title}` : nextReady.title })}</a>
+        </p>
+      )}
+      {toReview.length > 0 && (
+        <p className="line no-print plan-next plan-report-only">
+          {PP.progress.reportOnlyReview}{" "}
+          {toReview.map((r, i) => <Fragment key={r.id}>{i > 0 && ", "}<a href={`#/plan/${encodeURIComponent(r.id)}`}>{r.number ? `${r.number} ${r.title}` : r.title}</a></Fragment>)}
         </p>
       )}
       {/* Nothing sits between the header line and the board. The MFA readiness
