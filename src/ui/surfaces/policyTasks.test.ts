@@ -26,6 +26,7 @@ import { DIRECTION_STEP_IDS, EMERGENCY_ACCESS_GROUP, isGroupMember, usesTaskAnat
 import { CONTRACT, FINISHED_READING, isAllClear } from './stepContract.ts'
 import type { ContractReadiness, ReadinessTile, StepContract } from './stepContract.ts'
 import { SNAPSHOT_FIXTURES } from '../../testing/stepSnapshots.ts'
+import { planProposedNames } from './proposedNames.ts'
 
 const PILOT = 's-goal-admin-session'
 
@@ -433,4 +434,23 @@ test('Turn Off Security Defaults reads "On" only where the scan read them on, an
   const unread = structuredClone(read)
   unread.config.securityDefaults = { status: 'error', rows: null, reason: 'request failed' } as unknown as typeof unread.config.securityDefaults
   assert.ok(!cardsOf(unread).some((card) => card.title === 'On'), 'read neither way: no card claims they are on')
+})
+
+test('ENG-1: with the exclusions group not made yet, every procedure names it once, never "the groups X and X"', () => {
+  // The messy tenant has no exclusions group: the author's break-glass group and
+  // the slot every policy excludes are the one group the plan proposes.
+  const f = fixture('messy')
+  const run = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: run.input.directory, naming: run.coverage.organisation.naming }
+  const proposed = planProposedNames(run.steps, run.coverage.organisation.naming).exclusionsGroup
+  let named = 0
+  for (const step of run.steps) {
+    const tasks = stepBodyOf(step, ctx).emergencyAccountTasks?.tasks ?? []
+    for (const line of tasks.flatMap((t) => t.steps)) {
+      const bold = [...line.matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1])
+      assert.ok(bold.filter((b) => b === proposed).length <= 1, `${step.id}: ${line}`)
+      if (line.includes(`the group **${proposed}**`)) named += 1
+    }
+  }
+  assert.ok(named >= 10, `the procedures name the proposed group (${named})`)
 })

@@ -220,6 +220,25 @@ test('1: the author’s four exclusion groups on one policy come to the tenant�
   assert.deepEqual(impl.omitted, [], 'and none of them is a person’s answer or an assumption')
 })
 
+test('ENG-1: with no exclusions group yet, the author’s exclusions group and the slot are one object, named once', () => {
+  // The tenant has not made its exclusions group (the messy fixture). The
+  // author's break-glass group and the slot every policy excludes both stand for
+  // the group the plan proposes; the procedure named it twice ("exclude the
+  // groups X and X") because the body carried both forms.
+  const source = authorPolicy('IAC - APP - BLOCK - SharePoint-OneDrive-NonTrustedLocations')
+  const author = authorIdFor(source, 'exclusionsGroup')
+  const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ exclusionsGroupId: null }), 'x', POLICIES)
+  const groups = excludeGroupsOf(resolved.body)
+  assert.equal(groups.filter((g) => g === '{exclusionsGroup}').length, 1, 'the slot is named once')
+  assert.ok(!groups.some((g) => g.toLowerCase() === author.toLowerCase()), 'and the author’s exclusions group is that slot, not a second entry')
+  assert.equal(resolved.unresolved.get(author.toLowerCase()), PREREQ_STEP_ID.exclusionsGroup, 'it still waits on the step that makes the group')
+  // The body a procedure reads (the references the step waits on kept) names the group once.
+  const kept = implementable(resolved.body, { ...resolved, keep: new Set(['{exclusionsgroup}']) }).policy
+  assert.deepEqual(excludeGroupsOf(kept).filter((g) => /exclusionsGroup/.test(g) || g.toLowerCase() === author.toLowerCase()), ['{exclusionsGroup}'])
+  const impl = implementable(resolved.body, resolved)
+  assert.deepEqual(impl.missing.filter((m) => m.stepId === PREREQ_STEP_ID.exclusionsGroup), [{ token: '{exclusionsGroup}', stepId: PREREQ_STEP_ID.exclusionsGroup }], 'one object to wait on, not two')
+})
+
 test('2 + 8: distinct resolved ids stay distinct, an unrelated policy’s includes and excludes are untouched, and no id crosses a collection', () => {
   const body = {
     conditions: {

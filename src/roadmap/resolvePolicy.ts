@@ -809,6 +809,17 @@ function substitute(value: unknown, ids: ReadonlyMap<string, readonly string[]>)
 }
 
 /**
+ * The substitutions a body is written with while the tenant has no exclusions
+ * group: each author reference the pin settles as the exclusions group, and that
+ * nothing else resolved, stands as the `{exclusionsGroup}` slot.
+ */
+function withExclusionsSlot(ids: ReadonlyMap<string, readonly string[]>, unresolved: ReadonlyMap<string, string | null>, tokens: ReadonlyMap<string, string>): ReadonlyMap<string, readonly string[]> {
+  const out = new Map(ids)
+  for (const [id, step] of unresolved) if (tokens.get(id) === 'exclusionsGroup' && step === PREREQ_STEP_ID.exclusionsGroup && !out.has(id)) out.set(id, ['{exclusionsGroup}'])
+  return out
+}
+
+/**
  * Each list of ids carries the tenant's object once. Two of the author's groups
  * that resolve to the one tenant group are that group, named once, in the order
  * the first of them appeared; distinct ids stay distinct and keep their order,
@@ -863,7 +874,13 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
   // ones its own body names. A step lists, and waits on, only those.
   const named = stringsIn(policy)
   const decisions = new Map([...packageDecisions].filter(([id]) => named.has(id)))
-  const body = substitute(structuredClone(policy), ids) as RawPolicy
+  // The author's exclusions group, where this tenant has none yet, is the group
+  // the plan proposes, and so is the slot added below: one object in two forms.
+  // In the body it takes the slot's form, so the de-duplication names it once
+  // and a procedure reads "exclude the group X", not "the groups X and X" (ENG-1).
+  // It stays in `unresolved` against the step that makes the group.
+  const bodyIds = tenant.exclusionsGroupId ? ids : withExclusionsSlot(ids, unresolved, tokensOf(policies))
+  const body = substitute(structuredClone(policy), bodyIds) as RawPolicy
   widenToAllUsers(body, allUsers)
   // The exclusions group is excluded from every policy the plan writes; it is
   // added before the de-duplication, so a policy that already excludes it (the
