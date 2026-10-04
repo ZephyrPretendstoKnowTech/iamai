@@ -22,8 +22,16 @@ test('the line is the owner\'s words', () => {
 test('a correction says the policy is On exactly when the tenant\'s policy is On: on its card, its task and its script', () => {
   let on = 0
   let notOn = 0
-  for (const name of ['demo', 'demo-week2', 'mid', 'large', 'midflight', 'messy'] as FixtureName[]) {
-    const f = fixture(name)
+  // The same tenants with their On policies in Report-only: since 4.3 builds beside the
+  // tenant's own admin policy (T4-PM), the samples hold no correction to a policy that is
+  // not On, and these variants give the other half its cases.
+  const asReportOnly = (name: FixtureName) => {
+    const f = structuredClone(fixture(name))
+    for (const r of (f.snapshot.config.caPolicies?.rows ?? []) as { state?: string }[]) if (r.state === 'enabled') r.state = 'enabledForReportingButNotEnforced'
+    return f
+  }
+  const tenants = [...(['demo', 'demo-week2', 'mid', 'large', 'midflight', 'messy'] as FixtureName[]).map((n) => [n, fixture(n)] as const), ...(['demo-week2', 'mid', 'large', 'midflight', 'messy'] as FixtureName[]).map((n) => [`${n} (report-only)`, asReportOnly(n)] as const)]
+  for (const [name, f] of tenants) {
     const run = runFixture(f)
     const rows = (f.snapshot.config.caPolicies?.rows ?? []) as { displayName?: string; state?: string }[]
     const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext

@@ -81,6 +81,10 @@ test('registered proof does not complete preparation while the admin target is u
     // Preparation measures the resolved admin target, not a guessed family floor.
     const admin = s.config.caPolicies.rows.find(raw => (raw as Record<string, unknown>).id === 'p-3') as Record<string, unknown>
     admin.state = 'enabled'
+    // The plan's own admin policy (its baseline name), as 4.3 measures it: a tenant policy
+    // of another name is built beside since T4-PM, and the step then measures its own.
+    const beside = plan(s).steps.find((x) => (x.action.besidePolicies ?? []).some((b) => b.policyId === 'p-3'))
+    if (beside?.createName) admin.displayName = beside.createName
     const p = plan(s)
     assert.equal(p.rollout.toSetUp, 0)
     assert.ok(p.verify)

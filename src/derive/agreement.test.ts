@@ -162,6 +162,10 @@ test('one verdict: task completion requires coverage and any explicit workflow e
       if (s.kind !== 'create' && s.kind !== 'adjust') continue
       const r = byGoal.get(s.goalId)
       if (!r) continue
+      // A step that builds the baseline's policy beside the tenant's own (T4-PM) completes on
+      // its own policy, never on coverage the tenant's other policy gives: build new, retire
+      // old (owner, 2026-09-27). Its completion is adminsBuildBeside.test.ts's.
+      if ((s.action.besidePolicies ?? []).length > 0) continue
       const stepDone = s.status === 'done'
       const unresolvedIdentity = s.blockers.some(b => b.kind === 'evidence' && b.label === 'inforcer-application')
       // Every control is exact (owner, 2026-09-25): a goal in place through a policy with a setting that is not the plan's is not done.
