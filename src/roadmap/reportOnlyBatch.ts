@@ -25,7 +25,11 @@
 //   - a policy that checks a compliant or managed device on anything but
 //     Windows: report-only can prompt macOS, iOS and Android users for a device
 //     certificate;
-//   - the countries policy: its countries are picked on its own step;
+//   - the countries policies (the allowed-countries block and, where countries
+//     are listed to block outright, Jon's NoExclusions block): their countries
+//     are picked on their own step, which creates them (owner, 2026-10-04: the
+//     one exception to "every policy the plan adds is listed here"), and the
+//     note names that step (ownStep);
 //   - a step set aside, deferred, or that doesn't apply.
 //
 // Pure: no DOM, no network.
@@ -177,7 +181,9 @@ export function settleReportOnlyBatch(steps: Step[], tenant: TenantPolicies = ne
   let toCreate = 0
   let createdPolicies = 0
   const leftOut = new Set<ReportOnlyOutlier>()
+  const ownStep = new Set<string>()
   for (const s of steps) {
+    if (s.goalId === COUNTRIES_GOAL && s.kind === 'create' && s.state.lifecycle === 'not-deployed' && !(s.status === 'skipped' || s.state.setAside || s.doesntApply)) ownStep.add(s.goalId)
     const member = batchMemberOf(s, tenant)
     if (member === 'create') {
       create.push(s.id)
@@ -195,7 +201,7 @@ export function settleReportOnlyBatch(steps: Step[], tenant: TenantPolicies = ne
   // Only the policies still to create (owner, 2026-09-26): a created policy with
   // a setting to correct is its own step's task, never listed here a second time,
   // and never holds this step open.
-  batch.reportOnlyBatch = { create, created, ...(leftOut.size > 0 ? { leftOut: OUTLIERS.filter((k) => leftOut.has(k)) } : {}) }
+  batch.reportOnlyBatch = { create, created, ...(leftOut.size > 0 ? { leftOut: OUTLIERS.filter((k) => leftOut.has(k)) } : {}), ...(ownStep.size > 0 ? { ownStep: [...ownStep] } : {}) }
   // Impact counts what the step changes: the policies still to create, and once
   // none is left, the ones it created. The rail's headline reads the same count
   // (ui/surfaces/reportOnlyStep.ts reportOnlyMilestoneOf), as the cards do.

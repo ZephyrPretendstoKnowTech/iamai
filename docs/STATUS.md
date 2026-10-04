@@ -171,7 +171,10 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   tenant's own guest policy is named as existing coverage and never edited; Medium-Risk
   Users stays Jon's JSON (password change + strength); every policy the plan adds or
   replaces is listed in 3.8 Create the Policies in Report-only, one card per policy, and an
-  in-place correction stays its own step's task. Pin: Jon's 8af3b118.
+  in-place correction stays its own step's task. Pin: Jon's 8af3b118. The one exception
+  (owner, 2026-10-04): the countries policies, the allowed-countries block and the optional
+  NoExclusions block, are created on 6.3, where their countries are chosen; 3.8 names that
+  step in one line, so no other create waits on a country list.
 - Policy names match with dashes, spacing and capitals aside: one key,
   baseline/discover.ts nameKey (2026-09-28).
 - An On Hold step whose tabs hand over a live change heads its column with its wait, and

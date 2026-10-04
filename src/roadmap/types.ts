@@ -1016,6 +1016,12 @@ export type Step = {
     created: string[]
     /** Why policies still to create are left out, by type (reportOnlyBatch.ts reportOnlyOutlierOf); absent where none is. No policy names. */
     leftOut?: ('userAction' | 'deviceCheck')[]
+    /**
+     * The goals whose policies are still to create and are created on their own
+     * step by design (owner, 2026-10-04): the countries pair, whose countries are
+     * chosen on 6.3. Absent where none is.
+     */
+    ownStep?: string[]
   }
   /**
    * Prepare the Lockdown Kit's switches as this scan read them

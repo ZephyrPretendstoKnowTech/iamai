@@ -21,7 +21,7 @@ import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyA
 import type { ReadinessTile } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-type BatchWords = { createValue: string; milestone: string; taskTitle: string; leftOutBoth: string; leftOutUserAction: string; leftOutDeviceCheck: string }
+type BatchWords = { createValue: string; milestone: string; taskTitle: string; leftOutBoth: string; leftOutUserAction: string; leftOutDeviceCheck: string; leftOutOwnStep: string }
 
 /** One policy's create lines, as its own step's create task holds them (policyTasks.ts `creates`). */
 export type CreateTaskLines = { name: string; steps: string[] }
@@ -81,7 +81,11 @@ export function reportOnlyNoteOf(step: Step): string | null {
   const w = W()
   const user = why.includes('userAction')
   const device = why.includes('deviceCheck')
-  return user && device ? w.leftOutBoth : user ? w.leftOutUserAction : device ? w.leftOutDeviceCheck : null
+  const types = user && device ? w.leftOutBoth : user ? w.leftOutUserAction : device ? w.leftOutDeviceCheck : null
+  // The countries policies (owner, 2026-10-04): created on their own step, which the note names.
+  const own = step.id === REPORT_ONLY_STEP_ID ? (step.reportOnlyBatch?.ownStep ?? []).map((g) => fillText(w.leftOutOwnStep, { step: stepById[g]?.title ?? g })) : []
+  const out = [types, ...own].filter((s): s is string => s !== null)
+  return out.length > 0 ? out.join(' ') : null
 }
 
 /**
