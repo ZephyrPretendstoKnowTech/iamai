@@ -11,6 +11,7 @@ import { holdWaitsOn } from '../roadmap/stateReason.ts'
 import type { Schedule } from '../roadmap/schedule.ts'
 import type { Step } from '../roadmap/types.ts'
 import { LOCKDOWN_KIT_STEP_ID } from '../roadmap/stepIds.ts'
+import { isDirectionStep } from '../roadmap/directionAnswers.ts'
 import type { EstimatedSpan, PlanForecast } from '../roadmap/forecast.ts'
 import { engine, pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
@@ -184,7 +185,10 @@ export function projectedFinish(finish: string | null, estimate: string | null):
  * policy held, because the schedule's own chain had placed none of them.
  */
 export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 'start' | 'weeks' | 'estimate' | 'derivation'>, forecast: ForecastReading | null = null): string | null {
-  if (forecast !== null) return forecastLengthSentence(finish, schedule, forecast)
+  if (forecast !== null) {
+    const out = [forecastLengthSentence(finish, schedule, forecast), assumesAnswersLine(forecast.steps)].filter((s): s is string => s !== null)
+    return out.length > 0 ? out.join(' ') : null
+  }
   if (!finish.held) return [schedule.derivation.criticalPath, ...schedule.derivation.relaxed].join(' ')
   const reason = schedule.estimate?.reason ?? null
   // A held plan whose rollout placed none of the held work has no estimate
@@ -194,6 +198,17 @@ export function planLengthSentence(finish: PlanFinish, schedule: Pick<Schedule, 
   // A count like any other: fillText's pluralise reads "1 weeks" as one week.
   const weeks = planWeeks(finish, schedule)
   return fillText((pages.plan as Record<string, string>).lengthTipEstimate, { weeks: `${weeks} weeks`, constraint: reason })
+}
+
+/**
+ * Where the date comes from before the answers are in (owner, 2026-10-04: an
+ * admin wants the length before hours of setup): while a Define Your Rollout
+ * Scope step is still open, the forecast places its work as if the suggested
+ * answers were approved, and the tip says so. Null once every one is settled.
+ */
+export function assumesAnswersLine(steps: readonly Step[]): string | null {
+  const open = steps.some((s) => isDirectionStep(s.id) && !s.state.satisfied && s.status !== 'skipped' && s.status !== 'done')
+  return open ? (pages.plan as Record<string, string>).lengthTipAssumes : null
 }
 
 /** The board's forecast as the Estimated finish tip reads it: the plan's steps, where the plan expects each row (planBoard.ts boardReadingsOf), and the title each row is named by. */

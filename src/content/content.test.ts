@@ -133,6 +133,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // yet: the length is the rollout's estimate (derive/finish.ts planWeeks), a
   // state the review page's example plan is not in.
   '.pages.plan.lengthTipEstimate',
+  // The tip's last sentence while a Define Your Rollout Scope step is open
+  // (derive/finish.ts assumesAnswersLine): the review page draws no Plan header.
+  '.pages.plan.lengthTipAssumes',
   // What holds a policy no step of the plan clears, on its row (roadmap/stateReason.ts
   // holdReasonFor): a state the review page's example plan is not in.
   '.pages.plan.blocked.unsettled',

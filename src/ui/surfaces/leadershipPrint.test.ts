@@ -14,7 +14,8 @@ import { content, directionWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { applySkips } from '../../roadmap/progress.ts'
 import { boardOf } from './planBoard.ts'
-import { BRIEF, briefOf, decisionAsksOf, printSectionsOf, readinessNeed, recoveryOf } from './printPlan.ts'
+import { list } from '../../copy/statements.ts'
+import { BRIEF, briefDaysOf, briefOf, decisionAsksOf, printSectionsOf, readinessNeed, recoveryOf } from './printPlan.ts'
 import type { Brief } from './printPlan.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -284,4 +285,32 @@ test('a question a scan reopened is one the briefing asks about, and an answered
   assert.deepEqual(decisionAsksOf({ directionQuestions: [q('Office network', false), q('Inforcer', true, true), q('Phones', true)] }), ['Office network', 'Inforcer'])
   // Every answer approved and none reopened: nothing to ask, and briefOf keeps "A decision is needed."
   assert.deepEqual(decisionAsksOf({ directionQuestions: [q('Phones', true)] }), [])
+})
+
+test('the plan by day (owner, 2026-10-04): every open row on its forecast day, each policy again on its turn-on day, in date order, ending on the Estimated finish', () => {
+  for (const f of [curatedFixture('demo'), curatedFixture('demo-week2')]) {
+    const { board, steps } = briefFor(f)
+    const days = briefDaysOf(board)
+    assert.ok(days.length >= 2, `${f.name}: the premise, work on more than one day`)
+    assert.deepEqual(days.map((d) => d.day), [...days.map((d) => d.day)].sort(), `${f.name}: in date order`)
+    // Every open row the briefing lists ahead is on a day, by the number the board gives it.
+    const open = printSectionsOf(board).flatMap((sec) => sec.rows.filter((r) => ['Ready', 'Up Next', 'On Hold'].includes(r.lane.lane) && board.forecast.spans.has(r.id)).map((r) => `${sec.number}.${r.number} ${r.title}`))
+    const named = new Set(days.flatMap((d) => [...d.doing, ...d.turnOn]))
+    for (const name of open) assert.ok(named.has(name), `${f.name}: ${name} is on a day`)
+    // A policy 3.8 creates is named once, on its turn-on day, never beside 3.8.
+    const batch = steps.find((s) => s.id === 's-create-report-only')?.reportOnlyBatch?.create ?? []
+    const doing = new Set(days.flatMap((d) => d.doing))
+    for (const sec of printSectionsOf(board)) for (const r of sec.rows) if (batch.includes(r.id)) assert.ok(![...doing].includes(`${sec.number}.${r.number} ${r.title}`), `${f.name}: ${r.title} is 3.8's work`)
+    // A turn-on is never before the day its row's work starts.
+    for (const sec of printSectionsOf(board)) for (const r of sec.rows) {
+      const span = board.forecast.spans.get(r.id)
+      if (span?.turnOn) assert.ok(span.turnOn >= span.at.slice(0, 10) || span.turnOn >= span.at, `${f.name}: ${r.title} turns on after its work starts`)
+    }
+    // The last day is the forecast's finish or before it: the briefing's days end where the Estimated finish says.
+    if (board.forecast.finish) assert.ok(days.at(-1)!.day <= board.forecast.finish.slice(0, 10), `${f.name}: the last day is not after the finish`)
+  }
+  // The words: a heading, a lead, and the turn-on line naming its policies.
+  assert.equal(BRIEF.headings.days, 'The plan by day')
+  assert.equal(fillText(BRIEF.days.turnOn, { steps: list(['A', 'B']) }), 'Turn on: A and B')
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /const days = briefDaysOf\(board\)/)
 })

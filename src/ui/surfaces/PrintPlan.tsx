@@ -20,7 +20,8 @@ import { fillText, fillTextVerbatim } from '../../content/render.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
 import { boardOf } from './planBoard.ts'
-import { BRIEF, briefOf, doesntApplyLinesOf, noPlanLine, recoveryOf } from './printPlan.ts'
+import { BRIEF, briefDaysOf, briefOf, doesntApplyLinesOf, noPlanLine, recoveryOf } from './printPlan.ts'
+import { list } from '../../copy/statements.ts'
 import type { BriefEntry } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { mfaTodayLine } from './mfaToday.ts'
@@ -142,6 +143,8 @@ export function PrintPlan({
   const doesntApply = doesntApplyLinesOf(steps)
   const notLicensed = notLicensedRows(coverage, goalMap)
   const open = brief.chapters.filter((c) => c.entries.length > 0)
+  // The plan by day (owner, 2026-10-04), from the forecast the Estimated finish reads.
+  const days = briefDaysOf(board)
   const mfaToday = mfaTodayLine(tenant)
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
@@ -210,6 +213,22 @@ export function PrintPlan({
           </ol>
         </section>
       </section>
+
+      {days.length > 0 && (
+        <section className="brief-days">
+          <h2>{BRIEF.headings.days}</h2>
+          <p className="brief-purpose">{BRIEF.days.lead}</p>
+          <dl>
+            {days.map((d) => (
+              <Fragment key={d.day}>
+                <dt>{absoluteDate(d.day)}</dt>
+                {d.doing.map((t) => <dd key={`do:${t}`}>{t}</dd>)}
+                {d.turnOn.length > 0 && <dd className="brief-turn-on">{fillText(BRIEF.days.turnOn, { steps: list(d.turnOn) })}</dd>}
+              </Fragment>
+            ))}
+          </dl>
+        </section>
+      )}
 
       {open.length > 0 && (
         <section className="brief-ahead">

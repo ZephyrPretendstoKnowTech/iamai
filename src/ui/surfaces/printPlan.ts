@@ -5,6 +5,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
+import { REPORT_ONLY_STEP_ID } from '../../roadmap/stepIds.ts'
 import { directionAsked } from '../../roadmap/directionAnswers.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
@@ -130,7 +131,8 @@ type BriefWords = {
   status: string
   finishOn: string
   cards: { done: string; ahead: string; needs: string }
-  headings: { needs: string; journey: string; ahead: string; risk: string; done: string; notInPlan: string; aside: string }
+  headings: { needs: string; journey: string; days: string; ahead: string; risk: string; done: string; notInPlan: string; aside: string }
+  days: { lead: string; turnOn: string }
   asideWhy: string
   labels: { does: string; matters: string; notice: string; reaches: string }
   lanes: Record<Lane, string>
@@ -279,6 +281,44 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
   })
   const ahead = chapters.reduce((n, c) => n + c.entries.length, 0)
   return { chapters, needs, done, aside, counts: { done: done.length, ahead, needs: needs.length } }
+}
+
+/** One day of the plan by day: the rows whose next action falls on it, and the policies turned on that day. */
+export type BriefDay = { day: string; doing: string[]; turnOn: string[] }
+
+/**
+ * The plan by day (owner, 2026-10-04: "Do x today, then y unlocks which you do
+ * tomorrow, leading to z"): every open row on the day the board's forecast
+ * expects its next action (roadmap/forecast.ts EstimatedSpan.at), and each
+ * policy again on the day it is turned on (turnOn), in date order. The same
+ * forecast the Estimated finish reads, so the last day is that date's work.
+ * A policy Create the Policies in Report-only creates is that step's work on
+ * its day, so it is named once, on its turn-on day, never beside 3.8 again.
+ * A row is named as the board numbers it. Pure: the dates are ISO days.
+ */
+export function briefDaysOf(board: Pick<Board, 'rows' | 'forecast'>): BriefDay[] {
+  const days = new Map<string, BriefDay>()
+  const dayOf = (iso: string): BriefDay => {
+    const key = iso.slice(0, 10)
+    let d = days.get(key)
+    if (!d) days.set(key, (d = { day: key, doing: [], turnOn: [] }))
+    return d
+  }
+  const sections = printSectionsOf(board)
+  const batched = new Set(sections.flatMap((sec) => sec.rows).find((r) => r.step?.id === REPORT_ONLY_STEP_ID)?.step?.reportOnlyBatch?.create ?? [])
+  for (const sec of sections) {
+    for (const r of sec.rows) {
+      if (!OPEN.has(r.lane.lane)) continue
+      const span = board.forecast.spans.get(r.id)
+      if (!span) continue
+      const name = sec.number !== null && r.number !== null ? `${sec.number}.${r.number} ${r.title}` : r.title
+      // A policy already in report-only has its turn-on next: that is its only day.
+      const watching = r.step !== null && (r.step.state.lifecycle === 'report-only' || r.step.state.lifecycle === 'ready-to-enforce')
+      if (!watching && !batched.has(r.id)) dayOf(span.at).doing.push(name)
+      if (span.turnOn !== null) dayOf(span.turnOn).turnOn.push(name)
+    }
+  }
+  return [...days.values()].sort((a, b) => a.day.localeCompare(b.day))
 }
 
 /** The emergency-access step whose runbook the recovery page prints. */

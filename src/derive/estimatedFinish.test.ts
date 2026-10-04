@@ -15,7 +15,7 @@ import { allFixtures, curatedFixture, fixture } from '../roadmap/fixtures/index.
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { boardOf, boardHolds } from '../ui/surfaces/planBoard.ts'
 import { contentTitle } from '../content/stepTitle.ts'
-import { planFinish, planLengthSentence, planWeeks, statedEstimate } from './finish.ts'
+import { assumesAnswersLine, planFinish, planLengthSentence, planWeeks, statedEstimate } from './finish.ts'
 import { fillText } from '../content/render.ts'
 import { app } from '../content/content.ts'
 import { demoTenant } from '../ui/demo.ts'
@@ -106,4 +106,20 @@ test('Connect\'s sample tile counts the weeks the demo Plan\'s ⓘ states, from 
   const tip = planLengthSentence(finish, run.schedule, { steps, forecast: board.forecast, titleOf: board.titleOf })
   assert.ok(tip?.startsWith(fillText('The plan is {weeks} weeks', { weeks })), `the premise: the ⓘ states ${weeks} weeks: ${tip}`)
   assert.equal(demoFacts().weeks, weeks, 'the sample tile states another length than the Plan it opens')
+})
+
+test('the Estimated finish tip says the date assumes the suggested answers while a Define Your Rollout Scope step is open, and stops once they are settled (owner, 2026-10-04)', () => {
+  const ASSUMES = 'This date assumes the suggested answers in Define Your Rollout Scope, and moves as you answer them.'
+  const tipOf = (f: ReturnType<typeof curatedFixture>): string | null => {
+    const r = runFixture(f)
+    const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
+    return planLengthSentence(planFinish(r.steps, r.schedule.cleanup?.end ?? null), r.schedule, { steps: r.steps, forecast: board.forecast, titleOf: board.titleOf })
+  }
+  const open = curatedFixture('demo')
+  assert.ok(runFixture(open).steps.some((s) => s.id.startsWith('s-direction-') && !s.state.satisfied), 'the premise: the demo has an open Direction step')
+  assert.ok(tipOf(open)?.endsWith(ASSUMES), String(tipOf(open)))
+  assert.equal(assumesAnswersLine(runFixture(open).steps), ASSUMES)
+  // Every Direction step settled: the line goes.
+  const settled = runFixture(open).steps.map((s) => (s.id.startsWith('s-direction-') ? { ...s, state: { ...s.state, satisfied: true } } : s))
+  assert.equal(assumesAnswersLine(settled), null)
 })
