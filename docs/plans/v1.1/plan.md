@@ -374,6 +374,21 @@ Unit tests cannot prove these; each needs a real tenant, and most a test user.
 7. **The MFA Readiness CSV opens in Excel** with the new Passkey type column.
 8. **The preview channel:** a `VITE_CHANNEL=preview` build deployed where the owner hosts it,
    with the banner, noindex, and no CNAME.
+9. **Switching tenants:** two real tenants in one browser.
+   - Add the second tenant from the Account menu.
+   - Switch both ways and check each opens on its own Plan.
+   - Sign out of one and check the other stays signed in.
+   - Close the tab, reopen it, and check both rows read "· sign in" and each opens its own
+     stored plan.
+   - Forget one from its row and check the other is untouched.
+10. **Azure Virtual Desktop answered Yes with no group.** Confirm What You Use completes and
+    MFA for Everyone moves. Then name a real group and check 6.7's policy excludes it.
+11. **The Lockdown Kit's PowerShell** creates all three switches Off, pinned to the tenant.
+    Then turn one switch on with the runbook from an emergency account, and stand it down.
+12. **Countries to block outright:** the second policy's location holds exactly the listed
+    countries, and the exclusions group stays online.
+13. **Retire Replaced Policies on a real 4.3:** the new admin policy is On before the row
+    offers to turn the old one off.
 
 ## 9. The overnight build (2026-10-03/04, owner's go-ahead: "you decide")
 Built on `v1.1` by parallel agents and integrated one item at a time. The full preflight passed
