@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
-  "rail": "Configure passkey protections",
+  "rail": "Prepare affected passkeys",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -16,6 +16,10 @@
     {
       "label": "Passkey registration",
       "state": "Review required"
+    },
+    {
+      "label": "Existing passkeys affected",
+      "state": "1 user has a passkey that loses access"
     },
     {
       "label": "Passkey protections",
