@@ -32,7 +32,7 @@ export const DORMANT_STEP_ID = 's-check-dormant-accounts'
 type DormantWords = {
   taskTitle: string
   keep: { label: string; instruction: string; noSignIn: string; lastSignIn: string; kept: string }
-  procedure: { list: string; account: string; noSignIn: string; lastSignIn: string; each: string; choices: string[]; keepWithoutPicker: string; scan: string }
+  procedure: { list: string; account: string; syncedAccount: string; syncedChoice: string; noSignIn: string; lastSignIn: string; each: string; choices: string[]; keepWithoutPicker: string; scan: string }
 }
 type AdminValues = { name: string; newUpn: string; displayName: string; upn: string; everyday: string; mail: string; role: string }
 type AdminWords = {
@@ -67,10 +67,16 @@ export function dormantTasksOf(step: Step, ctx: StepVarContext): EmergencyTaskPr
   const open = (step.dormantChoices ?? []).filter((row) => !row.kept)
   const labels = personLabels(ctx.snapshot.users, { address: true })
   const accountOf = (id: string, name: string): string => clean(labels.get(id) ?? name)
-  const rows = open.map((row) => fillText(P.account, { account: accountOf(row.id, row.name), signIn: lastSignInWords(row.lastSignIn, P) }))
+  // An account synced from on-premises Active Directory is disabled there: the
+  // next sync undoes an Entra change (v1.1 T1-3). The scan's users read holds
+  // onPremisesSyncEnabled; only a true reading marks an account synced.
+  const synced = new Set(ctx.snapshot.users.filter((u) => u.onPremisesSyncEnabled === true).map((u) => u.id))
+  const rows = open.map((row) => fillText(synced.has(row.id) ? P.syncedAccount : P.account, { account: accountOf(row.id, row.name), signIn: lastSignInWords(row.lastSignIn, P) }))
+  const choices = (step.dormantChoices ?? []).length > 0 ? P.choices : [...P.choices.slice(0, -1), P.keepWithoutPicker]
+  const anySynced = open.some((row) => synced.has(row.id))
   const steps = [
     ...(rows.length > 0 ? [[fillText(P.list, { n: rows.length }), ...rows.map((row) => `- ${row}`)].join('\n')] : []),
-    [P.each, ...((step.dormantChoices ?? []).length > 0 ? P.choices : [...P.choices.slice(0, -1), P.keepWithoutPicker]).map((choice) => `- ${choice}`)].join('\n'),
+    [P.each, ...(anySynced ? [choices[0], P.syncedChoice, ...choices.slice(1)] : choices).map((choice) => `- ${choice}`)].join('\n'),
     P.scan,
   ]
   const task: EmergencyAccountTask = {

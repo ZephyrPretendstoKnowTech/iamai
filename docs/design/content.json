@@ -4345,6 +4345,9 @@
       "procedure": {
         "list": "Dormant accounts ({n}):",
         "account": "{account} · {signIn}",
+        "$commentSynced": "v1.1 T1-3: an account synced from on-premises Active Directory (onPremisesSyncEnabled) is disabled there; an Entra change is undone by the next sync. Its line says synced, and the synced choice follows the Entra one only where an open account is synced.",
+        "syncedAccount": "{account} · {signIn} · synced from Active Directory",
+        "syncedChoice": "Not needed and synced from Active Directory: disable it in Active Directory instead, not in Entra. In **Active Directory Users and Computers**, right-click the account and select **Disable Account**. Entra shows it disabled after the next sync; a change made in Entra is undone by that sync.",
         "noSignIn": "no sign-in on record",
         "lastSignIn": "last signed in {date}",
         "each": "For each account:",
