@@ -56,7 +56,7 @@ touched.
 | 8 | **Scripts.** `pin-baseline.ts <id> <commit>`; compile-implementation-content, walk and translator-dump loop over the registry. | S |
 | 9 | **Tests.** A second small curated fixture baseline, a baseline dimension on step snapshots, and registry lookups instead of direct JSON imports (about 16 test files). | M |
 
-Phase B, in the v2.0 week: pin the second baseline, item 7's content for its policies, and
+Phase B, once a second baseline is chosen: pin it, item 7's content for its policies, and
 item 6.
 
 v3.0 builds on the same pieces:
@@ -64,41 +64,27 @@ v3.0 builds on the same pieces:
 - the upload path (`loadUploadedBaseline`, switched off on Connect today) reads it, together
   with an interpretation step for the person's own groups and locations.
 
-## The second baseline: recommended, Joey Verlinden's Conditional Access Baseline
-<https://github.com/j0eyv/ConditionalAccessBaseline>
-- **Why this one:**
-  - **Licence:** MIT ("Copyright (c) 2025 j0eyv"). It can be pinned and redistributed with
-    the notice kept.
-  - **Format:** Graph JSON, one file per policy (IntuneManagement exports), plus
-    `MigrationTable.json`, which maps the author's object ids to names. That suits the
-    interpretation step IAMAI already runs.
-  - **Maintenance:** 36 policies, seven dated releases since April 2024 (latest 2026.6.1,
-    2026-06-11), commits in August 2026, and issues answered.
-  - **It differs from Jon's.** It is persona-based (Global, Admins, Internals, ServiceAccounts,
-    Guests, Agents), each policy has its own exclude group, and there is a break-glass group.
-- **To settle when pinning:**
-  - Six policies (CA002, CA100, CA105, CA201, CA400, CA501) carry a Microsoft built-in
-    `templateId`. Against the owner rule, keep or leave out?
-  - Joey's tenant id and object ids become placeholders before anything is committed (the
-    tenant guard would refuse them anyway).
-  - 31 policies are exported On, and his allowed countries default to BE/LU/NL. IAMAI's
-    report-only-first rollout and its countries question already govern both.
-- **Fallback:** Kenneth van Surksum's 2025.10 baseline. It has Graph JSON, report-only
-  defaults and a third, category-based philosophy, but no licence, so it needs his written
-  permission first.
-- **Not a policy source:**
-  - Claus Jespersen's framework is Microsoft-owned guidance, which fails the rule's spirit.
-  - DCToolbox is unlicensed, unmaintained, and Jon's naming comes from it.
-  - **CISA ScubaGear (CC0)** could later tag each step with the controls it meets
-    ("meets MS.AAD.3.1"). Optional, and a check layer only.
-  - CIS is CC BY-NC-SA, so it may only be cited by control number.
+## Other baselines: research only (owner, 2026-10-04)
+Jon's baseline comes first; a second one is a later decision. Until then this is a list of
+options, not a choice. `docs/plans/v2.0/baseline-options.md` holds the research: MVP and
+community authors, licence, format, maintenance and philosophy.
 
 ## Owner decisions
 - [ ] **Jon's licence.** Jon's repository has no LICENSE file, so all rights are reserved
   unless he has said otherwise. The repo records no permission. Ask Jon for written permission
   or an MIT licence on his repository before v2.0 puts a second author beside him.
-- [ ] The second baseline: Joey Verlinden (recommended).
-- [ ] Joey's six template-derived policies: keep them as his curated choice, or leave them out.
-- [ ] What switching baseline does to a tenant's plan: start fresh (the old plan saved to a
-  plan file first), or keep one plan per tenant and baseline (an IndexedDB version change).
-- [ ] Phase A on its own branch, off `v1.1`, so tomorrow's release is untouched.
+- [x] No second baseline chosen yet; research only (2026-10-04).
+- [x] Phase A on its own branch, `v2.0-prep`, off `v1.1` (2026-10-04).
+- [ ] Switching baseline: keep one plan per tenant and baseline (owner asked "why not keep
+  both, like Inforcer?"; proposed below), with one baseline deploying at a time.
+
+### Keeping both plans (proposal)
+- **Tenant facts stay shared.** The Direction answers, emergency accounts, service accounts
+  and office network describe the tenant, whichever baseline reads them.
+- **Plan records are per baseline.** Skips, accepted deviations, observations, completion
+  and source-reference answers are each keyed by the baseline they were made against.
+- **No database version change.** The `plan` record stays keyed by tenant, and holds one
+  plan per baseline inside it. A record in today's shape is read as Jon's.
+- **One baseline deploys at a time.** Two baselines' creates would put overlapping policies
+  in one tenant (two "MFA for everyone"), so the other plan is for comparing. The policy tag
+  on what IAMAI creates carries the baseline, so neither plan claims the other's policies.
