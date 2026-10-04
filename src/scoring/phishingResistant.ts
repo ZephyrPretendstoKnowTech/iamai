@@ -511,8 +511,9 @@ export function platformCredentialAllowed(p: PasskeyPolicy): Verdict {
  * Whether the tenant's current passkey settings let this model and storage sign in
  * (`use`, a credential already held) or register (`register`, one to set up).
  * Attestation is enforced only at registration (Microsoft Learn: users who
- * registered without it aren't blocked from sign-in when it is turned on later);
- * key restrictions apply to both. A Windows Hello passkey registers only where
+ * registered without it aren't blocked from sign-in when it is turned on later),
+ * except that it allows device-bound passkeys only, so a synced one stops at
+ * sign-in; key restrictions apply to both. A Windows Hello passkey registers only where
  * an allow list names it, and never under enforced attestation.
  */
 export function passkeyAllowed(p: PasskeyPolicy, aaguid: string | null, passkeyType: string | null = null, purpose: 'use' | 'register' = 'use'): Verdict {
@@ -527,7 +528,12 @@ function allowedBySettings(p: PasskeyPolicy, aaguid: string | null, passkeyType:
   if (!p.read) return 'unknown'
   if (p.enabled === false) return 'no'
   const hello = aaguid !== null && WINDOWS_HELLO_AAGUIDS.includes(aaguid.toLowerCase())
-  if (purpose === 'register' && p.attestation === true && (hello || /synced/i.test(passkeyType ?? ''))) return 'no'
+  // With attestation enforced only device-bound passkeys are allowed, and a synced one
+  // already held stops signing in too (Microsoft Learn, passkey profiles; owner,
+  // 2026-10-03), as the Plan reads it (roadmap/passkeyCompatibility.ts). The sample's
+  // follow-up scan called the synced passkey 1.3 had just stopped "Allowed now".
+  if (p.attestation === true && /synced/i.test(passkeyType ?? '')) return 'no'
+  if (purpose === 'register' && p.attestation === true && hello) return 'no'
   if (purpose === 'register' && hello && p.restriction !== 'allow') return p.restriction === null ? 'unknown' : 'no'
   if (p.restriction === 'unrestricted') return p.enabled === true ? 'yes' : 'unknown'
   if (p.restriction === null) return 'unknown'

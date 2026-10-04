@@ -484,3 +484,15 @@ test('item 11: a Mac’s Platform SSO credential is a method, a macOS "Windows H
   const row = { user: { id: 'me', displayName: 'Me' }, kind: 'person', active: true, state: held.state, explained: null, admin: false, guest: false, readiness: held, methods: held.methods, viability: null } as unknown as Parameters<typeof methodsCell>[0]
   assert.equal(methodsCell(row).main, (pages.readiness as unknown as { methods: { platformCredential: string } }).methods.platformCredential)
 })
+
+test('a synced passkey already held stops under settings that enforce attestation, as the Plan reads it; a device-bound one keeps working (DEMO-SP)', () => {
+  // The sample's follow-up scan called the synced passkey Configure Passkey
+  // Authentication had just stopped "Allowed now": attestation was read as a
+  // registration rule only. With it enforced only device-bound passkeys are allowed.
+  const ICLOUD = 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd'
+  const enforced = { read: true, enabled: true, selfService: true, attestation: true, restriction: 'unrestricted' as const, aaguids: [] }
+  assert.equal(passkeyAllowed(enforced, ICLOUD, 'synced', 'use'), 'no')
+  assert.equal(passkeyAllowed(enforced, ICLOUD, 'synced', 'register'), 'no')
+  assert.equal(passkeyAllowed(enforced, AUTHENTICATOR_AAGUIDS[0], 'deviceBound', 'use'), 'yes', 'a device-bound passkey registered before attestation keeps signing in')
+  assert.equal(passkeyAllowed({ ...enforced, attestation: false }, ICLOUD, 'synced', 'use'), 'yes', 'the auto-enabled default profile allows it')
+})
