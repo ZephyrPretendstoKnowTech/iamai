@@ -26,6 +26,10 @@
       "state": "Prerequisite · To do"
     },
     {
+      "label": "Prerequisites",
+      "state": "Countries left out"
+    },
+    {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
     },

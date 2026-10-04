@@ -26,6 +26,10 @@
       "state": "Needs Correction"
     },
     {
+      "label": "Prerequisites",
+      "state": "Countries left out"
+    },
+    {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
     },
