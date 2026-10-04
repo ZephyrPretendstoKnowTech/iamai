@@ -1472,7 +1472,13 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     .map((x) => fillText(x, ex))
   // A manual task keeps its actual completion criteria while prerequisites wait.
   // A generic policy hold must not replace, for example, proof of a passkey sign-in.
-  if (cs?.kind !== 'policy' && own.length > 0) return own
+  // A step that makes policies from the baseline (Prepare the Lockdown Kit) and waits
+  // on a source reference nobody has answered says the answer first, as every
+  // step waiting on one does (doneForReason).
+  if (cs?.kind !== 'policy' && own.length > 0) {
+    const unanswered = !step.state.satisfied && (step.action.missing ?? []).some((m) => waitKindOf(m) === 'referenceUnresolved')
+    return unanswered ? [fillText(CONTRACT.doneMissingDecision, { tenant }), ...own] : own
+  }
   if (step.state.satisfied && step.state.condition !== 'needs-decision') {
     // A rollout that finished short of its own readiness keeps the step's own end
     // state, because that is the half of it that is not true yet: the admin policy
