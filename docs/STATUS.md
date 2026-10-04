@@ -126,6 +126,8 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
 - Policy matching: build new, retire old (2026-09-27). A step will create the baseline's
   policy beside a tenant policy it did not write, and Cleanup retires the old one once the
   new one is On. The pilot is 4.3 in Round 5; until it ships, steps correct in place.
+  Built on `v1.1` (2026-10-04): 4.3 builds beside and Retire Replaced Policies retires the
+  old; every other step still corrects in place.
 - New policies take the baseline's own names; renames live in 8.2 Align Policy Names
   (2026-09-26).
 - Implementation Tasks show the whole procedure in every state. Risk is named in Tasks

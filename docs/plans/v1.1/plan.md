@@ -433,6 +433,22 @@ on the integrated branch, and CI ran on each push. Snapshot moves are in their o
   the demo footer is about 23 sentences and 358 words against 16 and 260.
 - **4.3's JSON and PowerShell** do not carry the session correction, by design (the person's
   correction). Change it or keep it.
-- **Unreachable name-correction modules** remain in other policy packages besides 4.3; a
-  cleanup, not a defect.
-- **The policy-matching pilot on 4.3 (T4-PM):** see its own entry below when it lands.
+- **Named-location name modules:** `name.canonical` stays in the trusted-location step and
+  the countries location task. 8.2 renames policies, not locations; removing them is a
+  separate call.
+- **The calendar books 4.3's create before Emergency Access is settled,** as it already does
+  for every fresh tenant's waiting creates (small, hostile, getiamai; Basic Sign-ins too).
+  Fixing it reaches every step.
+
+**Done after the first report**
+- **The policy-matching pilot on 4.3 (T4-PM):** `0b2c21ee`, `14617561` and the On wording.
+  - 4.3 never edits a tenant's own admin policy: it builds the baseline's beside it, in
+    Report-only, through 3.8, then turns it on.
+  - The new Cleanup row, Retire Replaced Policies, turns the old ones off (or keeps them with a
+    reason) once the new one is On. It is held until then: the pilot's review found and fixed
+    a path where the old policy could be retired while the new one was Off.
+  - Every other policy step still corrects in place.
+  - On a tenant like the owner's, 4.3 now reads as a new create.
+- **PKG-NAMES** `cee6de02`: the unreachable name-correction modules leave twelve policy
+  packages.
+- **1.3's card** names a passkey's type in words, before its identifier (`15a090dd`).
