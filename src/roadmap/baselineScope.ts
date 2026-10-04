@@ -8,7 +8,6 @@
 // Pure: no DOM, no network.
 import goalsData from '../../data/goals.json' with { type: 'json' }
 import { steps } from '../content/content.ts'
-import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { GoalMap } from './goalMap.ts'
 
 type ContentStep = { id: string; kind?: string; mergesGoals?: string[] }
@@ -19,7 +18,7 @@ const GOAL_IDS = new Set((goalsData as { goals: { id: string }[] }).goals.map((g
  * merged goals) the baseline does not implement. Their strings are exempt from
  * the every-key-is-used check.
  */
-export function absentStepIds(map: GoalMap = PINNED_GOAL_MAP): string[] {
+export function absentStepIds(map: GoalMap): string[] {
   const mapped = new Set(Object.keys(map))
   const out: string[] = []
   for (const s of steps as unknown as ContentStep[]) {

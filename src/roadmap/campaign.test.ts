@@ -2,6 +2,7 @@
 // whenever any enabled user still has to be set up, and the Overview, the
 // blocked-step reasons and the pace all read from that one number. This
 // fails if the Overview says no campaign is needed while such a user exists.
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureBaseline, fixtureSnapshot } from '../testing/uiSnapshot.ts'
@@ -31,7 +32,7 @@ function plan(snapshot: TenantSnapshot) {
   const baseline = fixtureBaseline()
   const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
   const viability = buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability)
-  const coverage = computeCoverage({
+  const coverage = computeCoverage({ goalMap: PINNED_GOAL_MAP,
     snapshot,
     tenantPolicies: snapshot.config.caPolicies?.rows ?? [],
     baselinePolicies: baseline.pkg.policies,
@@ -39,7 +40,7 @@ function plan(snapshot: TenantSnapshot) {
     strengths,
     groupMembers: new Map(),
   })
-  const { steps, schedule } = generateRoadmap({
+  const { steps, schedule } = generateRoadmap({ goalMap: PINNED_GOAL_MAP,
     planId: 'campaign-test',
     coverage,
     snapshot,

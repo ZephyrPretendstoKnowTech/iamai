@@ -1,5 +1,6 @@
 // intents.md §12 — the required cases. Fixtures are authored, never
 // copied tenant data.
+import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { CATALOGUE, computeCoverage } from './coverage.ts'
@@ -87,7 +88,7 @@ const mergeConditions = (over: P): P => {
 }
 
 function run(tenantPolicies: P[], over: Partial<CoverageInput> = {}) {
-  return computeCoverage({
+  return computeCoverage({ goalMap: PINNED_GOAL_MAP,
     snapshot: mkSnapshot(),
     tenantPolicies,
     baselinePolicies: [],

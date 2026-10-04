@@ -23,9 +23,9 @@ export type BaselineResult = {
    * The goal map of this baseline (walk-51 item 9): which goals it holds and the
    * policy that stands for each. The pinned baseline's is stored in pinned.json;
    * an uploaded package has no stored map, so it is built once at load with the
-   * pin-time rule (goalMap.ts). Absent means the pinned map.
+   * pin-time rule (goalMap.ts). Every loader sets it (v2.0 prep, item 3).
    */
-  goalMap?: GoalMap
+  goalMap: GoalMap
 }
 
 /** A curated baseline's index under the name the product shows (registry.ts). */

@@ -4,6 +4,7 @@
 // people are one set — asserted across the consumers that read them, on the demo
 // (both snapshots) and on live-shaped tenants: an unconfirmed Breakglass, a
 // confirmed group that is gone, a partial reading with one plausible group.
+import { PINNED_GOAL_MAP } from './roadmap/goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from './roadmap/fixtures/index.ts'
@@ -33,7 +34,7 @@ import type { Step } from './roadmap/types.ts'
 const sorted = (ids: readonly string[]): string[] => [...ids].sort()
 
 function coverageOf(f: Fixture, mapping: MappingState, exclusionsGroupId: string | null) {
-  return computeCoverage({
+  return computeCoverage({ goalMap: PINNED_GOAL_MAP,
     snapshot: f.snapshot,
     tenantPolicies: f.snapshot.config.caPolicies?.rows ?? [],
     baselinePolicies: f.baseline.policies,

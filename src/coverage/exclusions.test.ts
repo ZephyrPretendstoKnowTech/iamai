@@ -1,6 +1,7 @@
 // ux-review-05 §1 and §4, prompt 22 §1 and §3: answering Setup must never
 // lower coverage for an exclusion the answers themselves justify, and the
 // admin population is one set everywhere.
+import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureBaseline, fixtureSnapshot } from '../testing/uiSnapshot.ts'
@@ -33,7 +34,7 @@ function tenantWithExclusionGroup(): { snapshot: TenantSnapshot; groups: GroupMe
 
 function coverage(snapshot: TenantSnapshot, groups: GroupMembers, mapping?: { breakGlassUsers: string[]; exclusionGroups: Record<string, string> }) {
   const baseline = fixtureBaseline()
-  return computeCoverage({
+  return computeCoverage({ goalMap: PINNED_GOAL_MAP,
     snapshot,
     tenantPolicies: snapshot.config.caPolicies?.rows ?? [],
     baselinePolicies: baseline.pkg.policies,
@@ -89,12 +90,12 @@ test('one admin population: Findings, step populations, readiness and the admin 
   const viability = buildViabilityInputs(s, s.asOf).map(scoreMfaViability)
   const baseline = fixtureBaseline()
   const strengths = buildStrengthLookup(s.config.authStrengths?.rows ?? [])
-  const report = computeCoverage({ snapshot: s, tenantPolicies: s.config.caPolicies?.rows ?? [], baselinePolicies: baseline.pkg.policies, baselineUnusable: [], strengths, groupMembers: new Map() })
+  const report = computeCoverage({ goalMap: PINNED_GOAL_MAP, snapshot: s, tenantPolicies: s.config.caPolicies?.rows ?? [], baselinePolicies: baseline.pkg.policies, baselineUnusable: [], strengths, groupMembers: new Map() })
   const adminGoal = report.results.find((r) => r.goal.id === 'admins-phishing-resistant')
   assert.ok(adminGoal)
   assert.equal(adminGoal.expectedCount, admins.size, 'Findings counts the same admins')
   assert.equal(resolvePopulation({ kind: 'coreAdmins' }, s).ids.size, admins.size)
-  const { steps } = generateRoadmap({ planId: 'p', coverage: report, snapshot: s, baseline: baseline.pkg, baselineAuthor: null, mapping: emptyMappingState(s.tenantId), viability, strengths })
+  const { steps } = generateRoadmap({ goalMap: PINNED_GOAL_MAP, planId: 'p', coverage: report, snapshot: s, baseline: baseline.pkg, baselineAuthor: null, mapping: emptyMappingState(s.tenantId), viability, strengths })
   const allUsers = steps.find((x) => x.goalId === 'mfa-all-users')
   assert.ok(allUsers)
   assert.equal(allUsers.population.admins, admins.size, 'step populations count the same admins')

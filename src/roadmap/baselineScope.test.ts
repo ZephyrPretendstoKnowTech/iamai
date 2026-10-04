@@ -5,6 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { absentStepIds } from './baselineScope.ts'
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 
 test('the steps absent from this baseline are the unmapped goals\' steps, and a step with a mapped goal is never absent', () => {
   // the steps present in content but absent from this baseline are the five unmapped goals’ steps
@@ -16,14 +17,14 @@ test('the steps absent from this baseline are the unmapped goals\' steps, and a 
     // UserRegistration policy as he confirmed it (baseline/authorCorrections.ts).
     // admin-portals-protected: Jon's Admin Portal block is the lockdown kit's third switch (owner,
     // 2026-10-03), created Off by Prepare the Lockdown Kit, so no goal step holds it.
-    assert.deepEqual(absentStepIds(), ['admin-portals-protected', 'azure-management-mfa', 'mobile-app-protection', 'unmanaged-browser'])
+    assert.deepEqual(absentStepIds(PINNED_GOAL_MAP), ['admin-portals-protected', 'azure-management-mfa', 'mobile-app-protection', 'unmanaged-browser'])
   }
 
   // a step whose goal is mapped is not absent (mergesGoals needs every goal absent)
   {
     // session-lifetime merges all-users-no-persistence (mapped) with byod-persistence, so it
     // is not absent; a fabricated all-unmapped map makes a normally-present step absent.
-    assert.ok(!absentStepIds().includes('session-lifetime'))
-    assert.ok(!absentStepIds().includes('mfa-all-users'))
+    assert.ok(!absentStepIds(PINNED_GOAL_MAP).includes('session-lifetime'))
+    assert.ok(!absentStepIds(PINNED_GOAL_MAP).includes('mfa-all-users'))
   }
 })

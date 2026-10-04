@@ -9,6 +9,7 @@
 // returns its own copy of the steps, schedule and housekeeping, so a skip
 // applied to one derivation never reaches another. A call with overrides is
 // derived afresh and not memoised.
+import { PINNED_GOAL_MAP } from '../goalMap.ts'
 import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { toCoverageMapping } from '../../mapping/store.ts'
@@ -100,7 +101,8 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
     groupMembers: f.groups,
     mapping: toCoverageMapping(f.mapping, exclusionsGroupId),
     facetOverrides: f.mapping.facetOverrides,
-    goalMap: over.goalMap,
+    // The fixtures plan against Jon's map unless a test hands its own (v2.0 prep, item 3: no silent default).
+    goalMap: over.goalMap ?? PINNED_GOAL_MAP,
   })
   // Confirmed service accounts are counted nowhere (target-state §8.1): they
   // leave the viability rows here, exactly as population.ts activePeopleIds leaves them out.
@@ -123,6 +125,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
     // What the fixture's technician recorded on Cleanup (E3), as the app reads it from the plan record.
     cleanupRecord: cleanupRecord(f.checkpoints ?? []),
     ...over,
+    goalMap: over.goalMap ?? PINNED_GOAL_MAP,
   }
   const t1 = performance.now()
   const result = generateRoadmap(input)

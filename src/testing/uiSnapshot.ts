@@ -1,5 +1,6 @@
 // Synthetic tenant for the dev-only component gallery — invented names,
 // no real identifiers. Never used outside DEV builds.
+import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { BaselineResult } from '../ui/baseline.ts'
 import { emptyCapabilities } from '../licensing/capabilities.ts'
@@ -256,5 +257,7 @@ export function fixtureBaseline(): BaselineResult {
     variantSets: [{ intentKey: 'countries', relation: 'variant', policyNames: ['Countries - allow list', 'Countries - block list'] }],
     docs: [],
   } as unknown as BaselineResult['pkg'],
+  // The synthetic package plans against Jon's map, as it always has (v2.0 prep, item 3: named, not defaulted).
+  goalMap: PINNED_GOAL_MAP,
 }
 }

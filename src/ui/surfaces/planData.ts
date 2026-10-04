@@ -456,7 +456,7 @@ export function usePlanData(
     settleRenames(schedule, steps)
     settleForecast(steps, schedule)
     annotateStateReasons(steps)
-    return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: goalMapInUse(baseline.goalMap ?? PINNED_GOAL_MAP, snapshot, blockedCountriesCompanion(baseline.pkg.policies as never, mapping.countriesBlockedOutright)), baselinePolicies: baseline.pkg.policies }
+    return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: goalMapInUse(baseline.goalMap, snapshot, blockedCountriesCompanion(baseline.pkg.policies as never, mapping.countriesBlockedOutright)), baselinePolicies: baseline.pkg.policies }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, firstDeployment, band, freeze, mappingFor, groupsFor])
 

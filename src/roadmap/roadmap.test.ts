@@ -1,4 +1,5 @@
 // roadmap.md §9 — the 8 required cases, authored fixtures only.
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { computeCoverage } from '../coverage/coverage.ts'
@@ -169,7 +170,7 @@ function build(args: {
   const snapshot = args.snapshot ?? mkSnapshot()
   snapshot.config.caPolicies = { status: 'ok', reason: null, rows: args.tenantPolicies ?? [] }
   const strengths = buildStrengthLookup([])
-  const coverage = computeCoverage({
+  const coverage = computeCoverage({ goalMap: PINNED_GOAL_MAP,
     snapshot,
     tenantPolicies: args.tenantPolicies ?? [],
     baselinePolicies: args.baselinePolicies ?? [],
@@ -178,7 +179,7 @@ function build(args: {
     groupMembers: new Map(),
   })
   for (const [i, row] of snapshot.registrationDetails.entries()) { row.isMfaCapable = i < (args.ready ?? 10); row.methodsRegistered = row.isMfaCapable ? ['fido2SecurityKey'] : []; snapshot.authMethods[row.id] = row.isMfaCapable ? [{ kind: 'fido2' }] : [] }
-  const input: RoadmapInput = {
+  const input: RoadmapInput = { goalMap: PINNED_GOAL_MAP,
     planId: PLAN,
     coverage,
     snapshot,

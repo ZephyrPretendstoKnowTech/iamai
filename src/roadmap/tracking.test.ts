@@ -1,6 +1,7 @@
 // Execution tracking over the midflight fixture (roadmap-v2.md §5, §6):
 // detection by tag and by fingerprint, regressions, re-plan in place, plan
 // file v2 migration, the progress map's numbers and the ICS export.
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
@@ -119,7 +120,7 @@ test('midflight: a re-plan after a baseline update keeps every done step, its ev
     } as (typeof updated.policies)[number],
   ]
   const strengths = buildStrengthLookup(f.snapshot.config.authStrengths?.rows ?? [])
-  const coverage = computeCoverage({
+  const coverage = computeCoverage({ goalMap: PINNED_GOAL_MAP,
     snapshot: f.snapshot,
     tenantPolicies: f.snapshot.config.caPolicies.rows,
     baselinePolicies: updated.policies,

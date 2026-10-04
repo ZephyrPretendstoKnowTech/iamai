@@ -1,6 +1,7 @@
 // ux-review-06 §4 and §7, prompt 23 §3 and §6: no user-facing roadmap string
 // carries an id where a name belongs, and every step's counts come from one
 // population.
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureBaseline, fixtureSnapshot } from '../testing/uiSnapshot.ts'
@@ -23,7 +24,7 @@ function plan(): { steps: Step[]; snapshot: ReturnType<typeof fixtureSnapshot> }
   const baseline = fixtureBaseline()
   const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
   const viability = buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability)
-  const coverage = computeCoverage({
+  const coverage = computeCoverage({ goalMap: PINNED_GOAL_MAP,
     snapshot,
     tenantPolicies: snapshot.config.caPolicies?.rows ?? [],
     baselinePolicies: baseline.pkg.policies,
@@ -32,7 +33,7 @@ function plan(): { steps: Step[]; snapshot: ReturnType<typeof fixtureSnapshot> }
     groupMembers: new Map(),
   })
   const mapping = { ...emptyMappingState(snapshot.tenantId), breakGlassUserIds: ['u-4'] }
-  const { steps } = generateRoadmap({
+  const { steps } = generateRoadmap({ goalMap: PINNED_GOAL_MAP,
     planId: 'trust',
     coverage,
     snapshot,

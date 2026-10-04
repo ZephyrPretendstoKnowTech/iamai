@@ -1,6 +1,7 @@
 // Prompt 20 §5: save a plan, forget everything local, load the file back, and
 // every step, Setup answer and checkpoint is restored; an older schema is
 // upgraded rather than refused.
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureBaseline, fixtureSnapshot } from '../testing/uiSnapshot.ts'
@@ -18,7 +19,7 @@ const snapshot = fixtureSnapshot()
 const baseline = fixtureBaseline()
 const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
 const viability = buildViabilityInputs(snapshot, new Date().toISOString()).map(scoreMfaViability)
-const coverage = computeCoverage({
+const coverage = computeCoverage({ goalMap: PINNED_GOAL_MAP,
   snapshot,
   tenantPolicies: snapshot.config.caPolicies?.rows ?? [],
   baselinePolicies: baseline.pkg.policies,
@@ -27,7 +28,7 @@ const coverage = computeCoverage({
   groupMembers: new Map(),
 })
 const generate = (mapping = emptyMappingState(snapshot.tenantId)) =>
-  generateRoadmap({
+  generateRoadmap({ goalMap: PINNED_GOAL_MAP,
     planId: 'plan-rt',
     coverage,
     snapshot,

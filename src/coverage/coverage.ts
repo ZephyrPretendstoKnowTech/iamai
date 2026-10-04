@@ -159,7 +159,7 @@ export type CoverageInput = {
    * evaluates against A, the decided default; B is offered by the step, not
    * demanded by the row (walk-51 item 16). Absent means the pinned map.
    */
-  goalMap?: GoalMap
+  goalMap: GoalMap
 }
 
 /**
@@ -216,7 +216,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const matchedBaseline = new Set<string>()
   // A companion this tenant does not use is not part of its goal (companions.ts).
   // And Jon's NoExclusions countries block joins the countries goal where countries are listed to block outright (v1.1 D4).
-  const goalMap = goalMapInUse(input.goalMap ?? PINNED_GOAL_MAP, snapshot, blockedCountriesCompanion(input.baselinePolicies as never, input.mapping?.countriesBlockedOutright))
+  const goalMap = goalMapInUse(input.goalMap, snapshot, blockedCountriesCompanion(input.baselinePolicies as never, input.mapping?.countriesBlockedOutright))
   const factsByKey = new Map<string, PolicyFacts>()
   input.baselinePolicies.forEach((p, i) => factsByKey.set(policyKey(p as { id?: string | null; displayName: string }), baselineFacts[i]))
   const rawByFacts = new Map<PolicyFacts, unknown>(baselineFacts.map((f, i) => [f, input.baselinePolicies[i]]))

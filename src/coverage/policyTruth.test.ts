@@ -4,6 +4,7 @@
 // never that it carries a similar control. A policy that is the goal's policy but
 // falls short of it is partly in place, never missing. Every case is authored; no
 // tenant data. Policies are told apart by id and by what they do, never by name.
+import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { computeCoverage } from './coverage.ts'
@@ -94,7 +95,7 @@ function policy(id: string, users: P, over: { conditions?: P; grantControls?: P 
 
 /** Coverage with the plan's identities confirmed and empty: nothing is assumed to be an emergency account, and no exclusions group is checked. */
 function cover(tenantPolicies: P[], over: Partial<CoverageInput> = {}) {
-  return computeCoverage({
+  return computeCoverage({ goalMap: PINNED_GOAL_MAP,
     snapshot: snapshot(),
     tenantPolicies,
     baselinePolicies: [],

@@ -44,7 +44,7 @@ import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { stepsForChange } from '../../derive/baselineDiff.ts'
 import type { PolicyChange } from '../../derive/baselineDiff.ts'
-import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
+import { goalMapOf } from '../../roadmap/goalMap.ts'
 import type { ScanRecord } from '../scan/scanRecord.ts'
 import { roleName } from '../../roles.ts'
 import { demoUrl, exitDemoUrl, isDemo } from '../demoMode.ts'
@@ -718,7 +718,8 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage, bus
   // stands behind come through the baseline's goal map, which keys by that same
   // identity (derive/baselineDiff.ts). Absent means the pinned map.
   const policies = baseline?.pkg.policies ?? []
-  const goalMap = baseline?.goalMap ?? PINNED_GOAL_MAP
+  // Nothing loaded yet: the default baseline's map, named (v2.0 prep, item 3).
+  const goalMap = baseline?.goalMap ?? goalMapOf(DEFAULT_BASELINE)
   const stepsFor = (change: PolicyChange): string[] => stepsForChange(change, goalMap)
   const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', pin: baselinePin(baseline), loading: busy, update, updateUnchecked: author.unchecked, stepsFor })
   return (

@@ -317,7 +317,7 @@ export type RoadmapInput = {
    * goal the map does not hold never renders. Absent means the pinned map — the
    * product's, the demo's and the fixtures' baseline alike.
    */
-  goalMap?: GoalMap
+  goalMap: GoalMap
   /**
    * The baseline sources a review found self-contradictory (baselineConflict.ts
    * REVIEWED_SOURCES, none today). Absent means that list; a test hands its own
@@ -1014,7 +1014,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // have no counterpart here, so the groups it targets are left out wherever
   // another policy excludes them, as a person's "none needed" would leave them.
   const companionTargets = (() => {
-    const keys = new Set(unusedCompanionKeys(input.goalMap ?? PINNED_GOAL_MAP, snapshot))
+    const keys = new Set(unusedCompanionKeys(input.goalMap, snapshot))
     if (keys.size === 0) return []
     const source = [...input.baseline.policies, ...pinnedSource(input.baseline.policies)]
     return [...new Set(source.filter((p) => keys.has(policyKey(p))).flatMap((p) => ((p as unknown as { conditions?: { users?: { includeGroups?: string[] } } }).conditions?.users?.includeGroups ?? []).map((g) => g.toLowerCase())))]
@@ -1197,7 +1197,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // A companion this tenant does not use is not part of its goal (coverage/companions.ts),
   // and Jon's NoExclusions countries block is part of the countries goal only
   // where countries are listed to block outright (v1.1 D4): the one map coverage reads.
-  const goalMap = goalMapInUse(input.goalMap ?? PINNED_GOAL_MAP, snapshot, blockedCountriesCompanion(input.baseline.policies as never, mapping.countriesBlockedOutright))
+  const goalMap = goalMapInUse(input.goalMap, snapshot, blockedCountriesCompanion(input.baseline.policies as never, mapping.countriesBlockedOutright))
   const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
   const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
   // The map describes this package when its keys resolve in it (the pinned
