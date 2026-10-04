@@ -161,7 +161,9 @@ test('S1: every member reads the same About sentence on screen, in the export an
     for (const id of RISK_AND_SESSIONS) {
       const b = bodies.get(id)
       if (!b) continue
-      const onScreen = aboutOf(b)
+      // The opened step's About: the content's sentence, then the P2 seats line where seats fall short (v1.1 T1-4).
+      const onScreen = b.contract.why
+      assert.ok(onScreen.startsWith(aboutOf(b)), `${name}/${id}: the About no longer leads with the step's own sentence`)
       assert.ok(onScreen.length > 0, `${name}/${id}: About this Step is empty`)
       const view = views.get(id)!
       assert.equal(view.why, onScreen, `${name}/${id}: the export view's About sentence is not the screen's`)

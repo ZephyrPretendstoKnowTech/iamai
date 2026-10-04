@@ -18,7 +18,7 @@ import { DEVICE_GOALS } from '../roadmap/deviations.ts'
 import { count, list } from '../copy/statements.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Step } from '../roadmap/types.ts'
-import { impactReachOf } from './population.ts'
+import { activePeopleIds, impactReachOf } from './population.ts'
 import { affectedIds } from './whoLine.ts'
 
 /** One line of the group. `goalIds` are the baseline goals it names: one, or each device goal on the shared device line. */
@@ -107,22 +107,26 @@ export function conditionalAccessLicenceLine(snapshot: Pick<TenantSnapshot, 'cap
  * everyone it covers, and Microsoft licenses risk-based Conditional Access per
  * user. Where the tenant's P2 seats (snapshot.capabilities.entraP2, the scan's
  * one licence reading: every SKU whose service plans carry P2) are fewer than
- * the people the step covers, the step says how many seats against how many
+ * the tenant's active people, the step says how many seats against how many
  * people, and that the people without one are not covered by the licence.
  *
- * The people are the step's own count (derive/population.ts impactReachOf, the
- * "Who this touches" reach), guests aside: a guest is licensed by monthly
- * active users, not by a seat. Null wherever the seats cover them, the tenant
+ * The people are the tenant's active people (derive/population.ts
+ * activePeopleIds), guests aside: a guest is licensed by monthly active users,
+ * not by a seat. Not the step's own population: an open policy's words never
+ * move with who its population names (foundationA.test.ts). Null wherever the seats cover them, the tenant
  * holds no P2 at all (the goal is then Not licensed, never in the plan), or the
  * goal needs no P2. Words only: which steps the plan holds does not change.
  */
-export function partialSeatsLine(step: Step, snapshot: Pick<TenantSnapshot, 'capabilities' | 'users'>): string | null {
+export function partialSeatsLine(step: Step, snapshot: TenantSnapshot): string | null {
   const goal = CATALOGUE.find((g) => g.id === step.goalId)
   if (!goal || !goal.implementations.some((i) => i.tier === 'p2')) return null
   const p2 = snapshot.capabilities?.entraP2
   if (!p2?.enabled) return null
   const guests = new Set(snapshot.users.filter((u) => /^guest$/i.test(u.userType ?? '')).map((u) => u.id))
-  const people = affectedIds(impactReachOf(step)).filter((id) => !guests.has(id)).length
+  // The tenant's active people, not the step's own population: the risk policies cover
+  // everyone, and an open policy's words never move with who its population names
+  // (foundationA.test.ts). Guests are licensed by monthly active users, not seats.
+  const people = activePeopleIds(snapshot, snapshot.asOf).filter((id) => !guests.has(id)).length
   if (p2.seats >= people) return null
   return fillText(footer().partialSeats, {
     licence: tierName('p2'),

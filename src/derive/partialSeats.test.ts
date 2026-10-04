@@ -27,16 +27,18 @@ test('each risk step on a tenant with fewer P2 seats than people says how many s
     assert.ok(step, `the premise: the plan carries ${id}`)
     const line = partialSeatsLine(step, f.snapshot)
     assert.ok(line, `${id} says its seats`)
-    assert.match(line, /^Entra ID P2: 140 seats for the [0-9,]+ people this step covers\. Microsoft licenses risk-based Conditional Access per user, so the people without a seat, at least [0-9,]+ people, are not covered by the licence\.$/)
+    assert.match(line, /^Entra ID P2: 140 seats for the [0-9,]+ people who sign in here\. Microsoft licenses risk-based Conditional Access per user, so the people without a seat, at least [0-9,]+ people, are not covered by the licence\.$/)
     // The About sentence carries it after the step's own, on screen and in the export.
     const why = stepContract(step, ctx).why
     assert.ok(why.endsWith(` ${line}`), `${id}: About this Step ends with the seats line`)
     assert.equal(stepExportView(step, ctx).why, why, `${id}: the export says what the screen says`)
   }
-  // The count is the step's own people, guests aside: 234 people on the
-  // user-risk step, of whom 140 hold a seat.
+  // The count is the tenant's active people, guests aside (not the step's own population,
+  // which an open policy's words never move with): 239 on mid, of whom 140 hold a seat.
   const userRisk = run.steps.find((s) => s.id === 's-goal-user-risk-medium')!
-  assert.match(partialSeatsLine(userRisk, f.snapshot)!, /140 seats for the 234 people .* at least 94 people,/)
+  assert.match(partialSeatsLine(userRisk, f.snapshot)!, /140 seats for the 239 people .* at least 99 people,/)
+  // Every risk step says the same count.
+  assert.equal(new Set(RISK_STEPS.map((id) => partialSeatsLine(run.steps.find((s) => s.id === id)!, f.snapshot))).size, 1)
 })
 
 test('no seats line where the seats cover everyone, where the goal needs no P2, or on a full-P2 tenant', () => {
