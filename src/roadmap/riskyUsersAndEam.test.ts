@@ -7,7 +7,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, withExternalMfa } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import type { Fixture } from './fixtures/index.ts'
+import { runFixture, withFoundationSettled, withRecoveryTested } from './fixtures/run.ts'
+import { enforcesOnRun, policyResult, submitsEnforcement } from './operations.ts'
+import { observationsOf } from './tracking.ts'
+import { REPORT_ONLY_STEP_ID } from './reportOnlyBatch.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { STEP_GROUPS } from './stepGroups.ts'
@@ -74,4 +78,42 @@ test('T2-EAM: the method targets All users: the EAM policy is for All users, and
   assert.equal(JSON.stringify([...by.values()]).toLowerCase().includes(EAM_GROUP), false)
   assert.equal(JSON.stringify([...by.values()]).includes('all_users'), false, 'Graph’s method-target id is never written into a policy')
   assert.equal(step.action.sourceReferences?.some((r) => r.id.toLowerCase() === EAM_GROUP) ?? false, false)
+})
+
+test('ENG-2: High-Risk Users in Report-only beside an absent EAM companion is never turned On; the companion is created, and the turn-on waits for both', () => {
+  // No fixture reaches this: the settled mid tenant, an External authentication
+  // method targeting a group the directory holds, and Jon's High-Risk Users
+  // exactly as the plan writes it, created in Report-only yesterday. No EAM policy.
+  const settled = withRecoveryTested(withFoundationSettled(mid()))
+  const groups = new Map(settled.groups)
+  groups.set(EAM_TARGET, { memberIds: [], memberCount: 0, sampled: false, directMembers: 'complete', directMemberIds: [], displayName: 'External MFA users', membershipRule: null, membershipRuleProcessingState: null, mailEnabled: false, securityEnabled: true, groupTypes: [], isAssignableToRole: false, assignedLicenseSkuIds: [] })
+  const f0 = withExternalMfa({ ...settled, groups }, [EAM_TARGET])
+  const first = runFixture(f0).steps.find((s) => s.id === 's-goal-user-risk')!
+  const main = (first.action.resolution?.policies ?? []).find((o) => o.sourceName === MAIN_POLICY)
+  assert.ok(main && main.mode === 'create', 'the premise: the plan creates both')
+  const withRows = (f: Fixture, add: Record<string, unknown>[]): Fixture => {
+    const snapshot = structuredClone(f.snapshot)
+    ;(snapshot.config.caPolicies as { rows: unknown[] }).rows = [...(snapshot.config.caPolicies.rows as unknown[]), ...add]
+    return { ...f, snapshot }
+  }
+  const day = new Date(Date.parse(f0.snapshot.asOf) - 86_400_000).toISOString()
+  const f = withRows(f0, [{ ...structuredClone(main.body), id: 'named-main', state: 'enabledForReportingButNotEnforced', createdDateTime: day, modifiedDateTime: day }])
+  const half = runFixture(f)
+  const step = half.steps.find((s) => s.id === 's-goal-user-risk')!
+  const ops = step.action.resolution?.policies ?? []
+  assert.equal(step.state.lifecycle, 'not-deployed', 'the step reads its least advanced half')
+  assert.equal(ops.some(submitsEnforcement), false, `a half turned On beside a create: ${JSON.stringify(ops.map((o) => [o.mode, o.sourceName, o.body.state ?? o.body]))}`)
+  assert.equal(ops.some(enforcesOnRun), false, 'nothing the step submits enforces')
+  assert.deepEqual(ops.map((o) => [o.mode, o.sourceName, (o.body as { state?: string }).state]), [['create', EAM_POLICY, 'enabledForReportingButNotEnforced']], 'the step creates the companion in Report-only, and nothing else')
+  assert.equal(policyResult(step).kind, 'implementable', 'no empty update withholds the create')
+  assert.deepEqual((step.action.pairMembers ?? []).map((h) => [h.name, h.policyId]), [[MAIN_POLICY, 'named-main'], [EAM_POLICY, null]], 'the half in Report-only is still tracked')
+  assert.ok(half.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)?.reportOnlyBatch?.create.includes('s-goal-user-risk'), '3.8 lists the companion’s create')
+  // The companion created in Report-only as asked: the step is in its report-only week, and the turn-on waits for it.
+  const eam = ops[0]
+  const both = withRows(f, [{ ...structuredClone(eam.body), id: 'named-eam', state: 'enabledForReportingButNotEnforced', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf }])
+  const week = runFixture(both, {}, observationsOf(half.steps)).steps.find((s) => s.id === 's-goal-user-risk')!
+  assert.equal(week.state.lifecycle, 'report-only')
+  const result = policyResult(week)
+  assert.equal(result.kind === 'held' && result.hold, 'observation-incomplete', 'the turn-on waits for the week')
+  assert.deepEqual((result.kind === 'held' ? result.operations : []).map((o) => [o.mode, o.body]), [['update', { state: 'enabled' }], ['update', { state: 'enabled' }]], 'the switch is both halves, once the week is served')
 })

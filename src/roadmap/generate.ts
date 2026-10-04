@@ -2256,6 +2256,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // The goal's own reading of each tenant policy: one below the floor is never
       // turned on by `settleSections`.
       const belowFloor = (policyId: string): boolean => result.candidates.some((c) => c.policyId === policyId && c.meetsFloor === false)
+      // The members of a two-policy step (the guest pair, the user-risk step with
+      // its EAM companion) whose update owes nothing: an empty update is no
+      // operation, and one invalid operation withholds every other
+      // (operations.ts validOperations), so it held back the other half's
+      // Report-only create. An update that writes only what the half already
+      // holds is idle too: a section another goal's policy opened (the everyone
+      // policy's own app exclusions read as apps left out of the guests'
+      // resources) is no difference of the half's.
+      const holds = (patch: unknown, have: unknown): boolean =>
+        patch !== null && typeof patch === 'object' && !Array.isArray(patch)
+          ? have !== null && typeof have === 'object' && Object.entries(patch as Record<string, unknown>).every(([k, v]) => holds(v, (have as Record<string, unknown>)[k]))
+          : JSON.stringify(patch ?? null) === JSON.stringify(have ?? null)
+      const idleHalves = (built: Action, matched: readonly RawPolicy[]): Set<string> =>
+        new Set((built.resolution?.policies ?? []).filter((o) => o.mode === 'update' && (Object.keys(o.body).length === 0 || holds(o.body, matched.find((q) => String(q.id) === o.policyId)))).map((o) => o.memberKey))
       if (ambiguousTarget && changing.length < 2) {
         // Several of the goal's own policies nothing tells apart: the step will not
         // guess which one to rewrite, and it does not create a duplicate beside them.
@@ -2297,20 +2311,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             sections.delete('state')
             built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
           }
-          // A half that owes nothing has no operation: an empty update is no
-          // operation, and one invalid operation withholds every other
-          // (operations.ts validOperations), so it held back the other half's
-          // Report-only create. The half is still tracked, by its policy and
-          // against its whole policy (Action.pairMembers).
-          // An update that writes only what the half already holds is idle too: a
-          // section another goal's policy opened (the everyone policy's own app
-          // exclusions read as apps left out of the guests' resources) is no
-          // difference of the half's.
-          const holds = (patch: unknown, have: unknown): boolean =>
-            patch !== null && typeof patch === 'object' && !Array.isArray(patch)
-              ? have !== null && typeof have === 'object' && Object.entries(patch as Record<string, unknown>).every(([k, v]) => holds(v, (have as Record<string, unknown>)[k]))
-              : JSON.stringify(patch ?? null) === JSON.stringify(have ?? null)
-          const idle = new Set((built.resolution?.policies ?? []).filter((o) => o.mode === 'update' && (Object.keys(o.body).length === 0 || holds(o.body, matched.find((q) => String(q.id) === o.policyId)))).map((o) => o.memberKey))
+          // A half that owes nothing has no operation (idleHalves); it is still
+          // tracked, by its policy and against its whole policy (Action.pairMembers).
+          const idle = idleHalves(built, matched)
           const owing = withTargets.filter((_, i) => !idle.has(pair.halves[i].key))
           if (idle.size > 0 && owing.length > 0) built = buildCreateAction(owing, mapping, planId, stepId, goal.id, { sections })
           action = { ...changesFor(built, sections, owing.find((w) => w.target)?.target?.policy ?? matched[0] ?? null), pairMembers: pairMembersOf(pair) }
@@ -2346,10 +2349,36 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           // turned on if either half is in report-only — a half already on takes
           // `"state": "enabled"` as the no-change it is, and is not left with an
           // empty patch.
+          const found = matched.filter((p): p is RawPolicy => p !== null)
           let built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
-          if (settleSections(sections, built, new Map(matched.filter((p): p is RawPolicy => p !== null).map((p) => [String(p.id), p])), belowFloor)) built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
-          const firstUpdate = matched.find((p) => p !== null) ?? null
-          action = changesFor(built, sections, firstUpdate)
+          if (settleSections(sections, built, new Map(found.map((p) => [String(p.id), p])), belowFloor)) built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
+          // No half is turned on while the other is still to create (ENG-2, the
+          // guest pair's T1-6b rule): High-Risk Users in Report-only beside an
+          // absent EAM companion was offered On beside the companion's create.
+          // The two are read as one step, its least advanced half, so nothing
+          // holds that switch for a report-only week of its own.
+          if (sections.has('state') && withTargets.some((w) => w.target === null)) {
+            sections.delete('state')
+            built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
+          }
+          // A half that owes nothing has no operation (idleHalves), so its empty
+          // update never withholds the other's create; it stays tracked, by its
+          // policy and against its whole policy (Action.pairMembers).
+          const keys = withTargets.map((m, i) => memberKeyOf(m.sourceKey ?? '', i))
+          const idle = idleHalves(built, found)
+          const owing = withTargets.filter((_, i) => !idle.has(keys[i]))
+          let tracked: Action['pairMembers'] | undefined
+          if (idle.size > 0 && owing.length > 0) {
+            const opOf = new Map((built.resolution?.policies ?? []).map((o) => [o.memberKey, o]))
+            tracked = members.map((m, i) => {
+              const op = opOf.get(keys[i])
+              const intent = op ? ((op.mode === 'update' ? op.intent : op.body) as Record<string, unknown> | undefined) ?? null : null
+              return { key: keys[i], name: String(m.displayName ?? m.sourceName), earlierName: i === 0 ? earlier : policyPairNames(earlier, m.sourceName, naming ?? null).b, policyId: matched[i] ? String(matched[i]!.id) : null, ...(intent ? { intent } : {}) }
+            })
+            built = buildCreateAction(owing, mapping, planId, stepId, goal.id, { sections })
+          }
+          const firstUpdate = owing.find((w) => w.target)?.target?.policy ?? found[0] ?? null
+          action = { ...changesFor(built, sections, firstUpdate), ...(tracked ? { pairMembers: tracked } : {}) }
         }
       }
       // Every update empty: the policies it targets already hold each section
