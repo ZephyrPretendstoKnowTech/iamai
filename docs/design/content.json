@@ -1291,7 +1291,7 @@
           "agentBlock": "Blocks AI agent identities, which need Microsoft Entra Agent ID. Not in this release.",
           "$commentExternalMfaRisk": "The external authentication methods companion of the high-risk remediation policy, scoped to the external MFA group. {step} is the high-risk remediation step's title.",
           "externalMfaRisk": "{step} for people who use an external MFA provider such as Duo. Only needed if you use one.",
-          "$commentAdminGroupPasskeys": "Jon's MFA-Passkeys ADM-Users: the admin phishing-resistant requirement aimed at his dynamic group of admins (v1.1 Track 2: stays in the footer). The role-based policy is stronger: a role cannot fall out of a group rule. {step} is that step's title.",
+          "$commentAdminGroupPasskeys": "Jon's group-based admin passkey policy: the admin phishing-resistant requirement aimed at his dynamic group of admins (v1.1 Track 2: stays in the footer). The role-based policy is stronger: a role cannot fall out of a group rule. {step} is that step's title.",
           "adminGroupPasskeys": "Duplicates {step} for a group of admins. The plan targets the admin roles instead, which cover every admin.",
           "$commentEmergencyAccount": "The trusted-locations policy that names one emergency account: IAMAI keeps emergency accounts out of every policy through the exclusions group instead (binding emergency decision). {step} is the emergency access group's title.",
           "emergencyAccount": "Limits one emergency account outside the office network. The plan keeps emergency accounts out of every policy through the exclusions group ({step}).",
