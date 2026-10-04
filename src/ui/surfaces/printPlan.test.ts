@@ -89,7 +89,8 @@ test('a tenant without Entra ID P1 prints the Plan\'s one licence sentence and n
   // is null and micro printed a dated plan with Cleanup instructions: the prop
   // is required, so the page cannot mount the document without the scan, and
   // the page passes the scanned snapshot.
-  assert.ok(/\n\s+tenant: Pick<TenantSnapshot, 'capabilities'>\n/.test(print), 'the document can be mounted without the scan its licence gate reads')
+  // F-180: the same scan carries what the introduction's MFA-today line reads (ui/surfaces/mfaToday.ts).
+  assert.ok(/\n\s+tenant: Pick<TenantSnapshot, 'capabilities'> & MfaTodaySnapshot\n/.test(print), 'the document can be mounted without the scan its licence gate reads')
   assert.equal(mountOf('tenant'), 'tenant={snapshot}', 'the Export page does not hand the printed plan the scan')
 })
 

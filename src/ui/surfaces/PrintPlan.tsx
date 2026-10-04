@@ -23,6 +23,8 @@ import { boardOf } from './planBoard.ts'
 import { BRIEF, briefOf, doesntApplyLinesOf, noPlanLine, recoveryOf } from './printPlan.ts'
 import type { BriefEntry } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { mfaTodayLine } from './mfaToday.ts'
+import type { MfaTodaySnapshot } from './mfaToday.ts'
 
 const C = app.print
 
@@ -98,7 +100,7 @@ export function PrintPlan({
    * The scan's licences, so a tenant IAMAI gives no plan (no Entra ID P1) prints
    * the Plan's one sentence instead of a plan (printPlan.ts noPlanLine).
    */
-  tenant: Pick<TenantSnapshot, 'capabilities'>
+  tenant: Pick<TenantSnapshot, 'capabilities'> & MfaTodaySnapshot
   /** The baseline policies the plan leaves out for reasons other than a licence (derive/notInPlan.ts), so the licence line never reads as the whole baseline (N-008). */
   notInPlanCount?: number
   /** The plan record's saved step decisions (kept for the Export page's one call; the briefing states no decision's contents). */
@@ -140,6 +142,7 @@ export function PrintPlan({
   const doesntApply = doesntApplyLinesOf(steps)
   const notLicensed = notLicensedRows(coverage, goalMap)
   const open = brief.chapters.filter((c) => c.entries.length > 0)
+  const mfaToday = mfaTodayLine(tenant)
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
   // shows only this document, on every route.
@@ -157,6 +160,8 @@ export function PrintPlan({
           {/* The finish only while work is left: statedEstimate is always a date, and a finished plan has no rest to finish. */}
           {brief.counts.ahead > 0 && <> {fillText(BRIEF.finishOn, { date: absoluteDate(estimate) })}</>}
         </p>
+        {/* Who is asked for MFA today, where the scan read that it is nobody or only per-user MFA's accounts (F-180), as the Plan says above its tiles. */}
+        {mfaToday && <p className="brief-mfa-today">{mfaToday}</p>}
         <div className="brief-cards">
           <p>
             <strong>{brief.counts.done}</strong> {BRIEF.cards.done}

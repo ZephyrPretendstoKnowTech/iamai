@@ -125,6 +125,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.descriptionLine',
   // The row's date column for that same step, for the same reason.
   '.pages.plan.heldForReview',
+  // Who is asked for MFA today, above the Plan's tiles and in the briefing (F-180,
+  // ui/surfaces/mfaToday.ts): app-only, and the review page draws no Plan header.
+  '.pages.plan.mfaToday.nobody',
+  '.pages.plan.mfaToday.perUserOnly',
   // The Plan's length tip and Connect's sample tile for a plan that cannot finish
   // yet: the length is the rollout's estimate (derive/finish.ts planWeeks), a
   // state the review page's example plan is not in.

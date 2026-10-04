@@ -1106,6 +1106,11 @@
         "$commentReportOnlyReview": "Under Next (owner, 2026-10-03, his idea of 2026-09-24): the policies whose report-only results are in and can be acted on now, each a link (planBoard.ts reportOnlyToReviewOf).",
         "reportOnlyReview": "Report-only results to review:"
       },
+      "mfaToday": {
+        "$comment": "F-180: above the Plan's tiles and in the printed briefing's introduction, where the scan read every part in full: no Conditional Access policy On, security defaults off, and legacy per-user MFA for every account that can sign in (ui/surfaces/mfaToday.ts). Nothing where any part was not read. perUserOnly where per-user MFA still asks some accounts.",
+        "nobody": "Nobody is asked for MFA today: no Conditional Access policy is on, security defaults are off and per-user MFA is off for everyone.",
+        "perUserOnly": "Only per-user MFA asks for MFA today, on {accounts}: no Conditional Access policy is on and security defaults are off."
+      },
       "howTo": {
         "link": "How to use this plan",
         "$commentIntro": "Where to start, and what can be done at once (owner, roadmap flow V2 decision H): the plan lets every policy that can be written be created in report-only on the same day once Emergency Access and the rollout answers are done, and orders only the turn-on. The All work view reads top to bottom, so this says the creates need not wait for the sections above them, and that a turn-on waits on its own row reading Ready · Turn on (walk list 4.x item 11), never on its section's place: section position gates nothing (V2 research), and a later section's policy can be ready to enforce while an earlier section is on hold. The legend below is the lane words' one explanation; the intro and legend replaced an items list that repeated both.",

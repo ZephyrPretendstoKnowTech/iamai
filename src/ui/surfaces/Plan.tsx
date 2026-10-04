@@ -44,6 +44,7 @@ import { stepById } from '../../content/content.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
+import { mfaTodayLine } from './mfaToday.ts'
 import { BaselineMappings } from './BaselineMappings.tsx'
 import { BASELINE_MAPPINGS_KEY } from '../../roadmap/sourceMappings.ts'
 import { freezeInputOf } from '../../roadmap/schedule.ts'
@@ -432,6 +433,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   }
   const summary = structuralWords.summary
   const licenceLine = conditionalAccessLicenceLine(scan.snapshot)
+  // Nobody, or only per-user MFA, asks for MFA today, where the scan read it all (F-180).
+  const mfaToday = mfaTodayLine(scan.snapshot)
   // A tile closes the open step, and the address with it, as openStep does: a link to that step (the Next line) then opens it again.
   // A tile closes the open step as a place of its own, so Back reopens it (F-051), and the address with it, so the Next link opens that step again.
   const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setTab(TILE_TAB); setFocus(NO_FOCUS); setToggled({}); if (open !== null) visitStep(window.history, null); else if (stepFromPlanHash(window.location.hash) !== null) window.history.replaceState(null, '', '#/plan'); setOpen(null) }
@@ -463,6 +466,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     <section className="surface plan">
       <SaveAlert failed={data.persistence === 'failed'} retry={data.retrySave} />
       <h1>{P.h1}</h1>
+      {mfaToday && <p className="line plan-mfa-today">{mfaToday}</p>}
       {/* Progress, as tiles (owner, 2026-09-11): the generated status sentence
           repeated what the rows below already say and named blockers the board
           names where they are. Why the plan is as long as it is stays one tip away. */}
