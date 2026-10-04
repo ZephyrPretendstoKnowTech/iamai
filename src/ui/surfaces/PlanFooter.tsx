@@ -18,8 +18,8 @@ import type { PlanComputed } from './planData.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { canPutBack, doesntApplyRows } from './planRows.ts'
-import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
-import { notInPlanRows, notInPlanSummary } from '../../derive/notInPlan.ts'
+import { notLicensedLines, notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
+import { notInPlanLines, notInPlanRows, notInPlanSummary } from '../../derive/notInPlan.ts'
 
 type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; doesntApplyScanRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
 const F = (pages.plan as { footer: FooterWords }).footer
@@ -71,19 +71,27 @@ export function PlanFooter({ computed, mapping, nameOf, onPutBack }: { computed:
         <details>
           <summary>{notLicensedSummary(notLicensed)}</summary>
           <ul className="sections">
-            {notLicensed.map((r) => (
-              <li key={r.goalId}>{r.text}</li>
+            {/* One line per licence, its steps under it (owner, 2026-10-04). */}
+            {notLicensedLines(notLicensed).map((l) => (
+              <li key={l.key}>
+                {l.text}
+                {l.steps.length > 0 && (
+                  <ul>
+                    {l.steps.map((t) => <li key={t}>{t}</li>)}
+                  </ul>
+                )}
+              </li>
             ))}
           </ul>
-          <p className="reason">{notLicensedNote(notInPlan.length)}</p>
+          <p className="reason">{notLicensedNote()}</p>
         </details>
       )}
       {notInPlan.length > 0 && (
         <details>
           <summary>{notInPlanSummary(notInPlan)}</summary>
           <ul className="sections">
-            {notInPlan.map((r) => (
-              <li key={r.policy}>{r.text}</li>
+            {notInPlanLines(notInPlan).map((l) => (
+              <li key={l.key} data-policies={l.count}>{l.text}</li>
             ))}
           </ul>
         </details>

@@ -675,10 +675,7 @@
           "re:^.{3,60}$"
         ]
       },
-      "budget": {
-        "sentences": 16,
-        "words": 260
-      },
+      "$commentBudget": "No page budget (owner, 2026-10-04): the footer grows with the policies a tenant cannot use, so a total measured the tenant, not the writing. Each line is held by rules.sentenceMaxWords, and lines sharing a reason or a licence are one line (derive/notInPlan.ts notInPlanLines, derive/notLicensed.ts notLicensedLines).",
       "forbid": [
         "Could not be evaluated",
         "How this tenant is organised",

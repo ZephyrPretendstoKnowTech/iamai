@@ -27,7 +27,7 @@ import { APP_PROTECTION_GOAL, COMPLIANT_DEVICE_GOAL, DEVICE_GOALS, INTUNE_ENROLM
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { readinessFor } from './readiness.ts'
 import { createWaitsOnReadiness } from './operations.ts'
-import { notLicensedRows } from '../derive/notLicensed.ts'
+import { notLicensedLines, notLicensedRows } from '../derive/notLicensed.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { defaultDecisions } from '../ui/surfaces/pickerRows.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
@@ -186,8 +186,9 @@ test('no Intune licence: the device steps are one shared Not licensed line, devi
   const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
   const devices = rows.filter((x) => x.goalId === 'devices')
   assert.equal(devices.length, 1, `one shared line: ${rows.map((x) => x.goalId).join(', ')}`)
-  assert.ok(devices[0].text.includes(String(stepById[COMPLIANT_DEVICE_GOAL]?.title)), 'the shared line names the compliant-device step by its content title')
-  assert.match(devices[0].text, /Require a Fresh Sign-in for Intune Enrollment/)
-  assert.match(devices[0].text, /Intune Plan 1/)
+  const line = notLicensedLines(rows).find((l) => l.key === 'devices')!.text
+  assert.ok(line.includes(String(stepById[COMPLIANT_DEVICE_GOAL]?.title)), 'the shared line names the compliant-device step by its content title')
+  assert.match(line, /Require a Fresh Sign-in for Intune Enrollment/)
+  assert.match(line, /Intune Plan 1/)
   assert.ok(!rows.some((x) => DEVICE_GOALS.has(x.goalId)), 'no device goal has a line of its own')
 })

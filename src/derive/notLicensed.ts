@@ -3,7 +3,8 @@
 // the step's title and the licence it needs — plus the one sentence under the
 // group and the count the print page carries. The licence ladder: the goals a
 // tenant's tier puts out of reach are listed here, never in the plan, and
-// nothing in the plan waits on them; both sentences say a finished plan is the
+// nothing in the plan waits on them. The Plan lists the steps under the licence
+// each needs (notLicensedLines); the print line says a finished plan is the
 // baseline only as far as the licences reach.
 //
 // Pure: no DOM, no network.
@@ -22,9 +23,9 @@ import { activePeopleIds, impactReachOf } from './population.ts'
 import { affectedIds } from './whoLine.ts'
 
 /** One line of the group. `goalIds` are the baseline goals it names: one, or each device goal on the shared device line. */
-export type NotLicensedRow = { goalId: string; goalIds: string[]; title: string; licence: string; text: string }
+export type NotLicensedRow = { goalId: string; goalIds: string[]; title: string; licence: string }
 
-type FooterCopy = { notLicensed: string; notLicensedRow: string; notLicensedNote: string; notLicensedNoteOthers: string; notLicensedDevices: string; partialSeats: string }
+type FooterCopy = { notLicensed: string; notLicensedGroup: string; notLicensedNote: string; notLicensedDevices: string; partialSeats: string }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
 /**
@@ -33,7 +34,6 @@ const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
  * step's where it names one, else the tier the catalogue implementation needs.
  */
 export function notLicensedRows(coverage: CoverageReport, goalMap: GoalMap): NotLicensedRow[] {
-  const P = footer()
   const out: NotLicensedRow[] = []
   for (const r of coverage.results) {
     if (!goalInMap(goalMap, r.goal.id)) continue
@@ -45,7 +45,7 @@ export function notLicensedRows(coverage: CoverageReport, goalMap: GoalMap): Not
     const cs = stepById[r.goal.id] ?? stepById[CONTENT_ALIAS[r.goal.id]]
     const title = cs?.title ?? r.goal.name
     const licence = cs?.licence ?? facetLicence ?? tierName(r.goal.implementations[0]?.tier ?? '')
-    out.push({ goalId: r.goal.id, goalIds: [r.goal.id], title, licence, text: fillText(P.notLicensedRow, { stepTitle: title, licence }) })
+    out.push({ goalId: r.goal.id, goalIds: [r.goal.id], title, licence })
   }
   // No Intune licence (E2): the compliant-device, app-protection and
   // Intune-enrolment steps are one shared line, never three, and nothing asks
@@ -55,8 +55,29 @@ export function notLicensedRows(coverage: CoverageReport, goalMap: GoalMap): Not
     const steps = list(devices.map((r) => r.title))
     const first = out.indexOf(devices[0])
     const rest = out.filter((r) => !DEVICE_GOALS.has(r.goalId))
-    rest.splice(first, 0, { goalId: 'devices', goalIds: devices.map((r) => r.goalId), title: steps, licence: devices[0].licence, text: fillText(P.notLicensedDevices, { steps }) })
+    rest.splice(first, 0, { goalId: 'devices', goalIds: devices.map((r) => r.goalId), title: steps, licence: devices[0].licence })
     return rest
+  }
+  return out
+}
+
+/** One line of the Plan's group: a licence and the steps it would bring, or the shared device line on its own. */
+export type NotLicensedLine = { key: string; text: string; steps: string[] }
+
+/**
+ * The Plan footer's lines (owner, 2026-10-04): the rows under the licence each
+ * needs, one line per licence in the order the rows first name it, so a tenant
+ * without P2 reads P2 once and not once per step. The shared device line keeps
+ * its own words. The rows themselves, and every count, are unchanged.
+ */
+export function notLicensedLines(rows: readonly NotLicensedRow[]): NotLicensedLine[] {
+  const P = footer()
+  const out: NotLicensedLine[] = []
+  for (const r of rows) {
+    if (r.goalId === 'devices') { out.push({ key: r.goalId, text: fillText(P.notLicensedDevices, { steps: r.title }), steps: [] }); continue }
+    const line = out.find((l) => l.key === `licence:${r.licence}`)
+    if (line) line.steps.push(r.title)
+    else out.push({ key: `licence:${r.licence}`, text: fillText(P.notLicensedGroup, { licence: r.licence }), steps: [r.title] })
   }
   return out
 }
@@ -77,12 +98,12 @@ export function notLicensedSummary(rows: readonly NotLicensedRow[]): string {
 }
 
 /**
- * The one sentence under the group. Where the plan also leaves baseline policies
- * out for other reasons (derive/notInPlan.ts), it says so rather than reading as
- * the whole baseline within the licences (N-008).
+ * The one sentence under the group (owner, 2026-10-04): nothing waits on it. The
+ * group's heading, and In the baseline, not in this plan beside it, already say
+ * the plan stops at the licences; the print page keeps its longer line (N-008).
  */
-export function notLicensedNote(others = 0): string {
-  return others > 0 ? fillText(footer().notLicensedNoteOthers, { n: others }) : footer().notLicensedNote
+export function notLicensedNote(): string {
+  return footer().notLicensedNote
 }
 
 /** The print page's count and sentence (pages.export.printPage1.notLicensed). */

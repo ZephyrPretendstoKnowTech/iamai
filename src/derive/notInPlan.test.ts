@@ -16,7 +16,7 @@ import { externalMethodsEnabled, goalMapInUse } from '../coverage/companions.ts'
 import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
 import { stepById } from '../content/content.ts'
 import { notLicensedRows } from './notLicensed.ts'
-import { notInPlanRows, notInPlanSummary } from './notInPlan.ts'
+import { notInPlanLines, notInPlanRows, notInPlanSummary } from './notInPlan.ts'
 
 const TENANTS: FixtureName[] = ['demo', 'small', 'mid', 'getiamai']
 
@@ -36,7 +36,7 @@ test('every pinned baseline policy is shown somewhere in the plan: a step, Not l
     assert.equal(policies.length, 38, `${name}: the premise, the pinned 38-policy baseline`)
     // Where each surface names a baseline policy, read from what it draws.
     const goalsOf = (p: { id?: string | null; displayName: string }): string[] => Object.entries(PINNED_GOAL_MAP).filter(([, keys]) => keys.includes(p.id ?? p.displayName)).map(([g]) => g)
-    const licenceTexts = notLicensedRows(run.coverage, PINNED_GOAL_MAP).map((r) => r.text)
+    const licenceTexts = notLicensedRows(run.coverage, PINNED_GOAL_MAP).map((r) => r.title)
     const reviewed = new Set(steps.flatMap((s) => (s.baselineReviewSource ? [s.baselineReviewSource.name] : [])))
     const listed = new Map(rows.map((r) => [r.policy, r]))
     const nowhere: string[] = []
@@ -98,6 +98,18 @@ test('each footer row names its own reason: agent blocks, the unused EAM compani
   assert.deepEqual(rows.filter((r) => /\bZTCA\b/.test(r.policy)), [], 'Prepare the Lockdown Kit claims all three switches')
 })
 
+test('policies that read the same reason share one line on the Plan, the count still one per policy (owner, 2026-10-04)', () => {
+  const { rows } = planOf('demo')
+  const lines = notInPlanLines(rows)
+  const agents = rows.filter((r) => /AGENT - BLOCK/.test(r.policy))
+  assert.equal(agents.length, 2, "the premise: Jon's two AGENT blocks are listed")
+  const agentLines = lines.filter((l) => l.text.includes('AGENT - BLOCK'))
+  assert.equal(agentLines.length, 1, 'one line names both')
+  assert.equal(agentLines[0].text, `${agents[0].policy} and ${agents[1].policy}: ${agents[0].reason}`)
+  assert.equal(lines.length, new Set(rows.map((r) => r.reason)).size, 'one line per reason')
+  assert.equal(notInPlanSummary(rows), `In the baseline, not in this plan (${rows.length})`, 'the heading still counts policies')
+})
+
 test('on a P2 tenant with no external MFA method, Jon\'s EAM High-Risk Users is listed, read from the same goal map the plan uses', () => {
   for (const name of TENANTS) {
     const f = { ...fixture(name), baseline: pinnedPackage() }
@@ -108,7 +120,7 @@ test('on a P2 tenant with no external MFA method, Jon\'s EAM High-Risk Users is 
     const rows = notInPlanRows(f.baseline.policies, steps, run.coverage, goalMapInUse(PINNED_GOAL_MAP, f.snapshot))
     const eam = rows.find((r) => /\bEAM\b.*High-Risk/i.test(r.policy))
     assert.ok(eam, `${name}: EAM High-Risk Users is listed`)
-    assert.match(eam.reason, /Only needed if you use one/)
+    assert.match(eam.reason, /Needs Microsoft Entra ID P2, and only matters if you use one./)
     return
   }
   assert.fail('the premise: a fixture draws the user-risk step without an external MFA method')

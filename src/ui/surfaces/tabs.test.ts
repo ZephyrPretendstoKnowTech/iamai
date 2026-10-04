@@ -183,7 +183,7 @@ test('GetIAMAI: the Doesn\'t-apply group holds only answers, and the licence row
   const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
   for (const id of licenceGoals) {
     // The device goals share one Not licensed line (E2), named by their content titles.
-    const row = rows.find((x) => x.goalId === id) ?? (DEVICE_GOALS.has(id) ? rows.find((x) => x.goalId === 'devices' && x.text.includes(String(stepById[id]?.title))) : undefined)
+    const row = rows.find((x) => x.goalId === id) ?? (DEVICE_GOALS.has(id) ? rows.find((x) => x.goalId === 'devices' && x.title.includes(String(stepById[id]?.title))) : undefined)
     assert.ok(row, `${id} is a Not licensed row`)
     assert.ok(/Intune|Workload/.test(row!.licence), `${id}: the licence (${row!.licence})`)
   }

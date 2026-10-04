@@ -28,6 +28,7 @@ import type { Step } from '../roadmap/types.ts'
 import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS } from '../roadmap/stepGroups.ts'
 import { groupTitleOf } from '../ui/surfaces/planBoard.ts'
 import { notLicensedRows } from './notLicensed.ts'
+import { list } from '../copy/statements.ts'
 
 export type NotInPlanRow = { policy: string; reason: string; text: string }
 
@@ -112,6 +113,22 @@ export function notInPlanRows(policies: readonly { id?: string | null; displayNa
       const reason = reasonFor(p, coverage, goalMap)
       return { policy: p.displayName, reason, text: fillText(P.notInPlanRow, { policy: p.displayName, reason }) }
     })
+}
+
+/**
+ * The Plan footer's lines (owner, 2026-10-04): policies that read the same
+ * reason share one line, named together (Jon's two AGENT blocks), so a reason is
+ * said once. The rows, and the group's count of policies, are unchanged.
+ */
+export function notInPlanLines(rows: readonly NotInPlanRow[]): { key: string; text: string; count: number }[] {
+  const P = footer()
+  const groups: { reason: string; policies: string[] }[] = []
+  for (const r of rows) {
+    const g = groups.find((x) => x.reason === r.reason)
+    if (g) g.policies.push(r.policy)
+    else groups.push({ reason: r.reason, policies: [r.policy] })
+  }
+  return groups.map((g) => ({ key: g.policies[0], text: fillText(P.notInPlanRow, { policy: list(g.policies), reason: g.reason }), count: g.policies.length }))
 }
 
 /** "In the baseline, not in this plan (n)": the collapsed group's one line, counted from its rows. */

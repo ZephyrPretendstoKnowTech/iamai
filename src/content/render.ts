@@ -976,7 +976,7 @@ export function renderPages(): string {
       h('Gap suffix on a partly-in-place row') +
       ul([pl.gapSuffix['admin-session']], exT) +
       h('Footer groups') +
-      ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.notLicensedNoteOthers, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT) +
+      ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedGroup + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT) +
       h('In the baseline, not in this plan: the group, then each reason a policy can read') +
       ul([pl.footer.notInPlan + ' — ' + pl.footer.notInPlanRow, ...words(pl.footer.notInPlanReason)], { ...exT, policy: 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations', reason: '[its reason]', step: 'Establish Emergency Access' }),
   )

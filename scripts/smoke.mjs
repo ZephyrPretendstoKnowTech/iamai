@@ -1099,7 +1099,7 @@ try {
   check('Demo: a waiting row names what it waits for, once', reasonLines > 0 && doubled === 0, `reason lines=${reasonLines}, rows with more than one=${doubled}`)
   // The pinned baseline's policies nothing else on the Plan names are listed in the
   // footer, and the heading counts its rows (derive/notInPlan.ts).
-  check('Demo: In the baseline, not in this plan counts its rows', await evaluate(`(() => { const head = 'In the baseline, not in this plan ('; const d = [...document.querySelectorAll('main.page .plan-footer details')].find((x) => ((x.querySelector('summary') || {}).textContent || '').trim().startsWith(head)); if (!d) return false; const n = Number(d.querySelector('summary').textContent.trim().slice(head.length, -1)); return Number.isInteger(n) && n > 0 && d.querySelectorAll('li').length === n })()`))
+  check('Demo: In the baseline, not in this plan counts its rows', await evaluate(`(() => { const head = 'In the baseline, not in this plan ('; const d = [...document.querySelectorAll('main.page .plan-footer details')].find((x) => ((x.querySelector('summary') || {}).textContent || '').trim().startsWith(head)); if (!d) return false; const n = Number(d.querySelector('summary').textContent.trim().slice(head.length, -1)); const named = [...d.querySelectorAll('li')].reduce((t, li) => t + Number(li.dataset.policies || 0), 0); return Number.isInteger(n) && n > 0 && named === n })()`))
 
   // Two steps: open two plan rows, each shows its step body.
   let demoOpened = 0
