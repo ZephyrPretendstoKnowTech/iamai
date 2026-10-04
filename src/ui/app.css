@@ -604,6 +604,24 @@ details > *:not(summary) {
   width: 100%;
   padding: 0 12px;
 }
+/* The tenants in this browser (T3-A): a quiet label, a row per tenant, and the hairline under them. */
+.menu-tenants {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+.menu-tenants .menu-label {
+  margin: 4px 12px;
+  color: var(--secondary-text);
+}
+.menu-tenant {
+  display: flex;
+}
+.menu-tenant .btn {
+  white-space: nowrap;
+}
 
 /* ================= the shell ================= */
 

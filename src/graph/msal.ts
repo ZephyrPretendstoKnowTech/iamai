@@ -86,6 +86,41 @@ export async function signInAnother(): Promise<void> {
 }
 
 /**
+ * The accounts signed in in this tab (MSAL's session-storage cache), for the
+ * Account menu's tenant switcher (T3-A). None before MSAL was ever initialised
+ * here (the dev mock, the demo): asking an uninitialised client throws.
+ */
+export async function signedInAccounts(): Promise<AccountInfo[]> {
+  if (!initialized) return []
+  await initialized.catch(() => null)
+  return msal.getAllAccounts()
+}
+
+/**
+ * Make a signed-in account the active one, so the next token (and so the next
+ * scan) is its: the switcher's move to a tenant whose account is signed in.
+ * The account is looked up in the cache, never trusted as handed in, and one
+ * that is no longer there is refused.
+ */
+export async function openAccount(account: AccountInfo): Promise<void> {
+  await authReady()
+  const cached = msal.getAllAccounts().find((a) => a.homeAccountId === account.homeAccountId && a.tenantId === account.tenantId)
+  if (!cached) throw new Error('Not signed in')
+  msal.setActiveAccount(cached)
+}
+
+/**
+ * Sign in to a tenant stored in this browser whose account is not signed in:
+ * the account picker, with the account that scanned it suggested where it is
+ * known. The redirect comes back to initAuth, which makes the chosen account
+ * active, and the tenant's stored plan is restored for it.
+ */
+export async function signInTo(loginHint: string | null): Promise<void> {
+  await authReady()
+  return msal.loginRedirect({ scopes: GRAPH_SCOPES, prompt: 'select_account', ...(loginHint ? { loginHint } : {}) })
+}
+
+/**
  * Sign out of MSAL (ui/actions.ts signOut has already cleared the app's
  * session and landed on Connect). With an account, Microsoft's logout
  * redirect after the local cache is cleared; without one (never signed in

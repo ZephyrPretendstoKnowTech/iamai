@@ -456,12 +456,16 @@ test('with nobody letting go of the tenant everything lands: a picked baseline o
   }
 })
 
-test('the tenant\'s turn is ended by the two trust actions and by nothing else, and the scan lands only in the turn it began in', () => {
+test('the tenant\'s turn is ended by the two trust actions and the tenant switch and by nothing else, and the scan lands only in the turn it began in', () => {
   // Line endings normalised: a Windows checkout writes the working copy with CRLF.
   const src = readFileSync('src/ui/actions.ts', 'utf8').replace(/\r\n/g, '\n')
   const ends = src.match(/endTenantTurn\(\)/g) ?? []
-  assert.equal(ends.length, 2, 'the turn is ended somewhere other than Sign out and Forget this tenant')
+  assert.equal(ends.length, 3, 'the turn is ended somewhere other than Sign out, Forget this tenant and the tenant switch')
   assert.match(src, /stopScan\(\)\n  endTenantTurn\(\)\n  setSession\(\{ account: null/, 'Sign out no longer ends the turn before it clears the session')
+  // T3-A: the switch ends the turn before it lets go of the tenant being left, and before the next one is restored.
+  assert.match(src, /stopScan\(\)\n  endTenantTurn\(\)\n  setSession\(\{ tenantName: null, lastScan: null, scan: IDLE_SCAN/, 'the switch no longer ends the turn before it clears the session')
+  // And this tab lets go of the left tenant's plan copy, so another tab's save of it cannot mark this tab behind (planSync.ts letGo).
+  assert.match(src, /clearDrafts\(\)\n  clearPlanNotice\(\)\n  if \(leaving\) letGo\(leaving\.tenantId\)/)
   assert.match(src, /endTenantTurn\(\)\n  await baselineSave\.catch\(\(\) => \{\}\)\n  await storeLib\.forgetTenant\(account\.tenantId\)/, 'Forget deletes before it ends the turn, or without waiting for a write it must supersede')
   assert.match(src, /const result = await handle\.done[\s\S]*?if \(!stillThisTurn\(turn\)\) return/, 'a scan that finished after a trust action still lands')
   // Only the action module ends a turn: no surface may decide that for itself.
@@ -539,6 +543,114 @@ test('restoring a tenant with nothing stored shows nothing of the tenant before 
   h2.name.settle('Fabrikam')
   await again
   assert.equal(getSession().lastScan?.at, otherRecord.at)
+})
+
+// T3-A: switching tenants from the Account menu. A tenant whose account is
+// signed in opens in place, in a new turn, from its own stored state; one whose
+// account is not signed in is a sign-in with the account that scanned it suggested.
+const GUID_A = 'aaaaaaaa-0000-4000-8000-000000000001'
+const GUID_B = 'bbbbbbbb-0000-4000-8000-000000000002'
+const GUID_C = 'cccccccc-0000-4000-8000-000000000003'
+const tenantA = { ...account, tenantId: GUID_A } as AccountInfo
+const tenantB = { ...otherAccount, tenantId: GUID_B } as AccountInfo
+const entryB = { tenantId: GUID_B, name: 'Fabrikam', account: tenantB, loginHint: tenantB.username, stored: true, current: false }
+
+test('switching to a signed-in tenant stops the scan, ends the turn, lets go of the tenant being left, makes the account active and restores the chosen tenant', async () => {
+  const calls: string[] = []
+  actions.authLib.openAccount = async (a: AccountInfo) => { calls.push(`open ${a.tenantId}`) }
+  actions.authLib.signInTo = async () => { calls.push('signIn') }
+  const h = hydration()
+  actions.baselineLib.loadPinnedBaseline = async () => pinnedResult
+  setSession({ account: tenantA, tenantName: 'Contoso', lastScan: record, baseline: uploaded })
+  setScan({ ...IDLE_SCAN, state: 'failed', error: 'a scan that failed' })
+  const { tenantTurn, stillThisTurn } = await import('./session.ts')
+  const began = tenantTurn()
+  fakeWindow.location.hash = '#/how'
+  const switching = actions.switchTenant(entryB)
+  // At once: the turn tenant A's work began in is over, and nothing of A is on screen.
+  assert.equal(stillThisTurn(began), false, "work in flight for the tenant being left can still land")
+  assert.equal(getSession().lastScan, null)
+  assert.equal(getSession().baseline, null)
+  assert.equal(getSession().tenantName, null)
+  assert.equal(getSession().scan.error, null)
+  h.snapshot.settle(otherRecord)
+  h.origin.settle(null)
+  h.name.settle('Fabrikam')
+  await switching
+  const s = getSession()
+  assert.deepEqual(calls, [`open ${GUID_B}`], 'MSAL was not told which account is now active, or a sign-in was started')
+  assert.equal(s.account, tenantB)
+  assert.equal(s.tenantName, 'Fabrikam')
+  assert.equal(s.lastScan?.at, otherRecord.at, "tenant B's own stored scan")
+  assert.equal(s.baseline, pinnedResult)
+  assert.equal(fakeWindow.location.hash, '#/plan', 'a tenant with a stored scan lands on its Plan')
+  // A tenant with nothing stored lands on Connect.
+  fresh()
+  const h2 = hydration()
+  setSession({ account: tenantA, lastScan: record })
+  const second = actions.switchTenant(entryB)
+  h2.snapshot.settle(null)
+  h2.origin.settle(null)
+  h2.name.settle(null)
+  await second
+  assert.equal(getSession().lastScan, null)
+  assert.equal(fakeWindow.location.hash, '#/connect')
+})
+
+test('switching to a tenant whose account is not signed in signs in with its hint and lets nothing go first; choosing the open tenant does nothing', async () => {
+  const calls: string[] = []
+  actions.authLib.openAccount = async () => { calls.push('open') }
+  actions.authLib.signInTo = async (hint: string | null) => { calls.push(`signIn ${hint}`) }
+  setSession({ account: tenantA, tenantName: 'Contoso', lastScan: record })
+  const { tenantTurn, stillThisTurn } = await import('./session.ts')
+  const began = tenantTurn()
+  await actions.switchTenant({ ...entryB, account: null, loginHint: 'ops@fabrikam.example' })
+  assert.deepEqual(calls, ['signIn ops@fabrikam.example'])
+  // The redirect leaves the page; until it does, the open tenant is still the open tenant.
+  assert.equal(getSession().lastScan, record)
+  assert.equal(stillThisTurn(began), true)
+  await actions.switchTenant({ ...entryB, tenantId: GUID_A, account: tenantA, current: true })
+  assert.deepEqual(calls, ['signIn ops@fabrikam.example'], 'choosing the open tenant moved')
+  assert.equal(getSession().lastScan, record)
+})
+
+test("an account gone from the cache is not half-opened: the switch rejects and the tenant being left is restored", async () => {
+  actions.authLib.openAccount = async () => { throw new Error('Not signed in') }
+  actions.baselineLib.loadPinnedBaseline = async () => pinnedResult
+  actions.tenantLib.fetchTenantName = async () => 'Contoso'
+  actions.storeLib.loadSnapshotRecord = (async (id: string) => (id === GUID_A ? record : null)) as typeof actions.storeLib.loadSnapshotRecord
+  actions.storeLib.loadBaselineRecord = (async () => null) as typeof actions.storeLib.loadBaselineRecord
+  setSession({ account: tenantA, tenantName: 'Contoso', lastScan: record })
+  await assert.rejects(actions.switchTenant(entryB), /Not signed in/)
+  await flush()
+  assert.equal(getSession().account, tenantA)
+  assert.equal(getSession().lastScan?.at, record.at)
+  assert.equal(getSession().tenantName, 'Contoso')
+})
+
+test("the menu's tenants: the store's tenant ids (the sample's left out), each named from its stored scan once, and the accounts signed in", async () => {
+  const reads: string[] = []
+  actions.storeLib.storedTenantIds = async () => [GUID_A, GUID_C, 'demo-sample-tenant']
+  actions.storeLib.loadSnapshotRecord = (async (id: string) => {
+    reads.push(id)
+    return id === GUID_C ? { snapshot: { config: { organization: { rows: [{ displayName: 'Northwind' }] }, me: { rows: [{ userPrincipalName: 'ops@northwind.example' }] } } }, at: 'x' } : null
+  }) as typeof actions.storeLib.loadSnapshotRecord
+  actions.authLib.signedInAccounts = async () => [tenantA, tenantB]
+  setSession({ account: tenantA, tenantName: 'Contoso' })
+  const rows = await actions.listTenants()
+  assert.deepEqual(rows.map((r) => [r.tenantId, r.name, r.current, r.account?.tenantId ?? null, r.loginHint]), [
+    [GUID_A, 'Contoso', true, GUID_A, tenantA.username],
+    [GUID_B, null, false, GUID_B, tenantB.username],
+    [GUID_C, 'Northwind', false, null, 'ops@northwind.example'],
+  ])
+  assert.deepEqual(reads.sort(), [GUID_A, GUID_C], 'the sample was read, or a stored tenant was not')
+  // A stored scan's name is read once per page; a tenant with no stored scan is read again, so its first scan names it.
+  await actions.listTenants()
+  assert.deepEqual(reads.sort(), [GUID_A, GUID_A, GUID_C])
+  // A store or a library that will not answer leaves the open tenant.
+  actions.storeLib.storedTenantIds = async () => { throw new Error('blocked') }
+  actions.authLib.signedInAccounts = async () => { throw new Error('no msal') }
+  assert.deepEqual((await actions.listTenants()).map((r) => r.tenantId), [GUID_A])
 })
 
 test('R4-37: a scan saved before the PIM capability existed reopens with it, from the licence rows that scan read', async () => {

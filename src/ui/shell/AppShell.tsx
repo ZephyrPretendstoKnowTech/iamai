@@ -21,7 +21,9 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate, absoluteLocal, scanAgeDays, STALE_SCAN_DAYS } from '../../copy/dates.ts'
 import { Button } from '../components/index.ts'
 import { BrandMark } from '../components/Mark.tsx'
-import { forgetTenant, showDemoSnapshot, signOut, stopScan } from '../actions.ts'
+import { forgetTenant, listTenants, showDemoSnapshot, signInAnother, signOut, stopScan, switchTenant } from '../actions.ts'
+import { tenantLabel } from '../tenants.ts'
+import type { TenantEntry } from '../tenants.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { PausedNotice, scanLineText } from '../scan/ScanProgress.tsx'
@@ -140,14 +142,16 @@ function Tab({ href, active, enabled, children }: { href: string; active: boolea
 }
 
 /**
- * The Account menu: Sign out and Forget this tenant (ui/actions.ts); an error
- * renders in the menu, under the button that raised it. Forget deletes the scan
- * and the whole plan on this browser, so it asks first, in the menu: what goes,
- * a way to save the plan file, and Cancel, focused (F-160: one click deleted it all).
+ * The Account menu: the tenants in this browser (T3-A), Add another tenant,
+ * Sign out and Forget this tenant (ui/actions.ts); an error renders in the
+ * menu, under the button that raised it. Forget deletes the scan and the whole
+ * plan on this browser, so it asks first, in the menu: what goes, a way to save
+ * the plan file, and Cancel, focused (F-160: one click deleted it all).
  */
 function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName: string | null }) {
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [tenants, setTenants] = useState<TenantEntry[]>([])
   const ref = useRef<HTMLDivElement>(null)
   // Where focus goes back to: the Account button after Escape, the Forget item after Cancel.
   const accountButton = useRef<HTMLButtonElement>(null)
@@ -158,6 +162,8 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
   const close = (): void => {
     setOpen(false)
     setConfirming(false)
+    // Read afresh on the next open: the open tenant may have changed by then.
+    setTenants([])
   }
   const cancel = (): void => {
     backToForget.current = true
@@ -168,6 +174,17 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
     backToForget.current = false
     forgetItem.current?.focus()
   }, [confirming])
+  // The tenants are read each time the menu opens: a scan, a sign-in or a forget may have changed them.
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    void listTenants().then((t) => {
+      if (live) setTenants(t)
+    })
+    return () => {
+      live = false
+    }
+  }, [open])
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
@@ -205,6 +222,30 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
             </>
           ) : (
             <>
+              {tenants.length > 1 && (
+                <div className="menu-tenants" role="group" aria-labelledby="menu-tenants-label">
+                  <p className="menu-label" id="menu-tenants-label" aria-hidden="true">{SHELL.tenantsLabel}</p>
+                  {tenants.map((t) => {
+                    const name = tenantLabel(t)
+                    return (
+                      <div className="menu-tenant" key={t.tenantId}>
+                        <Button
+                          variant="tertiary"
+                          role="menuitemradio"
+                          aria-checked={t.current}
+                          title={t.current ? undefined : fillText(t.account ? SHELL.tenantSwitchTooltip : SHELL.tenantSignInTooltip, { tenant: name })}
+                          onClick={() => (t.current ? close() : run(switchTenant(t).then(close)))}
+                        >
+                          {t.current ? fillText(SHELL.tenantCurrent, { tenant: name }) : t.account ? name : fillText(SHELL.tenantSignIn, { tenant: name })}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <Button variant="tertiary" role="menuitem" title={SHELL.addTenantTooltip} onClick={() => run(signInAnother())}>
+                {SHELL.addTenant}
+              </Button>
               <Button variant="tertiary" role="menuitem" onClick={() => run(signOut())}>
                 {SHELL.signOut}
               </Button>

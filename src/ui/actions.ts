@@ -12,7 +12,7 @@ import type { ScanHandle } from '../graph/collect/runScan.ts'
 import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { RoleGapError } from '../graph/collect/tokenRoles.ts'
 import type { SectionEvent, WorkerOutMessage } from '../graph/collect/types.ts'
-import { forgetTenant as forgetStored, loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
+import { forgetTenant as forgetStored, loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, storedTenantIds } from '../graph/collect/cache.ts'
 import { mergeMfaHistory, withScanStates } from '../scoring/mfaHistory.ts'
 import { withCurrentCapabilities } from '../licensing/capabilities.ts'
 import { scanStates } from '../derive/readinessProgress.ts'
@@ -20,17 +20,20 @@ import { loadMappingState } from '../mapping/store.ts'
 import * as auth from '../graph/auth.ts'
 import { app } from '../content/content.ts'
 import { isDemo } from './demoMode.ts'
-import { afterScanHref } from './shell/routes.ts'
+import { afterScanHref, PLAN_HREF } from './shell/routes.ts'
+import type { StoredTenant, TenantEntry } from './tenants.ts'
+import { isTenantId, storedTenantOf, switchMove, tenantEntries } from './tenants.ts'
+import { clearPlanNotice } from './surfaces/planChanges.ts'
 import type { ScanRecord } from './scan/scanRecord.ts'
 import type { BaselineResult } from './baseline.ts'
 import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import { IDLE_SCAN, endTenantTurn, getSession, setScan, setSession, stillThisTurn, tenantTurn } from './session.ts'
-import { announceSaved } from './planSync.ts'
+import { announceSaved, letGo } from './planSync.ts'
 
 /** The sign-in library behind the actions (graph/auth.ts). A test replaces these: the real one needs a browser. */
-export const authLib = { signIn: auth.signIn, signInAnother: auth.signInAnother, signOut: auth.signOut }
+export const authLib = { signIn: auth.signIn, signInAnother: auth.signInAnother, signOut: auth.signOut, signedInAccounts: auth.signedInAccounts, openAccount: auth.openAccount, signInTo: auth.signInTo }
 /** The store behind the actions (graph/collect/cache.ts). A test replaces these: the real one needs IndexedDB. */
-export const storeLib = { forgetTenant: forgetStored, saveSnapshotRecord, saveBaselineRecord, loadSnapshotRecord, loadBaselineRecord }
+export const storeLib = { forgetTenant: forgetStored, saveSnapshotRecord, saveBaselineRecord, loadSnapshotRecord, loadBaselineRecord, storedTenantIds }
 /**
  * The tenant's name from the directory (graph/organization.ts), read by sign-in
  * restoration. Loaded on demand, as the collector and the sign-in library are:
@@ -131,6 +134,7 @@ export async function scan(returnTo: string | null = null): Promise<void> {
     result.mfaHistory = withScanStates(result.mfaHistory, result.asOf, scanStates(result, mapping))
     const record: ScanRecord = { snapshot: result, at: new Date().toISOString() }
     setSession({ lastScan: record })
+    storedNames.delete(account.tenantId)
     void storeLib.saveSnapshotRecord(account.tenantId, record)
     if (returnTo !== null) go(afterScanHref(returnTo))
   } catch (e) {
@@ -232,10 +236,81 @@ export async function forgetTenant(): Promise<void> {
   await storeLib.forgetTenant(account.tenantId)
   // Another tab still holding this tenant's plan must not write it back (planSync.ts, F-161).
   announceSaved(account.tenantId, 'replaced')
+  storedNames.delete(account.tenantId)
   setSession({ lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
   // A decision's unapproved changes go with the tenant (directionDrafts.ts; Round 4 review).
   clearDrafts()
   go(CONNECT_HREF)
+}
+
+/**
+ * What each stored tenant's scan names (its organisation, who scanned it), read
+ * once per page load: a stored scan is large, and the switcher only needs those
+ * two lines of it. A tenant with no stored scan is not remembered, so its first
+ * scan names it; a scan stored or a tenant forgotten drops its entry.
+ */
+const storedNames = new Map<string, StoredTenant>()
+
+/**
+ * The Account menu's tenants (T3-A): every tenant this browser holds records
+ * for and every tenant an account is signed in to in this tab, the open one
+ * first (ui/tenants.ts). Never rejects: a store or a sign-in library that will
+ * not answer gives fewer rows, and the open tenant is always one of them.
+ */
+export async function listTenants(): Promise<TenantEntry[]> {
+  const ids = (await storeLib.storedTenantIds().catch(() => [] as string[])).filter(isTenantId)
+  const stored = await Promise.all(
+    ids.map(async (id) => {
+      const known = storedNames.get(id)
+      if (known) return known
+      const record = await storeLib.loadSnapshotRecord<ScanRecord>(id).catch(() => null)
+      const read = storedTenantOf(id, record)
+      if (record) storedNames.set(id, read)
+      return read
+    }),
+  )
+  const accounts = await authLib.signedInAccounts().catch(() => [] as AccountInfo[])
+  const { account, tenantName } = getSession()
+  return tenantEntries(stored, accounts, account, tenantName)
+}
+
+/**
+ * Open another tenant from the Account menu (T3-A, owner D1 2026-10-03). One
+ * tenant is open at a time. A tenant whose account is signed in in this tab is
+ * opened in place: the scan stops, the tenant's turn ends (so nothing still in
+ * flight for the one being left can land), the session lets go of it, MSAL's
+ * active account becomes the chosen one (so the next token and scan are its),
+ * and the chosen tenant's stored state is restored; the page lands on its Plan
+ * when it has a stored scan, else on Connect. A tenant whose account is not
+ * signed in is a sign-in: the account picker, with the account that scanned it
+ * suggested, and the redirect back restores it like any sign-in. Choosing the
+ * open tenant does nothing. Rejects when the library cannot do it; a tenant
+ * whose account has gone from the cache is not half-opened: the one being left
+ * is restored.
+ */
+export async function switchTenant(entry: TenantEntry): Promise<void> {
+  const move = switchMove(entry)
+  if (move.kind === 'stay') return
+  if (move.kind === 'signIn') {
+    await authLib.signInTo(move.loginHint)
+    return
+  }
+  const leaving = getSession().account
+  stopScan()
+  endTenantTurn()
+  setSession({ tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
+  // A decision's unapproved changes and a plan file's notice belong to the tenant being left.
+  clearDrafts()
+  clearPlanNotice()
+  if (leaving) letGo(leaving.tenantId)
+  try {
+    await authLib.openAccount(move.account)
+  } catch (e) {
+    await restoreSession(leaving)
+    throw e
+  }
+  await restoreSession(move.account)
+  go(getSession().lastScan ? PLAN_HREF : CONNECT_HREF)
 }
 
 /**

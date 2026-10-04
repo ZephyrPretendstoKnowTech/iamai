@@ -94,6 +94,18 @@ export function isBehind(tenantId: string | null | undefined): boolean {
   return !!tenantId && behind.has(tenantId)
 }
 
+/**
+ * This tab no longer holds a copy of the tenant's plan (T3-A: the switcher
+ * opened another tenant). Another tab's save of it can leave nothing behind
+ * here, and when the tenant is opened again its plan is read afresh from the
+ * store, so whatever this tab was holding is let go of. Nothing is announced:
+ * no other tab's copy changed.
+ */
+export function letGo(tenantId: string): void {
+  own.delete(tenantId)
+  if (behind.delete(tenantId)) for (const l of listeners) l()
+}
+
 export function subscribeBehind(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)

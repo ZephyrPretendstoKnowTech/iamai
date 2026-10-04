@@ -392,6 +392,33 @@ export async function forgetTenant(tenantId: string): Promise<void> {
   await tx.done
 }
 
+/**
+ * Every tenant id this browser holds a record for, in any store (T3-A: the
+ * Account menu's tenant switcher, and what Forget can reach). Read from the
+ * keys alone: the five stores keyed by tenant id give theirs, and the two keyed
+ * by [tenant id, record id] give each tenant once through their byTenant index.
+ * No value is read and nothing is written. A store that cannot be read gives none.
+ */
+export async function storedTenantIds(): Promise<string[]> {
+  try {
+    const d = await db()
+    const ids = new Set<string>()
+    for (const store of ['snapshot', 'plan', 'mapping', 'baseline', 'evidence-meta'] as const) {
+      for (const key of await d.getAllKeys(store)) ids.add(String(key))
+    }
+    for (const store of ['signin-rows', 'group-members'] as const) {
+      let cursor = await d.transaction(store).store.index('byTenant').openKeyCursor(null, 'nextunique')
+      while (cursor) {
+        ids.add(String(cursor.key))
+        cursor = await cursor.continue()
+      }
+    }
+    return [...ids]
+  } catch {
+    return []
+  }
+}
+
 /** Opens the store once so a blocked upgrade is reported early (App). */
 export async function probeStorage(): Promise<void> {
   await db()

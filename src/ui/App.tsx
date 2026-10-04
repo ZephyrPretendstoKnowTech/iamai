@@ -338,7 +338,8 @@ export function App() {
       {!ready ? (
         app.shell.loading
       ) : (
-        <ErrorBoundary key={route} route={route}>
+        // Keyed by the tenant too: switching tenants (T3-A) draws the page afresh, so no state a page holds of one tenant is shown for another.
+        <ErrorBoundary key={`${route}|${account?.tenantId ?? ''}`} route={route}>
           {mockCrash && <MockCrash />}
           {storageWarning && <Callout kind="warning" title={app.shell.storageBlocked}>{storageWarning}</Callout>}
           {route === 'connect' && (

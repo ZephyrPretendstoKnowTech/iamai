@@ -30,6 +30,21 @@ export async function signInAnother(): Promise<void> {
   return (await lib()).signInAnother()
 }
 
+/** The accounts signed in in this tab, for the tenant switcher (T3-A). */
+export async function signedInAccounts(): Promise<AccountInfo[]> {
+  return (await lib()).signedInAccounts()
+}
+
+/** Make a signed-in account the active one: the switcher's move to its tenant. */
+export async function openAccount(account: AccountInfo): Promise<void> {
+  return (await lib()).openAccount(account)
+}
+
+/** The account picker for a stored tenant whose account is not signed in, with a login hint where one is known. */
+export async function signInTo(loginHint: string | null): Promise<void> {
+  return (await lib()).signInTo(loginHint)
+}
+
 export async function signOut(): Promise<void> {
   return (await lib()).signOut()
 }

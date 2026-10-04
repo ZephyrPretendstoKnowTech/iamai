@@ -64,6 +64,30 @@ test('sign-in waits for MSAL readiness, another account is a fresh picker, and s
   }
 })
 
+// T3-A: the tenant switcher's three calls into MSAL. A redirect cannot run in
+// Node, so each is held at the source: what it asks MSAL for, and what it may
+// not do.
+test('the switcher lists the signed-in accounts, opens one from the cache, and signs in to a stored tenant through the picker', () => {
+  const body = (name: string): string => {
+    const start = src.indexOf(`export async function ${name}`)
+    assert.ok(start >= 0, `${name} is not exported`)
+    return src.slice(start, src.indexOf('\n}', start))
+  }
+  // Listing asks nothing of a client that was never initialised (the demo, the dev mock): that call throws.
+  assert.match(body('signedInAccounts'), /if \(!initialized\) return \[\]\n\s+await initialized\.catch\(\(\) => null\)\n\s+return msal\.getAllAccounts\(\)/)
+  // Opening an account looks it up in the cache, by its home account and tenant, refuses one that is gone, and only then makes it active.
+  const open = body('openAccount')
+  assert.match(open, /await authReady\(\)/)
+  assert.match(open, /msal\.getAllAccounts\(\)\.find\(\(a\) => a\.homeAccountId === account\.homeAccountId && a\.tenantId === account\.tenantId\)/)
+  assert.ok(open.indexOf("throw new Error('Not signed in')") < open.indexOf('msal.setActiveAccount(cached)'), 'an account not in the cache is made active')
+  assert.doesNotMatch(open, /loginRedirect|logout|acquireToken/, 'opening a signed-in account signs in or out')
+  // Signing in to a stored tenant is the picker, with the hint only where one is known.
+  const signIn = body('signInTo')
+  assert.match(signIn, /await authReady\(\)/)
+  assert.match(signIn, /msal\.loginRedirect\(\{ scopes: GRAPH_SCOPES, prompt: 'select_account', \.\.\.\(loginHint \? \{ loginHint \} : \{\}\) \}\)/)
+  assert.doesNotMatch(signIn, /getActiveAccount|getAllAccounts|setActiveAccount/, 'the redirect decides the account, not the cache')
+})
+
 // Permission truth (task Step 1 A). Every user-facing permission disclosure —
 // Connect's consent rows, How's table — is generated from `GRAPH_SCOPES`
 // (src/graph/scopes.ts), and src/ui/permissions.test.ts holds the copy to that

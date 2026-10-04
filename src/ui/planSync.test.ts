@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { announceSaved, isBehind, leavesBehind, LOADED, noteOwn, subscribeBehind } from './planSync.ts'
+import { announceSaved, isBehind, leavesBehind, letGo, LOADED, noteOwn, subscribeBehind } from './planSync.ts'
 import { DEMO_TENANT_ID } from './demoMode.ts'
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 20))
@@ -70,6 +70,26 @@ test('a tab that has loaded but not yet saved is behind any save announced meanw
     await tick()
     assert.equal(isBehind('tenant-3'), true, 'the save landed while this tab was still loading')
     assert.equal(isBehind(DEMO_TENANT_ID), false, 'the sample re-dates itself on every load; two sample tabs never agree')
+  } finally {
+    other.close()
+  }
+})
+
+// T3-A: a tab that switched to another tenant no longer holds the one it left.
+// Another tab's save of it leaves nothing behind here, and a tenant this tab was
+// behind on is not still behind when it is opened again from the store.
+test('a tenant this tab let go of is never behind: another tab saving it changes nothing here', async () => {
+  noteOwn('tenant-4', 'plan', 'plan-A')
+  const other = new BroadcastChannel('iamai-plan')
+  try {
+    other.postMessage({ tab: 'other-tab', tenantId: 'tenant-4', store: 'plan', key: 'plan-B' })
+    await tick()
+    assert.equal(isBehind('tenant-4'), true)
+    letGo('tenant-4')
+    assert.equal(isBehind('tenant-4'), false, 'a tenant opened again is read afresh from the store, so it is not behind')
+    other.postMessage({ tab: 'other-tab', tenantId: 'tenant-4', store: 'plan', key: 'plan-C' })
+    await tick()
+    assert.equal(isBehind('tenant-4'), false, 'a tab holding no copy was left behind')
   } finally {
     other.close()
   }
