@@ -47,6 +47,7 @@ import { boardOf, boardOrderOf } from './planBoard.ts'
 import { planDates } from './stepVars.ts'
 import { announceSaved } from '../planSync.ts'
 import { asksBeforeLoading, holdsOf, loadConfirmText, loadedText } from './planFileLoad.ts'
+import { baselineNamesFrom, planPoliciesOf } from './planPolicies.ts'
 import { noticeForPlan } from './planChanges.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { notInPlanRows } from '../../derive/notInPlan.ts'
@@ -57,7 +58,7 @@ const DASH = String.fromCharCode(0x2014)
 
 // The six cards from pages.export.cards: each a title, one line, and its buttons joined by ' · '.
 type ExportGroups = { plan: string; implementation: string; implementationNote: string; schedule: string; technical: string }
-type ExportPage = { h1: string; intro: string; groups: ExportGroups; cards: Record<'print' | 'calendar' | 'planFile' | 'csv' | 'prompts' | 'bundle', [string, string, string]> }
+type ExportPage = { h1: string; intro: string; groups: ExportGroups; cards: Record<'print' | 'calendar' | 'planFile' | 'csv' | 'prompts' | 'bundle' | 'policies', [string, string, string]> }
 const P = pages.export as unknown as ExportPage
 const buttons = (card: keyof ExportPage['cards']): string[] => P.cards[card][2].split(' · ')
 const G = P.groups
@@ -321,13 +322,21 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         </Card>
       </div>
 
-      {/* Doing the work. The machine artifacts for a policy are on that policy's
-          own step in the Plan, because they are one step's, and the note says so
-          rather than the page implying it exports them for the whole plan. */}
+      {/* Doing the work. Each policy's tabs are on its own step in the Plan; Policies
+          as JSON gathers the ones the plan writes today into one file (F-024). */}
       <details className="export-additional"><summary>Additional Formats</summary>
       <h2>{G.implementation}</h2>
       <p className="reason">{G.implementationNote}</p>
       <div className="export-grid">
+        {/* Every policy the plan writes today, in one file (F-024; owner, 2026-10-04): each step's own operations (planPolicies.ts). */}
+        <Card className="export-card" title={P.cards.policies[0]}>
+          <p className="reason">{P.cards.policies[1]}</p>
+          <p className="actions">
+            <Button variant="secondary" onClick={() => exportDownload(exportName('iamai-policies.json', fileTenant, { id: snapshot.tenantId }), JSON.stringify(planPoliciesOf(board, { tenantId: snapshot.tenantId, tenantName, baselineSource: baseline?.source ?? '', baselinePin: pinOf(baseline), generated: new Date().toISOString(), baselineNamesOf: baselineNamesFrom(c.goalMap, c.baselinePolicies) }), null, 2), 'application/json', unredactedFrom('implementation-artifact'))}>
+              {buttons('policies')[0]}
+            </Button>
+          </p>
+        </Card>
         <Card className="export-card" title={P.cards.prompts[0]}>
           <p className="reason">{P.cards.prompts[1]}</p>
           <p className="actions">

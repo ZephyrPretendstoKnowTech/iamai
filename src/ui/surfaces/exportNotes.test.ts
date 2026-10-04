@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs'
 test('the Doing the work note says where JSON and PowerShell are, without claiming every policy step has them', () => {
   const content = JSON.parse(readFileSync('docs/design/content.json', 'utf8'))
   const note: string = content.pages.export.groups.implementationNote
-  assert.equal(note, "Where a policy step offers JSON or PowerShell, they're in its tabs in the Plan. They belong to one step, so they are not offered here for the whole plan.")
+  // F-024 (owner, 2026-10-04): Policies as JSON gathers the ones written today into one file.
+  assert.equal(note, "Where a policy step offers JSON or PowerShell, they're in its tabs in the Plan. Policies as JSON puts every policy the plan writes today in one file.")
   assert.doesNotMatch(note, /for a policy are on that step/)
 })

@@ -1029,6 +1029,7 @@ export function renderPages(): string {
       exCard('planFile') +
       h(exG.implementation) +
       p(exG.implementationNote, {}, 'sub') +
+      exCard('policies') +
       exCard('prompts') +
       h(exG.schedule) +
       exCard('calendar') +

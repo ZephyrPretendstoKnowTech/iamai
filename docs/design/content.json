@@ -1805,7 +1805,7 @@
         "plan": "The plan",
         "implementation": "Doing the work",
         "$commentImplementationNote": "OWN-X1: only some policy steps carry JSON and PowerShell tabs (9 of 20 on the demo; not 4.4 or 4.3), so the note no longer says every policy has them.",
-        "implementationNote": "Where a policy step offers JSON or PowerShell, they're in its tabs in the Plan. They belong to one step, so they are not offered here for the whole plan.",
+        "implementationNote": "Where a policy step offers JSON or PowerShell, they're in its tabs in the Plan. Policies as JSON puts every policy the plan writes today in one file.",
         "schedule": "Timing",
         "technical": "For another tool"
       },
@@ -1834,6 +1834,12 @@
           "Prompts for your own assistant",
           "One file of prompts, grounded in this plan, for your own assistant. In the file and in each copied prompt, sign-in addresses and object IDs are masked; names are not.",
           "Download every prompt · See the prompts"
+        ],
+        "$commentPolicies": "F-024 (owner, 2026-10-04): every policy step in one file (ui/surfaces/planPolicies.ts), by its Plan number, with the baseline policies it comes from and where it stands; a body only where the step's own tabs hand one over today.",
+        "policies": [
+          "Policies as JSON",
+          "Every policy step in one file, with the baseline policy it comes from and where it stands. A step that writes today carries the same JSON as its own tab; one that waits carries none. Object IDs are in full. Review it before sharing.",
+          "Download policies (JSON)"
         ],
         "bundle": [
           "Grounding bundle",
