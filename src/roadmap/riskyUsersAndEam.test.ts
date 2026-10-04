@@ -11,6 +11,7 @@ import { runFixture } from './fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { STEP_GROUPS } from './stepGroups.ts'
+import { externalAuthTargetsOf } from '../coverage/companions.ts'
 
 const EAM_GROUP = '8d0564e5-ab28-4283-9a94-9883c581adde'
 const mid = () => ({ ...fixture('mid'), baseline: pinnedPackage() })
@@ -46,6 +47,13 @@ type Users = { includeUsers?: string[]; includeGroups?: string[]; excludeGroups?
 const bodies = (step: ReturnType<typeof userRisk>) => new Map([...(step.action.resolution?.policies ?? []), ...(step.action.planned?.policies ?? [])].map((p) => [p.sourceName, ((p.pending ?? p.body) as { conditions?: { users?: Users } }).conditions?.users ?? {}]))
 const EAM_POLICY = 'IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation'
 const MAIN_POLICY = 'IAC - P2 - GLOBAL - GRANT - High-Risk Users - Risk Remediation'
+
+test('T2-EAM: the scan’s reading of who the External authentication method targets: its groups, everyone, or nothing read', () => {
+  assert.equal(externalAuthTargetsOf(mid().snapshot), null, 'no method enabled')
+  assert.equal(externalAuthTargetsOf(withExternalMfa(mid()).snapshot), null, 'targets not read')
+  assert.deepEqual(externalAuthTargetsOf(withExternalMfa(mid(), [EAM_TARGET.toUpperCase()]).snapshot), [EAM_TARGET])
+  assert.deepEqual(externalAuthTargetsOf(withExternalMfa(mid(), ['all_users']).snapshot), ['all_users'])
+})
 
 test('T2-EAM: the method targets a group: the EAM policy includes it, its pair excludes it, and nothing waits on a mapping', () => {
   const step = userRisk(withExternalMfa(mid(), [EAM_TARGET]))

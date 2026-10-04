@@ -1,7 +1,8 @@
 import type { CleanupCheckpoint } from '../../roadmap/cleanupDone.ts'
 import { scopeManualBasis } from '../../roadmap/manualWork.ts'
 import { customerPlanSteps } from './customerPlanSteps.ts'
-import { blockedCountriesCompanion, goalMapInUse } from '../../coverage/companions.ts'
+import { blockedCountriesCompanion, externalAuthTargetsOf, goalMapInUse } from '../../coverage/companions.ts'
+import { ALL_USERS_TARGET } from '../../roadmap/resolvePolicy.ts'
 // The plan, computed and persisted, for the Plan surface (prompt 48 Part 2).
 // The same pipeline the Roadmap page used — coverage, generate, merge the
 // saved progress, track from evidence, annotate — behind one hook so Plan.tsx
@@ -295,6 +296,10 @@ export function usePlanData(
     const ge = exclusionsGroupIdToVerify(decided)
     if (ge) ids.add(ge)
     if (decided.serviceAccountsGroupId) ids.add(decided.serviceAccountsGroupId)
+    // Who the tenant's External authentication method targets: Jon's EAM group
+    // here (T2-EAM), which the user-risk pair includes and excludes, so who it
+    // holds is read like any group a policy names.
+    for (const id of externalAuthTargetsOf(snapshot) ?? []) if (id !== ALL_USERS_TARGET) ids.add(id)
     // The groups allowed to use Azure Virtual Desktop (T2-AVD): the AVD
     // allow-list block excludes them, so who they hold is read like any carve-out.
     for (const id of decided.avdUserGroupIds ?? []) ids.add(id)
