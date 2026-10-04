@@ -10,6 +10,7 @@ import { proposedNamesFor } from './proposedNames.ts'
 import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
 import { reportOnlyMilestoneOf, reportOnlyTasksOf } from './reportOnlyStep.ts'
 import { lockdownKitMilestoneOf, lockdownKitProcedureOf } from './lockdownKitStep.ts'
+import type { CreateTaskLines } from './reportOnlyStep.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { prepareReadingOf } from './prepareSteps.ts'
 import { existingObjectProcedureOf } from './prepareProcedures.ts'
@@ -235,16 +236,18 @@ export type StepBodyOptions = {
  * so the export and the print read them too.
  */
 /**
- * A policy step's own create procedure, as its Implementation Task draws it: what
- * Create the Policies in Report-only hands over for that policy. Built once per
- * step object, since one body reads it for every policy it lists.
+ * A policy step's own create procedure, as its Implementation Task draws it, per
+ * policy it creates (policyTasks.ts `creates`): what Create the Policies in
+ * Report-only hands over for each policy (T1-6d: one task per policy). Built once
+ * per step object, since one body reads it for every policy it lists.
  */
-const createTasks = new WeakMap<Step, string[] | null>()
-function createTaskOf(member: Step, ctx: StepVarContext): string[] | null {
+const createTasks = new WeakMap<Step, CreateTaskLines[] | null>()
+function createTaskOf(member: Step, ctx: StepVarContext): CreateTaskLines[] | null {
   if (createTasks.has(member)) return createTasks.get(member) ?? null
-  const steps = stepBodyOf(member, ctx, { tabsElsewhere: true }).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')?.steps ?? null
-  createTasks.set(member, steps)
-  return steps
+  const task = stepBodyOf(member, ctx, { tabsElsewhere: true }).emergencyAccountTasks?.tasks.find((t) => t.id === 'create')
+  const each = task ? (task.creates && task.creates.length > 0 ? task.creates : [{ name: '', steps: task.steps }]) : null
+  createTasks.set(member, each)
+  return each
 }
 
 export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {

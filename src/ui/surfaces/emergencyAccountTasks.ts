@@ -46,6 +46,12 @@ export type EmergencyAccountTask = {
   onThresholdCard?: true
   /** A correction's own settings, per policy, for its Tasks Remaining card (policyTasks.ts policySubjectsOf). */
   corrections?: { name: string; settings: string[]; after?: string; on?: string }[]
+  /**
+   * A create's lines, per policy it creates, in its order (policyTasks.ts): what
+   * the create needs first leads the first. `steps` is these, joined. 3.8 Create
+   * the Policies in Report-only gives each policy its own task from them.
+   */
+  creates?: { name: string; steps: string[] }[]
   /** Exact constituent findings this action/evidence replaces in interactive Readiness. */
   issueKeys?: string[]
   facts?: { label: string; value: string }[]

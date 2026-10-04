@@ -545,8 +545,15 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // policy in Report-only" ended "Set Enable policy to On").
   const onCreate = (body: Record<string, unknown>): Record<string, unknown> => ({ ...body, state: createdOn(body) ? 'enabled' : 'enabledForReportingButNotEnforced' })
   const createdOnAll = creates.length > 0 && creates.every((m) => createdOn(m.create!.body))
-  const createSteps = [...input.before, ...(toCreate ? input.extras?.createFirst ?? [] : []), ...creates.flatMap((m) => createLines(onCreate(m.create!.body), ctx, { name: (m.name && m.createName && m.name.toLowerCase() === m.createName.toLowerCase() ? m.name : m.createName) ?? (m.name || String(m.create!.body.displayName ?? '')), baseline: m.create!.baseline }))]
-  tasks.push(task('create', createdOnStep || createdOnAll ? 'createOn' : 'create', createSteps, toCreate))
+  const createHead = [...input.before, ...(toCreate ? input.extras?.createFirst ?? [] : [])]
+  // Each policy's own create lines (T1-6d: 3.8 gives each created policy its own
+  // task), what the create needs first leading the first; the task is them joined.
+  const createsEach = creates.map((m, i) => {
+    const name = (m.name && m.createName && m.name.toLowerCase() === m.createName.toLowerCase() ? m.name : m.createName) ?? (m.name || String(m.create!.body.displayName ?? ''))
+    return { name, steps: [...(i === 0 ? createHead : []), ...createLines(onCreate(m.create!.body), ctx, { name, baseline: m.create!.baseline })] }
+  })
+  const createSteps = createsEach.length > 0 ? createsEach.flatMap((c) => c.steps) : createHead
+  tasks.push({ ...task('create', createdOnStep || createdOnAll ? 'createOn' : 'create', createSteps, toCreate), creates: createsEach })
   // A policy the tenant switched off goes back through Report-only, whatever
   // else the step waits on: Report-only denies nobody (owner, 2026-09-23). The
   // step's tracking names each one (operations.ts switchedOffPolicies).

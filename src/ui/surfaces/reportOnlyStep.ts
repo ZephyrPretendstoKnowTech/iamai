@@ -21,7 +21,13 @@ import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyA
 import type { ReadinessTile } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-type BatchWords = { createValue: string; milestone: string; leftOutBoth: string; leftOutUserAction: string; leftOutDeviceCheck: string }
+type BatchWords = { createValue: string; milestone: string; taskTitle: string; leftOutBoth: string; leftOutUserAction: string; leftOutDeviceCheck: string }
+
+/** One policy's create lines, as its own step's create task holds them (policyTasks.ts `creates`). */
+export type CreateTaskLines = { name: string; steps: string[] }
+
+/** The key of a member's i-th policy: its card's and its task's (`batch:<id>`, then `batch:<id>#2`). */
+const nth = (id: string, i: number): string => (i === 0 ? id : `${id}#${i + 1}`)
 const W = (): BatchWords => (stepById[REPORT_ONLY_STEP_ID] as unknown as { batch: BatchWords }).batch
 
 type Member = { id: string; step: Step; toCreate: boolean }
@@ -61,7 +67,7 @@ export function reportOnlyTilesOf(step: Step, ctx: StepVarContext): ReadinessTil
   return membersOf(step, ctx).filter((m) => m.toCreate).flatMap((m) => {
     const names = policyNames(m)
     // Its instruction is its task's (emergencyReadiness.ts: "Follow {title} in Implementation Tasks.").
-    return (names.length > 0 ? names : [null]).map((name, i) => ({ key: i === 0 ? `batch:${m.id}` : `batch:${m.id}#${i + 1}`, label: contentTitle(m.step), tone: 'warn' as const, value: w.createValue, note: null, names: name === null ? [] : [name] }))
+    return (names.length > 0 ? names : [null]).map((name, i) => ({ key: `batch:${nth(m.id, i)}`, label: contentTitle(m.step), tone: 'warn' as const, value: w.createValue, note: null, names: name === null ? [] : [name] }))
   })
 }
 
@@ -78,28 +84,37 @@ export function reportOnlyNoteOf(step: Step): string | null {
   return user && device ? w.leftOutBoth : user ? w.leftOutUserAction : device ? w.leftOutDeviceCheck : null
 }
 
-/** The rail's headline while any policy is left to create; null once none is. */
+/**
+ * The rail's headline while any policy is left to create; null once none is. It
+ * counts policies, as the cards do (T1-6d): the engine's count of the policies
+ * still to create (reportOnlyBatch.ts `impactCount`), never the steps that
+ * create them — Jon's guest pair is two.
+ */
 export function reportOnlyMilestoneOf(step: Step): string | null {
-  const n = step.reportOnlyBatch?.create.length ?? 0
+  const n = (step.reportOnlyBatch?.create.length ?? 0) > 0 ? step.impactCount ?? 0 : 0
   return step.id === REPORT_ONLY_STEP_ID && n > 0 ? fillText(W().milestone, { n }) : null
 }
 
 /**
  * One task per listed policy, created or not, each its own step's create
- * procedure (`createOf` reads it from that step's body; stepBody.ts hands it in,
- * so this module imports none of it). A created policy keeps its task: the
- * procedure is never hidden, whatever the step's state (owner, 2026-09-25). The
- * first policy still to create is the task the card and the rail point at, else
- * the first.
+ * procedure for that policy (`createOf` reads it from that step's body, per
+ * policy; stepBody.ts hands it in, so this module imports none of it). A step
+ * that creates two policies has two tasks, each with its own create lines and
+ * its own card (T1-6d: the second guest card pointed at no task), titled with
+ * the step and the policy. A created policy keeps its task: the procedure is
+ * never hidden, whatever the step's state (owner, 2026-09-25). The first policy
+ * still to create is the task the card and the rail point at, else the first.
  */
-export function reportOnlyTasksOf(step: Step, ctx: StepVarContext, createOf: (member: Step) => string[] | null): EmergencyTaskProjection | null {
+export function reportOnlyTasksOf(step: Step, ctx: StepVarContext, createOf: (member: Step) => CreateTaskLines[] | null): EmergencyTaskProjection | null {
   if (step.id !== REPORT_ONLY_STEP_ID) return null
   const members = membersOf(step, ctx)
   const tasks: EmergencyAccountTask[] = members.flatMap((m) => {
-    const steps = createOf(m.step)
-    if (steps === null || steps.length === 0) return []
-    const title = contentTitle(m.step)
-    return [{ id: `create:${m.id}`, accountId: null, title, targetUpn: null, required: m.toCreate, readinessKey: `batch:${m.id}`, evidence: null, actionLabel: title, steps }]
+    const each = (createOf(m.step) ?? []).filter((c) => c.steps.length > 0)
+    const own = contentTitle(m.step)
+    return each.map((c, i) => {
+      const title = each.length > 1 && c.name !== '' ? fillText(W().taskTitle, { title: own, name: c.name }) : own
+      return { id: `create:${nth(m.id, i)}`, accountId: null, title, targetUpn: null, required: m.toCreate, readinessKey: `batch:${nth(m.id, i)}`, evidence: null, actionLabel: title, steps: c.steps }
+    })
   })
   if (tasks.length === 0) return null
   const next = members.find((m) => m.toCreate && tasks.some((t) => t.id === `create:${m.id}`))

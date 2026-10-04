@@ -8393,6 +8393,8 @@
         "$comment": "A policy's card (ui/surfaces/reportOnlyStep.ts): only a policy still to create, headed by its step's title and naming the policy, its instruction pointing at that policy's task (owner, 2026-09-26: no corrections, no roster). milestone is the rail's headline while any is left.",
         "createValue": "Create in Report-only",
         "milestone": "{n} policies to create in Report-only",
+        "$commentTaskTitle": "The Implementation Task of one policy a step creates beside another (T1-6d: Jon's guest pair is two policies, two cards and two tasks): the step's title and the policy's own name. A step that creates one policy keeps its title alone.",
+        "taskTitle": "{title} ({name})",
         "$commentLeftOut": "Under the cards, only where a policy still to create was left out for this tenant (owner, 2026-09-26): the type of policy and why, never its name. A user-action policy (Protect Sign-in Method Registration, Require MFA to Register a Device) and a device check beyond Windows (Microsoft Learn, concept-conditional-access-report-only). Whole sentences, chosen by reportOnlyStep.ts reportOnlyNoteOf.",
         "leftOutBoth": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device, and on a compliant-device policy it can prompt Mac, iOS and Android users for a certificate. Their own steps create those policies.",
         "leftOutUserAction": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device. Their own steps create those policies.",

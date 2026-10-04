@@ -172,11 +172,20 @@ export function settleReportOnlyBatch(steps: Step[], tenant: TenantPolicies = ne
   const batch = steps[at]
   const create: string[] = []
   const created: string[] = []
+  // Policies, not steps (T1-6d): a step creates one policy per create (Jon's guest
+  // pair, two), and a created step stands for each policy the scan tied to it.
+  let toCreate = 0
+  let createdPolicies = 0
   const leftOut = new Set<ReportOnlyOutlier>()
   for (const s of steps) {
     const member = batchMemberOf(s, tenant)
-    if (member === 'create') create.push(s.id)
-    else if (member === 'created') created.push(s.id)
+    if (member === 'create') {
+      create.push(s.id)
+      toCreate += createdBodiesOf(s).length
+    } else if (member === 'created') {
+      created.push(s.id)
+      createdPolicies += Math.max(1, (s.tracking?.members ?? []).filter((m) => m.policyId !== null).length)
+    }
     for (const why of leftOutOf(s)) leftOut.add(why)
   }
   if (create.length === 0 && created.length === 0) {
@@ -187,7 +196,9 @@ export function settleReportOnlyBatch(steps: Step[], tenant: TenantPolicies = ne
   // a setting to correct is its own step's task, never listed here a second time,
   // and never holds this step open.
   batch.reportOnlyBatch = { create, created, ...(leftOut.size > 0 ? { leftOut: OUTLIERS.filter((k) => leftOut.has(k)) } : {}) }
-  // Impact counts what the step changes: the policies still to create, and once none is left, the ones it created.
-  batch.impactCount = create.length > 0 ? create.length : created.length
+  // Impact counts what the step changes: the policies still to create, and once
+  // none is left, the ones it created. The rail's headline reads the same count
+  // (ui/surfaces/reportOnlyStep.ts reportOnlyMilestoneOf), as the cards do.
+  batch.impactCount = create.length > 0 ? toCreate : createdPolicies
   setState(batch, { satisfied: create.length === 0 })
 }
