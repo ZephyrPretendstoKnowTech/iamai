@@ -12,7 +12,9 @@ import { stepIdForGoal } from '../../roadmap/stepIds.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { shared } from '../../content/content.ts'
+import { engine, shared } from '../../content/content.ts'
+import { evidenceFor } from '../../roadmap/evidence.ts'
+import { personLabels } from '../../names.ts'
 import { fillText } from '../../content/render.ts'
 import { EVIDENCE_WINDOW_DAYS } from '../../graph/collect/constants.ts'
 
@@ -114,4 +116,25 @@ test('more than five from another organization: the first five by name and how m
   for (const name of seven.slice(0, 5).map((id) => ctx.nameOf(id))) assert.ok(text.includes(name), `${name} is not named: ${text}`)
   assert.ok(!text.includes(ctx.nameOf(seven[5])) && !text.includes(ctx.nameOf(seven[6])), `more than five are named: ${text}`)
   assert.match(text, /and 2 more to have it remediated there/)
+})
+
+// OWN-W5: the evidence line a user-risk step's observation card and AI briefing
+// carry read "The records show 1 people this policy stopped while it was in
+// report-only. Review them before enforcing: time elapsed alone does not complete
+// this check.", naming nobody and no way forward. It names the people, that their
+// risk is cleared first, and the task that says how.
+test('a user-risk step\'s report-only line names who it would have stopped and sends the reader to clear their risk', () => {
+  assert.ok(person, 'the premise: a member of this tenant')
+  const results = [{ policyId: 'p-risk', displayName: null, counts: {}, affectedUserIds: { reportOnlyFailure: [person.id], reportOnlyInterrupted: [] } }]
+  const snapshot = { ...f.snapshot, sources: { ...f.snapshot.sources, signInEvidence: { ...f.snapshot.sources.signInEvidence, status: 'ok' } }, evidencePolicyResults: results } as unknown as typeof f.snapshot
+  const W = (engine as unknown as { evidence: { riskBlocked: string; failures: string } }).evidence
+  const task = (shared as unknown as { procedure: { tasks: { turnOn: string } } }).procedure.tasks.turnOn
+  for (const goal of ['user-risk', 'user-risk-medium']) {
+    const line = evidenceFor(goal, snapshot, ['p-risk']).lines[0]
+    const name = personLabels(snapshot.users, { address: true }).get(person.id)!
+    assert.equal(line, fillText(W.riskBlocked, { names: name, task }), `${goal}: ${line}`)
+    assert.doesNotMatch(line, /time elapsed alone/)
+  }
+  // Every other step keeps its own line.
+  assert.equal(evidenceFor('block-auth-transfer', snapshot, ['p-risk']).lines[0], fillText(W.failures, { n: 1 }))
 })

@@ -193,7 +193,7 @@ export type EngineWords = {
   /** The value a readiness threshold is stated against where the scan measured none (roadmap/generate.ts). */
   readiness: { notMeasured: string; measureStrength: Record<string, string>; strengthUnnamed: string; blind: string; blindFix: string; blindFixLicensed: string; routeShortfallNone: string; routeShortfallSome: string; noneJudged: string; noneJudgedOne: string; methodLine: string; methodLineSignIn: string; methodLineOff: string; offMethods: Record<string, string>; deviceComputers: string; deviceBoth: string }
   /** Why an observation has not completed (roadmap/evidence.ts); `status` fills {reason} where the sign-in source states none. */
-  evidence: { failures: string; legacyBlocked: string; legacyBlockedMail: string; deviceCodeBlocked: string; methodBlocked: string; unreadable: string; status: Record<'pending' | 'insufficient' | 'disabled' | 'error' | 'none', string> }
+  evidence: { failures: string; legacyBlocked: string; legacyBlockedMail: string; deviceCodeBlocked: string; methodBlocked: string; riskBlocked: string; unreadable: string; status: Record<'pending' | 'insufficient' | 'disabled' | 'error' | 'none', string> }
   /** One cohort's words wherever it is counted: people, guests, or both (derive/whoLine.ts cohortWords). */
   cohort: { people: string; guests: string; both: string }
   /** Who the sign-in records show using what Block Legacy Authentication and Block Device Code Sign-in stop (roadmap/blockSignIns.ts); {n} is a count. */

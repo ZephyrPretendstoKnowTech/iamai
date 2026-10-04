@@ -6,7 +6,7 @@
 import type { TenantSnapshot, UsageSignal } from '../graph/collect/types.ts'
 import { readInPart } from '../graph/collect/coreSections.ts'
 import type { Evidence, SourceUnread } from './types.ts'
-import { engine } from '../content/content.ts'
+import { engine, shared } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { personLabels } from '../names.ts'
 import { list } from '../copy/statements.ts'
@@ -135,13 +135,21 @@ const BLOCKED_LINE: Record<string, string> = {
   'block-device-code': W.deviceCodeBlocked,
   'admins-phishing-resistant': W.methodBlocked,
   'mfa-all-users': W.methodBlocked,
+  // The two user-risk policies (OWN-W5): waiting never clears a person's user
+  // risk, so the line names the people and that their risk is cleared first; the
+  // turn-on task says how (ui/surfaces/policyTasks.ts riskClear).
+  'user-risk': W.riskBlocked,
+  'user-risk-medium': W.riskBlocked,
 }
+
+/** The turn-on task's title, which the user-risk line points to for how to clear a risk. */
+const TURN_ON_TASK = (shared as unknown as { procedure: { tasks: { turnOn: string } } }).procedure.tasks.turnOn
 
 /** The people a report-only week would have blocked, named with their addresses (at most five, then "and N more"), in the line given. */
 function blockedLine(snapshot: TenantSnapshot, failed: readonly string[], template: string): string {
   const labels = personLabels(snapshot.users, { address: true })
   const shown = failed.slice(0, 5).map((id) => labels.get(id) ?? id)
-  return fillText(template, { names: list(failed.length > 5 ? [...shown, fillText(engine.blockSignIns.more, { n: failed.length - 5 })] : shown) })
+  return fillText(template, { names: list(failed.length > 5 ? [...shown, fillText(engine.blockSignIns.more, { n: failed.length - 5 })] : shown), task: TURN_ON_TASK })
 }
 
 /**
