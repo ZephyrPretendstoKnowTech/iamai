@@ -147,16 +147,21 @@ What IAMAI saves stays in the browser on this device:
 - **IndexedDB**, database `iamai`, seven stores keyed by tenant id: `snapshot` (the scan),
   `signin-rows` (the sign-in rows the evidence is read from), `evidence-meta`,
   `group-members` (cached group memberships), `mapping` (your answers and decisions), `plan`
-  (the plan and its history) and `baseline` (the baseline chosen for the tenant).
+  (the plan and its history) and `baseline` (the baseline chosen for the tenant). Each
+  tenant opened in this browser keeps its own records here until it is forgotten; opening
+  another tenant from the Account menu deletes nothing.
 - **sessionStorage**: the Microsoft sign-in session (MSAL's token cache), cleared when the
-  tab closes or when you sign out; and `iamai.preloadReloaded`, a flag that allows one
+  tab closes. Sign out removes the open account's part of it, and all of it when no other
+  account is signed in in that tab. Also `iamai.preloadReloaded`, a flag that allows one
   automatic reload after a new deploy replaces a script the page was loading.
 - **localStorage**: `iamai-theme` (light or dark, shared with the home page) and
   `iamai.tip.<page>` (whether a page's tip is collapsed). No tenant data.
 
 *Forget this tenant* (in the Account menu) deletes that tenant's records from every
 IndexedDB store; other tenants' records on the same device are untouched, and you stay
-signed in. *Sign out* clears the sign-in session.
+signed in. A tenant that is not open is forgotten the same way from its own row in the
+Account menu, without signing in to it. *Sign out* signs out the account that is open; an
+account signed in to another tenant in the same tab stays signed in.
 
 ## What can leave the browser
 
