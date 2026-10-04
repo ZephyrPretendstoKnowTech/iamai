@@ -214,7 +214,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 26,
+      "contentBlocks": 24,
       "outputs": {
         "entra": true,
         "json": true,
@@ -235,7 +235,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 4,
+      "correctionModules": 3,
       "requiredBindings": 5,
       "optionalBindings": 13,
       "verifiedSourceCount": 5,
@@ -244,7 +244,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 3,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -6034,7 +6034,7 @@
     "packageCount": 42,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 893,
+    "contentBlocks": 891,
     "uniqueBindings": 266,
     "bindingsRequiredByAtLeastOneProjection": 82,
     "bindingsOptionalInAtLeastOnePackage": 186,
