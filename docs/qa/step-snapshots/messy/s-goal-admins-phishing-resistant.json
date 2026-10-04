@@ -1,11 +1,11 @@
 {
-  "lane": "On Hold",
+  "lane": "Up Next",
   "substatus": null,
   "reason": "after: Configure Emergency Exclusions",
-  "fact": "Report-only",
-  "badge": "On Hold",
-  "bar": "When every admin has a method it accepts (1 of 6)",
-  "rail": "Not yet: after Configure Emergency Exclusions",
+  "fact": null,
+  "badge": "Up Next",
+  "bar": "After Prepare Emergency Access Accounts",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -30,5 +30,5 @@
     "Entra",
     "AI Info"
   ],
-  "when": "Sep 15, 2026"
+  "when": "Sep 7, 2026"
 }

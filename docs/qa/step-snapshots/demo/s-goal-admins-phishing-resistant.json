@@ -1,11 +1,11 @@
 {
-  "lane": "On Hold",
+  "lane": "Up Next",
   "substatus": null,
-  "reason": "after: Configure Emergency Exclusions",
-  "fact": "Report-only",
-  "badge": "On Hold",
-  "bar": "When every admin has a method it accepts (2 of 3)",
-  "rail": "Not yet: after Configure Emergency Exclusions",
+  "reason": "when admin Modern MFA + TAP readiness reaches 100% (now 66%)",
+  "fact": null,
+  "badge": "Up Next",
+  "bar": "After Prepare Emergency Access Accounts",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Users and grant differ from the plan",
-      "state": "Set Users as Implementation Tasks shows. Set Grant as Implementation Tasks shows."
+      "label": "Threshold",
+      "state": "2 of 3 admins have a method it accepts"
     },
     {
       "label": "Configure Emergency Exclusions",
@@ -28,7 +28,9 @@
   ],
   "channels": [
     "Entra",
+    "PowerShell",
+    "JSON",
     "AI Info"
   ],
-  "when": "Sep 7, 2026"
+  "when": "Aug 31, 2026"
 }
