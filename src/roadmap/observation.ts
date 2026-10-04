@@ -656,9 +656,11 @@ function noteFor(continuity: ObservationContinuity, changed: ObservationChanged,
 export function watchedArrive(step: Pick<Step, 'state'>): boolean {
   const obs = step.state.observation
   // A policy found On and edited since was not watched getting there (walk list 4.x item 26).
+  // Arriving means absent then, present now: a policy still absent arrived nowhere (T4-PM:
+  // a step that builds beside the tenant's own policy is absent until it is created).
   return (obs?.latest.since === 'observed-change' && obs.latest.neverObserved !== true)
-    || obs?.prior?.state === 'absent'
-    || step.state.members.some((m) => m.change.prior?.state === 'absent')
+    || (obs?.prior?.state === 'absent' && obs.latest.state !== 'absent')
+    || step.state.members.some((m) => m.change.prior?.state === 'absent' && m.change.latest.state !== 'absent')
 }
 
 /**
