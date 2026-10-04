@@ -143,6 +143,12 @@ export function lockdownKitCreatesOf(step: Step): PolicyOperation[] {
   })
 }
 
+/** The JSON tab's text for those creates: one body, or one per switch. Null where none is to create. */
+export function lockdownKitJsonText(step: Step): string | null {
+  const bodies = lockdownKitCreatesOf(step).map((o) => o.body)
+  return bodies.length === 0 ? null : JSON.stringify(bodies.length === 1 ? bodies[0] : bodies, null, 2)
+}
+
 /** The names a procedure line is written with (stepPortal.ts portalNamesFor). */
 type Names = { nameOf: (id: string) => string; strengthNameFor?: (id: string) => string | null }
 

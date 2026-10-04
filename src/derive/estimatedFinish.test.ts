@@ -108,8 +108,8 @@ test('Connect\'s sample tile counts the weeks the demo Plan\'s ⓘ states, from 
   assert.equal(demoFacts().weeks, weeks, 'the sample tile states another length than the Plan it opens')
 })
 
-test('the Estimated finish tip says the date assumes the suggested answers while a Define Your Rollout Scope step is open, and stops once they are settled (owner, 2026-10-04)', () => {
-  const ASSUMES = 'This date assumes the suggested answers in Define Your Rollout Scope, and moves as you answer them.'
+test('the Estimated finish tip says the date is built from the suggested answers while a Define Your Rollout Scope step is open, and stops once they are settled (owner, 2026-10-04)', () => {
+  const ASSUMES = 'This date is built from the suggested answers in Define Your Rollout Scope, and moves as you answer them.'
   const tipOf = (f: ReturnType<typeof curatedFixture>): string | null => {
     const r = runFixture(f)
     const board = boardOf(r.steps, r.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)

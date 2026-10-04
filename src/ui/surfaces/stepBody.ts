@@ -9,7 +9,7 @@ import { emergencyAccountTasksText } from './emergencyAccountTasks.ts'
 import { proposedNamesFor } from './proposedNames.ts'
 import { DORMANT_STEP_ID, DORMANT_WORDS, sectionThreeTasksOf, sectionThreeTasksText } from './sectionThreeTasks.ts'
 import { reportOnlyMilestoneOf, reportOnlyTasksOf } from './reportOnlyStep.ts'
-import { lockdownKitCreatesOf, lockdownKitMilestoneOf, lockdownKitProcedureOf } from './lockdownKitStep.ts'
+import { lockdownKitCreatesOf, lockdownKitJsonText, lockdownKitMilestoneOf, lockdownKitProcedureOf } from './lockdownKitStep.ts'
 import type { CreateTaskLines } from './reportOnlyStep.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import { prepareReadingOf } from './prepareSteps.ts'
@@ -723,9 +723,9 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // Prepare the Lockdown Kit's switches still to create, Off, as PowerShell and
   // JSON beside the Entra tasks (owner, 2026-10-04: F-015; lockdownKitStep.ts).
   const kitCreates = lockdownKitCreatesOf(step)
-  if (kitCreates.length > 0) {
-    const bodies = kitCreates.map((o) => o.body)
-    const json = JSON.stringify(bodies.length === 1 ? bodies[0] : bodies, null, 2)
+  const kitJson = lockdownKitJsonText(step)
+  if (kitCreates.length > 0 && kitJson !== null) {
+    const json = kitJson
     produced.push({ id: 'ps', form: 'code', lines: [], text: () => powershellFor(kitCreates), note: null })
     produced.push({ id: 'json', form: 'code', lines: [], text: () => json, note: null })
     supported.add('ps')
