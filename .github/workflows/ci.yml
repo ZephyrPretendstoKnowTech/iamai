@@ -24,7 +24,9 @@ jobs:
     # cancelled itself mid-run and the deploy skipped for a reason that had
     # nothing to do with the code. Headroom, not a target: if this is ever
     # close again the suite has grown enough to be worth splitting.
-    timeout-minutes: 25
+    # It was: on 2026-10-03 the job ran 24 minutes and one run hit 25 with every
+    # test passing. 35 until the suite is split across two jobs.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
