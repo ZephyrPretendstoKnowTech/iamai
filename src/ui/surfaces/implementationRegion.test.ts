@@ -116,3 +116,13 @@ test('P0-5: the viewer’s tabs and Copy are in its sticky head, and no dialog b
   // F-016 (owner, 2026-09-27): every step dialog's × reads Close.
   assert.equal(CONTRACT.implementation.close, 'Close')
 })
+
+test('F-101: before the service accounts group exists, its procedure names the Service accounts group picker only as what comes once the scan finds the group', () => {
+  const body = named('demo').get('s-prereq-service-accounts-group')
+  assert.ok(body, 'demo plans Create or Correct Service Accounts Group')
+  assert.equal(body.decides, false, 'the premise: the group is not there yet, so the step draws no picker')
+  const portal = body.artifacts.find((a) => a.id === 'portal')?.text() ?? ''
+  const mentions = portal.split('\n').filter((l) => l.includes('**Service accounts group**'))
+  assert.ok(mentions.length > 0, 'the procedure says where to save the group')
+  for (const line of mentions) assert.match(line, /Once the scan finds the group/, line)
+})

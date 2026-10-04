@@ -22220,7 +22220,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Under **Members**, add {{serviceAccounts.memberUpns}}.\n6. Select **Create**.\n7. Return to IAMAI and select **Scan to update the plan**.\n8. Under **Service accounts group**, select **{{group.target.displayName}}**, then **Save**.\n"
+          "text": "1. Open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Groups → All groups → New group**.\n2. Group type: **Security**.\n3. Membership type: **Assigned**.\n4. Name: **{{group.target.displayName}}**.\n5. Under **Members**, add {{serviceAccounts.memberUpns}}.\n6. Select **Create**.\n7. Return to IAMAI and select **Scan to update the plan**.\n8. Once the scan finds the group, select **{{group.target.displayName}}** under **Service accounts group**, then **Save**.\n"
         },
         "entra.correct.open": {
           "meta": {

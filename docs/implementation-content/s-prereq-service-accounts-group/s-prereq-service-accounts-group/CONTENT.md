@@ -6,7 +6,7 @@
 5. Under **Members**, add {{serviceAccounts.memberUpns}}.
 6. Select **Create**.
 7. Return to IAMAI and select **Scan to update the plan**.
-8. Under **Service accounts group**, select **{{group.target.displayName}}**, then **Save**.
+8. Once the scan finds the group, select **{{group.target.displayName}}** under **Service accounts group**, then **Save**.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
