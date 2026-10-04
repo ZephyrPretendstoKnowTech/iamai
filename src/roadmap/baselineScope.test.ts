@@ -14,7 +14,9 @@ test('the steps absent from this baseline are the unmapped goals\' steps, and a 
     // unmanaged-browser (merges byod-session-controls and block-downloads-unmanaged,
     // neither of which the baseline carries). register-info-protected is Jon's
     // UserRegistration policy as he confirmed it (baseline/authorCorrections.ts).
-    assert.deepEqual(absentStepIds(), ['azure-management-mfa', 'mobile-app-protection', 'unmanaged-browser'])
+    // admin-portals-protected: Jon's Admin Portal block is the lockdown kit's third switch (owner,
+    // 2026-10-03), created Off by Prepare the Lockdown Kit, so no goal step holds it.
+    assert.deepEqual(absentStepIds(), ['admin-portals-protected', 'azure-management-mfa', 'mobile-app-protection', 'unmanaged-browser'])
   }
 
   // a step whose goal is mapped is not absent (mergesGoals needs every goal absent)
