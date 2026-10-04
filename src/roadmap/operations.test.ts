@@ -330,11 +330,14 @@ test('an update leaves the tenant’s untouched fields alone, and every channel 
   // The tenant's own admins policy, deliberately unlike the baseline's: its own
   // description, an extra session control, and an exclusion the baseline does
   // not name. Only its grant is weak, so only its grant is submitted.
+  // Under the baseline's name, so it is the plan's own policy, the one 4.3
+  // corrects: a policy of the tenant's own name is never edited, the step builds
+  // beside it (T4-PM).
   const f = fixture('demo-week2')
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
   const own = {
     id: 'p-admins',
-    displayName: 'Core - Grant - Admins phishing-resistant',
+    displayName: runFixture(f).steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!.createName!,
     description: 'Owned by the identity team — do not rename',
     state: 'enabled',
     createdDateTime: '2026-01-10T00:00:00Z',

@@ -70,10 +70,13 @@ export function usability100(stage: Usability100Stage): Fixture {
   }
   // Configured means built as the plan asks (every control is exact, owner
   // 2026-09-25): the admins policy is the plan's under the mapping just confirmed.
+  // The tenant's admin policy, by id: built as planned it takes the baseline's name
+  // (asPlanned; T4-PM, the policy-matching pilot), so its own name no longer finds it.
+  const adminIds = new Set(f.snapshot.config.caPolicies.rows.filter(raw => /phishing-resistant.*admins|admins.*phishing-resistant/i.test(String((raw as {displayName?:string}).displayName))).map(raw => (raw as {id?:string}).id))
   if (stage === 'configured' || stage === 'drift' || stage === 'specialist') f.snapshot = asPlanned(f, 's-goal-admins-phishing-resistant').snapshot
   if (stage === 'drift') {
     // Simulate an external edit to an enforced policy, not an operation by IAMAI.
-    const policy = f.snapshot.config.caPolicies.rows.find(raw => /phishing-resistant.*admins|admins.*phishing-resistant/i.test(String((raw as {displayName?:string}).displayName))) as { grantControls?: unknown; conditions?: {users?: {excludeUsers?: string[]}} } | undefined
+    const policy = f.snapshot.config.caPolicies.rows.find(raw => adminIds.has((raw as {id?:string}).id)) as { grantControls?: unknown; conditions?: {users?: {excludeUsers?: string[]}} } | undefined
     if (!policy) throw new Error('Missing enforced admin policy for the drift scenario')
     policy.grantControls = { operator: 'OR', builtInControls: ['mfa'] }
     const person = f.snapshot.users.find(u => u.userType === 'member' && u.mail && !f.snapshot.roles.active[u.id]?.length)

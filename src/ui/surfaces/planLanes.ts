@@ -144,7 +144,7 @@ export type LaneReading = {
 }
 
 /** A row that is not a roadmap step: a Cleanup row, by the id the board gives it. */
-export type LaneRowInput = { id: string; complete: boolean; afterRollout?: boolean }
+export type LaneRowInput = { id: string; complete: boolean; afterRollout?: boolean; /** The steps whose policy has to be On first (CleanupPhase rows' `waitsOn`). */ waitsOn?: string[] }
 
 /** How many rows each lane holds, counted off the readings (A1c): Connect's Plan tile and any other surface that states a lane count read this. */
 export function laneCountsOf(readings: ReadonlyMap<string, LaneReading>): Record<Lane, number> {
@@ -451,6 +451,16 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   }
   for (const r of rows) {
     if (out.has(r.id)) continue
+    // A row that waits on a step's policy being On (Retire Replaced Policies, on the
+    // step that built the baseline's policy beside the ones it retires) waits as a
+    // step waits on a step: Up Next behind a Ready one, On Hold behind the rest.
+    const waitsOn = r.complete ? undefined : (r.waitsOn ?? []).map((id) => byId.get(id)).find((s) => s !== undefined && s.status !== 'done' && s.status !== 'skipped' && !s.doesntApply)
+    if (waitsOn) {
+      const ahead = (out.get(waitsOn.id) ?? fallbackOf(planStateOf(waitsOn, isHeld(waitsOn)))).lane
+      const reason: HoldBlocker = { kind: 'step', id: waitsOn.id, milestone: null, condition: null, abnormal: false, ordinal: 0 }
+      rest.push({ id: r.id, reading: { lane: ahead === 'Ready' ? 'Up Next' : 'On Hold', substatus: null, reason, blockers: [reason], gates: [] } })
+      continue
+    }
     rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null, reason: null, blockers: [], gates: [] } : { lane: 'Ready', substatus: r.id === DRILL_ROW ? null : 'Review', reason: null, blockers: [], gates: [] } })
   }
   rest.sort((a, b) => a.id.localeCompare(b.id))

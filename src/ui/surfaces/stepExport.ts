@@ -735,7 +735,9 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
   // which names no variable this tenant fills, leaves it free.
   let read = false
   let unresolved = false
-  const coverage = String((content.shared as Record<string, unknown>).existingCoverage)
+  // A step that builds the baseline's policy beside the tenant's own says so in
+  // the same place (generate.ts BUILDS_BESIDE; stepVars.ts buildsBeside).
+  const coverage = String((content.shared as Record<string, unknown>)[truthy(ex.buildsBeside) ? 'existingCoverageBeside' : 'existingCoverage'])
   for (const [k, v] of Object.entries(who)) {
     // A key ending in Undated holds another key's undated forms (below), never lines of its own.
     if (k.startsWith('$comment') || k.endsWith('Undated') || ['lead', 'leadWhen', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue

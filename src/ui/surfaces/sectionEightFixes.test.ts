@@ -91,8 +91,12 @@ test('8.2 lists each policy the plan tracks under a name other than the baseline
     'Core - Block - Legacy authentication → IAC - GLOBAL – BLOCK - Legacy Authentication',
     'Core - Block - Device code flow → IAC - GLOBAL - BLOCK - Device Code Auth Flow',
     'Core - Grant - MFA for all users → IAC - GLOBAL - GRANT - MFA - AllUsers',
-    'Core - Grant - Admins phishing-resistant → IAC - GLOBAL - GRANT - MFA - AllAdmins',
   ])
+  // The demo's own admins policy is not renamed: 4.3 builds the baseline's beside it, and Retire
+  // Replaced Policies retires it (T4-PM, the policy-matching pilot). A policy on its way out keeps its name.
+  const retiring = phase.rows.find((x) => x.kind === 'retire')?.lists.retiring ?? []
+  assert.ok(retiring.some((l) => l.startsWith('Core - Grant - Admins phishing-resistant (')), JSON.stringify(retiring))
+  assert.ok(!naming.lists.renames.some((l) => l.startsWith('Core - Grant - Admins phishing-resistant →')))
   assert.ok(naming.lists.renames.every((l) => / \(ID: [0-9a-f-]{36}\)$/.test(l)), 'each with its ID')
   assert.equal(naming.done, null)
   // Dated after every other Ongoing row, as the board numbers it last (stepGroups.ts), and moving none of them.
@@ -149,7 +153,7 @@ test('8.2 is drawn on the step template with no fields and no Save, and exports 
   const row = phase.rows.find((x) => x.kind === 'naming')!
   const cards = namingSubjects(phase)
   assert.equal(cards.length, 1, 'one card for the renames')
-  assert.equal(cards[0].detail?.split('\n').length, 4)
+  assert.equal(cards[0].detail?.split('\n').length, 3)
   const steps = namingSteps(phase)
   for (const p of phase.namingProposals ?? []) assert.ok(steps.some((l) => l.includes(`**${p.from}** (ID: ${p.id})`) && l.includes(`**${p.to}**`)), p.id)
   assert.deepEqual(cleanupExportView(phase, row)!.whatToDo, steps.map((l) => l.replace(/\*\*/g, '')))

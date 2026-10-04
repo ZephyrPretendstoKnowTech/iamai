@@ -173,7 +173,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'ongoing',
     titleKey: 'pages.app.plan.groups.ongoing.title',
     completedTitleKey: 'pages.app.plan.groups.ongoing.completedTitle',
-    members: ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming'],
+    members: ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming'],
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
     anatomy: 'task',

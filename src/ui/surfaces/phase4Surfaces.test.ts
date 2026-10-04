@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { allFixtures, curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow } from '../../derive/mfaReadiness.ts'
 import { emptyReadinessContext, isReady, personReadiness } from '../../scoring/phishingResistant.ts'
@@ -167,8 +168,9 @@ test('the coverage line never names the policy the step itself corrects, nor a C
   // Review Overlapping Policies is held back for now (cleanup.ts WITHHELD_CLEANUP), so the line names no Cleanup row.
   assert.doesNotMatch(String(content.shared.existingCoverage), /Review Overlapping Policies|Cleanup/)
   assert.doesNotMatch(String(content.shared.existingCoverage), /Consolidate/)
-  // 4.3 on the demo's week two: its tasks correct the policy its goal is delivered by.
-  const f = curatedFixture('demo-week2')
+  // 4.3 on the demo's week two, its admins policy under the baseline's name (the plan's own; T4-PM):
+  // its tasks correct the policy its goal is delivered by.
+  const f = asPlansOwn(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant')
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const own = (step.tracking?.members ?? []).map((m) => m.policyName ?? '').filter(Boolean)
@@ -186,6 +188,11 @@ test('the coverage line never names the policy the step itself corrects, nor a C
       const existing = (stepVars(s, ctxOf(g, rg)).existingPolicies ?? []) as string[]
       const mine = (s.tracking?.members ?? []).map((m) => m.policyName ?? '').filter(Boolean)
       for (const d of existing) assert.ok(!mine.includes(policyName(d)),`${g.name}/${s.id}: ${d} is its own`)
+      // A step that builds beside them (T4-PM) names Retire Replaced Policies, which lists every one.
+      if (stepVars(s, ctxOf(g, rg)).buildsBeside === true) {
+        const retiring = rg.schedule.cleanup?.rows.find((x) => x.kind === 'retire')?.lists?.retiring ?? []
+        for (const d of existing) assert.ok(retiring.some((o) => o.startsWith(policyName(d))), `${g.name}/${s.id}: Retire Replaced Policies does not list ${d}: ${JSON.stringify(retiring)}`)
+      }
       // Where Review Overlapping Policies is drawn, it lists them.
       if (existing.length > 0 && !WITHHELD_CLEANUP.has('consolidation')) {
         const overlaps = rg.schedule.cleanup?.rows.find((x) => x.kind === 'consolidation')?.lists?.overlaps ?? []

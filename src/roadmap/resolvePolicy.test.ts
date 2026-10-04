@@ -143,11 +143,16 @@ function withTenantPolicies(rows: Record<string, unknown>[], edit: (p: Record<st
   return { f, r, ctx, of, snapshot }
 }
 
-/** The tenant's own admins policy, weaker than the baseline's, with a session control the baseline never sets. */
-function weakAdminsPolicy(exclusions: string | null): Record<string, unknown> {
+/**
+ * The plan's own admins policy, weaker than the baseline's, with a session control the baseline never sets.
+ * It carries the baseline's name (`displayName`): since the policy-matching pilot (T4-PM; owner,
+ * 2026-09-27: build new, retire old) 4.3 corrects only the plan's own policy, and builds the
+ * baseline's beside one of the tenant's own name.
+ */
+function weakAdminsPolicy(exclusions: string | null, displayName: string): Record<string, unknown> {
   return {
     id: 'p-admins',
-    displayName: 'Core - Grant - Admins phishing-resistant',
+    displayName,
     state: 'enabled',
     createdDateTime: '2026-01-10T00:00:00Z',
     conditions: { users: { includeRoles: ['62e90394-69f5-4237-9190-012177145e10'], excludeGroups: exclusions ? [exclusions] : [] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] },
@@ -708,7 +713,8 @@ test('a goal already in place has no artifact, so it offers no implementation on
 test('a single-policy change is one update operation, and every channel carries that exact body', () => {
   const f = fixture('demo-week2')
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
-  const rows = ((f.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? weakAdminsPolicy(exclusions) : p))
+  const name = runFixture(f).steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!.createName!
+  const rows = ((f.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? weakAdminsPolicy(exclusions, name) : p))
   const { of, ctx } = withTenantPolicies(rows, (p) => p, { adminsReady: true })
   const { step, portal } = of('admins-phishing-resistant')
   assert.equal(step.kind, 'adjust')
@@ -732,7 +738,7 @@ test('a single-policy change is one update operation, and every channel carries 
 
   // The instruction opens the tenant's own policy and lists the body's fields.
   assert.ok(portal && portal.length > 0)
-  assert.match(portal[0], /open "Core - Grant - Admins phishing-resistant"/, 'it opens the policy the operation names')
+  assert.ok(portal[0].includes(`open "${name}"`), `it opens the policy the operation names: ${portal[0]}`)
   assert.ok(!portal.some((l) => /New policy/.test(l)), 'it never says New policy')
   assert.ok(!portal.some((l) => /^Name: /.test(l)), 'and never names a policy to create')
   assert.ok(portal.some((l) => /^Grant → /.test(l)), 'the field the body changes is listed')

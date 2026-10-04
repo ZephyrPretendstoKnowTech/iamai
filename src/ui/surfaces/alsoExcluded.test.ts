@@ -2,7 +2,10 @@
 // not (owner audit, 2026-09-24: the policy for Require Phishing-Resistant MFA for
 // Admins also excluded a passkey bootstrap group). It read Completed with the group
 // named; every control is exact now (owner, 2026-09-25), so it is a users setting
-// to correct.
+// to correct. Since the policy-matching pilot (T4-PM; owner, 2026-09-27: build
+// new, retire old) that holds for the plan's own policy, under the baseline's
+// name; one under the tenant's own name is never corrected by 4.3, which builds
+// the baseline's policy beside it and leaves it to Cleanup.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture } from '../../roadmap/fixtures/index.ts'
@@ -15,15 +18,15 @@ const ADMINS = 's-goal-admins-phishing-resistant'
 const BOOTSTRAP = 'c0100000-0000-4000-8000-0000000b0075'
 type Row = Record<string, unknown>
 
-/** The plan's admin policy under the tenant's own name, on, also excluding a group with `members`. */
-function withBootstrapGroup(f: Fixture, members: string[]): Fixture {
+/** The plan's admin policy under the given name (the tenant's own by default), on, also excluding a group with `members`. */
+function withBootstrapGroup(f: Fixture, members: string[], name = 'Core - Allow - MFA for Admins'): Fixture {
   const plan = runFixture(f).steps.find((s) => s.id === ADMINS)
   assert.ok(plan, 'the premise: the fixture plans phishing-resistant MFA for admins')
   const body = structuredClone(plan.action.resolution?.policies[0]?.body) as Row | undefined
   assert.ok(body, 'the premise: the step would create a policy')
   const users = (body.conditions as Row).users as Row
   users.excludeGroups = [...((users.excludeGroups as string[] | undefined) ?? []), BOOTSTRAP]
-  const row: Row = { ...body, id: 'c0100000-0000-4000-8000-00000000ad01', displayName: 'Core - Allow - MFA for Admins', description: 'Ours', state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf }
+  const row: Row = { ...body, id: 'c0100000-0000-4000-8000-00000000ad01', displayName: name, description: 'Ours', state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf }
   const g = structuredClone(f)
   const ca = g.snapshot.config.caPolicies!
   ca.rows = [...(ca.rows as Row[]), row] as never
@@ -43,10 +46,16 @@ function opened(f: Fixture) {
 test("a tenant's own policy that also excludes a group is not Completed: the extra group is a users setting to correct", () => {
   // Every control is exact (owner, 2026-09-25): an extra excluded group is who the
   // policy applies to, so the step is not delivered until a person corrects it.
-  const empty = opened(withBootstrapGroup(curatedFixture('small'), []))
+  const baselineName = runFixture(curatedFixture('small')).steps.find((s) => s.id === ADMINS)!.createName!
+  const empty = opened(withBootstrapGroup(curatedFixture('small'), [], baselineName))
   assert.equal(empty.step.state.satisfied, false, 'the goal is not read as delivered while it leaves out more than the plan')
   assert.ok(empty.step.state.members.some((m) => m.change.unwritten.includes('conditions.users')), 'who it applies to is the setting to correct')
-  assert.deepEqual(empty.step.action.alsoExcluded, { policyName: 'Core - Allow - MFA for Admins', groupIds: [BOOTSTRAP] }, 'the step still knows which group it is')
+
+  // Under the tenant's own name it is never Completed either: 4.3 builds the baseline's policy beside it (T4-PM).
+  const theirs = opened(withBootstrapGroup(curatedFixture('small'), []))
+  assert.equal(theirs.step.state.satisfied, false)
+  assert.deepEqual((theirs.step.action.besidePolicies ?? []).map((p) => p.name), ['Core - Allow - MFA for Admins'])
+  assert.ok((theirs.step.action.resolution?.policies ?? []).every((o) => o.mode === 'create'), 'and never edits it')
 
   // The control: the plan's own exclusions draw nothing.
   const plan = runFixture(curatedFixture('small')).steps.find((s) => s.id === ADMINS)!

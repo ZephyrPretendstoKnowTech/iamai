@@ -351,7 +351,7 @@ export function boardReadingsOf(
   answers: { signInMonitoring: boolean | null } | null | undefined,
 ): BoardReadings {
   const cleanupRows = (cleanup?.rows ?? []).filter((r) => cleanupEntry(r.kind) !== null).map((r) => ({ row: r, id: `cleanup-${r.kind}`, complete: cleanupComplete(r, answers) }))
-  const readings = laneReadings(steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete, afterRollout: AFTER_ROLLOUT.has(r.row.kind) })))
+  const readings = laneReadings(steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete, afterRollout: AFTER_ROLLOUT.has(r.row.kind), ...(r.row.waitsOn ? { waitsOn: r.row.waitsOn } : {}) })))
   const byId = new Map(steps.map((s) => [s.id, s]))
   // A Cleanup row is a prerequisite like any other and its title lives under
   // content.cleanup, by kind: without it the drill's tile could only say

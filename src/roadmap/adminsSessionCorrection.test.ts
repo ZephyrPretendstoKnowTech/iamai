@@ -11,6 +11,11 @@
 // as a correction a person makes in Entra, or accepts. This locks that in, in
 // Report-only and On.
 //
+// Since the policy-matching pilot (T4-PM; owner, 2026-09-27: build new, retire
+// old) 4.3 corrects only the plan's own policy, the one carrying the baseline's
+// name or the plan's tag: the policy here carries the baseline's name. A policy
+// under a name of the tenant's own is never corrected (adminsBuildBeside.test.ts).
+//
 // Name. The package's name module declared no facts and no select condition,
 // so IAMAI could never select it (protocol.ts: "cannot select this module"),
 // and a renamed tagged policy is adopted under its new name, with renames in
@@ -33,23 +38,24 @@ import type { PackageMeta } from '../content/implementation/protocol.ts'
 const ADMINS = 's-goal-admins-phishing-resistant'
 const FOUR_HOURS = { signInFrequency: { value: 4, type: 'hours', isEnabled: true, authenticationType: 'primaryAndSecondaryAuthentication', frequencyInterval: 'timeBased' } }
 
-/** The tenant's own admin MFA policy: the plan's policy under the tenant's name, untagged, with a 4-hour sign-in frequency, in the state given. */
-function tenantPolicy(state: string): Fixture {
+/** The plan's own admin MFA policy, built by hand: the plan's policy under the baseline's name, untagged, with a 4-hour sign-in frequency, in the state given. */
+function tenantPolicy(state: string): { g: Fixture; name: string } {
   const f = withFoundationSettled({ ...fixture('small'), baseline: asCuratedBaseline(pinnedPackage() as never) })
   const op = runFixture(f).steps.find((s) => s.id === ADMINS)!.action.resolution!.policies[0]
   assert.equal(op.mode, 'create', 'the premise: the tenant has no admin policy yet')
   const g = structuredClone(f)
   const { description: _tag, ...body } = structuredClone(op.body) as Record<string, unknown>
-  ;(g.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).push({ ...body, displayName: 'Contoso admins MFA', sessionControls: FOUR_HOURS, id: 'c0100000-0000-4000-8000-0000000000a1', state, createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
-  return g
+  const name = String(body.displayName)
+  ;(g.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).push({ ...body, displayName: name, sessionControls: FOUR_HOURS, id: 'c0100000-0000-4000-8000-0000000000a1', state, createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
+  return { g, name }
 }
 
 for (const state of ['enabledForReportingButNotEnforced', 'enabled']) {
-  test(`4.3 raises the session correction for the tenant's admin policy with a 4-hour sign-in frequency (${state})`, () => {
-    const g = tenantPolicy(state)
+  test(`4.3 raises the session correction for the plan's own admin policy with a 4-hour sign-in frequency (${state})`, () => {
+    const { g, name } = tenantPolicy(state)
     const r = runFixture(g, { snapshot: g.snapshot } as never)
     const step = r.steps.find((s) => s.id === ADMINS)!
-    assert.equal(step.tracking?.members?.[0]?.policyName, 'Contoso admins MFA', 'the premise: the step reads the tenant policy')
+    assert.equal(step.tracking?.members?.[0]?.policyName, name, "the premise: the step reads the plan's own policy")
     assert.deepEqual([...new Set(step.state.members.flatMap((m) => [...m.change.unwritten]))], ['sessionControls'])
     assert.equal(step.state.satisfied, false)
     const ctx: StepVarContext = { snapshot: g.snapshot, mapping: r.input.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: g.operatorId, now: g.snapshot.asOf, groups: g.groups }
@@ -58,7 +64,7 @@ for (const state of ['enabledForReportingButNotEnforced', 'enabled']) {
     const portal = body.artifacts.find((a) => a.id === 'portal')!.text()
     const correct = portal.slice(portal.indexOf('**Correct the policy**'))
     assert.ok(portal.includes('**Correct the policy**'), portal)
-    assert.match(correct, /Contoso admins MFA/)
+    assert.ok(correct.includes(name), correct)
     assert.match(correct, /Under \*\*Session\*\*, clear every control\. Yours is stricter than the baseline here: to keep it, accept the difference instead\./)
   })
 }

@@ -278,7 +278,11 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   const out: MemberMatch[] = requiredMembers(step).map((m) => ({ ...m, policy: null, matchedBy: null, ambiguous: false }))
   const all = rows(snapshot)
   const byId = new Map(all.filter((p) => typeof p.id === 'string').map((p) => [p.id as string, p]))
-  const claimed = new Set<string>()
+  // The tenant's own policies the step builds the baseline's beside (generate.ts
+  // BUILDS_BESIDE, Action.besidePolicies) are never its own, by record or by
+  // fingerprint: they are Cleanup's to retire, and the step's lifecycle is the
+  // policy it creates. Taken as claimed from the start, so no stage takes them.
+  const claimed = new Set<string>((step.action.besidePolicies ?? []).map((p) => p.policyId))
   const claim = (m: MemberMatch, policy: PolicyRow, by: MemberTracking['matchedBy']): void => {
     m.policy = policy
     m.matchedBy = by
@@ -1252,6 +1256,16 @@ export function trackExecution(
     // coverage reads of the goal as a whole — a half the owner's answer narrows
     // (service providers excluded) never reads the goal as partly delivered here.
     const pairBuilt = (step.action.pairMembers?.length ?? 0) > 1 && (step.action.pairMembers ?? []).every((h) => h.policyId !== null)
+    // A step that builds the baseline's policy beside the tenant's own (generate.ts
+    // BUILDS_BESIDE, Action.besidePolicies; the pilot is 4.3) is done on its own
+    // policy, On and exact, as generation read it (state.satisfied), whatever
+    // coverage reads of the goal as a whole: the tenant's policies beside it are
+    // Cleanup's to retire, so a weaker one reading the goal as partly delivered
+    // never holds it, and a stronger one delivering the goal never finishes it
+    // in their place. Until its own policy is On the step is not done, and Retire
+    // Replaced Policies waits on it: nothing is retired before the baseline's
+    // policy protects the same people.
+    const builtBeside = (step.action.besidePolicies?.length ?? 0) > 0
     // Every object the last scan recorded for this step, whichever member it was.
     const previousIds = carried ? (carried.members?.length ? carried.members.map((m) => m.policyId) : [carried.policyId]).filter((id): id is string => typeof id === 'string' && id.length > 0) : []
     const previousName = carried?.policyName ?? carried?.members?.find((m) => m.policyName)?.policyName ?? step.deliveredBy[0]?.replace(/ \([^)]*\)$/, '') ?? step.title
@@ -1270,8 +1284,9 @@ export function trackExecution(
       const disabled = still.find((p) => p?.state === 'disabled') ?? null
       if (disabled) {
         reopen(step, fillText(TRACK.regression.disabled, { name: disabled.displayName ?? previousName, since: sinceText }), now, 'adjust')
-      } else if (pairBuilt) {
-        // Read against the halves themselves (above and below), not the goal's coverage.
+      } else if (pairBuilt || builtBeside) {
+        // Read against the halves themselves (above and below), not the goal's coverage;
+        // a step built beside, against its own policy (builtBeside).
       } else if (goalStatus === 'absent') {
         reopen(step, fillText(TRACK.regression.goal, { since: sinceText, what: 'missing' }), now, 'create')
       } else if (goalStatus === 'below-baseline') {
@@ -1290,7 +1305,7 @@ export function trackExecution(
       // Not where the step creates its policy though coverage finds the goal in place:
       // only policies doing another step's job stand for it (generate.ts anotherJobOnly).
       const creates = (step.action.resolution?.policies ?? []).some((o) => o.mode === 'create')
-      if (result?.verdict === 'inPlace' && !creates) {
+      if (result?.verdict === 'inPlace' && !creates && !builtBeside) {
         advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: satisfierOf(result) ?? 'an existing policy' }), now)
       }
       continue
@@ -1328,7 +1343,7 @@ export function trackExecution(
       //
       // On a pair, `enforced` already means every required member is enforced:
       // one enforced policy has never finished a two-policy goal.
-      if ((result?.verdict === 'inPlace' || pairBuilt) && !unplanned) {
+      if ((builtBeside ? step.state.satisfied : result?.verdict === 'inPlace' || pairBuilt) && !unplanned) {
         advance(step, { satisfied: true }, `${fillText(TRACK.enforced, { date: absoluteDate(tracking.enforcedAt ?? now) })}; ${tracking.note}`, now)
       }
       continue
@@ -1351,7 +1366,7 @@ export function trackExecution(
     // two policies it is admitted only where every required member is enforced —
     // one half of a pair has never finished a two-policy goal, whatever the
     // coverage of the goal as a whole adds up to.
-    if (goalStatus === 'enforced' && (memberTracking.length === 1 || observed.every((x) => x === 'enforced'))) {
+    if (goalStatus === 'enforced' && !builtBeside && (memberTracking.length === 1 || observed.every((x) => x === 'enforced'))) {
       advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: satisfierOf(result) ?? 'an existing policy' }), now)
     }
   }

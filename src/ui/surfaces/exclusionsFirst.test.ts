@@ -6,7 +6,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import type { FixtureName } from '../../roadmap/fixtures/index.ts'
+import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
@@ -14,8 +15,8 @@ import { policySubjectsOf } from './policyTasks.ts'
 
 const DEVICE_CODE = 's-goal-block-device-code'
 
-function opened(name: FixtureName, stepId: string) {
-  const f = fixture(name)
+function opened(name: FixtureName, stepId: string, edit: (f: Fixture) => Fixture = (f) => f) {
+  const f = edit(fixture(name))
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === stepId)
   assert.ok(step, `the premise: ${name} plans ${stepId}`)
@@ -48,7 +49,9 @@ test('once Configure Emergency Exclusions has put the group on the policy, nothi
 })
 
 test('4.3, whose users the change does not write, says to wait for Configure Emergency Exclusions too (Round 4 review)', () => {
-  const { correct, cards, ps } = opened('demo', 's-goal-admins-phishing-resistant')
+  // The demo's admins policy under the baseline's name, the plan's own, which 4.3 corrects; one of the
+  // tenant's own name it builds beside instead (T4-PM, the policy-matching pilot).
+  const { correct, cards, ps } = opened('demo', 's-goal-admins-phishing-resistant', (f) => asPlansOwn(f, 's-goal-admins-phishing-resistant'))
   assert.ok(correct && correct.steps.some((l) => /remove the group \*{0,2}Core - Break glass/.test(l)), 'the premise: 4.3 removes the old exclusion')
   assert.equal(correct.steps[0], 'Do this after Configure Emergency Exclusions adds Core - Exclusions to this policy.', correct.steps.join('\n'))
   const card = cards.find((c) => c.key.startsWith('correct:'))

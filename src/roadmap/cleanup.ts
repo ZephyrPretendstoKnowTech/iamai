@@ -19,7 +19,7 @@
 //
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 
-export type CleanupKind = 'alerting' | 'drill' | 'hardening' | 'namedExclusions' | 'naming' | 'consolidation'
+export type CleanupKind = 'alerting' | 'drill' | 'hardening' | 'namedExclusions' | 'retire' | 'naming' | 'consolidation'
 
 /** A Cleanup row: which content.cleanup entry to render, and the lists it fills. */
 export type CleanupRow = {
@@ -43,6 +43,13 @@ export type CleanupInputs = {
    * by name, one line each (namedEmergencyExclusions); empty when none does.
    */
   namedExclusions?: string[]
+  /**
+   * The tenant's own policies a step built the baseline's beside (policy
+   * matching, build new and retire old: generate.ts BUILDS_BESIDE,
+   * Action.besidePolicies), one line each, while any is On or in Report-only;
+   * empty when none is left to retire.
+   */
+  retiring?: string[]
 }
 
 // The order Cleanup renders in (§5): alerting, drill, naming, consolidation.
@@ -59,6 +66,9 @@ const ORDER: { kind: CleanupKind; present: (i: CleanupInputs) => boolean; lists:
   // in the policy IAMAI corrects. The group is the one carve-out (CLAUDE.md), and
   // this row is where the name comes out, once the group covers the account.
   { kind: 'namedExclusions', present: (i) => (i.namedExclusions ?? []).length > 0, lists: (i) => ({ namedExclusions: i.namedExclusions ?? [] }) },
+  // Retire Replaced Policies (owner, 2026-09-27: build new, retire old): its own
+  // kind, apart from the overlap review held back below.
+  { kind: 'retire', present: (i) => (i.retiring ?? []).length > 0, lists: (i) => ({ retiring: i.retiring ?? [] }) },
   { kind: 'naming', present: (i) => i.renames.length > 0, lists: (i) => ({ renames: i.renames }) },
   { kind: 'consolidation', present: (i) => i.overlaps.length > 0, lists: (i) => ({ overlaps: i.overlaps }) },
 ]

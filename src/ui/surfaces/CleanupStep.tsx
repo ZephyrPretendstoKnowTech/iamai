@@ -12,7 +12,7 @@ import { validCompletionDate } from '../../roadmap/cleanupDone.ts'
 // than as a page that happens to sit under the same board.
 import { useMemo, useState } from 'react'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { app } from '../../content/content.ts'
+import { app, cleanup as cleanupContent } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
@@ -33,6 +33,8 @@ export { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
 export type { CleanupEntry } from './cleanupExport.ts'
 
 const A = app.plan
+/** Retire Replaced Policies' own control words (content.cleanup.retire). */
+const RETIRE = (cleanupContent as unknown as { retire: { keepReason: string; keep: string; recordedHeading: string } }).retire
 
 
 /** Today as the Done control's default, in the display zone's calendar day shape. */
@@ -131,7 +133,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
     </StepSection>
   )
   const done = <DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
-  const recorded = row.record && (row.kind !== 'drill' || row.record.outcome) && <section className="step-section"><h4>{row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)} · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>
+  const recorded = row.record && (row.kind !== 'drill' || row.record.outcome) && <section className="step-section"><h4>{row.kind === 'retire' ? RETIRE.recordedHeading : row.kind === 'consolidation' ? 'Recorded Review' : 'Recorded Test'}</h4><p>{row.record.date.slice(0, 10)}{row.kind === 'retire' ? null : <> · {row.record.consolidationDecision === 'retain-both' ? 'Retain Both' : row.record.outcome === 'passed' ? 'Passed' : row.record.outcome === 'failed' ? 'Failed' : 'Outcome not recorded'}</>}</p>{recordedAccounts.length > 0 && <p>Tested accounts: {recordedAccounts.join(', ')}</p>}{row.record.recipient && <p>Recipient: {row.record.recipient}</p>}{row.record.replacementPolicyId && <p>Retained policy: {policyOptions.find(policy => policy.id === row.record?.replacementPolicyId)?.name ?? row.record.replacementPolicyId}</p>}{row.record.retiredPolicyIds?.length ? <p>Retired policies: {row.record.retiredPolicyIds.map(id => policyOptions.find(policy => policy.id === id)?.name ?? id).join(', ')}</p> : null}{row.record.retainedPolicyIds?.length ? <p>Policies retained: {row.record.retainedPolicyIds.map(id => policyOptions.find(p => p.id === id)?.name ?? row.record?.policyNames?.[id] ?? id).join(', ')}</p> : null}{row.record.rationale && <p>Reason: {row.record.rationale}</p>}{row.record.reference && <p>Change record: {row.record.reference}</p>}{row.verificationReason && <p>{row.verificationReason}</p>}</section>
   // The Scan in the one footer every step closes on (StepSections.tsx
   // StepFooter): the scan's status over it while one runs, and it waits. The
   // row above the body is what closes it; no step draws a Close.
@@ -222,8 +224,10 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
           </StepSection>
           {done}
           {recorded}
-          {onDone && row.kind !== 'hardening' && row.kind !== 'namedExclusions' && (
+          {onDone && row.kind !== 'hardening' && row.kind !== 'namedExclusions' && !(row.kind === 'retire' && held) && (
             <div className="decision">
+              {/* Retire Replaced Policies: turning the policies Off needs no record (the scan reads it); keeping them takes a reason. */}
+              {row.kind === 'retire' && <div className="decision-fields"><div className="decision-field"><label><strong>{RETIRE.keepReason}</strong><input value={rationale} onChange={e => setRationale(e.currentTarget.value)} /></label></div></div>}
               {row.kind === 'consolidation' && <div className="decision-fields">
                 <div className="decision-field"><label><strong>Review Outcome</strong><select value={consolidationDecision} onChange={e => { setConsolidationDecision(e.currentTarget.value as typeof consolidationDecision); setRetiredIds([]) }}><option value="retire">Retire Replaced Policies</option><option value="retain-both">Retain Both</option></select></label></div>
                 {consolidationDecision === 'retire' && <div className="decision-field"><label><strong>Retained Policy</strong><select value={replacementId} onChange={event => setReplacementId(event.currentTarget.value)}><option value="">Choose…</option>{policyOptions.filter(policy => policy.state === 'enabled').map(policy => <option key={policy.id} value={policy.id}>{policy.name}</option>)}</select></label></div>}
@@ -234,7 +238,7 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
               </div>}
               <><div className="dlabel">{A.cleanupDoneOn}</div>
               <input type="date" max={todayDate()} aria-label={A.cleanupDoneOn} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
-              <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady)} onClick={() => onDone(date, [], { ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}) })}>{row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button></>
+              <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'consolidation' && !consolidationReady) || (row.kind === 'retire' && !rationale.trim())} onClick={() => onDone(date, [], { ...(row.kind === 'retire' ? { outcome: 'passed' as const, retainedPolicyIds: [...(phase.retiringPolicyIds ?? [])], rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => (phase.retiringPolicyIds ?? []).includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retain-both' ? { outcome: 'passed' as const, consolidationDecision, retainedPolicyIds: retiredIds, retainedPolicyBases: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, JSON.stringify([p.state, p.basis])])), rationale: rationale.trim(), policyNames: Object.fromEntries(policyOptions.filter(p => retiredIds.includes(p.id)).map(p => [p.id, p.name])) } : {}), ...(row.kind === 'consolidation' && consolidationDecision === 'retire' ? { consolidationDecision, outcome: 'passed' as const, replacementPolicyId: replacementId, retiredPolicyIds: retiredIds, coverageVerified, replacementBasis: replacement?.basis ?? undefined, reference: reference.trim(), policyNames: Object.fromEntries(policyOptions.filter(policy => policy.id === replacementId || retiredIds.includes(policy.id)).map(policy => [policy.id, policy.name])) } : {}) })}>{row.kind === 'retire' ? RETIRE.keep : row.kind === 'consolidation' ? 'Save Review' : A.cleanupDone}</Button></>
               {row.done && <p className="reason">{cleanupWhen(row)}</p>}
             </div>
           )}

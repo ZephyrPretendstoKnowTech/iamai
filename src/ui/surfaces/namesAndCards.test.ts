@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import { nameKey } from '../../baseline/discover.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
@@ -20,8 +21,10 @@ import { policySubjectsOf } from './policyTasks.ts'
 import { boardReadingsOf, boardWhenOf, laneViewFor } from './planBoard.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-const run = (name: 'demo' | 'demo-week2') => {
-  const f = fixture(name)
+// `own`: the demo's admins policy under the baseline's name, the plan's own, which 4.3 corrects;
+// under the demo's own name 4.3 builds the baseline's beside it (T4-PM, the policy-matching pilot).
+const run = (name: 'demo' | 'demo-week2', own = false) => {
+  const f = own ? asPlansOwn(fixture(name), 's-goal-admins-phishing-resistant') : fixture(name)
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
   return { f, r, ctx }
@@ -30,7 +33,7 @@ const run = (name: 'demo' | 'demo-week2') => {
 test('Completion Criteria describe the plan’s target, never the setting the step asks to correct', () => {
   // Week two's admins policy names Global Administrator alone; the plan's covers
   // the baseline's admin roles, and its card asks for that correction.
-  const { r, ctx } = run('demo-week2')
+  const { r, ctx } = run('demo-week2', true)
   const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   assert.ok(step.state.observation?.unwritten.includes('conditions.users'), 'the premise: who it applies to is to correct')
   assert.equal((step.action.resolution?.policies ?? []).length, 0, 'the premise: a person corrects it in Entra')
@@ -57,14 +60,14 @@ test('an announcement is never dated before today: a change nearer than its noti
 
 test('a policy to correct is one card: the policy, "Correct {fields}", and the changes themselves', () => {
   // Owner, 2026-09-26: "Users differ from the plan · Set Users as Implementation Tasks shows." named no change.
-  const { r, ctx } = run('demo-week2')
+  const { r, ctx } = run('demo-week2', true)
   const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const body = stepBodyOf(step, ctx)
   const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
   const open = cards.filter((c) => !c.satisfied)
   assert.equal(open.length, 1, JSON.stringify(open.map((c) => c.key)))
   assert.equal(open[0].heading, 'Conditional Access policy')
-  assert.equal(open[0].upn, 'Core - Grant - Admins phishing-resistant')
+  assert.equal(open[0].upn, step.createName)
   // Every difference is corrected or accepted (owner, 2026-09-26): the stronger grant too.
   assert.equal(open[0].title, 'Correct users and grant')
   // The card counts a role list; the task holds the names (owner, 2026-09-26).
@@ -82,7 +85,7 @@ test('a roles correction says to change only the roles listed, so the ones alrea
   // Owner, 2026-09-28: the sample's 4.3 listed 45 roles to select without Global
   // Administrator, which the tenant's policy already holds, under "change the selection
   // as listed below": an admin matching the list would have unticked it.
-  const { r, ctx } = run('demo')
+  const { r, ctx } = run('demo', true)
   const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const lines = (stepBodyOf(step, ctx).emergencyAccountTasks?.tasks ?? []).flatMap((t) => t.steps)
   const lead = lines.find((l) => l.includes('**Directory roles**') && l.includes('Users → Include'))

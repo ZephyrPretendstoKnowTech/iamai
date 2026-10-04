@@ -44,13 +44,19 @@ function said(f: Fixture, run: ReturnType<typeof runFixture>, step: Step): { bec
   return { because: c.implementation.offered ? '' : (c.implementation.because ?? ''), doneWhen: c.doneWhen.join(' ') }
 }
 
-/** The admins goal with its own report-only policy W at the floor, and whatever else the tenant has. */
+/**
+ * The admins goal with its own report-only policy W at the floor, and whatever else the tenant has.
+ * W carries the baseline's name: since the policy-matching pilot (T4-PM; owner, 2026-09-27:
+ * build new, retire old) the plan's own policy is the one 4.3 turns on, and one of the
+ * tenant's own name is built beside and left for Cleanup.
+ */
 function admins(others: Record<string, unknown>[], wUsers?: Record<string, unknown>) {
   const f = curatedFixture('demo-week2')
   const g = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') })
   assert.ok(g, 'the curated fixture has an actionable exclusions group')
   const users = { includeRoles: [GA], excludeGroups: [g] }
-  const w = { id: W, displayName: 'Policy W', state: REPORT_ONLY, conditions: { users: wUsers ?? users, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PHISHING_RESISTANT } } }
+  const name = runFixture(f).steps.find((x) => x.id === 's-goal-admins-phishing-resistant')!.createName!
+  const w = { id: W, displayName: name, state: REPORT_ONLY, conditions: { users: wUsers ?? users, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PHISHING_RESISTANT } } }
   const ca = f.snapshot.config.caPolicies!
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [w, ...others.map((o) => ({ ...o, conditions: { users, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], ...(o.conditions as object) } }))] } } }
   const t = { ...f, snapshot }

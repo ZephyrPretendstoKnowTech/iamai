@@ -54,6 +54,7 @@ import {
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved } from '../../roadmap/fixtures/run.ts'
 import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { scannedAt } from '../../roadmap/fixtures/records.ts'
@@ -297,6 +298,10 @@ function sweep(): Variant[] {
   // Ready to enforce above all — are reachable nowhere else.
   out.push(...planOf('demo-week2+settled', withDirectionApproved(fixture('demo-week2'))))
   out.push(...owesCorrection(fixture('large')))
+  // Week two's admins policy under the baseline's name: the plan's own, enforced and short of
+  // the plan, which 4.3 compares (review-required). Under the demo's own name 4.3 builds the
+  // baseline's beside it (T4-PM, the policy-matching pilot), so only this reaches that state.
+  out.push(...planOf('demo-week2+plans-own', asPlansOwn(fixture('demo-week2'), 's-goal-admins-phishing-resistant')))
   // The reviewed conflict the mechanism is kept for: no product baseline carries
   // one since 2026-10-03 (fixtures/reviewedConflict.ts).
   out.push(...planOf('small+reviewed-conflict', fixture('small'), { input: conflictInput() }))
@@ -425,7 +430,7 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · members · who-known', // demo-week2+half-pair/s-goal-guests-mfa
   // Every control is exact (owner, 2026-09-25): a policy with a setting to correct, waiting on a foundation, reads Blocked, never Ready (foundations.ts).
   // A policy the tenant wrote, On, with a setting that is not the plan's: a person corrects it (every control is exact, owner 2026-09-25).
-  'policy · create · enforced · review-required · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2/s-goal-admins-phishing-resistant
+  'policy · create · enforced · review-required · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+plans-own/s-goal-admins-phishing-resistant
   'policy · adjust · not-deployed · review-required · open · do:observe · track · implementation · found · fix · members · who-known', // demo-week2+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
   'decision · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-direction-use

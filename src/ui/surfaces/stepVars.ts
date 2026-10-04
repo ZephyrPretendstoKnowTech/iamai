@@ -55,6 +55,7 @@ import { prepareVarsOf } from './prepareSteps.ts'
 import { networkDraftOf } from '../../mapping/networkDraft.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import { trustedIpLocations } from '../../roadmap/directionAnswers.ts'
+import { INVENTORY } from '../../copy/inventory.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -434,6 +435,15 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // Each entry is "name (state)" (generate.ts deliveredBy): the name alone is compared, so "X (Pilot)" is never taken for X.
   const beside = step.deliveredBy.filter((d) => !ownPolicies.includes(d.replace(/ \([^)]*\)$/, '')))
   v.existingPolicies = step.status !== 'done' && beside.length > 0 && !watchedArrive(step) ? beside : []
+  // A step that builds the baseline's policy beside the tenant's own (generate.ts
+  // BUILDS_BESIDE, Action.besidePolicies) names them in every state, On or in
+  // Report-only, until Cleanup retires them: they are never edited, and never
+  // ignored (shared.existingCoverageBeside stands in for the line).
+  const builtBeside = step.action.besidePolicies ?? []
+  if (builtBeside.length > 0) {
+    v.existingPolicies = builtBeside.map((p) => `${p.name} (${(INVENTORY.policies.state as Record<string, string>)[p.state] ?? p.state})`)
+    v.buildsBeside = true
+  }
   // In place: the step asks nobody to do anything, so its email does not render (stepExport.ts commsFor).
   if (step.status === 'done') v.stepDone = true
 

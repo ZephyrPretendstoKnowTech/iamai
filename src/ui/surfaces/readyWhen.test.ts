@@ -5,7 +5,7 @@
 // date column, the step's Done-when and the status word read one derivation;
 // nothing asks the person to mark anything. Over the demo and its week two.
 import { test } from 'node:test'
-import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
+import { asPlanned, asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import assert from 'node:assert/strict'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
 // policy that can be written, not about the source groups this baseline has not
@@ -78,11 +78,15 @@ function cleanRecords(f: Fixture, policyId: string): unknown {
   return cleanReportOnly({ policyId, people, asOf: f.snapshot.asOf })
 }
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
+// The demo's report-only admins policy under the baseline's name: the plan's own, which 4.3 watches
+// and turns on. Under the demo's own name 4.3 builds the baseline's beside it (T4-PM, the
+// policy-matching pilot) and watches nothing until that one exists.
+const demoOwn = (): Fixture => asPlansOwn(fixture('demo'), ADMINS)
 const TOKEN = stepIdForGoal('token-protection')
 const TRANSFER = stepIdForGoal('block-auth-transfer')
 
 test('week one: a policy the scan first sees in report-only is watched from the scan date for its observation window; held, its row reads no ready day', () => {
-  const f = fixture('demo')
+  const f = demoOwn()
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === ADMINS)!
   assert.equal(step.status, 'in-report-only')
@@ -156,7 +160,7 @@ test('week two: the report-only policy with clean, complete records is ready now
 })
 
 test('rescan: a policy whose window closed on clean records while a Foundation-A blocker holds it stays Report-only, and is offered no date', () => {
-  const f = fixture('demo')
+  const f = demoOwn()
   const run = runFixture(f)
   const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
   const first = runFixture(f).steps.find((s) => s.id === ADMINS)!
@@ -193,7 +197,7 @@ test('rescan: the same ten days with no records read, or in a record that never 
     // behaved over them. A calendar is not evidence about anybody: the window has
     // closed and the evidence gate has not, so the step is still being watched and
     // the column says what it is waiting for instead of offering the change.
-    const f = fixture('demo')
+    const f = demoOwn()
     const run = runFixture(f)
     const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
     const first = runFixture(f).steps.find((s) => s.id === ADMINS)!
@@ -225,7 +229,7 @@ test('rescan: the same ten days with no records read, or in a record that never 
     // so the date cannot be shown to belong to the object deployed now, and the
     // window runs from the scan that could name it. The date is still loaded and
     // still readable — it just does not decide a rollout gate.
-    const f = fixture('demo')
+    const f = demoOwn()
     const run = runFixture(f)
     const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
     applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
@@ -338,7 +342,7 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
     for (const line of stepContract(step, ctxOf(hostile)).doneWhen) assert.doesNotMatch(line, /required report-only period|during those days/, line)
 
     // Watched in report-only, then turned on: it had its window, and nothing says it missed one.
-    const f = withFoundationSettled(plainFixture('demo'))
+    const f = withFoundationSettled(asPlansOwn(plainFixture('demo'), ADMINS))
     const first = runFixture(f)
     const before = first.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
     assert.equal(before.state.lifecycle, 'report-only', 'the premise: the policy is in report-only at the first scan')

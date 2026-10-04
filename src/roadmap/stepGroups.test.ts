@@ -176,7 +176,7 @@ test('every step is in exactly one group, no group lists a step the board can ne
     }
 
     // A cleanup- member names a row roadmap/cleanup.ts can build.
-    const kinds = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }, new Set()).map((r) => String(r.kind))
+    const kinds = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'], retiring: ['f'] }, new Set()).map((r) => String(r.kind))
     for (const id of listed.filter((m) => m.startsWith('cleanup-'))) {
       assert.ok(kinds.includes(id.slice('cleanup-'.length)), `${id}: not a CleanupKind roadmap/cleanup.ts renders`)
     }
@@ -213,7 +213,7 @@ const OUTLINE: readonly [key: string, title: string, members: readonly string[]]
   ['extend-mfa', 'Extend MFA Coverage', ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-directory-baseline-scopes-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-risky-users-register-block', 's-goal-user-risk-medium', 's-goal-azure-management-mfa']],
   ['remaining-doors', 'Close the Doors Nobody Should Use', ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-avd-allowed-users', 's-goal-workload-identity-block', 's-goal-admin-portals-protected']],
   ['devices-sessions', 'Limit Sessions and Require Healthy Devices', ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls']],
-  ['ongoing', 'Ongoing Checks and Cleanup', ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-consolidation', 'cleanup-naming']],
+  ['ongoing', 'Ongoing Checks and Cleanup', ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming']],
 ]
 
 test('the Plan has eight sections, in the roadmap flow’s order, with its names and members', () => {
@@ -436,7 +436,7 @@ test('every step the engine can build is listed by a section, so none reaches On
   // The countries location is not among them: since Stage 3 it is a task of the
   // countries policy (stepIds.ts OBJECT_TASK), and no tenant builds it as a step.
   const constants = [BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, PREREQ_STEP_ID.trustedLocation, PREREQ_STEP_ID.authStrength, PREREQ_STEP_ID.serviceAccountsGroup, SEPARATE_ADMIN_ACCOUNTS_STEP_ID, PASSKEY_SETTINGS_STEP_ID, OPERATOR_PASSKEY_STEP_ID]
-  const cleanup = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'] }, new Set()).map((r) => `cleanup-${r.kind}`)
+  const cleanup = cleanupRows({ emergencyAccounts: ['a'], renames: ['b'], overlaps: ['c'], hardening: ['d'], namedExclusions: ['e'], retiring: ['f'] }, new Set()).map((r) => `cleanup-${r.kind}`)
   // And whatever the tenants actually build.
   const built = SCENARIOS.flatMap((s) => runOf(s).steps.map((x) => x.id))
   assert.ok(goals.includes('s-goal-azure-management-mfa') && named.includes('s-goal-inforcer-mfa') && cleanup.includes('cleanup-namedExclusions'), 'the collection read nothing')

@@ -13,6 +13,7 @@ import assert from 'node:assert/strict'
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { asPlansOwn } from './fixtures/asPlanned.ts'
 import { contentLists, NAMES_UP_TO } from '../derive/contentLists.ts'
 import { adminUserIds } from '../roles.ts'
 import { stepById } from '../content/content.ts'
@@ -41,8 +42,11 @@ function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
 }
 
 test('step 15 names the admins its own gate counts short on the demo (three or fewer), and counts them past that', () => {
-  const f = fixture('demo-week2')
-  const snapshot = adminsInReportOnly(f)
+  // The admins policy is the plan's own (the baseline's name): one of the tenant's
+  // own is never changed, the step builds beside it (T4-PM).
+  const week2 = fixture('demo-week2')
+  const f = asPlansOwn({ ...week2, snapshot: adminsInReportOnly(week2) }, 's-goal-admins-phishing-resistant')
+  const snapshot = f.snapshot
   f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!

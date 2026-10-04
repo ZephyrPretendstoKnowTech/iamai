@@ -23,14 +23,25 @@ import type { OrganisationReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { proposeName, usable } from './convention.ts'
 import { nameKey } from '../baseline/discover.ts'
+import { cleanup as cleanupWords } from '../content/content.ts'
+
+/** Retire Replaced Policies' own words beyond its row (content.cleanup.retire). */
+const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string } }).retire
 
 export type CleanupPhase = {
   /** The first Cleanup day: the working day after the last enforcement window. */
   start: string
   /** The last Cleanup day: one working day per row. */
   end: string
-  /** The rows, in render order, each with its day, and the date it was marked done (null while it is not). */
-  rows: (CleanupRow & { day: string; done: string | null; record?: CleanupCheckpoint; verification?: 'current' | 'changed' | 'historical' | 'incomplete' | 'unread'; verificationReason?: string })[]
+  /**
+   * The rows, in render order, each with its day, and the date it was marked done (null while it is not).
+   * `waitsOn` is the steps whose policy has to be On before the row can be done:
+   * Retire Replaced Policies waits on the step that built the baseline's policy
+   * beside the ones it retires (RetiringPolicy.stepId).
+   */
+  rows: (CleanupRow & { day: string; done: string | null; waitsOn?: string[]; record?: CleanupCheckpoint; verification?: 'current' | 'changed' | 'historical' | 'incomplete' | 'unread'; verificationReason?: string })[]
+  /** The tenant's own policies Retire Replaced Policies lists, by id, in its order: what a kept-with-a-reason record names. */
+  retiringPolicyIds?: string[]
   /** The emergency-access account ids the alerting and drill rows act on. */
   accountIds: string[]
   accountUpnsById?: Record<string, string>
@@ -87,9 +98,47 @@ export type CleanupPhaseInput = {
   hardeningVerified?: boolean
   /** The tenant's policies that exclude an emergency account by name, worded (cleanup.ts namedEmergencyExclusions). */
   namedExclusions?: string[]
+  /** The tenant's own policies a step built the baseline's beside, still On or in Report-only (retiringOf). */
+  retiring?: RetiringPolicy[]
   early?: string
   /** The rows held back from plans (cleanup.ts WITHHELD_CLEANUP); a test of a held-back row passes an empty set. */
   withheld?: ReadonlySet<CleanupKind>
+}
+
+/** One policy Retire Replaced Policies lists: the tenant's, the row's line for it, and the step that built the baseline's beside it. */
+export type RetiringPolicy = { policyId: string; line: string; stepId: string }
+
+/**
+ * The tenant's own policies a step built the baseline's beside and still On or
+ * in Report-only (Action.besidePolicies), one each, in plan order: what Retire
+ * Replaced Policies retires. A step skipped, set aside or not applying retires
+ * nothing; a policy turned Off or deleted has left the list, so the scan that
+ * finds the last one gone takes the row out of the plan, as Align Policy Names
+ * leaves once the last name is aligned.
+ */
+export function retiringOf(steps: readonly Step[], stateWord: (state: string) => string): RetiringPolicy[] {
+  const out = new Map<string, RetiringPolicy>()
+  for (const s of steps) {
+    if (s.status === 'skipped' || s.doesntApply || s.state.setAside) continue
+    for (const p of s.action.besidePolicies ?? []) {
+      if (out.has(p.policyId) || (p.state !== 'enabled' && p.state !== 'enabledForReportingButNotEnforced')) continue
+      out.set(p.policyId, { policyId: p.policyId, line: `${p.name} (${stateWord(p.state)}, ID: ${p.policyId})`, stepId: s.id })
+    }
+  }
+  return [...out.values()]
+}
+
+/**
+ * The day Retire Replaced Policies was completed by a record, else null: the
+ * latest saved "keep them" record whose reason is written and which names every
+ * policy still listed. Turning the policies Off needs no record: the scan that
+ * finds them Off or gone takes them off the list.
+ */
+export function retireKeptOn(records: readonly CleanupCheckpoint[], ids: readonly string[], now: string): string | null {
+  const latest = records.filter((c) => c.cleanup === 'retire' && validCompletionDate(c.date, now, c.timeZone) && Date.parse(c.at) <= Date.parse(now)).sort((a, b) => a.at.localeCompare(b.at)).at(-1)
+  if (!latest || !latest.rationale?.trim() || ids.length === 0) return null
+  const kept = new Set((latest.retainedPolicyIds ?? []).map((id) => id.toLowerCase()))
+  return ids.every((id) => kept.has(id.toLowerCase())) ? latest.date : null
 }
 
 /** The convention as a name shape ("Core - Scope - Action - Target"), or null below the agreement floor. */
@@ -146,7 +195,10 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     overlaps: [...overlaps.map(line => `${line}${policyRows.filter(p => line.includes(String(p.displayName))).map(p => `; ${p.displayName} (ID: ${p.id})`).join('')}`), ...comparisonLines],
     hardening: input.hardening ?? [],
     namedExclusions: input.namedExclusions ?? [],
+    retiring: (input.retiring ?? []).map((p) => p.line),
   }, input.withheld ?? WITHHELD_CLEANUP)
+  const retiringIds = (input.retiring ?? []).map((p) => p.policyId)
+  const retireWaits = [...new Set((input.retiring ?? []).map((p) => p.stepId))]
   // Intended retirement removes the overlap that originally created this row;
   // keep its recorded result visible and reassess the retained replacement.
   if (!(input.withheld ?? WITHHELD_CLEANUP).has('consolidation') && !rows.some(r => r.kind === 'consolidation') && input.records?.some(r => r.cleanup === 'consolidation')) rows.push({ kind: 'consolidation', lists: { overlaps: [] } })
@@ -170,11 +222,18 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     const tests = accounts.map((id) => input.accountBasis && !input.accountBasis[id] ? null : latestRecoveryTest(id, records, now, input.accountBasis?.[id], { readings: input.recoveryCandidates?.[id] ?? [], tenantId: input.tenantId ?? '', currentSnapshotObservedAt: input.snapshotObservedAt ?? now, signInSource: input.signInEvidenceSource, candidateSetBasis: input.recoveryCandidateSetBasis?.[id] }))
     const tested = accounts.length > 0 && tests.every((date) => date !== null && Date.parse(now) - Date.parse(date) <= BREAK_GLASS_DRILL_DAYS * 86_400_000)
     const latestConsolidation = r.kind === 'consolidation' ? records.filter(c => c.cleanup === 'consolidation' && validCompletionDate(c.date, now, c.timeZone) && Date.parse(c.at) <= Date.parse(now)).sort((a,b) => a.at.localeCompare(b.at)).at(-1) : undefined
-    const done = r.kind === 'hardening' ? input.hardeningVerified ? now : null : r.kind === 'consolidation' ? consolidationVerified(latestConsolidation, input.policies) && consolidationCandidateIds.every(id => [...(latestConsolidation?.retainedPolicyIds ?? []), ...(latestConsolidation?.retiredPolicyIds ?? []), latestConsolidation?.replacementPolicyId].includes(id)) ? latestConsolidation!.date : null : r.kind === 'drill' ? tested ? tests.filter((d): d is string => d !== null).sort().at(-1) ?? null : null : record && (r.kind !== 'alerting' || record.outcome !== 'failed') ? record.date : null
+    const done = r.kind === 'retire' ? retireKeptOn(records, retiringIds, now) : r.kind === 'hardening' ? input.hardeningVerified ? now : null : r.kind === 'consolidation' ? consolidationVerified(latestConsolidation, input.policies) && consolidationCandidateIds.every(id => [...(latestConsolidation?.retainedPolicyIds ?? []), ...(latestConsolidation?.retiredPolicyIds ?? []), latestConsolidation?.replacementPolicyId].includes(id)) ? latestConsolidation!.date : null : r.kind === 'drill' ? tested ? tests.filter((d): d is string => d !== null).sort().at(-1) ?? null : null : record && (r.kind !== 'alerting' || record.outcome !== 'failed') ? record.date : null
     // The drill's recorded check is a legacy manual record only (overnight review
     // B1): the automatic per-account records are Step 4's Sign-in evidence tile.
     const latest = records.filter(c => c.cleanup === r.kind && (r.kind !== 'drill' || isLegacyManualDrillRecord(c))).sort((a,b) => a.at.localeCompare(b.at)).at(-1)
     const verification = done ? 'current' : latest && (r.kind === 'consolidation' || r.kind === 'naming') ? input.policies == null ? 'unread' : (r.kind === 'naming' ? !latest.namingChanges?.length : !latest.replacementPolicyId && latest.consolidationDecision !== 'retain-both') ? 'historical' : 'changed' : latest && r.kind === 'drill' && !latest.outcome ? 'historical' : latest && input.accountBasis && accounts.some(id => !input.accountBasis?.[id]) ? 'unread' : latest && latest.basis !== basis ? 'changed' : 'incomplete'
+    // Retire Replaced Policies waits on the step whose policy replaces the ones it
+    // lists; a saved "keep them" record that no longer names every one still
+    // listed is history, and says so.
+    if (r.kind === 'retire') {
+      dated.push({ ...r, day, done, ...(retireWaits.length > 0 ? { waitsOn: retireWaits } : {}), ...(latest ? { record: latest, verification: done ? 'current' as const : 'changed' as const, ...(done ? {} : { verificationReason: RETIRE_WORDS.recordStale }) } : {}) })
+      continue
+    }
     dated.push({ ...r, day: early !== null ? addWorkingDays(early, 2, ctx) : day, done, ...(latest ? { record: latest, verification, ...(verification === 'changed' ? { verificationReason: 'The recorded check does not cover the current accounts or configuration.' } : verification === 'unread' ? { verificationReason: 'The latest scan could not verify the configuration used for this check.' } : verification === 'historical' ? { verificationReason: 'The earlier date is retained; it does not record a successful scoped test.' } : verification === 'incomplete' ? { verificationReason: r.kind === 'naming' ? 'Save the approved names, rescan after renaming, and confirm the tooling check.' : r.kind === 'consolidation' ? 'Review the current candidate policies and save the outcome.' : 'Record a successful test for the current scope.' } : {}) } : {}) })
   }
   const policyOptions = new Map<string, { id: string; name: string; basis: string | null; state: string }>()
@@ -187,7 +246,7 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
   }
   dated.sort((a, b) => a.day.localeCompare(b.day))
   const latestFailedAtByAccount = Object.fromEntries(input.emergencyAccountIds.map(id => [id, (input.records ?? []).filter(record => record.cleanup === 'drill' && record.purpose === 'final' && record.outcome === 'failed' && record.accountIds?.some(accountId => accountId.toLowerCase() === id.toLowerCase())).sort((a, b) => a.at.localeCompare(b.at)).at(-1)?.at ?? null]))
-  return { start: dated.map(r => r.day).sort()[0], end: [input.after, ...dated.map(r => r.day)].sort().at(-1)!, rows: dated, consolidationCandidateIds, accountIds: input.emergencyAccountIds, accountUpnsById: Object.fromEntries(input.emergencyAccountIds.map((id, index) => [id, input.emergencyAccountUpns[index] ?? id])), accountBasis: input.accountBasis, recoveryCandidateSetBasis: input.recoveryCandidateSetBasis, signInEvidenceSource: input.signInEvidenceSource, recoveryFindings: input.recoveryFindings, recoveryCandidates: input.recoveryCandidates, preChangeRecoveryCandidates: input.preChangeRecoveryCandidates, tenantId: input.tenantId, configurationObservedAtByAccount: input.configurationObservedAtByAccount, latestFailedAtByAccount, preChangeConfigurationObservedAtByAccount: input.preChangeConfigurationObservedAtByAccount, snapshotObservedAt: input.snapshotObservedAt, policyOptions: [...policyOptions.values()], convention }
+  return { start: dated.map(r => r.day).sort()[0], end: [input.after, ...dated.map(r => r.day)].sort().at(-1)!, rows: dated, consolidationCandidateIds, ...(retiringIds.length > 0 ? { retiringPolicyIds: retiringIds } : {}), accountIds: input.emergencyAccountIds, accountUpnsById: Object.fromEntries(input.emergencyAccountIds.map((id, index) => [id, input.emergencyAccountUpns[index] ?? id])), accountBasis: input.accountBasis, recoveryCandidateSetBasis: input.recoveryCandidateSetBasis, signInEvidenceSource: input.signInEvidenceSource, recoveryFindings: input.recoveryFindings, recoveryCandidates: input.recoveryCandidates, preChangeRecoveryCandidates: input.preChangeRecoveryCandidates, tenantId: input.tenantId, configurationObservedAtByAccount: input.configurationObservedAtByAccount, latestFailedAtByAccount, preChangeConfigurationObservedAtByAccount: input.preChangeConfigurationObservedAtByAccount, snapshotObservedAt: input.snapshotObservedAt, policyOptions: [...policyOptions.values()], convention }
 }
 
 /** One policy to rename: its id, the tenant's name for it, and the baseline's. */

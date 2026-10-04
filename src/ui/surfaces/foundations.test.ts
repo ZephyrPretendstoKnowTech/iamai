@@ -76,8 +76,11 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
       dates: /^Report-only since .+, until .+$/,
       adminsReady: true,
       snapshot: (f) => {
+        // The policy 4.3 tracks: built as planned it carries the baseline's name (asPlanned), the
+        // plan's own, which 4.3 turns on (T4-PM: one of the tenant's own name it builds beside).
+        const own = runFixture(f).steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!.tracking?.policyId
         const ca = f.snapshot.config.caPolicies!
-        const rows = (ca.rows as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
+        const rows = (ca.rows as Record<string, unknown>[]).map((p) => (p.id === own ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
         return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
       },
     },

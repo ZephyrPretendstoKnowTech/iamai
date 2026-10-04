@@ -89,15 +89,15 @@ test('C01/C02: correcting a policy that already meets the floor writes no grant 
     assert.ok(everyone, 'the all-users goal is corrected, not created beside the tenant policy')
     assert.equal((everyone.action.resolution?.policies ?? []).find((o) => o.mode === 'update')?.policyId, EVERYONE)
     assert.equal((everyone.action.changes ?? []).some((c) => c.field === 'Grant controls'), false, 'an MFA-for-everyone correction of an MFA policy leaves its grant alone')
-    // The admin policy's only shortfall is the exclusions group. The session-only
-    // policy "requires nothing", but that is its finding, not the admin policy's:
-    // the built-in phishing-resistant strength stays as the tenant has it.
-    const admins = r.steps.find((x) => x.goalId === 'admins-phishing-resistant' && x.kind === 'adjust')
-    assert.ok(admins, 'the admins goal corrects its policy')
-    const update = (admins.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
-    assert.equal(update?.policyId, ADMIN)
-    assert.equal(Object.hasOwn(update?.body ?? {}, 'grantControls'), false, 'no grant is written onto the admin policy')
-    assert.deepEqual((admins.action.changes ?? []).map((c) => c.field), ['Users'])
+    // The session-only policy "requires nothing", but that is its finding, not the
+    // admin policy's: the built-in phishing-resistant strength stays as the tenant
+    // has it. Since the policy-matching pilot (T4-PM) 4.3 writes nothing at all to
+    // an admin policy of the tenant's own: it creates the baseline's beside it.
+    const admins = r.steps.find((x) => x.goalId === 'admins-phishing-resistant' && x.kind !== 'verify')
+    assert.ok(admins, 'the admins goal is on the plan')
+    assert.equal(admins.kind, 'create', 'the admins goal creates the baseline’s policy beside the tenant’s')
+    assert.ok((admins.action.resolution?.policies ?? []).every((o) => o.mode === 'create'), 'no update is written onto the admin policy')
+    assert.deepEqual((admins.action.besidePolicies ?? []).map((p) => p.policyId), [ADMIN], 'the admin policy is named, left for Cleanup to retire')
 
     const session = r.steps.find((x) => x.goalId === 'admin-session' && x.kind === 'adjust')
     assert.ok(session, 'the admin-session goal corrects its policy')
@@ -120,10 +120,10 @@ test('C01/C02: correcting a policy that already meets the floor writes no grant 
     const r = runFixture({ ...f, snapshot }, { snapshot } as never)
     const admins = r.steps.find((x) => x.goalId === 'admins-phishing-resistant' && x.kind !== 'verify')
     assert.ok(admins, 'the admins goal is on the plan')
-    for (const op of admins.action.resolution?.policies ?? []) {
-      assert.equal(op.mode === 'update' ? op.policyId : ADMIN, ADMIN, 'it is the admin policy the step follows')
-      assert.equal(Object.hasOwn(op.body, 'grantControls'), false, 'the built-in strength is not swapped for the baseline’s')
-    }
+    // The tenant's own (T4-PM): never updated, so its built-in strength is never
+    // swapped for the baseline's; the baseline's policy is created beside it.
+    assert.equal((admins.action.resolution?.policies ?? []).some((op) => op.mode === 'update'), false, 'the built-in strength is not swapped for the baseline’s')
+    assert.deepEqual((admins.action.besidePolicies ?? []).map((p) => p.policyId), [ADMIN], 'it is the admin policy the step names')
     assert.equal((admins.action.changes ?? []).some((c) => c.field === 'Grant controls'), false)
   }
 })
@@ -154,10 +154,11 @@ test('C01: where the only MFA policy is assigned to an admin role, the all-users
   for (const op of everyone.action.resolution?.policies ?? []) assert.notEqual(op.mode === 'update' ? op.policyId : null, ADMIN, 'the admin policy is not rewritten to All users')
   assert.notEqual(everyone.tracking?.policyId ?? null, ADMIN, 'nor tracked as the all-users policy')
 
-  // The admin policy is still the admins goal's to correct.
-  const admins = r.steps.find((x) => x.goalId === 'admins-phishing-resistant' && x.kind === 'adjust')
-  assert.ok(admins, 'the admins goal corrects its policy')
-  assert.equal((admins.action.resolution?.policies ?? []).find((o) => o.mode === 'update')?.policyId, ADMIN)
+  // The admin policy is the admins goal's, which (T4-PM) builds the baseline's beside it rather than correct it.
+  const admins = r.steps.find((x) => x.goalId === 'admins-phishing-resistant' && x.kind !== 'verify')
+  assert.ok(admins, 'the admins goal is on the plan')
+  assert.deepEqual((admins.action.besidePolicies ?? []).map((p) => p.policyId), [ADMIN])
+  assert.equal((admins.action.resolution?.policies ?? []).some((o) => o.mode === 'update'), false)
 })
 
 // Review R1-F2: an admins policy assigned to a group (built-in phishing-resistant

@@ -326,6 +326,19 @@ export type Action = {
    */
   alsoExcluded?: { policyName: string; groupIds: string[] }
   /**
+   * Policy matching, build new and retire old (owner, 2026-09-27; the pilot is
+   * 4.3 alone, generate.ts BUILDS_BESIDE): the tenant's own On or Report-only
+   * policies for this goal that are neither the plan's (its tag, the baseline's
+   * name) nor the baseline's policy in every setting. The step never edits them
+   * and never tracks them as its own (tracking.ts matchMembers): it creates the
+   * baseline's policy beside them, names them on the step, and Cleanup's Retire
+   * Replaced Policies row retires them once the step's policy is On
+   * (cleanupPhase.ts retiringOf). Conditional Access applies every matching
+   * policy and requires all their grants, so old and new side by side never
+   * weaken a sign-in.
+   */
+  besidePolicies?: { policyId: string; name: string; state: string }[]
+  /**
    * Why the step offers no implementation although nothing it names is missing:
    * the plan cannot tell which of the tenant's policies is which half of a pair,
    * so it will not guess. The step says so and waits for a person to sort it out.

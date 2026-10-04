@@ -18,6 +18,7 @@ import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
 import { conflictInput } from '../../roadmap/fixtures/reviewedConflict.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
@@ -96,7 +97,10 @@ function load(named: string | Fixture, over: { input: Partial<RoadmapInput>; lab
  * chosen example. And the reviewed baseline conflict the mechanism is kept for,
  * which no product baseline carries since 2026-10-03 (fixtures/reviewedConflict.ts).
  */
-const CASES: Case[] = [...allFixtures().map((f) => load(f.name)), load('demo-week2', { input: conflictInput(), label: 'a reviewed baseline conflict' })]
+// The demo's admin policy under the baseline's name is the plan's own, which 4.3 turns on: the one held
+// enforcement the sweep reads (escape-hatch-unverified). Under the demo's own name 4.3 builds beside it in
+// Report-only and enforces nothing yet (T4-PM, the policy-matching pilot).
+const CASES: Case[] = [...allFixtures().map((f) => load(f.name)), load('demo-week2', { input: conflictInput(), label: 'a reviewed baseline conflict' }), load(asPlansOwn(fixture('demo'), 's-goal-admins-phishing-resistant'), { input: {}, label: 'the plan’s own admin policy' })]
 
 // ---- A. the export view is the contract, field for field ----
 

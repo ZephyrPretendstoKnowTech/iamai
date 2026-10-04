@@ -474,11 +474,17 @@ test('the calendar card says it holds the work you can start now, and policy cha
   assert.doesNotMatch(card, /Every scheduled step/)
   assert.match(card, /The work you can start now/)
   assert.match(card, /Policy changes join the calendar once Emergency Access and your answers are done/)
-  const policyEvents = (f: Fixture): number => {
+  const booked = (f: Fixture): string[] => {
     const p = exportPage(f)
-    return (buildIcs(p.r.steps, 'Tenant', 'plan-n047', p.view, p.cleanup).match(/UID:plan-n047-s-goal-/g) ?? []).length
+    return [...buildIcs(p.r.steps, 'Tenant', 'plan-n047', p.view, p.cleanup).matchAll(/UID:plan-n047-(s-goal-[^@]+)@/g)].map((m) => m[1])
   }
-  assert.equal(policyEvents(fixture('demo')), 0, 'the fresh demo books a policy step before its foundation is settled')
+  const policyEvents = (f: Fixture): number => booked(f).length
+  // Since the policy-matching pilot (T4-PM) 4.3 creates the baseline's admin policy
+  // beside the demo's own, a readiness-gated report-only create: the board dates it
+  // and the calendar books its creation day, as on every fresh tenant (small,
+  // hostile, getiamai). Nothing that changes or enforces a policy is booked.
+  assert.deepEqual(booked(fixture('demo')), ['s-goal-admins-phishing-resistant'], 'the fresh demo books a policy change before its foundation is settled')
+  assert.equal(scheduledEventOf(runFixture(fixture('demo')).steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!)?.transition, 'createReportOnly', 'and it is the report-only creation day')
   assert.ok(policyEvents(withFoundationSettled(fixture('demo'))) > 0, 'with the foundation settled, policy steps join the calendar')
 })
 

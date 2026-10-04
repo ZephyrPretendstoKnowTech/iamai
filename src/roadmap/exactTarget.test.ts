@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { asPlansOwn } from './fixtures/asPlanned.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -36,7 +37,8 @@ test('an extra excluded group is asked to be removed; an emergency account exclu
 
 test('a correction that loosens the policy says it is stricter, and that an acceptance keeps it', () => {
   // Week two's admins policy requires the built-in phishing-resistant strength; the baseline's is Modern MFA + TAP.
-  const f = fixture('demo-week2')
+  // Under the baseline's name it is the plan's own, which 4.3 corrects (T4-PM: one of the tenant's own it builds beside).
+  const f = asPlansOwn(fixture('demo-week2'), 's-goal-admins-phishing-resistant')
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   assert.ok(step.tracking?.members?.[0]?.differences?.some((d) => d.dimension === 'grantControls' && d.direction === 'stricter'), 'the premise: a stronger grant')

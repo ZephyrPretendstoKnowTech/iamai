@@ -529,7 +529,7 @@ export function renderStep(st: Record<string, any>, title?: string): string {
       for (let line of v as string[]) {
         if (line === '{existingCoverage}') {
           if (!truthy(ex.existingPolicies)) continue
-          line = S.existingCoverage
+          line = truthy(ex.buildsBeside) && S.existingCoverageBeside ? S.existingCoverageBeside : S.existingCoverage
         } else rendered += 1
         const lk = listKeys(line)
         if (lk.length > 0 && lk.every((k2) => !truthy(ex[k2]))) {

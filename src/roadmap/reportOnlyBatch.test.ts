@@ -38,7 +38,10 @@ test('it lists every policy the plan can create now, by its own step, and leaves
 test('a policy already in Report-only or On is a fact of the step, judged as the tenant holds it', () => {
   const r = runFixture(fixture('demo'))
   const { create, created } = r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!.reportOnlyBatch!
-  for (const id of ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-mfa-all-users', 's-goal-admins-phishing-resistant']) assert.ok(created.includes(id), `${id} is already created`)
+  for (const id of ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-mfa-all-users']) assert.ok(created.includes(id), `${id} is already created`)
+  // The demo's own admin policy in Report-only is not the baseline's: 4.3 creates
+  // the baseline's beside it (T4-PM), so that create is listed here like any other.
+  assert.ok(create.includes('s-goal-admins-phishing-resistant') && !created.includes('s-goal-admins-phishing-resistant'), 'the admin policy built beside the tenant’s is a create')
   assert.ok(create.length > 0)
   assert.ok(!created.includes('s-goal-require-managed-device') && !create.includes('s-goal-require-managed-device'), 'the compliant-device policy is never on it')
 })

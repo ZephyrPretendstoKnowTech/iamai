@@ -1,5 +1,5 @@
 import { readyEvidence } from './fixtures/readyEvidence.ts'
-import { asPlanned } from './fixtures/asPlanned.ts'
+import { asPlanned, asPlansOwn } from './fixtures/asPlanned.ts'
 import { recoveryAccountBasis } from './cleanupDone.ts'
 import { stepCreatedOn } from './evidenceStrategy.ts'
 // The readiness prerequisite, as an implementation fact.
@@ -257,7 +257,9 @@ test('5 + 6: a material change to an already-enabled policy is held while its re
   const f = fixture('demo-week2')
   const ca = f.snapshot.config.caPolicies!
   const rows = (ca.rows as Row[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
-  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot
+  // Under the baseline's name, the plan's own policy, which the step turns on: one
+  // of the tenant's own name it would build beside instead (T4-PM).
+  const snapshot = asPlansOwn({ ...f, snapshot: { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot }, ADMINS).snapshot
   f.checkpoints = (f.checkpoints ?? []).map(record => ({ ...(record as Record<string, unknown>), accountBasis: recoveryAccountBasis(snapshot, f.mapping.breakGlassUserIds, f.mapping, f.groups) }))
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const step = r.steps.find((s) => s.id === ADMINS) as Step

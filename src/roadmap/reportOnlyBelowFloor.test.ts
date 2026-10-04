@@ -6,6 +6,11 @@
 // goal read absent and the step proposed "Core - Require - …" beside it. The
 // correction now carries the grant alone: the policy stays in report-only, and
 // switching it on is still its own later step.
+//
+// The policy carries the baseline's name: it is the plan's own, the one 4.3
+// corrects. Since the policy-matching pilot (T4-PM; owner, 2026-09-27) a policy
+// of the tenant's own name is never corrected: 4.3 creates the baseline's beside
+// it (adminsBuildBeside.test.ts).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture } from './fixtures/index.ts'
@@ -20,7 +25,8 @@ function planWith(state: string, grantControls: Record<string, unknown>) {
   const f = curatedFixture('demo-week2')
   const g = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') })
   assert.ok(g, 'the curated fixture has an actionable exclusions group')
-  const row = { id: W, displayName: 'Policy W', state, conditions: { users: { includeRoles: [GA], excludeGroups: [g] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls }
+  const name = runFixture(f).steps.find((x) => x.id === 's-goal-admins-phishing-resistant')!.createName!
+  const row = { id: W, displayName: name, state, conditions: { users: { includeRoles: [GA], excludeGroups: [g] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls }
   const ca = f.snapshot.config.caPolicies!
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [row] } } }
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)

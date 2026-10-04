@@ -15,9 +15,14 @@ import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { cardLineOf } from './policyTasks.ts'
 import { correctionSettings } from '../../roadmap/policyProcedure.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 
 type Row = Record<string, any>
 const ADMINS = 's-goal-admins-phishing-resistant'
+// The demo's admins policy under the baseline's name: the plan's own, which 4.3 compares and
+// corrects or accepts. One of the tenant's own name it builds beside instead (T4-PM, the
+// policy-matching pilot; owner, 2026-09-27: build new, retire old).
+const demo = (name: 'demo' | 'demo-week2') => asPlansOwn(fixture(name), ADMINS)
 
 function open(f: ReturnType<typeof fixture>, id: string) {
   const r = runFixture(f)
@@ -28,7 +33,7 @@ function open(f: ReturnType<typeof fixture>, id: string) {
 
 test('the Accept panel lists each difference on its own line, marked, and says in one sentence who a weaker one leaves out', () => {
   // Week two's admins policy holds Global Administrator alone, under the built-in phishing-resistant strength.
-  const { step, ctx } = open(fixture('demo-week2'), ADMINS)
+  const { step, ctx } = open(demo('demo-week2'), ADMINS)
   const panel = acceptPanelOf(step, ctx)!
   assert.deepEqual(panel.lines.map((l) => [l.mark, l.text]), [
     ['Weaker', '45 admin roles not included: Agent ID Administrator, AI Reader, Application Administrator, Application Developer, Authentication Administrator and 40 more'],
@@ -41,7 +46,7 @@ test('the Accept panel lists each difference on its own line, marked, and says i
 })
 
 test('a session control the tenant adds is a Stricter line with its value', () => {
-  const f = structuredClone(fixture('demo-week2'))
+  const f = structuredClone(demo('demo-week2'))
   const id = runFixture(f).steps.find((s) => s.id === ADMINS)!.tracking!.policyId
   const row = (f.snapshot.config.caPolicies.rows as Row[]).find((p) => p.id === id)!
   row.sessionControls = { signInFrequency: { isEnabled: true, type: 'days', value: 7, frequencyInterval: 'timeBased', authenticationType: 'primaryAndSecondaryAuthentication' } }
@@ -52,7 +57,7 @@ test('a session control the tenant adds is a Stricter line with its value', () =
 
 test('the exclusions group missing is marked Required and is never offered for acceptance', () => {
   // Demo's admins policy excludes Core - Break glass and not Core - Exclusions.
-  const { step, ctx } = open(fixture('demo'), ADMINS)
+  const { step, ctx } = open(demo('demo'), ADMINS)
   const panel = acceptPanelOf(step, ctx)!
   assert.ok(panel.lines.some((l) => l.tag === 'required' && l.mark === 'Required' && l.text === '1 group not excluded: Core - Exclusions'), JSON.stringify(panel.lines))
   assert.ok(panel.lines.some((l) => l.tag === 'weaker' && l.text === '1 group also excluded: Core - Break glass'))
@@ -62,7 +67,7 @@ test('the exclusions group missing is marked Required and is never offered for a
 })
 
 test('once accepted, the panel only says so and offers Remove acceptance; the Satisfied tile holds the policy, date and reason, and an accepted weaker difference is marked there', () => {
-  const f = fixture('demo-week2')
+  const f = demo('demo-week2')
   const first = open(f, ADMINS)
   const acceptable = acceptPanelOf(first.step, first.ctx)!.acceptable
   const mapping = applyStepDecisions(f.mapping, { [`${DEVIATION_KEY}${ADMINS}`]: { answers: { reason: 'Only Global Administrators sign in here', fields: JSON.stringify(acceptable) }, at: '2026-09-26T12:00:00Z' } } as never)

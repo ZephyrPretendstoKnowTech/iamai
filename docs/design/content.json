@@ -287,6 +287,8 @@
     "$commentCreateOnLine": "reportOnlyLine for a User Action policy, which is created On (Phase 2e; roadmap/evidenceStrategy.ts createdOn).",
     "createOnLine": "Enable policy: On → Create.",
     "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; once it is enforced, review whether the older ones can be retired.",
+    "$commentExistingCoverageBeside": "The existing-coverage line on a step that builds the baseline's policy beside the tenant's own (owner, 2026-09-27: build new, retire old; roadmap/generate.ts BUILDS_BESIDE, the pilot is 4.3): the tenant's policies it never edits, each with its state, and the Cleanup row that retires them. Stands in for existingCoverage wherever that line sits (ui/surfaces/stepExport.ts whoEvidenceLines).",
+    "existingCoverageBeside": "Also covering these people today: {list:existingPolicies}. This step never edits a policy of {tenant}'s own: the baseline's policy is built new, in Report-only, and Retire Replaced Policies in Cleanup turns the old off once the new one is On. Conditional Access applies every policy that matches a sign-in and requires all their grants, so old and new side by side weaken nothing.",
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
     "certificatePrompt": "In report-only, a policy that requires a compliant device can prompt people on Mac, iOS and Android devices to pick a certificate, again and again, until the device is compliant.",
     "strengthName": "Modern MFA + TAP",
@@ -3360,6 +3362,7 @@
         "cleanupImpacts": {
           "hardening": "Emergency account safeguards",
           "naming": "Policy names",
+          "retire": "Replaced policies",
           "consolidation": "Overlapping policies",
           "notAssessed": "Baseline policies"
         },
@@ -3999,6 +4002,32 @@
       "doneWhen": [
         "A scan finds no On or Report-only policy that excludes an emergency account by name, and the exclusions group keeps each account out."
       ]
+    },
+    "retire": {
+      "brief": {
+        "does": "Turns off the tenant's older sign-in rules once the baseline's own rule for the same job is on.",
+        "matters": "One rule for each job makes the next change easier to get right.",
+        "notice": "No one notices where the old rule asks for nothing the baseline's does not; a stricter one can stay, with a reason."
+      },
+      "$comment": "Retire Replaced Policies (owner, 2026-09-27: policy matching, build new and retire old; the pilot is 4.3, roadmap/generate.ts BUILDS_BESIDE): the tenant's own policies a step built the baseline's policy beside, each with its state and ID, while any is On or in Report-only (roadmap/cleanupPhase.ts retiringOf). Its own kind, apart from Review Overlapping Policies, which stays held back. It waits on the step whose policy replaces them, and is done when a scan finds each Off or deleted (the row then leaves the plan, as Align Policy Names does) or when a reason to keep them is saved (keep, keepReason). recordStale is the saved reason that no longer names every policy listed.",
+      "title": "Retire Replaced Policies",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
+      },
+      "why": "These policies of your own were written for the job the baseline's policy now does: {list:retiring}. Conditional Access applies every policy that matches a sign-in and requires all their grants, so running old and new side by side weakens nothing. Once the baseline's policy is On, the old one only makes the next change harder to reason about, and a tenant is capped at 240 policies.",
+      "whatToDo": [
+        "Compare each policy listed with the baseline's. Anything it asks that the baseline's does not, a stricter method or more people, goes when it is turned off. A stricter policy can stay: keep it and record why below.",
+        "Turn it off: in the Microsoft Entra admin center, open Entra ID → Conditional Access → Policies, open the policy, set Enable policy to Off, then select Save. An Off policy comes back with one switch.",
+        "Check for a week that nothing changed: the sign-in logs show no sign-in failing or prompting differently. Then delete it; a deleted policy can be restored for 30 days.",
+        "Select Scan: a policy Off or deleted leaves this list, and the row leaves the plan with the last one."
+      ],
+      "doneWhen": [
+        "A scan finds each policy listed Off or deleted, or a reason to keep it is recorded."
+      ],
+      "keepReason": "Reason to keep them",
+      "keep": "Keep With This Reason",
+      "recordedHeading": "Kept With a Reason",
+      "recordStale": "The saved reason does not name every policy still listed: keep them again with a reason, or turn the others off."
     },
     "naming": {
       "brief": {
@@ -5611,8 +5640,9 @@
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
         "existingPolicies": [
-          "Core - Allow - MFA for Admins"
+          "Core - Allow - MFA for Admins (On)"
         ],
+        "buildsBeside": true,
         "strengthName": "Modern MFA + TAP",
         "from": "Aug 1",
         "adminsWithWorkload": []
