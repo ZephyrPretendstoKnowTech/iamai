@@ -299,9 +299,16 @@ export async function restoreChosenBaseline(origin: BaselineResult['origin'], be
  * draws on a restored session and Connect does not load its default over a
  * baseline that was about to come back. Never rejects: a store or a directory
  * that will not answer leaves the tenant with less on screen, not an error page.
+ *
+ * It starts from nothing (T3-A): the name, the scan, the scan's outcome and the
+ * baseline on screen are let go of before anything is read, so what follows is
+ * this tenant's own stored state or nothing. Keeping them until a read replaced
+ * them put the previous tenant's scan under the next one whenever the next had
+ * none stored. Called with no scan in flight: on load, or by switchTenant,
+ * which stops the scan and ends the turn first.
  */
 export async function restoreSession(account: AccountInfo | null): Promise<void> {
-  setSession({ account })
+  setSession({ account, tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null })
   if (!account) return
   const turn = tenantTurn()
   // The name is not waited for: the header fills it in when Graph answers, and
@@ -318,6 +325,7 @@ export async function restoreSession(account: AccountInfo | null): Promise<void>
   if (!stillThisTurn(turn)) return
   // A scan saved before a capability existed carries no entry for it; the
   // missing ones come from the licence rows that scan read (licensing/capabilities.ts).
+  // No stored scan leaves the session with none: it was cleared above.
   if (stored?.snapshot) setSession({ lastScan: { snapshot: withCurrentCapabilities(stored.snapshot), at: stored.at } })
   // The baseline the tenant chose (prompt 14 §6): the pinned index by commit,
   // or the operator's own uploaded files.

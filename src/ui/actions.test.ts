@@ -496,6 +496,51 @@ function hydration() {
   return { name, snapshot, origin, pkg }
 }
 
+// T3-A: restoring a tenant starts from that tenant's own stored state or from
+// nothing. restoreSession used to set only the account and then each fact it
+// read, so a tenant with no stored scan kept the previous tenant's scan, name,
+// baseline and scan outcome on screen under its own account.
+test('restoring a tenant with nothing stored shows nothing of the tenant before it: no scan, no name, no baseline, no scan outcome', async () => {
+  setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded, baselineRestoreError: 'an older failure' })
+  setScan({ ...IDLE_SCAN, state: 'done', error: null, returnTo: '#/plan/s-one', gaps: [{ source: 'caPolicies' } as never] })
+  const h = hydration()
+  const pinned = deferred<BaselineResult>()
+  actions.baselineLib.loadPinnedBaseline = () => pinned.promise
+  const restoring = actions.restoreSession(otherAccount)
+  // At once, before any read answers: tenant B's account and nothing of tenant A.
+  {
+    const s = getSession()
+    assert.equal(s.account, otherAccount)
+    assert.equal(s.lastScan, null, "tenant A's scan is still on screen under tenant B")
+    assert.equal(s.tenantName, null, "tenant A's name is still in the header")
+    assert.equal(s.baseline, null, "tenant A's uploaded package is still tenant B's baseline")
+    assert.equal(s.baselineRestoreError, null)
+    assert.deepEqual([s.scan.state, s.scan.gaps, s.scan.returnTo], ['idle', [], null], "tenant A's scan outcome is still on screen")
+  }
+  // Tenant B has no stored scan and no stored choice: it stays with none, and gets the default baseline.
+  h.snapshot.settle(null)
+  h.origin.settle(null)
+  pinned.settle(pinnedResult)
+  h.name.settle('Fabrikam')
+  await restoring
+  await flush()
+  const s = getSession()
+  assert.equal(s.lastScan, null, "tenant B, with nothing stored, shows tenant A's scan")
+  assert.equal(s.tenantName, 'Fabrikam')
+  assert.equal(s.baseline, pinnedResult)
+  // And a tenant that has a stored scan gets its own.
+  fresh()
+  setSession({ account, tenantName: 'Contoso', lastScan: record })
+  const h2 = hydration()
+  actions.baselineLib.loadPinnedBaseline = async () => pinnedResult
+  const again = actions.restoreSession(otherAccount)
+  h2.snapshot.settle(otherRecord)
+  h2.origin.settle(null)
+  h2.name.settle('Fabrikam')
+  await again
+  assert.equal(getSession().lastScan?.at, otherRecord.at)
+})
+
 test('R4-37: a scan saved before the PIM capability existed reopens with it, from the licence rows that scan read', async () => {
   // `pim` (licensing/capabilities.ts) arrived after scans were being kept. A
   // kept scan has no entry for it, and every reading of
