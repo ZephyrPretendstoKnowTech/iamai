@@ -1576,6 +1576,8 @@
         "devices": "Devices seen in the last 30 days",
         "methods": "Phishing-resistant methods",
         "best": "Best option",
+        "$commentSignsInWith": "F-121: in place of Best option where a device signed in with what is built into it. It names that credential's class and gives no advice. Best option said Windows Hello for Business on a personal computer.",
+        "signsInWith": "Signs in with",
         "now": "Now",
         "$commentStorage": "A passkey’s storage, in the drawer and the CSV: 1.3 makes passkeys device-bound, so a synced one stops (owner, 2026-10-03).",
         "storage": "Stored",
