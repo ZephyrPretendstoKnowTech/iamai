@@ -33,6 +33,8 @@ const NEEDS_CORRECTION = (app.plan as unknown as { stepContract: { stateWords: {
 const NO_ACCOUNTS_CHOSEN = (app.plan as unknown as { emergencyTasks: { noAccountsChosen: string } }).emergencyTasks.noAccountsChosen
 /** Existing passkeys affected where accounts would be left without a passkey the planned settings allow (pages.app.plan.emergencyTasks). */
 const ACCOUNTS_TO_PREPARE = (app.plan as unknown as { emergencyTasks: { accountsToPrepare: string } }).emergencyTasks.accountsToPrepare
+/** A passkey's storage as the task and MFA Readiness say it (Device-bound, Synced), never Graph's raw value. */
+const storageWord = (t: string | null): string | null => (t ? t.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean).map((x) => (x === 'devicebound' ? 'Device-bound' : x === 'synced' ? 'Synced' : x)).join(', ') : null)
 const LOCKED_OUT = (app.plan as unknown as { emergencyTasks: { accountsLockedOut: string; accountsToCheck: string; accountsKeepAnother: string; lockedOutItem: string; keeps: string } }).emergencyTasks
 
 export const EMERGENCY_ACCOUNTS = 's-prereq-break-glass'
@@ -325,7 +327,7 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
     detail: '',
     items: users.flatMap(user => user.methods.map((method, index) => ({
       label: `Affected passkey ${index + 1}`, factLabel: `Affected passkey ${index + 1}`, accountId: user.accountId, subjectId: user.accountId, subjectLabel: accountLabel(snapshot, user.accountId),
-      value: `${[method.displayName, method.aaguid, method.passkeyType].filter(Boolean).join(' · ')}${user.hasCompatibleAlternative ? ' · Compatible alternative observed' : ''}${keptBy.has(user.accountId.toLowerCase()) ? ` · ${fillText(LOCKED_OUT.keeps, { method: methodName(keptBy.get(user.accountId.toLowerCase())!) })}` : ''}`,
+      value: `${[method.displayName, storageWord(method.passkeyType), method.aaguid].filter(Boolean).join(' · ')}${user.hasCompatibleAlternative ? ' · Compatible alternative observed' : ''}${keptBy.has(user.accountId.toLowerCase()) ? ` · ${fillText(LOCKED_OUT.keeps, { method: methodName(keptBy.get(user.accountId.toLowerCase())!) })}` : ''}`,
       outcome: 'fail' as const, issueKeys: [`passkey:affected:${user.accountId.toLowerCase()}`],
     }))).concat(lockedOut.map(id => ({
       label: LOCKED_OUT.accountsLockedOut, factLabel: fillText(reading.state === 'inPlace' ? LOCKED_OUT.accountsToCheck : LOCKED_OUT.accountsLockedOut, { count: count(lockedOut.length, 'account') }), accountId: id, subjectId: id, subjectLabel: accountLabel(snapshot, id),

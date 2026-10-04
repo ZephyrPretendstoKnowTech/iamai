@@ -82,6 +82,9 @@ test("the demo's 1.3 lists one person whose synced passkey stops, keeping Micros
   const card = (step.configurationFindings ?? []).find((c) => c.key === 'affected-passkeys')!
   assert.deepEqual((card.items ?? []).map((i) => i.accountId), [person])
   assert.ok(card.items![0].value.endsWith(` · ${KEEPS}`), card.items![0].value)
+  // The passkey's type in words, before its identifier, as the task and MFA Readiness say it.
+  assert.ok(card.items![0].value.startsWith(`iCloud Keychain · Synced · ${ICLOUD}`) || /· Synced · fbfc3007/.test(card.items![0].value), card.items![0].value)
+  assert.doesNotMatch(card.items![0].value, /· synced ·/, 'never Graph\'s raw value')
   // The task names them once, in the lead and in the facts, and the step opens on it.
   const prepare = tasks.tasks.find((t) => t.id === 'prepare-affected-passkeys')!
   assert.equal(prepare.required, true)
