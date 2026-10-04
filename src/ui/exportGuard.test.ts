@@ -64,7 +64,9 @@ test('an unredacted export is only reachable from a surface that warns', () => {
   const declared = [...guard.matchAll(/'([a-z-]+)'/g)]
     .map((m) => m[1])
     .filter((v) => guard.includes(`UnredactedSurface = `) && guard.slice(guard.indexOf('UnredactedSurface ='), guard.indexOf('\n', guard.indexOf('UnredactedSurface ='))).includes(`'${v}'`))
-  assert.deepEqual(declared.sort(), ['grounding-bundle', 'implementation-artifact', 'inventory-csv', 'plan-file', 'print-document'], 'the set of unredacted surfaces changed')
+  assert.deepEqual(declared.sort(), ['grounding-bundle', 'implementation-artifact', 'inventory-csv', 'plan-file', 'plan-policies', 'print-document'], 'the set of unredacted surfaces changed')
+  // Policies as JSON (F-024): its card says the object IDs are in full.
+  assert.match(String((JSON.parse(readFileSync('docs/design/content.json', 'utf8')) as { pages: { export: { cards: { policies: string[] } } } }).pages.export.cards.policies[1]), /Object IDs are in full\. Review it before sharing\./)
 
   // Each surface may be claimed from exactly one place, and that place is the
   // component that renders the warning.
@@ -143,6 +145,7 @@ test('SECURITY.md and the README name every surface that exports names, sign-in 
     'grounding-bundle': { security: /The grounding bundle with its redaction checkbox cleared/, readme: /the unmasked grounding bundle/ },
     'inventory-csv': { security: /Every CSV:[\s\S]{0,300}`Id` column/, readme: /every CSV\s+\(the groups CSV includes each group's object id\)/ },
     'implementation-artifact': { security: /Copy in a step's Implementation viewer, AI Info included/, readme: /Copy in a step's Implementation\s+viewer, AI Info included/ },
+    'plan-policies': { security: /Policies as JSON on the Export page:[\s\S]{0,200}object ids/, readme: /and Policies as JSON/ },
   }
   const security = readFileSync('SECURITY.md', 'utf8')
   const inFull = security.slice(security.indexOf('**In full.**'), security.indexOf('## What it never does'))

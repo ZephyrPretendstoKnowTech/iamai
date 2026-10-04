@@ -59,5 +59,5 @@ test('Export offers it in Doing the work, unredacted as an implementation artifa
   const src = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
   assert.match(src, /exportName\('iamai-policies\.json', fileTenant, \{ id: snapshot\.tenantId \}\)/)
   assert.match(src, /planPoliciesOf\(board, \{/)
-  assert.match(src, /unredactedFrom\('implementation-artifact'\)\)\}>\s*\{buttons\('policies'\)\[0\]\}/)
+  assert.match(src, /unredactedFrom\('plan-policies'\)\)\}>\s*\{buttons\('policies'\)\[0\]\}/)
 })

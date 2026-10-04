@@ -434,7 +434,7 @@ export function ContentStep({
     // anatomy, and it carries the group whose anatomy that is, so app.css can
     // hold a rule back from the frozen Establish Emergency Access run without
     // listing its ids a second time.
-    <article ref={stepRef} className="step panel panel-key" data-step-id={step.id} data-task-anatomy={isTaskStep ? groupOf(step.id)?.key : undefined}>
+    <article className="step panel panel-key" ref={stepRef} data-step-id={step.id} data-task-anatomy={isTaskStep ? groupOf(step.id)?.key : undefined}>
       {/* A task-anatomy step draws no lifecycle track: the Emergency Access
           steps have none, and every step drawn as they are is drawn without it
           (docs/plans/policy-anatomy-deviations.md item 2 — the four stages are

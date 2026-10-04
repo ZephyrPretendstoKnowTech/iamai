@@ -332,7 +332,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.policies[0]}>
           <p className="reason">{P.cards.policies[1]}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(exportName('iamai-policies.json', fileTenant, { id: snapshot.tenantId }), JSON.stringify(planPoliciesOf(board, { tenantId: snapshot.tenantId, tenantName, baselineSource: baseline?.source ?? '', baselinePin: pinOf(baseline), generated: new Date().toISOString(), baselineNamesOf: baselineNamesFrom(c.goalMap, c.baselinePolicies) }), null, 2), 'application/json', unredactedFrom('implementation-artifact'))}>
+            <Button variant="secondary" onClick={() => exportDownload(exportName('iamai-policies.json', fileTenant, { id: snapshot.tenantId }), JSON.stringify(planPoliciesOf(board, { tenantId: snapshot.tenantId, tenantName, baselineSource: baseline?.source ?? '', baselinePin: pinOf(baseline), generated: new Date().toISOString(), baselineNamesOf: baselineNamesFrom(c.goalMap, c.baselinePolicies) }), null, 2), 'application/json', unredactedFrom('plan-policies'))}>
               {buttons('policies')[0]}
             </Button>
           </p>

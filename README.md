@@ -91,8 +91,8 @@ and `offline_access` for the sign-in itself.
   sign-in addresses and object ids (names remain), and the grounding bundle masks names
   too unless you clear its checkbox. These carry names, sign-in addresses and object ids
   in full: the plan file, the print document, the unmasked grounding bundle, every CSV
-  (the groups CSV includes each group's object id), and Copy in a step's Implementation
-  viewer, AI Info included. Review them before you share them.
+  (the groups CSV includes each group's object id), Copy in a step's Implementation
+  viewer, AI Info included, and Policies as JSON. Review them before you share them.
 - **Hosting.** getiamai.com is a static site on GitHub Pages served through Cloudflare.
   Cloudflare adds its own page-load analytics beacon to both pages, and an email-address
   obfuscation script to the home page. Neither is in this repository or the build, and

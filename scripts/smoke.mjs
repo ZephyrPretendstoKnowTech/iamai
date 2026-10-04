@@ -797,12 +797,12 @@ try {
   const clickExact = (label, root = 'main.page') =>
     evaluate(`(() => { const r = document.querySelector(${JSON.stringify(root)}) ?? document; const b = [...r.querySelectorAll('button, a, summary')].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return !!b })()`)
 
-  // Export (target-state §7): six cards, every button makes bytes, and the plan
+  // Export (target-state §7): seven cards, every button makes bytes, and the plan
   // file round-trips carrying the tick just made.
   await go('export')
-  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
-  check('Export: six cards render', (await evaluate(`document.querySelectorAll('main.page .export-card').length`)) === 6)
-  for (const label of ['Download calendar (ICS)', 'MFA Readiness as CSV', 'Download every prompt', 'Download the bundle']) {
+  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 7`)
+  check('Export: seven cards render', (await evaluate(`document.querySelectorAll('main.page .export-card').length`)) === 7)
+  for (const label of ['Download calendar (ICS)', 'MFA Readiness as CSV', 'Download policies (JSON)', 'Download every prompt', 'Download the bundle']) {
     const before = await evaluate(`window.__dl.length`)
     const clicked = await clickExact(label)
     await sleep(350)
@@ -1208,7 +1208,7 @@ try {
   const planTextBefore = await mainText()
   const progressBefore = await progressOf()
   await demoGo('export')
-  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
+  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 7`)
   const dlBefore = await evaluate(`window.__dl.length`)
   await clickExact('Save plan file')
   await sleep(450)
@@ -1256,7 +1256,7 @@ try {
 
   // Export: print page 1 is the briefing's summary: status, the three counts and the journey.
   await demoGo('export')
-  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
+  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 7`)
   const demoPrinted = await clickExact('Print or save as PDF')
   await sleep(300)
   const demoCover = await evaluate(`(document.querySelector('.print-plan .brief-cover') || {}).textContent || ''`)

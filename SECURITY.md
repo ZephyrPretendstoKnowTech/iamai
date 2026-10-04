@@ -201,6 +201,8 @@ placeholders. Display names are not replaced unless the item says so.
 - Copy in a step's Implementation viewer, AI Info included: the Entra procedure, script,
   JSON or email exactly as the viewer shows it, with the tenant's object ids, tenant id
   and names. A masked copy would be a different artifact that does not deploy.
+- Policies as JSON on the Export page: every policy step's create or update as its own
+  tabs hand it over, with the tenant's object ids and tenant id, for the same reason.
 
 Review any of these before you share it. Files exported from demo mode are marked as
 sample data.

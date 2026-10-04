@@ -56,8 +56,12 @@ import type { MappingState } from '../mapping/types.ts'
  *   groups CSV an `Id` column of object ids. The Export page's CSV card says so
  *   in its text; on MFA Readiness and the Inventory tables `shared.csvNotice` is
  *   only the button's tooltip. Neither mentions object ids.
+ * - `plan-policies` — Policies as JSON on the Export page (F-024; owner,
+ *   2026-10-04): every policy step's operations, which name the tenant's own
+ *   groups, roles and locations by object id, so a redacted copy is not a
+ *   policy anyone can apply. Its card says the object IDs are in full.
  */
-export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file' | 'implementation-artifact' | 'inventory-csv'
+export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file' | 'implementation-artifact' | 'inventory-csv' | 'plan-policies'
 
 /** `keep`: GUIDs a redacted export leaves as they are, because they are vendor constants and not tenant data (`runbookRedaction`). */
 export type Disposition = { redact: true; keep?: ReadonlySet<string> } | { redact: false; surface: UnredactedSurface }

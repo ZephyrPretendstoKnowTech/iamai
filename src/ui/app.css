@@ -5112,7 +5112,8 @@ th .th-sort:focus-visible,
     outline-offset: -2px;
   }
   .step .track .stage.reached .stage-fill,
-  .step .track .stage.current .stage-fill {
+  .step .track .stage.current.stage-report-only .stage-fill,
+  .step .track .stage.current.stage-ready-to-enforce .stage-fill {
     forced-color-adjust: none;
     background: Highlight;
   }

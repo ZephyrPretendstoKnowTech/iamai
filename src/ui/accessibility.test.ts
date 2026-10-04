@@ -889,14 +889,14 @@ test('F-097: in forced colours the selected tab, a pressed toggle, the track and
   const blocks = [...css.matchAll(/@media \(forced-colors: active\)\s*\{([\s\S]*?)\n\}/g)].map((m) => m[1]).join('\n')
   assert.match(blocks, /\.tab\[aria-selected='true'\]\s*\{\s*border-bottom: 2px solid Highlight;\s*color: Highlight;/)
   assert.match(blocks, /\[aria-pressed='true'\]\s*\{\s*outline: 2px solid Highlight;/)
-  assert.match(blocks, /\.step \.track \.stage\.current \.stage-fill\s*\{\s*forced-color-adjust: none;\s*background: Highlight;/)
+  assert.match(blocks, /\.step \.track \.stage\.current\.stage-ready-to-enforce \.stage-fill\s*\{\s*forced-color-adjust: none;\s*background: Highlight;/)
   assert.match(blocks, /\.surface\.readiness \.state-dot\s*\{\s*forced-color-adjust: none;\s*border: 1px solid CanvasText;/)
 })
 
 test('F-065: after Defer, Put back, Approve answers, Done or a chip taken off, focus goes to the control that replaced the pressed one, never the page body', () => {
   const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
   assert.ok(step.includes(`stepRef.current?.querySelector<HTMLElement>('.rail-exceptions button')?.focus()`), 'Defer and Put back hand focus to the control that replaced them')
-  assert.ok(step.includes('<article ref={stepRef} className="step panel panel-key"'))
+  assert.ok(step.includes('<article className="step panel panel-key" ref={stepRef}'))
   const direction = readFileSync('src/ui/surfaces/DirectionQuestions.tsx', 'utf8')
   assert.ok(direction.includes('<h4 tabIndex={-1}>{heading}</h4>'), 'the questions heading can take focus')
   assert.ok(direction.includes(`querySelector<HTMLElement>('.direction-section h4')`) && direction.includes('requestAnimationFrame(() => heading.focus())'), 'Approve answers hands focus to the heading')
