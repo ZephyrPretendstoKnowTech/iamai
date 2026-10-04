@@ -5248,6 +5248,7 @@
           "{passkeyProvider}",
           "If they can't sign in to register: open [Microsoft Entra admin center](https://entra.microsoft.com/) → **Entra ID → Users →** the person **→ Authentication methods → Add authentication method → Temporary Access Pass**.",
           "Anyone on text or call only: set up the method named beside them, the same way.",
+          "Set up Windows Hello for Business with {list:campaignWindowsHello}. {windowsHelloSetUp}",
           "Admins: register a passkey or a hardware security key with {list:campaignNeedsPasskey}.",
           "Have each sign in once with the passkey. {passkeySignIn}",
           "Today: the registration campaign is {campaignToday}.",

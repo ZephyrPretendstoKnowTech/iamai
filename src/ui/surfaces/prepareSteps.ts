@@ -30,7 +30,8 @@ import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import type { DeviceType } from '../../scoring/phishingResistant.ts'
 import { proposedNamesFor } from './proposedNames.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
-import { personLines } from './personNext.ts'
+import { nextOptionIdsOf, personLines } from './personNext.ts'
+import { methodGuide } from '../../content/methodGuides.ts'
 import { personLabels } from '../../names.ts'
 
 /** The step's own Tasks Remaining card, in place of its content's fixed check (policyTasks.ts policyCardsOf). */
@@ -206,6 +207,7 @@ function teamVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
   const W = words<TeamWords>(step)
   const passkey = team.missing.filter((id) => team.passkey.has(id))
   const account = accountsOf(ctx)
+  const windowsHello = nextOptionIdsOf(ctx.snapshot, ctx.now, ctx.mapping, 'windowsHello')
   const out: Record<string, unknown> = {
     // The one Authenticator procedure's reader: the person being helped (content/passkeySetup.ts).
     passkeyPhone: passkeyWords.phoneTheirs,
@@ -218,6 +220,10 @@ function teamVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
     // Everyone not ready, each with MFA Readiness's next step for them (who.groups).
     campaignNotReady: personLines(ctx, team.missing),
     campaignNotReadyIds: team.missing,
+    // The people whose next step is Windows Hello for Business, with the method
+    // guide's own how-to (F-063): their rows link here, and the procedure had none.
+    campaignWindowsHello: team.missing.filter((id) => windowsHello.has(id)).map(account),
+    windowsHelloSetUp: methodGuide('windows-hello').lines[0],
   }
   const choice = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory })
   const groupId = choice.actionableId

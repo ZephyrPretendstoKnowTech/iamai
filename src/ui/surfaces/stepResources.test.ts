@@ -16,6 +16,10 @@ import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { fillText } from '../../content/render.ts'
 import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
+import { methodGuide } from '../../content/methodGuides.ts'
+import { readinessView } from '../../derive/mfaReadiness.ts'
+import { nextCell } from './readinessCells.ts'
+import { personLabels } from '../../names.ts'
 
 /** A shipped tenant's plan and step bodies, with any answers saved on top of its own. */
 function opened(name: 'demo' | 'demo-week2' | 'mid', answers: Record<string, string> = {}) {
@@ -108,6 +112,30 @@ test('Prepare Your Team says what the registration campaign it read is missing, 
   const set = portal(withCampaign({ ...passkeysToAll, snoozeDurationInDays: 1, enforceRegistrationAfterAllowedSnoozes: false }))
   assert.ok(set.includes(`Today: the registration campaign is ${today}.`), set)
   assert.doesNotMatch(set, /Set the registration campaign/)
+})
+
+// F-063: MFA Readiness tells some people to set up Windows Hello for Business and
+// links them to Prepare Your Team for MFA, whose procedure had no how-to for it.
+// The procedure names exactly the people whose next step says it, with the
+// method guide's own line, and draws nothing where nobody's does.
+test('Prepare Your Team gives the people told to set up Windows Hello for Business its how-to, and only them', () => {
+  const how = methodGuide('windows-hello').lines[0]
+  const { r, ctx } = opened('demo')
+  const step = r.steps.find(s => s.id === 's-verify-mfa')!
+  const missing = step.preparation!.missingIds
+  const hello = readinessView(ctx.snapshot, ctx.now, ctx.mapping).rows.filter(row => row.state !== 'unknown' && missing.includes(row.user.id) && nextCell(row).includes('Windows Hello for Business'))
+  assert.ok(hello.length > 0, 'the premise: the sample names people for Windows Hello for Business')
+  const portal = stepBodyOf(step, ctx).artifacts.find(a => a.id === 'portal')!.text()
+  const line = portal.split('\n').find(l => l.includes(how))
+  assert.ok(line, portal)
+  assert.match(line, /Set up Windows Hello for Business with /)
+  const labels = personLabels(ctx.snapshot.users, { address: true })
+  for (const row of hello) assert.ok(line.includes(labels.get(row.user.id)!), `${row.user.id} is told to set up Windows Hello for Business and is not named: ${line}`)
+  const others = missing.filter(id => !hello.some(row => row.user.id === id))
+  for (const id of others) assert.ok(!line.includes(labels.get(id) ?? '\u0000'), `${id} is named for Windows Hello for Business`)
+  // Nobody told to set it up: no line.
+  const none = { ...step, preparation: { ...step.preparation!, missingIds: others } } as Step
+  assert.ok(!stepBodyOf(none, ctx).artifacts.find(a => a.id === 'portal')!.text().includes(how))
 })
 
 test('a policy ID in portal instructions includes its actual tenant name', () => {

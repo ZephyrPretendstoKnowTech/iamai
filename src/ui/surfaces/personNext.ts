@@ -11,9 +11,9 @@ import type { MappingState } from '../../mapping/types.ts'
 import { personLabels } from '../../names.ts'
 import { fillText } from '../../content/render.ts'
 import { app } from '../../content/content.ts'
-import { nextCell, nextWords } from './readinessCells.ts'
+import { nextCell, nextOptionOf, nextWords } from './readinessCells.ts'
 import type { StepVarContext } from './stepVars.ts'
-import type { NextAction } from '../../scoring/phishingResistant.ts'
+import type { NextAction, SignInOption } from '../../scoring/phishingResistant.ts'
 
 /** A person on a card: "{name}: {next}" (pages.app.plan.stepContract.cardPerson). */
 const PERSON = (app.plan as unknown as { stepContract: { cardPerson: string } }).stepContract.cardPerson
@@ -53,6 +53,21 @@ export function readinessNextOf(snapshot: TenantSnapshot, now: string, mapping: 
     if (next !== '') out.set(row.user.id, next)
   }
   byMapping.set(mapping, out)
+  return out
+}
+
+/**
+ * The counted people whose next step on MFA Readiness sets up `option`, by id
+ * (readinessCells.ts nextOptionOf, the choice nextCell words): Prepare Your Team
+ * for MFA gives the people told to set up Windows Hello for Business its how-to
+ * (F-063), and names exactly those whose row says it.
+ */
+export function nextOptionIdsOf(snapshot: TenantSnapshot, now: string, mapping: Pick<MappingState, 'breakGlassUserIds' | 'serviceAccountUserIds'>, option: SignInOption): ReadonlySet<string> {
+  const out = new Set<string>()
+  for (const row of readinessView(snapshot, now, mapping).rows) {
+    if (row.state === 'unknown') continue
+    if (nextOptionOf(row) === option) out.add(row.user.id)
+  }
   return out
 }
 

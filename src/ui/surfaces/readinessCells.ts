@@ -380,29 +380,45 @@ const GUEST_SETUP: ReadonlySet<NextAction['kind']> = new Set(['seamless', 'setUp
 
 /** The Next step cell: the baseline's next action, or, for somebody Ready, the Seamless recommendation. */
 export function nextCell(r: ReadinessRow): string {
+  const choice = nextChoiceOf(r)
+  return choice === null ? '' : 'text' in choice ? choice.text : nextWords(choice.action)
+}
+
+/**
+ * The sign-in option the row's next step sets up, where it names one: the same
+ * choice nextCell words, so a Plan line keyed to it (F-063: Prepare Your Team's
+ * Windows Hello for Business line) names exactly the people whose row says it.
+ */
+export function nextOptionOf(r: ReadinessRow): SignInOption | null {
+  const choice = nextChoiceOf(r)
+  return choice !== null && 'action' in choice && 'option' in choice.action ? choice.action.option : null
+}
+
+/** What the next step is: an action nextWords words, or a sentence of its own; null where the row has none. */
+function nextChoiceOf(r: ReadinessRow): { action: NextAction } | { text: string } | null {
   const rd = r.readiness
-  if (!rd || r.state === null) return ''
+  if (!rd || r.state === null) return null
   // A guest is in the campaign (owner, 2026-09-19): Microsoft Authenticator works
   // for them and a passkey does not yet, so a guest is never asked to set one up;
   // one who already holds Authenticator is told what they use, never to set it up again.
-  if (r.guest && GUEST_SETUP.has(rd.next.kind)) return (r.methods ?? []).includes('authenticator') ? T.next.guestHasAuthenticator : T.next.guest
+  if (r.guest && GUEST_SETUP.has(rd.next.kind)) return { text: (r.methods ?? []).includes('authenticator') ? T.next.guestHasAuthenticator : T.next.guest }
   // Records the tenant can't provide: nothing for this person to do, and the page says why once.
-  if (signInsUnavailableFor(r)) return T.next.none
+  if (signInsUnavailableFor(r)) return { text: T.next.none }
   if (rd.next.kind === 'none') {
     // A key that stops working comes first.
-    if (rd.recommended?.kind === 'replaceKey' && !r.guest) return nextWords(rd.recommended)
+    if (rd.recommended?.kind === 'replaceKey' && !r.guest) return { action: rd.recommended }
     // Ready ends soon: sign in again with the method, on the device, whose proof
     // sets the day (phishingResistant.ts renewWith). It is what counts them in
     // Needs action (OWN-R1), so it comes before an optional upgrade (review, 2026-09-27).
     if (r.lapsing && rd.readyUntil && rd.renewWith) {
       const method = T.methodsInline[rd.renewWith.cls]
       const date = monthDay(rd.readyUntil)
-      return rd.renewWith.os ? fillText(T.next.renewByOn, { method, device: deviceNoun(rd.renewWith.os), date }) : fillText(T.next.renewBy, { method, date })
+      return { text: rd.renewWith.os ? fillText(T.next.renewByOn, { method, device: deviceNoun(rd.renewWith.os), date }) : fillText(T.next.renewBy, { method, date }) }
     }
-    if (rd.recommended && !r.guest) return nextWords(rd.recommended)
-    return T.next.none
+    if (rd.recommended && !r.guest) return { action: rd.recommended }
+    return { text: T.next.none }
   }
-  return nextWords(rd.next)
+  return { action: rd.next }
 }
 
 /** A group's line under its title: a Ready or Seamless group says how many of its people have to sign in again soon, where some do. */
