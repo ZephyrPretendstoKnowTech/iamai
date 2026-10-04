@@ -496,7 +496,8 @@ test('the board reads the timing value and never writes it: no date is recalcula
   // rowWhen directly. The board is the only caller of boardWhen.
   const callers = ['src/ui/surfaces/PrintPlan.tsx', 'src/ui/surfaces/stepExport.ts']
     .filter((f) => existsSync(f))
-    .filter((f) => readFileSync(f, 'utf8').includes('boardWhen'))
+    // The projection itself (boardWhen); the board's reading of a row (boardWhenOf) is what the print and the export show, as the row does.
+    .filter((f) => /\bboardWhen\(/.test(readFileSync(f, 'utf8')))
   assert.deepEqual(callers, [], 'a surface outside the board took the board’s reading of the date')
 })
 

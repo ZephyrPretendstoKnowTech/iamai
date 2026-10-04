@@ -117,11 +117,13 @@ test('the whole of who or where a policy applies is never left out (the referenc
   assert.equal(map.waitsOn(PASSKEY_PILOT), undefined)
 
   // The only location a block names is never left out: a block without it would block everywhere.
+  // The pin settles this location (blockedCountries, v1.1 T2-NE); unsettled here, it is the unknown case.
   {
-    const omit = resolve(withoutTokens(policyOf(COUNTRIES_NO_EXCLUSIONS), [BROAD]), { [BLOCKED_COUNTRIES]: OMIT(), [BROAD]: OMIT() }, UNSETTLED())
+    const UNSETTLED_LOCATION = pkg.policies.map((p) => withoutTokens(p, [BROAD, BLOCKED_COUNTRIES]))
+    const omit = resolve(withoutTokens(policyOf(COUNTRIES_NO_EXCLUSIONS), [BROAD, BLOCKED_COUNTRIES]), { [BLOCKED_COUNTRIES]: OMIT(), [BROAD]: OMIT() }, UNSETTLED_LOCATION)
     assert.ok(omit.waitsOn(BLOCKED_COUNTRIES)?.decision, JSON.stringify(omit.locations))
     assert.equal(omit.waitsOn(BROAD), undefined, 'the exception beside it still stands left out')
-    const map = resolve(withoutTokens(policyOf(COUNTRIES_NO_EXCLUSIONS), [BROAD]), { [BLOCKED_COUNTRIES]: MAP('tenant-location'), [BROAD]: OMIT() }, UNSETTLED())
+    const map = resolve(withoutTokens(policyOf(COUNTRIES_NO_EXCLUSIONS), [BROAD, BLOCKED_COUNTRIES]), { [BLOCKED_COUNTRIES]: MAP('tenant-location'), [BROAD]: OMIT() }, UNSETTLED_LOCATION)
     assert.deepEqual(map.locations?.includeLocations, ['tenant-location'])
     assert.equal(map.whole.missing.length, 0, JSON.stringify(map.whole.missing))
   }

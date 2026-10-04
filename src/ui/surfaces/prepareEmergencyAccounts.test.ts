@@ -127,7 +127,8 @@ test('#15 every picker saves from the list: Done saves and closes, taking a chip
   for (const id of ['s-prereq-allowed-countries']) assert.equal(pickerSaves(decisionOf(id), id), false, id)
   const step = read('src/ui/surfaces/ContentStep.tsx')
   const single = step.slice(step.indexOf('function SingleDecision('), step.indexOf('export function Options('))
-  assert.match(single, /\{!savesAlone && <Button variant="secondary" disabled=\{!canSave\} onClick=\{\(\) => save\(\)\}>/)
+  // A countries answer naming one country on both lists cannot be saved (v1.1 T2-NE).
+  assert.match(single, /\{!savesAlone && <Button variant="secondary" disabled=\{!canSave \|\| blockedConflict !== null\} onClick=\{\(\) => save\(\)\}>/)
   assert.match(single, /onCommit=\{saves \? \(picked\) => save\(picked\) : undefined\}/)
   // The campaign's follow-up list is a picker alone: no Save beside it.
   const followUp = step.slice(step.indexOf('function FollowUpDecision('), step.indexOf('function DormantDecision('))
