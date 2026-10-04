@@ -883,3 +883,12 @@ test('N-034: a press outside the picker hides its list when the press ends, so t
   assert.match(onDoc, /commitIfChanged\(\)/, 'what the picker saves on leaving it is no longer saved')
   assert.match(onDoc, /document\.addEventListener\('mouseup', \(\) => setOpen\(false\), \{ once: true \}\)/)
 })
+
+test('F-097: in forced colours the selected tab, a pressed toggle, the track and the readiness dots keep a system colour', () => {
+  const css = readFileSync('src/ui/app.css', 'utf8')
+  const blocks = [...css.matchAll(/@media \(forced-colors: active\)\s*\{([\s\S]*?)\n\}/g)].map((m) => m[1]).join('\n')
+  assert.match(blocks, /\.tab\[aria-selected='true'\]\s*\{\s*border-bottom: 2px solid Highlight;\s*color: Highlight;/)
+  assert.match(blocks, /\[aria-pressed='true'\]\s*\{\s*outline: 2px solid Highlight;/)
+  assert.match(blocks, /\.step \.track \.stage\.current \.stage-fill\s*\{\s*forced-color-adjust: none;\s*background: Highlight;/)
+  assert.match(blocks, /\.surface\.readiness \.state-dot\s*\{\s*forced-color-adjust: none;\s*border: 1px solid CanvasText;/)
+})

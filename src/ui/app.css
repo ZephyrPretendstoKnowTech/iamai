@@ -5099,6 +5099,27 @@ th .th-sort:focus-visible,
     outline: 2px solid;
     outline-offset: 1px;
   }
+  /* F-097: forced colours drop the accent that marks the selected tab, a pressed
+     toggle and the track's filled stages, so each takes a system colour instead. */
+  .tab.active,
+  .tabs .tab.active,
+  .tab[aria-selected='true'] {
+    border-bottom: 2px solid Highlight;
+    color: Highlight;
+  }
+  [aria-pressed='true'] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .step .track .stage.reached .stage-fill,
+  .step .track .stage.current .stage-fill {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .surface.readiness .state-dot {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+  }
 }
 
 /* The existing plan style, with aligned values and useful controls. */
