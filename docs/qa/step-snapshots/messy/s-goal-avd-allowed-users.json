@@ -1,0 +1,34 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Confirm What You Use",
+  "fact": null,
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "Limit Azure Virtual Desktop to Its Allowed Groups",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
+    },
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Sep 7, 2026"
+}
