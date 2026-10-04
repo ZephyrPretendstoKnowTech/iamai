@@ -35,8 +35,10 @@ import type { Step } from './types.ts'
 const BROAD = '62d67e66-2bc9-43cd-b00c-6326dae53d18'
 // The owner takes it as a second break-glass group (2026-09-19): left out by default, like the other exclude-only groups.
 const SECOND_BREAK_GLASS = '5628ad67-f9d1-4495-abe3-99dc8f9074f1'
-// The author's EAM population: included by one policy, carved out of High-Risk Users, so a person maps it.
+// The author's EAM population: included by one policy, carved out of High-Risk Users. The tenant's external
+// method's targets answer it (T2-EAM); a person maps it only where the scan read no targets.
 const EAM = '8d0564e5-ab28-4283-9a94-9883c581adde'
+const DEVICE_EXCEPTIONS = '2d25c298-555e-4f26-9984-90dfb7eae325'
 const COUNTRIES_ONLY = 'cc7f9bb7-425b-42fc-b025-311a1a3eb0f4'
 const EXCLUSIONS = 'b63c3682-06c6-45f0-9692-ee76b604b4f9'
 const DEVICE_REGISTRATION = 'aeb49474-5250-4b65-8b0a-56c47127ee0f'
@@ -76,6 +78,23 @@ test('every interpretation record says what adopting its reference takes, and it
   const wrong = structuredClone(interpretation) as { references: Record<string, unknown>[] }
   wrong.references[0].classification = 'sourceOnly'
   assert.throws(() => readInterpretation(wrong), /classified/)
+})
+
+test('T2-GRP: Jon’s travellers and device-exceptions groups stay out of every body, with no question: no Direction answer says they are needed', () => {
+  const read = readInterpretation(interpretation)
+  for (const id of [COUNTRIES_ONLY, DEVICE_EXCEPTIONS]) {
+    const r = read.references.find((x) => x.id === id)
+    assert.equal(r?.meaning, 'authorEnvironment', `${id} is the author's own`)
+    assert.match(r?.evidence ?? '', /T2-GRP/, `${id} records why v1.1 D6 adds no counterpart`)
+  }
+  for (const name of ['demo', 'mid'] as const) {
+    const r = runFixture({ ...fixture(name), baseline: pinnedPackage() })
+    for (const s of r.steps) {
+      const text = JSON.stringify([s.action.json, ...(s.action.resolution?.policies ?? []).flatMap((p) => [p.body, p.pending ?? null])]).toLowerCase()
+      for (const id of [COUNTRIES_ONLY, DEVICE_EXCEPTIONS]) assert.equal(text.includes(id), false, `${name}/${s.id} carries ${id}`)
+    }
+    assert.equal(unresolvedSourceMappings(r.steps).some((x) => [COUNTRIES_ONLY, DEVICE_EXCEPTIONS].includes(x.id.toLowerCase())), false, `${name}: nobody is asked`)
+  }
 })
 
 test('the known exclusions reference resolves to the tenant’s group; a group the author’s README names waits on nothing', () => {
