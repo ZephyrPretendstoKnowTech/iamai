@@ -56,7 +56,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; namedLocationsUnread: string; passkeyProfiles: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string; mailAccounts: string; operator: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; namedLocationsUnread: string; passkeyProfiles: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string; mailAccounts: string; operator: string; countriesLeftOutOne: string; countriesLeftOutMany: string; countriesLeftOutCount: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -73,6 +73,16 @@ export const BLOCKED_REASON = {
   devicePlan: BLOCKED.devicePlan,
   /** Block Legacy Authentication's turn-on while a mail account named in Confirm What You Use still signs in with legacy authentication (roadmap/generate.ts; walk list 4.x item 5). */
   mailAccounts: BLOCKED.mailAccounts,
+  /**
+   * Block Sign-ins From Countries Not Allowed's turn-on while a country people
+   * sign in from is left off the work countries and not marked left out on
+   * purpose (roadmap/countriesLockout.ts; v1.1 T1-2). By name while that fits
+   * the row's twelve words, by count after.
+   */
+  countriesLeftOut: (names: readonly string[]): string => {
+    const named = names.length === 1 ? fillText(BLOCKED.countriesLeftOutOne, { country: names[0] }) : fillText(BLOCKED.countriesLeftOutMany, { countries: list([...names]) })
+    return names.length <= 3 && named.trim().split(/\s+/).length <= BLOCKED_REASON_MAX_WORDS ? named : fillText(BLOCKED.countriesLeftOutCount, { n: names.length })
+  },
   /** The work countries nobody has saved (roadmap/generate.ts, Stage 3): the countries step waits on a person, not on work. */
   workCountries: BLOCKED.workCountries,
   /** A Define Your Rollout Scope step with an answer nobody has approved (roadmap/direction.ts): it waits on a person, not on work. */

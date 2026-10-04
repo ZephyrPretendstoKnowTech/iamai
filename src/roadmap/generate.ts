@@ -9,6 +9,7 @@ import dependencyData from '../actionability/dependency-data.json' with { type: 
 import { SERVICE_KEYS, answeredReasonOf, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, mailAnswerMoot, settleBlockSignIns } from './blockSignIns.ts'
+import { COUNTRIES_LOCKOUT_WAIT, countriesLockout, countriesLockoutWait } from './countriesLockout.ts'
 import { settlePimSettings } from './pimSettings.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
@@ -3276,9 +3277,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // country in it (cty.atLeastOne), keeps it from reading Completed and holds
   // its turn-on (countries-unsafe, below). The three warnings — the countries
   // people sign in from, your own, unknown countries — draw as Needs
-  // Correction and hold nothing in v1.0 (owner, 2026-09-23; gating the turn-on
-  // on the first two is on docs/plans/roadmap-flow/v1.1-list.md).
+  // Correction (owner, 2026-09-23).
   attachConfigurationFindings(steps, validationReports.filter((r) => r.subject === 'allowedCountries'))
+  // The first two of those warnings also hold the turn-on, never the report-only
+  // create (v1.1 T1-2): a country an administrator or anyone else signed in from,
+  // left off the list, is somebody the policy blocks the day it goes on. A
+  // country marked left out on purpose, saved with the countries answer, holds
+  // nothing; unknown countries stay a correction that holds nothing. A policy
+  // already On has nothing left to turn on. One reading with the two checks
+  // (roadmap/countriesLockout.ts).
+  if (geoStep) {
+    const lockout = countriesLockout(snapshot, mapping)
+    const open = geoStep.status !== 'done' && geoStep.status !== 'skipped' && !geoStep.state.satisfied && !geoStep.state.setAside && geoStep.state.lifecycle !== 'enforced'
+    if (open && lockout.length > 0 && !geoStep.blockers.some((b) => b.kind === 'readiness' && b.label === COUNTRIES_LOCKOUT_WAIT)) {
+      geoStep.blockers.push({ kind: 'readiness', label: COUNTRIES_LOCKOUT_WAIT, binding: BLOCKED_REASON.countriesLeftOut(lockout.map((c) => countryLabel(c.code))), detail: countriesLockoutWait(lockout, nameOf) })
+      // An unsaved list asks its question first (Needs decision, above).
+      if (geoStep.state.condition !== 'needs-decision') raiseCondition(geoStep, 'blocked')
+    }
+  }
 
   // 2. No country block before the operator's own recent countries are in the
   // allow list, and before the list itself passes its checks.

@@ -35,6 +35,7 @@ import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
 import { isRecordedDrill, latestRecoveryTest, recoveryCredentialBasis, recoveryEvidenceOf } from '../roadmap/cleanupDone.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { exclusionsGroupPolicies } from './exclusionsGroupPolicies.ts'
+import { adminCountriesLeftOut, countriesAcknowledged, seenCountriesLeftOut } from '../roadmap/countriesLockout.ts'
 
 // ---- the model -------------------------------------------------------------
 
@@ -1003,17 +1004,19 @@ const ctyIncludesOperator: ValidationRule = {
   evaluate: (_t, ctx) => {
     // The admins' sign-in countries, never the signed-in account's alone: the
     // people who could lock themselves out of the portal, whoever ran the scan.
-    const admins = Object.keys(ctx.snapshot.roles?.active ?? {})
-    const seen = [...new Set(admins.flatMap((id) => ctx.snapshot.signInEvidence[id]?.countries ?? []))]
+    // A country marked as left out on purpose, saved with the countries answer,
+    // is a reviewed one: the turn-on's hold reads this same list
+    // (roadmap/countriesLockout.ts; v1.1 T1-2).
+    const left = adminCountriesLeftOut(ctx.snapshot, ctx.allowedCountries, countriesAcknowledged(ctx.mapping))
     // Read, and holding no administrator's country: the check ran and cannot
     // decide, which is not a source the scan failed to collect (R4-58).
-    if (seen.length === 0) return unknown(UNKNOWN.signInsShowNo('administrator sign-in with a country'))
-    const missing = seen.filter((c) => !ctx.allowedCountries.includes(c))
+    if (left === null) return unknown(UNKNOWN.signInsShowNo('administrator sign-in with a country'))
+    const missing = left.map((c) => c.code)
     // How many admins, not "admins": on a 51-admin tenant exactly one had
     // signed in from the country this names, and the plural read as a pattern
     // rather than one person. The reader who counts is the reader this sentence
     // is for.
-    const who = admins.filter((id) => (ctx.snapshot.signInEvidence[id]?.countries ?? []).some((c) => missing.includes(c))).length
+    const who = new Set(left.flatMap((c) => c.adminIds)).size
     return missing.length === 0 ? PASS : fail(F.ctyMissingOperator(missing, who))
   },
 }
@@ -1035,9 +1038,11 @@ const ctySeenCountriesIncluded: ValidationRule = {
   severity: 'warning',
   needs: ['signInEvidence'],
   evaluate: (_t, ctx) => {
-    const byCountry = ctx.snapshot.evidenceAggregates?.byCountry ?? null
-    if (byCountry === null) return unknown(UNKNOWN.signInsShowNo('sign-in counts by country'))
-    const missing = Object.keys(byCountry).filter((c) => c && !ctx.allowedCountries.includes(c))
+    // Left out on purpose, saved with the countries answer, is the "deliberately
+    // left out" this check names (roadmap/countriesLockout.ts; v1.1 T1-2).
+    const left = seenCountriesLeftOut(ctx.snapshot, ctx.allowedCountries, countriesAcknowledged(ctx.mapping))
+    if (left === null) return unknown(UNKNOWN.signInsShowNo('sign-in counts by country'))
+    const missing = left.map((c) => c.code)
     return missing.length === 0 ? PASS : fail(F.ctySeenMissing(missing))
   },
 }

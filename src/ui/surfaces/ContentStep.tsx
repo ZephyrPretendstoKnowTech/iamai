@@ -49,7 +49,8 @@ import { answerParts, answerText, optionsOf, questionFor, valueSource } from './
 import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey, decisionKeyOf, deviationDecision } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
-import { BREAK_GLASS_STEP_ID, CAMPAIGN_STEP_ID } from '../../roadmap/stepIds.ts'
+import { BREAK_GLASS_STEP_ID, CAMPAIGN_STEP_ID, PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import { initialLeftOut, leftOutAnswers, leftOutOptions } from './countriesDecision.ts'
 import { emergencyRemovalQuestion } from './emergencyRemoval.ts'
 import { commsFor, datesLineFor, managerText, decisionLine } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
@@ -1173,6 +1174,13 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
   // Taking an emergency access account off asks first (F-007): it takes a step off
   // the plan and turns Configure Emergency Exclusions' advice against the account.
   const removalQuestion = stepId === BREAK_GLASS_STEP_ID ? emergencyRemovalQuestion(ctx) : undefined
+  // The Work countries decision's Left out on purpose list (v1.1 T1-2): the
+  // countries the sign-in records show in use that the countries picked now
+  // leave out. Each one not ticked holds the policy's turn-on; Save Countries
+  // saves the ticks with the countries (countriesDecision.ts).
+  const isCountries = stepId === PREREQ_STEP_ID.allowedCountries
+  const leftOutOffered = useMemo(() => (isCountries ? leftOutOptions(ctx.snapshot, chips.map((c) => c.id)) : []), [isCountries, ctx.snapshot, chips])
+  const [leftOut, setLeftOut] = useState<string[]>(() => (isCountries ? initialLeftOut(saved, ctx.mapping) : []))
   const save = (picked: PickerOption[] = chips): void => {
     if (!canSaveWith(picked)) return
     onDecide?.({
@@ -1181,6 +1189,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
       ...(option !== null ? { option } : accountPickerOnly ? { option: 'None' } : {}),
       ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
       ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
+      ...(isCountries ? { answers: leftOutAnswers(leftOut, leftOutOptions(ctx.snapshot, picked.map((c) => c.id))) } : {}),
     })
   }
   // Each effect line shows once its answer applied (answers.ts effectLine): the
@@ -1219,6 +1228,19 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx, printing = false,
           {networkRanges.trim() && !validNetworkRanges(networkRanges) && <p role="alert">Enter IPv4 or IPv6 ranges with a prefix, one per line. A whole-internet range is not allowed.</p>}
         </div>}
         {isNetwork && !remote && <p className="reason">If your office network is not listed, save its name and approved public ranges here. Follow the Entra steps to create it, then scan again and select it.</p>}
+        {isCountries && leftOutOffered.length > 0 && typeof d.leftOut?.label === 'string' && (
+          <>
+            <h5 className="dlabel" id={`${base}-left-out`}>{d.leftOut.label}</h5>
+            {typeof d.leftOut.text === 'string' && <p className="reason">{d.leftOut.text}</p>}
+            <div className="picker" role="group" aria-labelledby={`${base}-left-out`}>
+              {leftOutOffered.map((o) => (
+                <label key={o.code}>
+                  <input type="checkbox" checked={leftOut.includes(o.code)} onChange={(e) => { const on = e.currentTarget.checked; setLeftOut((now) => (on ? [...now.filter((c) => c !== o.code), o.code] : now.filter((c) => c !== o.code))) }} /> {o.label}
+                </label>
+              ))}
+            </div>
+          </>
+        )}
         {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} pickerOnly={accountPickerOnly} options={options} answer={option} onAnswer={chooseOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />}
         {!isExclusionsGroup && decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
         {question && (

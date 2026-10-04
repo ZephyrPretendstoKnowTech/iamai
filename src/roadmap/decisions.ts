@@ -13,6 +13,7 @@ import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
 import { MFA_FOLLOW_UP_KEY, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
 import { WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
+import { COUNTRIES_LEFT_OUT_ANSWER, parseCountryCodes } from './countriesLockout.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
 
@@ -261,7 +262,11 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     // question's answer under the question's, so one rule reads every answer.
     const labels = questionLabels(stepId)
     if (typeof d.option === 'string') next.questionAnswers![labels.decision ? answerKey(stepId, labels.decision) : stepId] = d.option
-    for (const [label, a] of Object.entries(d.answers ?? {})) if (typeof a === 'string') next.questionAnswers![answerKey(stepId, label)] = a
+    for (const [label, a] of Object.entries(d.answers ?? {})) {
+      // The countries left out on purpose are their own field (below), never a question's answer as well.
+      if (stepId === DECISION_STEPS.countries && label === COUNTRIES_LEFT_OUT_ANSWER) continue
+      if (typeof a === 'string') next.questionAnswers![answerKey(stepId, label)] = a
+    }
     // A strict toggle is on only while a Save carries it: a decision saved without
     // it — unticked, or hidden because the option it follows was not chosen
     // (B10 P0-8, S-DD-1) — clears the stored answer.
@@ -360,6 +365,14 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       next.allowedCountries = picked.map((c) => c.toUpperCase())
       if (provenance === 'confirmed') next.workCountriesConfirmed = true
       answered('countries')
+      // The countries left out on purpose (v1.1 T1-2), saved with the countries:
+      // a person's call, so only a Save writes them, and never a country the
+      // same Save allows. A Save that carries none clears them.
+      if (provenance === 'confirmed' && d.answers !== undefined) {
+        const leftOut = parseCountryCodes(d.answers[COUNTRIES_LEFT_OUT_ANSWER]).filter((c) => !next.allowedCountries.includes(c))
+        if (leftOut.length > 0) next.countriesLeftOut = leftOut
+        else delete next.countriesLeftOut
+      }
     } else if (stepId === DECISION_STEPS.trustedLocation) {
       next.trustedLocationIds = picked
       answered('trustedLocations')

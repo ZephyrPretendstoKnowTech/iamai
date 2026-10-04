@@ -16,6 +16,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { laneReadings, observe } from './planLanes.ts'
 import { planStateOf } from './planState.ts'
 import { objectTaskBodyOf, stepBodyOf } from './stepBody.ts'
+import { readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { readFileSync } from 'node:fs'
@@ -129,12 +130,13 @@ test('6.3 reads Needs decision while no work country is saved, an empty confirme
   }
 })
 
-test('the lockout checks show on 6.3; only the blocking one holds its turn-on, never its report-only creation or any other step, and the warnings hold nothing (owner, 2026-09-23)', () => {
+test('the lockout checks show on 6.3; the blocking one holds its turn-on, never its report-only creation or any other step, and unknown countries holds nothing (owner, 2026-09-23; v1.1 T1-2 below)', () => {
   {
     // The countries people sign in from, your own country, unknown countries: the
-    // checks the location step carried (they were dropped once it was gone). In
-    // v1.0 they are warnings: each draws as Needs Correction and holds nothing
-    // (owner, 2026-09-23; gating the turn-on on them is on the v1.1 list).
+    // checks the location step carried (they were dropped once it was gone). Each
+    // draws as Needs Correction (owner, 2026-09-23); since v1.1 (T1-2) the first
+    // two also hold the turn-on, which the next test proves. Unknown countries
+    // holds nothing, and none of them is the empty list's countries-unsafe hold.
     for (const name of ['getiamai', 'mid', 'demo-week2'] as FixtureName[]) {
       const r = runFixture(withFoundationSettled(curatedFixture(name)))
       const geo = geoOf(r.steps)
@@ -145,7 +147,8 @@ test('the lockout checks show on 6.3; only the blocking one holds its turn-on, n
     }
     const warned = geoOf(runFixture(withFoundationSettled(curatedFixture('getiamai'))).steps)
     assert.ok((warned.configurationFindings ?? []).some((c) => c.key.startsWith('cty.unknownCountries:') && c.outcome !== 'pass'), 'the premise: getiamai fails a warning')
-    assert.deepEqual(warned.blockers, [], 'a failing warning holds 6.3')
+    assert.ok(!(warned.configurationFindings ?? []).some((c) => (c.key.startsWith('cty.includesOperator:') || c.key.startsWith('cty.seenCountriesIncluded:')) && c.outcome === 'fail'), 'the premise: getiamai fails only unknown countries')
+    assert.deepEqual(warned.blockers, [], 'unknown countries holds 6.3')
     // A blocking check (an empty confirmed list) holds the turn-on as it held the
     // location step, as a gate: the create in report-only is not held, and 6.3
     // never reads Completed over it. An empty list is also no work country saved,
@@ -216,4 +219,60 @@ test('6.3 draws the location as its own task in its one frame: the picker saved 
   assert.ok(!stepBodyOf(geoOf(held.steps), { ...ctx, mapping: held.input.mapping }).artifacts.some((a) => a.text().includes('Countries location')), 'a location is offered before any work country is saved')
   const saved = { ...none, mapping: applyStepDecisions(none.mapping, { [LOCATION]: { picked: ['AU'], at: f.snapshot.asOf } }) }
   assert.notEqual(geoOf(runFixture(saved).steps).state.condition, 'needs-decision', 'saving a country under the location id does not release it')
+})
+
+// v1.1 T1-2. The probe case: the work countries are New Zealand alone while the
+// sample's administrators sign in from Australia. Turning 6.3 on would lock them
+// out, so its turn-on waits, as an evidence gate, until Australia is added or
+// marked as left out on purpose; the report-only create goes ahead.
+test('T1-2: a country an administrator or anyone else signs in from, left off the work countries, holds 6.3\'s turn-on and never its create; the step names the country, who and how to clear it, and marking it left out on purpose releases it', () => {
+  const settled = withFoundationSettled(fixture('demo'))
+  const withCountries = (allowed: string[], leftOut?: string[]): Fixture => ({ ...settled, mapping: { ...applyStepDecisions(settled.mapping, { [LOCATION]: { picked: allowed, at: settled.snapshot.asOf, answers: { leftOut: (leftOut ?? []).join(', ') } } }) } })
+  const admins = Object.keys(settled.snapshot.roles.active)
+  assert.ok(admins.some((id) => (settled.snapshot.signInEvidence[id]?.countries ?? []).includes('AU')), 'the premise: an administrator signs in from Australia')
+  {
+    const f = withCountries(['NZ'])
+    assert.deepEqual([f.mapping.allowedCountries, f.mapping.countriesLeftOut], [['NZ'], undefined], 'the premise: New Zealand alone, nothing left out on purpose')
+    const r = runFixture(f)
+    const geo = geoOf(r.steps)
+    const hold = geo.blockers.find((b) => b.kind === 'readiness' && b.label === 'countries-lockout')
+    assert.ok(hold && hold.kind === 'readiness', `the turn-on is not held: ${JSON.stringify(geo.blockers)}`)
+    // The row: which country, and the two ways to clear it, in twelve words.
+    assert.equal(hold.binding, 'until Australia is added or marked left out on purpose')
+    assert.equal(geo.blockedReason, hold.binding, 'the row does not say what holds it')
+    // The step: which country, who, and how to clear it.
+    const adminName = r.input.names!.label(admins.find((id) => (settled.snapshot.signInEvidence[id]?.countries ?? []).includes('AU'))!)
+    for (const words of ['Australia', adminName, 'Work countries', 'Left out on purpose', 'Save Countries']) assert.ok(hold.detail?.includes(words), `the step's wait does not say ${words}: ${hold.detail}`)
+    // A gate on the turn-on, never a blocker of the report-only create.
+    const observed = observe(geo, new Map(r.steps.map((s) => [s.id, s])))
+    assert.ok((observed.gates ?? []).some((g) => g.id === 'evidence:readiness:countries-lockout' && g.reason === 'Until Australia is added or marked left out on purpose'), 'the hold is not a gate on the turn-on')
+    assert.ok(!(observed.blockers ?? []).some((b) => b.id.includes('countries-lockout')), 'the hold blocks the report-only create')
+    const reading = laneReadings(r.steps, [], r.input.mapping).get(GEO)!
+    assert.deepEqual([reading.lane, reading.substatus], ['Ready', 'Create'], 'the create is held')
+    // Both checks fail, and nothing else on the plan waits on the countries.
+    const failing = (geo.configurationFindings ?? []).filter((c) => c.outcome === 'fail').map((c) => c.key.split(':')[0])
+    assert.ok(failing.includes('cty.includesOperator') && failing.includes('cty.seenCountriesIncluded'), failing.join(', '))
+    for (const s of r.steps) if (s.id !== GEO) assert.ok(!s.blockers.some((b) => b.label === 'countries-lockout'), `${s.id} is held by the countries left out`)
+    // The step page states the wait in full, under its own heading.
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: r.input.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    const c = stepContract(geo, ctx)
+    const said = [...c.enforcementWaits, ...c.fix].find((x) => x.key === 'readiness:countries-lockout')
+    assert.equal(said?.text, hold.detail, 'the step page does not say who and how')
+    const tile = readinessOf(geo, c).tiles.find((t) => t.key === 'readiness:countries-lockout')
+    assert.deepEqual([tile?.value, tile?.note], ['Countries left out', hold.detail], 'the card is not headed by what it waits on')
+  }
+  {
+    // Marked left out on purpose, saved with the countries: nothing holds, and both checks pass.
+    const f = withCountries(['NZ'], ['AU'])
+    assert.deepEqual(f.mapping.countriesLeftOut, ['AU'])
+    const geo = geoOf(runFixture(f).steps)
+    assert.ok(!geo.blockers.some((b) => b.label === 'countries-lockout'), 'a country left out on purpose still holds the turn-on')
+    const failing = (geo.configurationFindings ?? []).filter((c) => c.outcome === 'fail').map((c) => c.key.split(':')[0])
+    assert.ok(!failing.includes('cty.includesOperator') && !failing.includes('cty.seenCountriesIncluded'), failing.join(', '))
+  }
+  {
+    // Added to the work countries instead: nothing holds either.
+    const geo = geoOf(runFixture(withCountries(['NZ', 'AU'])).steps)
+    assert.ok(!geo.blockers.some((b) => b.label === 'countries-lockout'))
+  }
 })

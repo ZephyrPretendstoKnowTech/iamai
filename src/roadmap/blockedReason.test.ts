@@ -10,7 +10,8 @@ import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { isHeld } from './holds.ts'
 
-const SHAPES = [/^(Attestation|Allowed Authenticators|Method Availability): .+$/, /^(Passkey|Authenticator) [^:]+: .+$/,/^after: .+$/, /^when .+ reaches .+ \(now .+\)$/, /^when \d+ .+ exists? \(now \d+\)$/]
+// The countries left out (v1.1 T1-2) is a wait on a person's answer, named by its countries (copy/reasons.ts BLOCKED_REASON.countriesLeftOut).
+const SHAPES = [/^(Attestation|Allowed Authenticators|Method Availability): .+$/, /^(Passkey|Authenticator) [^:]+: .+$/,/^after: .+$/, /^when .+ reaches .+ \(now .+\)$/, /^when \d+ .+ exists? \(now \d+\)$/, /^until .+ (is|are) added or marked left out on purpose$/]
 /**
  * The fourth shape is the content file's own sentence, not a fill: matched whole.
  * So are the holds no step of the plan clears (roadmap/stateReason.ts holdReasonFor).
@@ -22,7 +23,7 @@ const words = (s: string): number => s.trim().split(/\s+/).length
 test('every blocked step on every fixture carries one binding reason, in one of the shapes, within twelve words', () => {
   // The fills land in the shapes; the baseline's is a sentence the content file writes.
   {
-    for (const r of [BLOCKED_REASON.after('Create the exclusion group'), BLOCKED_REASON.reaches('MFA readiness', '90%', '60%'), BLOCKED_REASON.exist(2, 'emergency-access account', 0), BLOCKED_REASON.exist(1, 'trusted location', 0), BLOCKED_REASON.baseline]) {
+    for (const r of [BLOCKED_REASON.after('Create the exclusion group'), BLOCKED_REASON.reaches('MFA readiness', '90%', '60%'), BLOCKED_REASON.exist(2, 'emergency-access account', 0), BLOCKED_REASON.exist(1, 'trusted location', 0), BLOCKED_REASON.baseline, BLOCKED_REASON.countriesLeftOut(['Australia']), BLOCKED_REASON.countriesLeftOut(['Australia', 'Fiji', 'Samoa', 'Tonga'])]) {
       assert.ok(inShape(r), r)
       assert.ok(words(r) <= BLOCKED_REASON_MAX_WORDS, r)
     }

@@ -1040,6 +1040,8 @@ function isThresholdWait(b: Step['blockers'][number], threshold: string | null):
 function waitTextOf(b: Step['blockers'][number]): string | null {
   if (typeof b.binding !== 'string' || b.binding.length === 0) return null
   if (b.kind === 'readiness' && b.label === 'registration-no-tap') return shared.noTemporaryAccessPass as string
+  // Who and how, where the row's binding is too short to say it (the countries left out, v1.1 T1-2).
+  if (b.kind === 'readiness' && typeof b.detail === 'string' && b.detail.length > 0) return b.detail
   return b.binding
 }
 

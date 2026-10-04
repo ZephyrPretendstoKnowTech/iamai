@@ -156,6 +156,19 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.direction',
   // Block Legacy Authentication's turn-on while a named mail account still signs in with legacy authentication (walk list 4.x item 5): the review page's example names none.
   '.pages.plan.blocked.mailAccounts',
+  // Block Sign-ins From Countries Not Allowed's turn-on while a country people sign in from is left out (v1.1 T1-2): the review page has no sign-ins.
+  '.pages.plan.blocked.countriesLeftOutOne',
+  '.pages.plan.blocked.countriesLeftOutMany',
+  '.pages.plan.blocked.countriesLeftOutCount',
+  '.shared.countriesLeftOut.wait',
+  '.shared.countriesLeftOut.itemAdminOne',
+  '.shared.countriesLeftOut.itemAdminMany',
+  '.shared.countriesLeftOut.itemOnlyAdminOne',
+  '.shared.countriesLeftOut.itemOnlyAdminMany',
+  '.shared.countriesLeftOut.adminOne',
+  // The Work countries decision's Left out on purpose list, drawn only while such a country exists.
+  '.steps[3].decision.leftOut.label',
+  '.steps[3].decision.leftOut.text',
   '.pages.plan.settings.cancelFreeze',
   '.pages.plan.settings.communications',
   '.pages.plan.settings.freezeSaved',

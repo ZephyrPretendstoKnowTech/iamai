@@ -703,6 +703,21 @@
       "$commentDone": "Block Legacy Authentication's Completion Criteria line for its mail half, where the mail question named accounts (stepContract.ts policyDoneWhen; walk list 4.x items 4 and 26): the mail half is done when none of the named accounts has signed in with legacy authentication in the last 30 days. {accounts} are their names.",
       "done": "No legacy authentication sign-in by {accounts} in the last 30 days."
     },
+    "countriesLeftOut": {
+      "$comment": "Block Sign-ins From Countries Not Allowed's turn-on while a country an administrator or anyone else signed in from is left off the work countries and nobody marked it left out on purpose (v1.1 T1-2; roadmap/countriesLockout.ts). The step's wait in full (stepContract.ts waitTextOf); the row's shorter words are pages.plan.blocked.countriesLeftOut*. {items} are the countries, each with who signed in from it, joined by semicolons.",
+      "wait": "Turning this policy on would block sign-ins from countries the work countries leave out and the sign-in records show in use: {items}. Add each to Work countries, or select it under Left out on purpose, then select Save Countries.",
+      "itemPeople": "{country}, {people}",
+      "itemAdminOne": "{country}, {people}, the administrator {admins} among them",
+      "itemAdminMany": "{country}, {people}, the administrators {admins} among them",
+      "itemOnlyAdminOne": "{country}, the administrator {admins}",
+      "itemOnlyAdminMany": "{country}, the administrators {admins}",
+      "$commentChoice": "One country on the Work countries decision's Left out on purpose list (pages: s-prereq-allowed-countries decision.leftOut): who the records show signing in from it.",
+      "choice": "{country} · {who}",
+      "personOne": "1 person",
+      "people": "{n} people",
+      "adminOne": "1 administrator",
+      "admins": "{n} administrators"
+    },
     "deviceBriefing": {
       "evidence": "{n} devices in the directory: {managed} marked managed, {compliant} compliant and {hybrid} hybrid joined. Directory inventory does not prove that every device people use is covered.",
       "unread": "The device inventory was not read. Device management and compliance are unknown.",
@@ -1201,6 +1216,10 @@
         "sourceMapping": "Baseline references an unmapped group",
         "$commentMailAccounts": "Block Legacy Authentication's turn-on while an account named in Confirm What You Use's mail-sending answer still signs in with legacy authentication (walk list 4.x item 5, option b): the pinned policy does not leave those accounts out, so turning it on would stop their mail.",
         "mailAccounts": "until each mail account you named moves to a supported mail route",
+        "$commentCountriesLeftOut": "Block Sign-ins From Countries Not Allowed's turn-on while a country people signed in from is left off the work countries and nobody marked it left out on purpose (v1.1 T1-2). One country by name; two or three by name; more by count, so the row stays within twelve words. The step says who in full (shared.countriesLeftOut).",
+        "countriesLeftOutOne": "until {country} is added or marked left out on purpose",
+        "countriesLeftOutMany": "until {countries} are added or marked left out on purpose",
+        "countriesLeftOutCount": "until {n} countries are added or marked left out on purpose",
         "pairUnmatched": "until both policies of the pair can be matched",
         "targetAmbiguous": "until one policy stands out as this goal's own",
         "noOperation": "until a scan rebuilds this step",
@@ -1271,6 +1290,7 @@
         "readiness": "Readiness threshold",
         "registration-no-tap": "Temporary Access Pass",
         "registration-no-trusted-location": "Trusted network",
+        "countries-lockout": "Countries left out",
         "passkey-settings-unread": "Passkey settings",
         "unverified-exclusion": "Excluded group",
         "workload-identity-support": "Sync identity",
@@ -4388,6 +4408,11 @@
         "help": "Select the countries where people work. Sign-ins from every other country are blocked, so add a country before someone travels there.",
         "pickerRow": "{country} · {people} people · {signIns} sign-ins",
         "save": "Save Countries",
+        "leftOut": {
+          "$comment": "v1.1 T1-2: the countries the sign-in records show in use that the work countries above leave out, each one ticked when it is left out on purpose. Saved with Save Countries (MappingState.countriesLeftOut). A country neither added nor ticked holds the policy's turn-on; a ticked one holds nothing. Shown only while there is such a country.",
+          "label": "Left out on purpose",
+          "text": "People signed in from these countries, and the work countries above leave them out. Turning the policy on blocks them there, so the turn-on waits until each is added above or selected here."
+        },
         "location": {
           "label": "Countries Location",
           "help": "If a countries location already exists, pick it and IAMAI corrects it; otherwise the steps below create one.",

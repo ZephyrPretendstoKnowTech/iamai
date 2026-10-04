@@ -108,6 +108,13 @@ export type MappingState = {
   /** ISO 3166 country codes people are allowed to sign in from (prompt 16 §4). */
   allowedCountries: string[]
   workCountriesConfirmed?: boolean
+  /**
+   * Countries people or administrators signed in from that the work countries
+   * leave out on purpose (v1.1 T1-2): saved with the countries answer, never
+   * inferred. A country here no longer holds the countries policy's turn-on
+   * (roadmap/countriesLockout.ts). ISO codes, never one on the allowed list.
+   */
+  countriesLeftOut?: string[]
   displayTimeZone: string | null
   frameworks: string[]
   /** Which answers exist, detected or confirmed (progress + auto vs human). */

@@ -552,7 +552,12 @@ export type Blocker =
    */
   | { kind: 'step'; stepId: string; label: string; binding?: string; held?: true }
   | { kind: 'setup'; questionNumber: number; label: string; binding?: string }
-  | { kind: 'readiness'; label: string; binding?: string }
+  /**
+   * `detail`: the wait in full, where the row's twelve-word `binding` cannot
+   * say who it is about and how to clear it (the countries left out, v1.1
+   * T1-2). The step's wait reads it (ui/surfaces/stepContract.ts waitTextOf).
+   */
+  | { kind: 'readiness'; label: string; binding?: string; detail?: string }
   /**
    * `unverified`: the evidence is a tenant fact this scan could not read — a group
    * a policy names whose members nobody could list — so the goal's coverage cannot
