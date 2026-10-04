@@ -1945,6 +1945,7 @@
         "account": "Account",
         "accountTooltip": "Signed in as {username}",
         "signOut": "Sign out",
+        "signOutTooltip": "Signs {username} out; an account signed in to another tenant here stays signed in",
         "forget": "Forget this tenant",
         "forgetTooltip": "Deletes everything IAMAI stored for this tenant on this device; you stay signed in",
         "$commentForgetConfirm": "F-160 (owner, 2026-09-27): Forget deleted the scan and the whole plan on one click. It asks first, in the menu: what goes, a way to save the plan file first, and Cancel, focused.",

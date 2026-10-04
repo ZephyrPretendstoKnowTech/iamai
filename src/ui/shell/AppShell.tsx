@@ -246,7 +246,7 @@ function AccountMenu({ account, tenantName }: { account: AccountInfo; tenantName
               <Button variant="tertiary" role="menuitem" title={SHELL.addTenantTooltip} onClick={() => run(signInAnother())}>
                 {SHELL.addTenant}
               </Button>
-              <Button variant="tertiary" role="menuitem" onClick={() => run(signOut())}>
+              <Button variant="tertiary" role="menuitem" title={fillText(SHELL.signOutTooltip, { username: account.username })} onClick={() => run(signOut())}>
                 {SHELL.signOut}
               </Button>
               <Button variant="tertiary" role="menuitem" ref={forgetItem} title={SHELL.forgetTooltip} onClick={() => setConfirming(true)}>

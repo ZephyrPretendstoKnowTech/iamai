@@ -36,16 +36,22 @@ test('sign-in waits for MSAL readiness, another account is a fresh picker, and s
     assert.match(body, /warmAuthority\(\)/, 'authReady does not warm the authority metadata')
   }
 
-  // sign-out clears the cache whether or not MSAL held an account, and redirects only with one; it never routes the page itself (ui/actions.ts does)
+  // sign-out signs out the open account and no other (T3-A): the whole cache is
+  // cleared only when no other account is signed in, whether or not MSAL held
+  // one, and it redirects only with one; it never routes the page itself (ui/actions.ts does)
   {
     const start = src.indexOf('export async function signOut')
     assert.ok(start >= 0)
     const body = src.slice(start, src.indexOf('\n}', start))
-    const clearAt = body.indexOf('clearAuthCache()')
-    const returnAt = body.indexOf('if (!account) return')
-    const redirectAt = body.indexOf('msal.logoutRedirect({ account })')
+    assert.match(body, /export async function signOut\(account: AccountInfo \| null = null\)/, 'the account to sign out is not handed in')
+    assert.match(body, /all\.find\(\(a\) => a\.homeAccountId === account\.homeAccountId\)/, 'the open account is not the one signed out')
+    assert.match(body, /const others = all\.filter\(\(a\) => a\.homeAccountId !== target\?\.homeAccountId\)/)
+    const clearAt = body.indexOf('if (others.length === 0) clearAuthCache()')
+    const returnAt = body.indexOf('if (!target) return')
+    const redirectAt = body.indexOf('msal.logoutRedirect({ account: target })')
     assert.ok(clearAt >= 0 && returnAt >= 0 && redirectAt >= 0, body)
     assert.ok(clearAt < returnAt && returnAt < redirectAt, 'the cache is cleared before the no-account return, and the redirect comes last')
+    assert.equal(body.match(/clearAuthCache\(\)/g)?.length, 1, "another account's cache is cleared on some path")
     assert.doesNotMatch(body, /window\.location/, 'the action module lands the page on Connect; the library only signs out')
   }
 

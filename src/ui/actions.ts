@@ -201,15 +201,22 @@ export async function signInAnother(): Promise<void> {
  * app was holding in memory goes, so nothing of the tenant — its snapshot, its
  * name, the baseline it was planned against — is still on screen beside a page
  * that says nobody is signed in.
+ *
+ * One account (T3-A): the one the app had open is signed out, and an account
+ * signed in to another tenant in this tab stays signed in; the library's
+ * redirect back opens that one. Signing out the last account clears every
+ * MSAL trace, as a full sign-out did. There is no separate sign-out of
+ * everything: closing the tab ends every sign-in (sessionStorage).
  */
 export async function signOut(): Promise<void> {
+  const leaving = getSession().account
   stopScan()
   endTenantTurn()
   setSession({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
   // A decision's unapproved changes go with the tenant (directionDrafts.ts; Round 4 review).
   clearDrafts()
   go(CONNECT_HREF)
-  await authLib.signOut()
+  await authLib.signOut(leaving)
 }
 
 /**

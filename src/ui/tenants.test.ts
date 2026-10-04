@@ -123,3 +123,11 @@ test('the Account menu draws the switcher from the action module: the tenants wh
   assert.equal(fillText(app.shell.tenantSignIn, { tenant: 'Northwind' }), 'Northwind · sign in')
   assert.equal(app.shell.addTenant, 'Add another tenant')
 })
+
+test('Sign out says it signs out the open account only', async () => {
+  const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
+  assert.match(shell, /role="menuitem" title=\{fillText\(SHELL\.signOutTooltip, \{ username: account\.username \}\)\} onClick=\{\(\) => run\(signOut\(\)\)\}>/)
+  const { app } = await import('../content/content.ts')
+  const { fillText } = await import('../content/render.ts')
+  assert.equal(fillText(app.shell.signOutTooltip, { username: 'admin@contoso.example' }), 'Signs admin@contoso.example out; an account signed in to another tenant here stays signed in')
+})

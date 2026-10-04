@@ -135,8 +135,10 @@ test('the demo\'s scan only ever moves the sample forward, and the snapshot sele
 test('Sign out lets go of every fact about the tenant, and deletes nothing this device stored', async () => {
   const deleted: string[] = []
   let libSignOut = 0
-  actions.authLib.signOut = async () => {
+  const signedOut: (AccountInfo | null | undefined)[] = []
+  actions.authLib.signOut = async (a?: AccountInfo | null) => {
     libSignOut += 1
+    signedOut.push(a)
   }
   actions.storeLib.forgetTenant = async (tenantId: string) => {
     deleted.push(tenantId)
@@ -144,6 +146,8 @@ test('Sign out lets go of every fact about the tenant, and deletes nothing this 
   setSession({ account, tenantName: 'Contoso', lastScan: record, baseline: uploaded, baselineRestoreError: 'the stored package would not load' })
   setScan({ ...IDLE_SCAN, state: 'failed', error: 'a scan that failed', returnTo: '#/plan/s-one' })
   await actions.signOut()
+  // T3-A: the library is told which account to sign out, the open one, and so signs out no other.
+  assert.deepEqual(signedOut, [account], 'the library was not handed the open account')
   const s = getSession()
   assert.equal(s.account, null, 'nobody is signed in')
   assert.equal(s.tenantName, null)

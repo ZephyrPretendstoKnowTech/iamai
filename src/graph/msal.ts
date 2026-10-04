@@ -122,24 +122,32 @@ export async function signInTo(loginHint: string | null): Promise<void> {
 
 /**
  * Sign out of MSAL (ui/actions.ts signOut has already cleared the app's
- * session and landed on Connect). With an account, Microsoft's logout
- * redirect after the local cache is cleared; without one (never signed in
- * through MSAL: the dev mock, a visitor who only warmed it up), the cache
- * alone is cleared and the page stays where it is.
+ * session and landed on Connect): the account the app had open, and no other
+ * (T3-A). With an account, Microsoft's logout redirect for it; MSAL removes
+ * that account's own cache entries and leaves the others' (msal-browser
+ * clearCacheOnLogout), so another tenant's account stays signed in here and
+ * the redirect back opens it. When it was the last account, every MSAL trace
+ * goes first, as before. Without one (never signed in through MSAL: the dev
+ * mock, a visitor who only warmed it up), the cache alone is cleared and the
+ * page stays where it is.
  */
-export async function signOut(): Promise<void> {
-  const account = initialized ? ((await initialized), (msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null)) : null
-  // The cache goes first, whether or not an account was in it; the redirect
-  // carries the account it was given, so the cleared cache is no loss to it.
-  clearAuthCache()
-  if (!account) return
-  return msal.logoutRedirect({ account })
+export async function signOut(account: AccountInfo | null = null): Promise<void> {
+  const all = initialized ? ((await initialized.catch(() => null)), msal.getAllAccounts()) : []
+  const target = (account && all.find((a) => a.homeAccountId === account.homeAccountId)) || (initialized ? msal.getActiveAccount() : null) || all[0] || null
+  const others = all.filter((a) => a.homeAccountId !== target?.homeAccountId)
+  // The last account signed in here: the cache goes first, whether or not an
+  // account was in it; the redirect carries the account it was given, so the
+  // cleared cache is no loss to it. With another still signed in, its tokens stay.
+  if (others.length === 0) clearAuthCache()
+  if (!target) return
+  return msal.logoutRedirect({ account: target })
 }
 
 /**
- * Remove every local MSAL trace, so "Forget this tenant" leaves nothing behind
- * (prompt 31 §2.8) even when sign-in only ever got as far as warming MSAL up and
- * writing its cache. Session-storage only; MSAL keeps nothing else locally.
+ * Remove every local MSAL trace, so a sign-out of the last account leaves
+ * nothing behind (prompt 31 §2.8) even when sign-in only ever got as far as
+ * warming MSAL up and writing its cache. Session-storage only; MSAL keeps
+ * nothing else locally.
  */
 export function clearAuthCache(): void {
   try {

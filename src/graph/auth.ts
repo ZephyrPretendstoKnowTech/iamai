@@ -45,8 +45,9 @@ export async function signInTo(loginHint: string | null): Promise<void> {
   return (await lib()).signInTo(loginHint)
 }
 
-export async function signOut(): Promise<void> {
-  return (await lib()).signOut()
+/** Sign out the account the app had open, and no other (T3-A). */
+export async function signOut(account: AccountInfo | null = null): Promise<void> {
+  return (await lib()).signOut(account)
 }
 
 /** Clear MSAL's own local cache; async now, because the library arrives on demand. */
