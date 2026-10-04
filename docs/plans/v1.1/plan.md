@@ -322,3 +322,55 @@ Triaged weekly against the bar:
 - [x] P0-5 `VITE_CHANNEL`, byte-identical when unset: `bf35a876`
 - [x] P0-6 Actions pinned: `060e48be`
 - [x] P0-7 Stale records refreshed: `0aeece1f`
+
+## 7. The first build (2026-10-03, for Monday)
+Owner-approved bundles, on `v1.1`:
+- [x] T1-1 1.3 device-bound and attested for everyone, no AAGUID key restrictions, and the
+  lockout list: `75c0bd7c`, snapshots `ec3cc0e1`. MFA Readiness names each passkey
+  Device-bound or Synced (drawer and the CSV's last column).
+- [x] T1-6a, T1-6c, T1-6e (Codex's audit, 3.8 and the guest pair): `7d6051da`, `f7c82af2`,
+  `1a07215b`.
+- [x] T4-3 the report-only line under Next: `caae1312`.
+- [x] Polish: F-079 `88a984ed`, F-146 `30311a0d`, F-145 `9fd1a098`, F-164 `6f8cab1e`,
+  F-114 `81217fa8`.
+
+Calls made on the owner's go-ahead ("you have everything you need", 2026-10-03):
+- **The report-only line** lists only what can be acted on now: a Ready row whose week is
+  over and stopped nobody, or a policy that would have stopped sign-ins. A turn-on held by
+  something else is not listed.
+- **F-006, the change freeze, is kept.** It does move dates (schedule.ts placement, the
+  finish tip's critical-path reason), so removing it would re-date every saved plan that
+  set one. F-090's wording stays on the backlog.
+- **Deferred to its own item: a synced passkey in the sample.** The demo's passkey settings
+  are the pre-profile form, where a synced passkey cannot be told apart. Showing the lockout
+  list needs the sample moved to passkey profiles, as real tenants now are, with every
+  sample passkey's type set. That touches every passkey reading in the sample.
+- **T1-6e:** 3.8 replaces both of the step's directory lines (waiting and ready) with the
+  line naming the step whose tabs create it; the step's own page is unchanged.
+- **F-164** reverses an earlier deliberate rule (`284ec456`) that kept tenant IDs out of the
+  wrong-tenant message.
+
+## 8. To test on a live tenant before v1.1 reaches `main`
+Unit tests cannot prove these; each needs a real tenant, and most a test user.
+1. **Graph returns each passkey's type.**
+   - Check that `passkeyType` and `attestationLevel` come back on `fido2AuthenticationMethod`
+     for a user with a synced passkey (iCloud Keychain) and one with Authenticator.
+   - Check that the owner's own script's answers agree with MFA Readiness's new column.
+2. **A synced passkey really stops.** On a profile with attestation enforced, does an
+   existing synced passkey stop signing in, as Microsoft Learn says? The lockout list rests on
+   it. Test with a user holding only a synced passkey and Authenticator.
+3. **1.3's change applies as handed over.** Apply the profile change by the Entra steps and
+   by the JSON/PowerShell PATCH:
+   - Graph accepts the profile back with its key restrictions unchanged;
+   - a stored "deviceBound,synced" with attestation enforced reads In place after the scan.
+4. **The 1.3 list on a real tenant:** names, what each keeps, locked-out first, dormant
+   accounts left out, emergency accounts always in.
+5. **The report-only line** after a real report-only week ends: it appears, links the
+   step, and goes once the policy is On.
+6. **Keyboard and screen:**
+   - the skip link and the focus ring in both themes;
+   - the tab title with a real tenant name after sign-in;
+   - the wrong-tenant refusal with two same-named tenants, if one is at hand.
+7. **The MFA Readiness CSV opens in Excel** with the new Passkey type column.
+8. **The preview channel:** a `VITE_CHANNEL=preview` build deployed where the owner hosts it,
+   with the banner, noindex, and no CNAME.

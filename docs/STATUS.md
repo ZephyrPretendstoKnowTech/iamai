@@ -36,7 +36,11 @@ Everything else is either a working document it links to, or history in
     item 6.
   - `VITE_CHANNEL=preview` builds a marked preview; unset, the build is byte-identical.
   - The CI actions are pinned.
-- **Next:** Phase 1 (Track 1, safety and plain wrongs), on the owner's word.
+- **First build (2026-10-03):** 1.3's passkey change and its lockout list, the Passkey type
+  column in MFA Readiness, three of Codex's audit fixes, the report-only line under Next and
+  five polish fixes. What landed, the calls made and the live tests still owed are in the
+  plan, sections 7 and 8.
+- **Next:** the live tests in plan section 8, then the rest of Track 1.
 - **Owner decisions of 2026-10-03, binding for v1.1:**
   - **Passkeys:** device-bound and attested for all users, with no AAGUID key restrictions.
     A tenant's own allow list is left as it is.
