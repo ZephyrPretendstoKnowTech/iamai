@@ -20,11 +20,14 @@ test('5.3 with the policy On and no guest in the directory is Completed, and ask
 })
 
 test('5.3 counts the people its policy reaches as people, never as guests', () => {
-  // The premise: the plan's guest policy reaches all users on getiamai, as the baseline writes it.
+  // getiamai's guest step once took the package's all-users policy as its source (Codex's
+  // audit item 6, fixed by T1-6f): it now builds the package's own guest policy, which
+  // reaches guests only, and on a tenant with none its readiness counts nobody.
   const step = runFixture(curatedFixture('getiamai')).steps.find((s) => s.id === 's-goal-guests-mfa')!
   const users = (step.action.resolution?.policies[0]?.body as { conditions?: { users?: { includeUsers?: string[] } } } | undefined)?.conditions?.users
-  assert.deepEqual(users?.includeUsers, ['All'])
-  assert.ok((step.methodPreparation?.ids.length ?? 0) > 0, 'its readiness counts the members it reaches')
+  assert.deepEqual(users?.includeUsers, ['GuestsOrExternalUsers'])
+  assert.equal(step.methodPreparation?.ids.length ?? 0, 0, 'no guest on getiamai, so nobody is counted')
+  // Where the guest step does count anyone, it calls them people.
   assert.equal(CONTRACT.acceptedWho.guest, 'people')
   assert.equal(CONTRACT.readinessScope.guest, 'people in scope')
 })
