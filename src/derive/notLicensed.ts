@@ -13,15 +13,18 @@ import { fillText } from '../content/render.ts'
 import { goalInMap } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
 import type { CoverageReport } from '../coverage/types.ts'
-import { tierName } from '../coverage/coverage.ts'
+import { CATALOGUE, tierName } from '../coverage/coverage.ts'
 import { DEVICE_GOALS } from '../roadmap/deviations.ts'
-import { list } from '../copy/statements.ts'
+import { count, list } from '../copy/statements.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { Step } from '../roadmap/types.ts'
+import { impactReachOf } from './population.ts'
+import { affectedIds } from './whoLine.ts'
 
 /** One line of the group. `goalIds` are the baseline goals it names: one, or each device goal on the shared device line. */
 export type NotLicensedRow = { goalId: string; goalIds: string[]; title: string; licence: string; text: string }
 
-type FooterCopy = { notLicensed: string; notLicensedRow: string; notLicensedNote: string; notLicensedNoteOthers: string; notLicensedDevices: string }
+type FooterCopy = { notLicensed: string; notLicensedRow: string; notLicensedNote: string; notLicensedNoteOthers: string; notLicensedDevices: string; partialSeats: string }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
 /**
@@ -96,4 +99,35 @@ export function notLicensedPrintLine(rows: readonly NotLicensedRow[], others = 0
 export function conditionalAccessLicenceLine(snapshot: Pick<TenantSnapshot, 'capabilities'>): string | null {
   if (snapshot.capabilities.entraP1.enabled) return null
   return (pages.plan as { conditionalAccessNeedsP1: string }).conditionalAccessNeedsP1
+}
+
+/**
+ * Partial seats (v1.1 T1-4): a step whose goal needs Entra ID P2 — the risk
+ * policies, the user-risk step's EAM companion with it — is planned for
+ * everyone it covers, and Microsoft licenses risk-based Conditional Access per
+ * user. Where the tenant's P2 seats (snapshot.capabilities.entraP2, the scan's
+ * one licence reading: every SKU whose service plans carry P2) are fewer than
+ * the people the step covers, the step says how many seats against how many
+ * people, and that the people without one are not covered by the licence.
+ *
+ * The people are the step's own count (derive/population.ts impactReachOf, the
+ * "Who this touches" reach), guests aside: a guest is licensed by monthly
+ * active users, not by a seat. Null wherever the seats cover them, the tenant
+ * holds no P2 at all (the goal is then Not licensed, never in the plan), or the
+ * goal needs no P2. Words only: which steps the plan holds does not change.
+ */
+export function partialSeatsLine(step: Step, snapshot: Pick<TenantSnapshot, 'capabilities' | 'users'>): string | null {
+  const goal = CATALOGUE.find((g) => g.id === step.goalId)
+  if (!goal || !goal.implementations.some((i) => i.tier === 'p2')) return null
+  const p2 = snapshot.capabilities?.entraP2
+  if (!p2?.enabled) return null
+  const guests = new Set(snapshot.users.filter((u) => /^guest$/i.test(u.userType ?? '')).map((u) => u.id))
+  const people = affectedIds(impactReachOf(step)).filter((id) => !guests.has(id)).length
+  if (p2.seats >= people) return null
+  return fillText(footer().partialSeats, {
+    licence: tierName('p2'),
+    seats: count(p2.seats, 'seat'),
+    people: count(people, 'person', 'people'),
+    gap: count(people - p2.seats, 'person', 'people'),
+  })
 }

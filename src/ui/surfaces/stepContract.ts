@@ -36,6 +36,7 @@ import { requiredMembers } from '../../roadmap/tracking.ts'
 import { unreadLine } from '../../roadmap/evidence.ts'
 import { MAIL_ACCOUNTS_WAIT, SIGN_INS_FINDING } from '../../roadmap/blockSignIns.ts'
 import { impactReachOf } from '../../derive/population.ts'
+import { partialSeatsLine } from '../../derive/notLicensed.ts'
 import { affectedIds, populationLine } from '../../derive/whoLine.ts'
 import { app, cleanup, directionWords, engine, shared, stepById } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
@@ -1654,7 +1655,10 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   // policy's, each as its content entry wrote it.
   const task = objectTaskContentOf(step)
   const ownWhy = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
-  const why = typeof task?.why === 'string' && task.why.trim() !== '' ? `${fillText(task.why, ex)} ${ownWhy}` : ownWhy
+  // A risk step on a tenant whose P2 seats are fewer than the people it covers
+  // says so after its own sentence (v1.1 T1-4, derive/notLicensed.ts).
+  const seats = partialSeatsLine(step, ctx.snapshot)
+  const why = [typeof task?.why === 'string' && task.why.trim() !== '' ? `${fillText(task.why, ex)} ${ownWhy}` : ownWhy, seats].filter((s): s is string => s !== null).join(' ')
   return {
     id: step.id,
     // The one resolver the row and the opened step read (content/stepTitle.ts).

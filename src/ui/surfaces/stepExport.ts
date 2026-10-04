@@ -654,8 +654,9 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   return {
     title: viewTitleOf(step),
     // A step that makes an object itself says the object's About sentence first,
-    // as the screen does (stepContract.ts: the contract's why leads with it).
-    why: step.objectTask === undefined && typeof cs.why === 'string' ? fillText(cs.why, ex) : contract.why,
+    // as the screen does (stepContract.ts: the contract's why leads with it), and
+    // a risk step's partial-seats line follows it there too (v1.1 T1-4).
+    why: contract.why,
     ...shell,
     whatToDo: namedPortalResource({ id: 'portal', form: 'list', lines, text: () => lines.join('\n'), note: null }, ctx).lines,
     doneWhen,
