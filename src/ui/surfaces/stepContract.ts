@@ -55,6 +55,7 @@ import { adminUserIds, roleName } from '../../roles.ts'
 import { DORMANT_STEP_ID } from './sectionThreeTasks.ts'
 import type { MethodPreparation } from '../../roadmap/methodReadiness.ts'
 import { BLOCKED_REASON, BLOCKED_SUBJECT, everyoneGate, readinessFamilyOf } from '../../copy/reasons.ts'
+import { goalFamily } from '../../roadmap/readiness.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, planStateOf } from './planState.ts'
@@ -2673,8 +2674,10 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     // The admin gate names each admin on the card with their next step (round 1),
     // and a gate in Extend MFA Coverage each person (owner decision 5, 2026-09-25).
     const admins = everyoneGate(gate) || isGroupMember(step.id, 'extend-mfa') ? c.gateNames : null
-    // A card in Extend MFA Coverage that names people opens MFA Readiness on them.
-    const readiness = admins?.length && isGroupMember(step.id, 'extend-mfa') ? { label: CONTRACT.methodGate.readinessLink, href: `#/readiness/step/${step.id}` } : null
+    // A card in Extend MFA Coverage that names people opens MFA Readiness on them,
+    // and so does the admin gate's (F-111): MFA Readiness scopes to the admins the
+    // step reaches (derive/stepMfaReadiness.ts, the admin family).
+    const readiness = admins?.length && (isGroupMember(step.id, 'extend-mfa') || goalFamily(step.goalId) === 'admin') ?{ label: CONTRACT.methodGate.readinessLink, href: `#/readiness/step/${step.id}` } : null
     // Where the card states its count ("21 of 30 people have a method it
     // accepts"), the percentage beside it carries no "At least" (walk list 4.x
     // item 48): the count is exact, and the hedge was IAMAI's to carry.

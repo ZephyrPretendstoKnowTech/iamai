@@ -9,6 +9,7 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
+import { pages } from '../content/content.ts'
 
 test('Protect Sign-in Method Registration has one readiness card, naming each person short of a method, and it opens MFA Readiness', () => {
   const f = fixture('demo')
@@ -27,4 +28,22 @@ test('Protect Sign-in Method Registration has one readiness card, naming each pe
     assert.ok((gate.names ?? []).every((l) => /^.+ \(.+\): .+$/.test(l)), `${id}: with their next step`)
     assert.deepEqual(gate.link, { label: 'Open MFA Readiness', href: `#/readiness/step/${id}` })
   }
+})
+
+// F-111: the admin MFA step's Threshold card named each admin short of a method
+// and opened no MFA Readiness, where every Extend MFA Coverage card that names
+// people does; and the view it would open said nobody could be seamless because
+// "everyone signs in from a device with no built-in option …, such as a personal
+// computer", a cause the reading does not establish.
+test('the admin MFA step\'s Threshold card opens MFA Readiness on its admins, whose seamless line names no cause', () => {
+  const f = fixture('small')
+  const run = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const id = 's-goal-admins-phishing-resistant'
+  const gate = (stepBodyOf(run.steps.find((s) => s.id === id)!, ctx).readiness?.tiles ?? []).find((t) => t.key === 'gate')
+  assert.ok(gate && (gate.names ?? []).length > 0, 'the premise: the admin gate names its admins')
+  assert.deepEqual(gate.link, { label: 'Open MFA Readiness', href: `#/readiness/step/${id}` })
+  const line = (pages.readiness as unknown as { seamlessNotPossible: string }).seamlessNotPossible
+  assert.doesNotMatch(line, /personal computer|everyone signs in|built-in option/)
+  assert.match(line, /row/)
 })

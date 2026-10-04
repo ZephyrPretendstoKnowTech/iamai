@@ -1337,7 +1337,8 @@
       },
       "seamlessLine": "{seamless} of them are seamless: every device they use signs them in on its own.",
       "seamlessNone": "Nobody is seamless yet: a passkey on the phone and Windows Hello on the computer get them there.",
-      "seamlessNotPossible": "Nobody can be seamless yet: everyone signs in from a device with no built-in option this tenant allows, such as a personal computer.",
+      "$commentSeamlessNotPossible": "F-111: nobody counted has every device seamless or able to be. It named a cause (\"everyone signs in from a device with no built-in option …, such as a personal computer\") that the reading does not establish: one person's single personal device rules them out, and the admins' view read it over joined computers. Each row says what holds its devices back.",
+      "seamlessNotPossible": "Nobody can be seamless yet: each person's row says what stops their devices.",
       "seamlessNotRead": "Whether anybody can be seamless isn’t known: this scan read no record of the devices people sign in from.",
       "define": "Ready means a phishing-resistant sign-in (passkey, security key, Windows Hello, Platform SSO or certificate) on every kind of device they use, within 30 days. Seamless means that sign-in is built into each device.",
       "change": {
