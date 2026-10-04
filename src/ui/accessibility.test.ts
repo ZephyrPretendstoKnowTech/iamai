@@ -742,7 +742,9 @@ test('a readiness state is a word beside its dot, and a device chip carries its 
   assert.match(rule(css, '.surface.readiness .dev-word.s-method') ?? '', /color:\s*var\(--danger-text\)/)
   // Nothing to do is words, not an empty cell or a mark.
   // A lapsing person is asked to sign in again (Phase 4); everyone else reads the words.
-  assert.match(read('src/ui/surfaces/readinessCells.ts'), /if \(rd\.next\.kind === 'none'\) \{\n[\s\S]*?\n    if \(rd\.recommended && !r\.guest\) return nextWords\(rd\.recommended\)\n    return T\.next\.none\n  \}/)
+  // nextCell words the one choice nextChoiceOf makes (F-063): an action through nextWords, or the words themselves.
+  assert.match(read('src/ui/surfaces/readinessCells.ts'), /if \(rd\.next\.kind === 'none'\) \{\n[\s\S]*?\n    if \(rd\.recommended && !r\.guest\) return \{ action: rd\.recommended \}\n    return \{ text: T\.next\.none \}\n  \}/)
+  assert.match(read('src/ui/surfaces/readinessCells.ts'), /return choice === null \? '' : 'text' in choice \? choice\.text : nextWords\(choice\.action\)/)
 })
 
 // ------------------------------------------------------------- F. reflow / width
