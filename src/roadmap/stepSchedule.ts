@@ -181,6 +181,13 @@ export function stepScheduleOf(step: Step, basis: ScheduleBasis | null): StepSch
       // WaveSchedule: wave 0 holds foundations and report-only creation).
       return { ...base, class: 'scheduled', transition: 'createReportOnly', at: step.reportOnlyAt, range: { start: step.reportOnlyAt, end: step.reportOnlyAt }, wave: 0, enforcement: 'gated' }
     }
+    // A readiness hold holds the turn-on only. The object the step makes itself is
+    // still its next task, dated as that preparation as below (v1.1 T1-2: the
+    // countries lockout holds 6.3's turn-on, never its countries location).
+    if (hold.kind === 'readiness' && awaitsOwnObject(step) && basis !== null && !basis.decisionOpen) {
+      const at = placed?.start ?? basis.waveStarts.find((w) => w.wave === basis.wave)?.start ?? null
+      return { ...base, at, range: at === null ? null : { start: at, end: placed ? later(at, placed.end) : at }, wave: basis.wave, class: 'scheduled', transition: 'prepare', enforcement: 'gated' }
+    }
     return { ...base, ...none, class: 'waiting', enforcement: policy ? 'gated' : 'none' }
   }
   const wave = basis?.wave ?? null
