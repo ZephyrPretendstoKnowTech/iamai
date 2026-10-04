@@ -25,6 +25,7 @@ import { baselineStrength } from '../resolvePolicy.ts'
 import { recoveryAccountBasis, recoveryCredentialBasis } from '../cleanupDone.ts'
 import { APPROVED_KEY, observedRecoveryRecords, withPreparedPasskeys } from './recoveryRecords.ts'
 import { recoveryPasskeyCandidateSet } from '../passkeyCompatibility.ts'
+import { PASSKEY_DEFAULT_MODELS, passkeyReadingOf } from '../passkeySettings.ts'
 import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
 import type { MethodClass, MfaHistory, Platform } from '../../scoring/phishingResistant.ts'
 import type { AuthMethodSummary } from '../../scoring/mfaViability.ts'
@@ -710,6 +711,18 @@ export function buildFixture(spec: Spec): Fixture {
   }
 
   const strengths: Record<string, unknown>[] = [{ id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] }, ...baselineStrengths(seed)]
+  // The Passkey (FIDO2) method, on for all users with self-service and no exclusions.
+  // The synthetic tenants keep the pre-profile (legacy) form. The demo is on passkey
+  // profiles, as real tenants are since Microsoft auto-enabled them (April to May
+  // 2026): a tenant whose attestation was off got a default profile that allows
+  // synced passkeys too, with no key restrictions. The deprecated global fields
+  // still read as they were. Configure Passkey Authentication's list of people
+  // whose synced passkey stops can only be read on this form (plan v1.1 §7).
+  const unrestricted = { isEnforced: false, enforcementType: 'block', aaGuids: [] }
+  const defaultProfile = guid(seed, 4_100_000)
+  const fido2 = spec.demo
+    ? { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, keyRestrictions: unrestricted, defaultPasskeyProfile: defaultProfile, passkeyProfiles: [{ id: defaultProfile, name: 'Default passkey profile', passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'disabled', keyRestrictions: structuredClone(unrestricted) }], includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [defaultProfile] }], excludeTargets: [] }
+    : { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, keyRestrictions: unrestricted, includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [] }], excludeTargets: [] }
   const snapshot: TenantSnapshot = {
     schemaVersion: 1,
     tenantId,
@@ -735,7 +748,7 @@ export function buildFixture(spec: Spec): Fixture {
       caPolicies: section(spec.name === 'midflight' ? policies.map((p) => graphShaped(p as Record<string, unknown>, strengths)) : policies),
       namedLocations: section([{ '@odata.type': '#microsoft.graph.ipNamedLocation', id: guid(seed, 4_000_001), displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] }]),
       authStrengths: section(strengths),
-      authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users', authenticationMode: 'any' }], excludeTargets: [] }, { id: 'Fido2', state: 'enabled', isSelfServiceRegistrationAllowed: true, isAttestationEnforced: false, keyRestrictions: { isEnforced: false, enforcementType: 'block', aaGuids: [] }, includeTargets: [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [] }], excludeTargets: [] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
+      authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users', authenticationMode: 'any' }], excludeTargets: [] }, fido2, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
       crossTenantAccess: section([]),
       // Microsoft's default for a tenant that never changed it (Graph v1.0 deviceRegistrationPolicy).
@@ -864,7 +877,12 @@ export function buildFixture(spec: Spec): Fixture {
   if (spec.demo && spec.week2) {
     // The follow-up fixture represents completed passkey configuration and
     // registered compatible emergency keys, before recording recovery tests.
-    withPreparedPasskeys(snapshot, bgIds)
+    // The settings are week one's as Configure Passkey Authentication resolves
+    // them (the default profile device-bound and attested, key restrictions as
+    // they were): the engine's own target, never a copy of it.
+    const applied = passkeyReadingOf(snapshot).resolution
+    if (applied?.kind !== 'target') throw new Error('demo-week2: week one\'s passkey settings resolve no target')
+    withPreparedPasskeys(snapshot, bgIds, undefined, applied.target)
     for (const [index, id] of bgIds.entries()) {
       const at = users.find(user => user.id === id)?.lastSuccessfulSignIn ?? daysAgo(10)
       signInEvidence[id] = { ...(signInEvidence[id] ?? { signInCount: 1, lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (FIDO2)' } }), recoveryCandidates: [{ schema: 1, eventId: `demo-recovery-${index + 1}`, userId: id, at, success: true, isInteractive: true, appId: '74658136-14ec-4630-ad9b-26e160ff0fc6', resourceId: '00000003-0000-0000-c000-000000000000', app: 'Microsoft Entra admin center', resource: 'Microsoft Graph', method: 'Passkey (FIDO2)', authenticationAt: at, resourceTenantId: tenantId, freshMethod: true, credentialId: `demo-emergency-passkey-${index + 1}` }] }
@@ -917,7 +935,7 @@ export function buildFixture(spec: Spec): Fixture {
     }
   }
   if (mapping.breakGlassAnswers?.credentialStorage === true) mapping.breakGlassCustodyBasis = recoveryCredentialBasis(snapshot, bgIds)
-  if (!hostile) withDeviceFacts(snapshot, seed, spec.demo === true, ids.slice(0, spec.admins), new Set(ids.slice(spec.admins + 5, spec.admins + 13)))
+  if (!hostile) withDeviceFacts(snapshot, seed, spec.demo === true, ids.slice(0, spec.admins), new Set(ids.slice(spec.admins + 5, spec.admins + 13)), spec.week2 === true)
   return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}), ...(checkpoints ? { checkpoints } : {}) }
 }
 
@@ -928,11 +946,12 @@ export function buildFixture(spec: Spec): Fixture {
  * person owns one, and a personal, registered one otherwise; phones and Macs are
  * registered or unmanaged. The demo also carries MFA Readiness's harder cases on
  * people it tells no other story about: a separate admin account signing in on
- * somebody else's joined computer, a contractor on a personal PC, a security key
- * whose model is off Emergency Access Step 3's approved list, somebody on leave,
- * and an account that signs in only to scripting tools. Deterministic.
+ * somebody else's joined computer, a contractor on a personal PC, a synced
+ * passkey Configure Passkey Authentication stops (in week two, replaced by a
+ * device-bound one), somebody on leave, and an account that signs in only to
+ * scripting tools. Every passkey carries its type. Deterministic.
  */
-function withDeviceFacts(snapshot: TenantSnapshot, seed: string, demo: boolean, adminIds: readonly string[], storied: ReadonlySet<string>): void {
+function withDeviceFacts(snapshot: TenantSnapshot, seed: string, demo: boolean, adminIds: readonly string[], storied: ReadonlySet<string>, week2 = false): void {
   const VERSIONS: Record<string, string> = { Windows: 'Windows 10.0.26100', macOS: 'MacOs 15.1', iOS: 'iOS 18.2', Android: 'Android 15', Linux: 'Linux', ChromeOS: 'ChromeOS' }
   snapshot.devices.forEach((d, i) => {
     d.deviceId = guid(seed, 4_000_000 + i)
@@ -970,7 +989,7 @@ function withDeviceFacts(snapshot: TenantSnapshot, seed: string, demo: boolean, 
     for (const d of snapshot.signInEvidence[admin].devices ?? []) if (d.os === 'Windows') { d.trust = 'joined'; d.deviceIds = [owned.get(other)?.deviceId as string] }
   }
   const at = (days: number): string => new Date(Date.parse(snapshot.asOf) - days * 86_400_000).toISOString()
-  const [contractor, offList, onLeave] = plain.slice(-3)
+  const [contractor, synced, onLeave] = plain.slice(-3)
   // Scripting tools only: a person (Authenticator held) outside the plain cases.
   const script = counted.find((id) => !plain.includes(id) && (snapshot.authMethods[id] as AuthMethodSummary[] | undefined)?.some?.((m) => m.kind === 'microsoftAuthenticator'))
   if (contractor) {
@@ -980,11 +999,20 @@ function withDeviceFacts(snapshot: TenantSnapshot, seed: string, demo: boolean, 
     const u = byId.get(contractor)
     if (u) { u.department = 'Contractor'; u.jobTitle = 'Contractor' }
   }
-  if (offList) {
-    // A YubiKey 5 on older firmware: allowed by today's unrestricted settings, not by Step 3's approved models.
-    snapshot.authMethods[offList] = [...(snapshot.authMethods[offList] as AuthMethodSummary[]), { kind: 'fido2', id: 'demo-key-offlist', displayName: 'YubiKey 5 NFC', model: 'YubiKey 5 Series with NFC', aaGuid: 'cb69481e-8ff7-4039-93ec-0a2729a154a8', createdDateTime: at(60) }]
-    const r = snapshot.registrationDetails.find((x) => x.id === offList)
-    if (r) r.methodsRegistered = [...r.methodsRegistered, 'fido2SecurityKey']
+  if (synced) {
+    // A synced passkey in iCloud Keychain beside Microsoft Authenticator: allowed by
+    // the auto-enabled default profile, stopped by Configure Passkey Authentication's
+    // device-bound change, which lists this person as keeping Microsoft Authenticator.
+    // By week two the change is applied, the synced passkey no longer signs in, and
+    // they have registered a device-bound passkey in Microsoft Authenticator.
+    const authenticator = PASSKEY_DEFAULT_MODELS[0]
+    snapshot.authMethods[synced] = [
+      ...(snapshot.authMethods[synced] as AuthMethodSummary[]),
+      { kind: 'fido2', id: 'demo-passkey-icloud', displayName: 'iCloud Keychain', model: 'iCloud Keychain', aaGuid: 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd', passkeyType: 'synced', attestationLevel: 'notAttested', createdDateTime: at(60) },
+      ...(week2 ? [{ kind: 'fido2' as const, id: 'demo-passkey-authenticator', displayName: 'iPhone', model: authenticator.name, aaGuid: authenticator.aaguid, passkeyType: 'deviceBound', attestationLevel: 'attested', createdDateTime: at(3) }] : []),
+    ]
+    const r = snapshot.registrationDetails.find((x) => x.id === synced)
+    if (r) r.methodsRegistered = [...r.methodsRegistered, 'passKeySynced', ...(week2 ? ['passKeyDeviceBoundAuthenticator'] : [])]
   }
   if (onLeave) {
     // On leave: a passkey held, and no sign-in in the last 30 days (active within 90).
@@ -999,6 +1027,13 @@ function withDeviceFacts(snapshot: TenantSnapshot, seed: string, demo: boolean, 
     if (u) u.lastSuccessfulSignIn = at(44)
   }
   if (script) snapshot.signInEvidence[script].apps = ['Microsoft Graph Command Line Tools', 'Windows PowerShell']
+  // Every sample passkey has its type, as Graph returns it: the Microsoft
+  // Authenticator and security-key passkeys are device-bound and attested. One
+  // with no type reads as a passkey nobody can judge, which the device-bound
+  // change would list as stopping.
+  for (const [id, methods] of Object.entries(snapshot.authMethods)) {
+    if (Array.isArray(methods)) snapshot.authMethods[id] = methods.map((m) => (m.kind === 'fido2' || m.kind === 'passkey') && !m.passkeyType ? { ...m, passkeyType: 'deviceBound', attestationLevel: m.attestationLevel ?? 'attested' } : m)
+  }
 }
 
 /**

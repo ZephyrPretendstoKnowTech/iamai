@@ -98,10 +98,10 @@ test('Step 3: affected passkeys name the accounts to prepare', () => {
     if (!step) continue
     const task = stepBodyOf(step, ctx).emergencyAccountTasks!.tasks.find(row => row.id === 'prepare-affected-passkeys')!
     const first = task.steps[0]
-    // Or the accounts the allow list would leave without a passkey it allows,
-    // named, with what each keeps — or why the restrictions are withheld
-    // (roadmap/passkeyRestrictions.ts; Jordan D13). Either way, by name.
-    if (task.required) assert.match(first, /^Keep the existing working method available while preparing each affected account: \*\*.+\*\*\.$|would stop the passkeys on [0-9,]+ accounts?: \*\*|Key restrictions stay off for now: they would lock out [0-9,]+ accounts? — \*\*|The passkey settings are applied\. Have each of [0-9,]+ accounts? sign in/)
+    // Or the accounts the device-bound change stops, named, with what each keeps,
+    // or those it would lock out (roadmap/passkeyRestrictions.ts; owner,
+    // 2026-10-03). Either way, by name.
+    if (task.required) assert.match(first, /^Keep the existing working method available while preparing each affected account: \*\*.+\*\*\.$|stops the synced passkeys on [0-9,]+ accounts?: \*\*|would lock out [0-9,]+ accounts?: \*\*|The passkey settings are applied\. Have each of [0-9,]+ accounts? sign in/)
   }
 })
 

@@ -4,6 +4,7 @@
 // fixture or test cannot drift back to the retired hand-recorded format.
 import type { RecoverySignInCandidate, TenantSnapshot } from '../../graph/collect/types.ts'
 import { PASSKEY_TARGET } from '../passkeySettings.ts'
+import type { Fido2Configuration } from '../passkeySettings.ts'
 import type { CleanupCheckpoint, RecoveryEvidenceContext, VerifiedRecoveryEvidence } from '../cleanupDone.ts'
 import { RECOVERY_AUTOMATIC_WORKFLOW, RECOVERY_PREPARATION_WORKFLOW } from '../cleanupDone.ts'
 
@@ -15,10 +16,13 @@ export const APPROVED_KEY = 'a25342c0-3cdc-4414-8e46-f4807fca511c'
  * Completed passkey preparation: the intended passkey settings applied to all
  * users, and each emergency account holding one approved, attested key with an
  * id, so its recovery candidate set is complete (passkeyCompatibility.ts).
+ * `applied` is the settings as applied: the pinned target in the pre-profile form
+ * unless a caller passes the target resolved from a tenant on passkey profiles.
  */
-export function withPreparedPasskeys(snapshot: TenantSnapshot, accountIds: readonly string[], keyId: (index: number) => string = (i) => `demo-emergency-passkey-${i + 1}`): void {
+export function withPreparedPasskeys(snapshot: TenantSnapshot, accountIds: readonly string[], keyId: (index: number) => string = (i) => `demo-emergency-passkey-${i + 1}`, applied?: Fido2Configuration): void {
   const methodsPolicy = snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: { id: string }[] }
-  methodsPolicy.authenticationMethodConfigurations = methodsPolicy.authenticationMethodConfigurations.map(c => c.id === 'Fido2' ? { ...structuredClone(PASSKEY_TARGET), id: 'Fido2', excludeTargets: [], includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: [] }] } : c)
+  const fido2 = applied ? { ...structuredClone(applied), id: 'Fido2' } : { ...structuredClone(PASSKEY_TARGET), id: 'Fido2', excludeTargets: [], includeTargets: [{ id: 'all_users', targetType: 'group', allowedPasskeyProfiles: [] }] }
+  methodsPolicy.authenticationMethodConfigurations = methodsPolicy.authenticationMethodConfigurations.map(c => c.id === 'Fido2' ? fido2 : c)
   for (const [index, id] of accountIds.entries()) {
     const held = Array.isArray(snapshot.authMethods[id]) ? snapshot.authMethods[id] : []
     snapshot.authMethods[id] = [...held.filter(m => m.kind !== 'fido2'), { kind: 'fido2', id: keyId(index), aaGuid: APPROVED_KEY, passkeyType: 'deviceBound', attestationLevel: 'attested' }]

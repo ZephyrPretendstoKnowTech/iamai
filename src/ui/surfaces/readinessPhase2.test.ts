@@ -25,6 +25,8 @@ import { readinessTable } from './inventoryTables.ts'
 import { RE } from '../../content/contentChecks.ts'
 import { sourceReadFix } from '../../roadmap/readiness.ts'
 import { withOneMethodListMissed } from '../../testing/unreadMethods.ts'
+import { setKeyRestrictions } from '../../testing/passkeySettings.ts'
+import type { AuthMethodSummary } from '../../scoring/mfaViability.ts'
 
 const R = pages.readiness as unknown as { checks: Record<string, Record<string, string>>; rail: { shownAbove: string } }
 const W = pages.readiness as unknown as { chip: { unread: string }; sub: { noDevices: string }; panel: { noDevices: string; noneRegistered: string }; methods: { unread: string } }
@@ -476,8 +478,11 @@ test('a key that shares an approved model’s name but not its AAGUID says which
   // tenant keeps its own: each fixture is given one holding the default models.
   for (const name of ['demo', 'demo-week2'] as const) {
     const f = structuredClone(fixture(name))
-    const row = f.snapshot.config.authMethodsPolicy!.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[]; fido2Configuration?: Record<string, unknown> }
-    for (const c of [row.fido2Configuration, ...row.authenticationMethodConfigurations.filter((c) => String(c.id).toLowerCase() === 'fido2')]) if (c) c.keyRestrictions = { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] }
+    setKeyRestrictions(f.snapshot, { isEnforced: true, enforcementType: 'allow', aaGuids: [...PASSKEY_TARGET_AAGUIDS] })
+    // The key: a YubiKey 5 NFC on older firmware, held by someone counted (the sample's
+    // own became its synced passkey, DEMO-SP).
+    const holder = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((x) => x.state !== null && !x.admin)!.user.id
+    f.snapshot.authMethods[holder] = [...(f.snapshot.authMethods[holder] as AuthMethodSummary[]), { kind: 'fido2', id: 'test-key-offlist', displayName: 'YubiKey 5 NFC', model: 'YubiKey 5 Series with NFC', aaGuid: 'cb69481e-8ff7-4039-93ec-0a2729a154a8', passkeyType: 'deviceBound', attestationLevel: 'attested' }]
     const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     const approved = view.context.step3.models
     let seen = 0

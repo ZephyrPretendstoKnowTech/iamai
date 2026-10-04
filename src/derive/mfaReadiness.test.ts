@@ -17,6 +17,7 @@ import { stepMfaHold } from './stepMfaReadiness.ts'
 import { KINDS } from './ladder.ts'
 import { READINESS_STATES, isReady } from '../scoring/phishingResistant.ts'
 import { deviceChips, methodsCell, methodsLine, nextCell, rowCells } from '../ui/surfaces/readinessCells.ts'
+import { setKeyRestrictions } from '../testing/passkeySettings.ts'
 
 
 test('every account is one row; the active people are counted in the states; an uncounted account carries none; the facts sum', () => {
@@ -107,8 +108,7 @@ test('on every fixture: lapsing is the Ready people whose readiness ends within 
     let noted = 0
     // The demo with the tenant's own allow list naming one model: its other keys are not allowed today.
     const listed = structuredClone(fixture('demo'))
-    const row = listed.snapshot.config.authMethodsPolicy!.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[]; fido2Configuration?: Record<string, unknown> }
-    for (const c of [row.fido2Configuration, ...row.authenticationMethodConfigurations.filter((c) => String(c.id).toLowerCase() === 'fido2')]) if (c) c.keyRestrictions = { isEnforced: true, enforcementType: 'allow', aaGuids: ['90a3ccdf-635c-4729-a248-9b709135078f'] }
+    setKeyRestrictions(listed.snapshot, { isEnforced: true, enforcementType: 'allow', aaGuids: ['90a3ccdf-635c-4729-a248-9b709135078f'] })
     for (const f of [...allFixtures(), listed]) {
       const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
       for (const r of v.rows) {

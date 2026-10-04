@@ -18,6 +18,7 @@ import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { EXCLUSIONS_RECORD_KEY } from '../mapping/safetyChoice.ts'
 import { recoveryEvidenceSource } from './cleanupDone.ts'
+import { setAttestation } from '../testing/passkeySettings.ts'
 
 test('an unread audit or sign-in source suspends recovery proof, without destroying its generation or poisoning unrelated sign-in evidence', () => {
   // audit read failure suspends recovery without poisoning unrelated sign-in evidence
@@ -424,11 +425,12 @@ test('automatic recovery waits for complete passkey evidence and the final polic
     const at = f.snapshot.asOf
     const policy = f.snapshot.config.authMethodsPolicy.rows[0] as Record<string, any>
     const fido = policy.fido2Configuration ?? policy.authenticationMethodConfigurations.find((row: Record<string, unknown>) => String(row.id).toLowerCase() === 'fido2')
-    // Step 3 unfinished: attestation not yet enforced (the settings restrict no model since 2026-10-03).
-    const attestation = fido.isAttestationEnforced
-    fido.isAttestationEnforced = false
+    // Step 3 unfinished: attestation not yet enforced (the settings restrict no model since 2026-10-03),
+    // set where it applies: the sample is on passkey profiles (DEMO-SP).
+    const applied = structuredClone(fido)
+    setAttestation(f.snapshot, false)
     assert.equal(cleanupRecord(reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })).records!.length, 0, 'unfinished Step 3 cannot establish a baseline')
-    fido.isAttestationEnforced = attestation
+    Object.assign(fido, applied)
     let checkpoints = reconcileAutomaticRecovery({ checkpoints: [], snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, accountIds: ids, acquisitionCompletedAt: at })
     assert.equal(cleanupRecord(checkpoints).records!.filter(record => record.workflow === RECOVERY_PREPARATION_WORKFLOW).length, 2)
 

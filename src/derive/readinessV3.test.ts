@@ -17,6 +17,8 @@ import { methodPreparation } from '../roadmap/methodReadiness.ts'
 import { effectOf } from '../roadmap/operations.ts'
 import { checkWords, deviceChips, goalLine, methodsCell } from '../ui/surfaces/readinessCells.ts'
 import { mfaReady } from '../roadmap/readiness.ts'
+import { setKeyRestrictions } from '../testing/passkeySettings.ts'
+import type { AuthMethodSummary } from '../scoring/mfaViability.ts'
 import { campaignIds } from './population.ts'
 import { fillText } from '../content/render.ts'
 import { readinessContextOf } from './readinessContext.ts'
@@ -49,9 +51,13 @@ test('the demo\'s people: a contractor\'s personal PC is never asked for Windows
     assert.notEqual(windows.best, 'windowsHello')
   }
   // a key of a model no list names keeps working: Step 3 adds no allow list (owner, 2026-10-03), so it is not flagged
+  // (the sample's own off-list YubiKey became its synced passkey, DEMO-SP, so the case gives one here)
   {
-    const r = person(demoView, (x) => (x.readiness?.credentials ?? []).some((c) => c.key === 'demo-key-offlist'))
-    const key = r.readiness!.credentials.find((c) => c.key === 'demo-key-offlist')!
+    const holder = person(demoView, (x) => x.user.department === 'Contractor').user.id
+    const snap = structuredClone(demo.snapshot)
+    snap.authMethods[holder] = [...(snap.authMethods[holder] as AuthMethodSummary[]), { kind: 'fido2', id: 'test-key-offlist', displayName: 'YubiKey 5 NFC', model: 'YubiKey 5 Series with NFC', aaGuid: 'cb69481e-8ff7-4039-93ec-0a2729a154a8', passkeyType: 'deviceBound', attestationLevel: 'attested' }]
+    const r = person(readinessView(snap, snap.asOf, demo.mapping), (x) => x.user.id === holder)
+    const key = r.readiness!.credentials.find((c) => c.key === 'test-key-offlist')!
     assert.equal(key.allowedNow, 'yes', 'today’s unrestricted settings allow it')
     assert.notEqual(key.afterStep3, 'no', 'Step 3 stops no device-bound key for its model')
     assert.notEqual(r.readiness!.next.kind, 'replaceKey')
@@ -97,8 +103,7 @@ test('setup checks read the tenant: phones without the Authenticator models fail
   // setup checks read the tenant: phones without the Authenticator models fail, and Windows Hello is judged by whether it is seen working
   {
     const snap = structuredClone(demo.snapshot)
-    const policy = snap.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[] }
-    policy.authenticationMethodConfigurations = policy.authenticationMethodConfigurations.map((c) => (String(c.id).toLowerCase() === 'fido2' ? { ...c, state: 'enabled', keyRestrictions: { isEnforced: true, enforcementType: 'allow', aaGuids: ['cb69481e-8ff7-4039-93ec-0a2729a154a8'] } } : c))
+    setKeyRestrictions(snap, { isEnforced: true, enforcementType: 'allow', aaGuids: ['cb69481e-8ff7-4039-93ec-0a2729a154a8'] })
     const v = readinessView(snap, snap.asOf, demo.mapping)
     const checks = tenantSetupChecks(snap, v)
     assert.equal(checks.find((c) => c.key === 'phonePasskey')!.outcome, 'fail')

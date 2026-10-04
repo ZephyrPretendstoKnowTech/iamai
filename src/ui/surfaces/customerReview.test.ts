@@ -14,7 +14,10 @@ function setup(profile = false) {
   if (profile) {
     const row = f.snapshot.config.authMethodsPolicy.rows[0] as { authenticationMethodConfigurations: Record<string, unknown>[] }
     const config = row.authenticationMethodConfigurations.find(c => String(c.id).toLowerCase() === 'fido2')!
+    // A profile-based policy whose profiles were not read: held for review. The sample
+    // is on passkey profiles itself (DEMO-SP), so its profiles are the unread ones.
     config.defaultPasskeyProfile = 'existing-profile'
+    delete config.passkeyProfiles
   }
   const r = runFixture(f)
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
