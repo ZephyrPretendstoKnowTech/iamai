@@ -56,6 +56,7 @@ import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
 import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview, policyProcedureExtras, reviewedPackageFor, setupAfterEnforcementOf, sourceCheckedLine, jsonWithPlanTag, workProcedureOf } from './stepPackage.ts'
 import { lifecycleResources, policyInspectionLines, resourceChannelAllowed, emailResource, mfaPreparationEmail, deviceSetupResource, namedPortalResource, switchedOffRequest, switchedOffResources, verificationResourceLines, withWorkflowVerification } from './stepResources.ts'
+import type { EmailMessage } from './stepResources.ts'
 import { bindText, projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
@@ -90,7 +91,11 @@ export type Channel = 'portal' | 'ps' | 'json' | 'ai' | 'email'
  * built for a tab nobody opens), and the one line of support under the preview
  * that says how it is run.
  */
-export type Artifact = { id: Channel; form: 'list' | 'code' | 'markdown'; lines: string[]; text: () => string; note: string | null; unavailable?: true; readOnly?: true }
+export type Artifact = {
+  id: Channel; form: 'list' | 'code' | 'markdown'; lines: string[]; text: () => string; note: string | null; unavailable?: true; readOnly?: true
+  /** An Email tab that holds several messages: each is drawn in its own copy box with its own Copy, and the tab offers no Copy of them all (F-037). */
+  messages?: EmailMessage[]
+}
 
 /**
  * The modes a package's script runs that only read (walk list 4.x item 29):

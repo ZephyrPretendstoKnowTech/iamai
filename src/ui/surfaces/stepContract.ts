@@ -262,6 +262,8 @@ type ContractWords = {
     reference: string
     ai: string
     email: string
+    /** An Email tab of several messages: each box's Copy (F-037; stepResources.ts mfaPreparationMessages holds the labels). */
+    emailMessages: { copy: string; copied: string; mfaPreparation: string[] }
     aiWarning: string
     /** A held live change's wait (holds.ts heldLiveChange; N-001): over every tab and first in every copy, and the column's headline. */
     wait: string

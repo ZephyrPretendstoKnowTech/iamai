@@ -2962,6 +2962,12 @@
               "policy.target.grantJson": "selected grant JSON"
             },
             "email": "Email",
+            "$commentEmailMessages": "F-037: an Email tab that holds more than one message (Prepare Your Team for MFA's three) draws each in its own copy box, the Tell your people anatomy, under its own label and with its own Copy, so the admin message is never copied into the staff one. mfaPreparation labels the messages in emails.mfaPreparation order (stepResources.ts mfaPreparationMessages).",
+            "emailMessages": {
+              "copy": "Copy",
+              "copied": "Copied",
+              "mfaPreparation": ["Message to everyone", "Administrator message", "Follow-up message"]
+            },
             "$commentEmails": "The audience emails the Email channel hands over (stepResources.ts emailResource, mfaPreparationEmail), keyed by step id, moved here from the code (Nadia D10). Each message is signed with the plan's email signature (Plan settings, {signature}), as Tell your people is, and asks people to contact IT, as every other email does. They used to end \"[administrator contact]\" and say \"Contact [support contact]\": a bracketed fill-in nobody was told to fill, copied as written into an email the Prepare Your Team step says to send. {subject} is the message's own subject; countries, devicePlan and their values are the lines the countries and device-plan emails add under their body.",
             "emails": {
               "subject": "Subject: {subject}",

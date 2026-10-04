@@ -41,6 +41,7 @@ import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts
 import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, Status, TabList, onePanelProps } from '../components/index.ts'
+import { emailMessageText } from './stepResources.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { exclusionsPickerLabel, filterPickerObjects, initialPicked, matchedNoteOf, pickerSaves, pickerSavesAlone, pickerUniverse, printedDefaultLine } from './pickerRows.ts'
@@ -857,6 +858,27 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
           <li key={i}>{l}</li>
         ))}
       </ol>
+    ) : active.messages ? (
+      // F-037: each message in its own copy box, the Tell your people anatomy,
+      // with its own Copy, so the staff email never carries the admin one.
+      <div className={`${cls} authored email-messages`}>
+        {active.messages.map((m, i) => (
+          <section key={i} className="email-message" aria-label={m.label || undefined}>
+            {m.label !== '' && <h5>{m.label}</h5>}
+            <div className="copy-box">
+              {!printing && (
+                <Button variant="secondary" onClick={() => copy(`email-${i}`, emailMessageText(m))}>
+                  {copied === `email-${i}` ? W.emailMessages.copied : W.emailMessages.copy}
+                </Button>
+              )}
+              <p>{m.salutation}</p>
+              <p>{m.body}</p>
+              {m.extra.map((l, n) => <p key={n}>{l}</p>)}
+              {m.signature !== '' && <p>{m.signature}</p>}
+            </div>
+          </section>
+        ))}
+      </div>
     ) : active.form === 'markdown' ? (
       <div className={`${cls} authored`}>
         <AuthoredText text={active.text()} />
@@ -873,7 +895,9 @@ export function Implementation({ artifacts, drawnBy, preview, notes, title, empt
     wait === null || text === '' || channel === 'json' ? text : channel === 'ps' ? `# ${wait}\n${text}` : `${wait}\n\n${text}`
   const copyReason = copyable ? W.copy : active?.unavailable ? active.text() : (preview?.lines.join(' ') ?? W.copy)
   const selectedTaskText = activeTask ? emergencyTaskText(activeTask, activeVariant) : active?.text() ?? ''
-  const copyControl = tasks && tab === 'portal' ? (
+  // A tab of several messages copies each from its own box (F-037): one Copy of
+  // them all sent the admin and follow-up messages inside the staff email.
+  const copyControl = active?.messages ? null : tasks && tab === 'portal' ? (
     <button type="button" className="icon-btn" aria-label="Copy task" title="Copy task" aria-disabled={!activeTask} onClick={() => activeTask && copy('emergency-task', withWait(selectedTaskText, 'portal'))}><Icon name={copied === 'emergency-task' ? 'check' : 'copy'} size={14} /></button>
   ) : (
     <button

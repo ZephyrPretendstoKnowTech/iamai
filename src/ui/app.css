@@ -3087,6 +3087,19 @@ footer.app a {
 .step .impl-preview .authored {
   white-space: normal;
 }
+/* F-037: an Email tab's messages read as the Tell your people box does, in the
+   page's own type, one copy box each. */
+.step .impl-preview .email-messages,
+.step-dialog .dialog-code.email-messages {
+  font-family: inherit;
+  white-space: normal;
+}
+.email-messages h5 {
+  margin: 0 0 6px;
+}
+.email-messages .email-message + .email-message {
+  margin-top: 18px;
+}
 
 /* ---- the step's dialogs: the approved implementation, readiness and rollout
    dialogs ----

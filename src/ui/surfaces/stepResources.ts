@@ -128,10 +128,34 @@ export function emailResource(step: Step, ctx: StepVarContext, why: string): Art
  * the one set of words (walk list section 3 item 52).
  */
 export function mfaPreparationStaffMessage(signature: string, values: Record<string, string>): { salutation: string; body: string; extra: string[]; signature: string } {
-  const [first] = EMAILS.mfaPreparation
-  // The box draws each paragraph as its own: the first is the body, the rest follow it.
-  const [body = '', ...extra] = mfaParagraphs(first, 0, values)
-  return { salutation: fillText(EMAILS.subject, { subject: first.subject }), body, extra, signature: fillText(EMAILS.signOff, { signature }).trim() }
+  const [{ salutation, body, extra, signature: signed }] = mfaPreparationMessages(signature, values)
+  return { salutation, body, extra, signature: signed }
+}
+
+/** One message of an Email tab that holds several, in the parts a copy box draws (ContentStep.tsx EmailMessages). */
+export type EmailMessage = { label: string; salutation: string; body: string; extra: string[]; signature: string }
+
+/** A message as its copy box copies it: the subject line, each paragraph, the signature. */
+export function emailMessageText(m: Omit<EmailMessage, 'label'>): string {
+  return [m.salutation, m.body, ...m.extra, m.signature].filter((p) => p !== '').join('\n\n')
+}
+
+const MESSAGE_WORDS = (): { mfaPreparation: string[] } =>
+  (app.plan as unknown as { stepContract: { implementation: { emailMessages: { mfaPreparation: string[] } } } }).stepContract.implementation.emailMessages
+
+/**
+ * The MFA preparation step's three messages (everyone, the admins, the
+ * follow-up), each with its label and signed, from the one set of words: the
+ * Email tab draws each in its own copy box (F-037), and the first is Tell your
+ * people.
+ */
+export function mfaPreparationMessages(signature: string, values: Record<string, string>): EmailMessage[] {
+  const signed = fillText(EMAILS.signOff, { signature }).trim()
+  return EMAILS.mfaPreparation.map((m, i) => {
+    // The box draws each paragraph as its own: the first is the body, the rest follow it.
+    const [body = '', ...extra] = mfaParagraphs(m, i, values)
+    return { label: MESSAGE_WORDS().mfaPreparation[i] ?? '', salutation: fillText(EMAILS.subject, { subject: m.subject }), body, extra, signature: signed }
+  })
 }
 
 /**
@@ -144,11 +168,16 @@ function mfaParagraphs(m: EmailWords['mfaPreparation'][number], index: number, v
   return m.paragraphs.map((p) => fillText(p, { ...values, passkeyAccount }).replace(/\*\*/g, '')).filter((p) => p !== '')
 }
 
-/** The MFA preparation step's three messages (everyone, the admins, the follow-up), each signed. */
+/**
+ * The MFA preparation step's Email tab: its three messages, each in its own copy
+ * box with its own Copy (F-037). The tab's single Copy took all three as one
+ * text, so the staff email went out with the admin and follow-up messages in it.
+ * `text` stays the three in order, as the expanded viewer and any export read it.
+ */
 export function mfaPreparationEmail(ctx: StepVarContext): Artifact {
   const values = mfaEmailValues(ctx)
   const text = EMAILS.mfaPreparation.map((m, i) => (m.heading ? `${m.heading}\n` : '') + message(m.subject, mfaParagraphs(m, i, values), ctx)).join('\n\n')
-  return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null }
+  return { id: 'email', form: 'markdown', lines: [], text: () => text, note: null, messages: mfaPreparationMessages(ctx.signature, values) }
 }
 
 const GRAPH = 'https://graph.microsoft.com/v1.0'

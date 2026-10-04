@@ -11,6 +11,10 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { commsFor, copyBoxes, stepLines } from './stepExport.ts'
+import { readFileSync } from 'node:fs'
+import { stepBodyOf } from './stepBody.ts'
+import { CONTRACT } from './stepContract.ts'
+import { emailMessageText } from './stepResources.ts'
 
 const f = fixture('demo-week2')
 const r = runFixture(f)
@@ -38,4 +42,24 @@ test('the email follows one rule on screen, in the copy box and in the exports: 
   assert.equal(commsFor(cs, ex, done), null)
   assert.ok(!emailOf(stepLines(done, ctxFor()), live), 'no email line on a done step')
   assert.deepEqual(copyBoxes(done, ctxFor()).filter((b) => b.kind === 'comms'), [], 'no Tell your people box on a done step')
+})
+
+test('F-037: Prepare Your Team for MFA\'s Email tab gives each message its own copy box, and the staff one copies alone, as Tell your people', () => {
+  const email = stepBodyOf(emailStep, ctxFor()).artifacts.find((a) => a.id === 'email')
+  assert.ok(email?.messages, 'the Email tab holds its messages one by one')
+  const W = CONTRACT.implementation.emailMessages
+  assert.deepEqual(email.messages.map((m) => m.label), W.mfaPreparation, 'each message under its own label')
+  const subjects = email.messages.map((m) => m.salutation)
+  assert.equal(new Set(subjects).size, 3, 'three messages, each with its own subject')
+  const [staff, admin, followUp] = email.messages.map(emailMessageText)
+  for (const other of [admin, followUp]) assert.ok(!staff.includes(other.split('\n\n')[0]), 'the staff copy carries no other message')
+  assert.doesNotMatch(staff, /Administrator message|Follow-up message/)
+  assert.match(admin, /admin/i)
+  // The staff message is Tell your people, word for word.
+  const box = copyBoxes(emailStep, ctxFor()).find((b) => b.kind === 'comms')!
+  assert.equal(staff, box.text)
+  // The viewer draws each in a copy box with its own Copy, and no tab Copy of all three.
+  const page = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
+  assert.match(page, /active\.messages\.map\(\(m, i\) =>[\s\S]*?className="copy-box"[\s\S]*?copy\(`email-\$\{i\}`, emailMessageText\(m\)\)/)
+  assert.match(page, /const copyControl = active\?\.messages \? null :/)
 })
