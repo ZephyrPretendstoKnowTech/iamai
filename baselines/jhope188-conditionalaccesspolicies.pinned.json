@@ -1272,7 +1272,8 @@
       "sessionControls": null,
       "placeholders": {
         "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
-        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "1267ac22-ce4d-4a2e-ae00-fd3a3a7f4748": "blockedCountries"
       }
     },
     {

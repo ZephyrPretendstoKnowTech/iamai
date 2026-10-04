@@ -54,6 +54,14 @@ export type TenantObjects = {
   serviceAccountsGroupId: string | null
   /** The tenant's named location matching the allowed-countries list, where one matches. */
   allowedCountriesLocationId: string | null
+  /**
+   * The tenant's named location matching the countries the operator listed to
+   * block outright (MappingState.countriesBlockedOutright; v1.1 D4), where one
+   * matches. Absent or null: none yet, and a policy naming the author's
+   * blocked-countries list names the slot the countries step fills
+   * (`BLOCKED_COUNTRIES_SLOT`), never the allowed-countries location.
+   */
+  blockedCountriesLocationId?: string | null
   /** The named locations the tenant marked as its trusted network; empty until it names one. */
   trustedLocationIds?: readonly string[]
   /**
@@ -470,6 +478,19 @@ const LOCATION_KEYWORDS = new Set(['all', 'alltrusted'])
 const MAPPED_TOKENS = new Set(['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation'])
 
 /**
+ * The slot a policy names for the countries blocked outright while the tenant
+ * has no location holding them (v1.1 D4): Block Sign-ins From Countries Not
+ * Allowed makes it, as it makes the allowed-countries location, so the policy
+ * waits on its own step's task (operations.ts awaitsOwnObject) and its
+ * procedure names the location the plan proposes. A slot rather than the
+ * author's id, so nothing — rule 4 below least of all — can read the author's
+ * blocked list as the allowed one: a policy that blocks the allowed countries
+ * blocks everyone who works.
+ */
+export const BLOCKED_COUNTRIES_SLOT = '{blockedCountriesLocation}'
+const BLOCKED_COUNTRIES = 'blockedCountries'
+
+/**
  * The pin's token for a source reference this baseline's interpretation settles
  * as the author's own environment: something identified by evidence as theirs,
  * which this tenant does not have and does not need
@@ -622,6 +643,13 @@ function substitutionsFor(
         unresolved.set(r.id, null)
         decisions.set(r.id, { kind, answer: 'pending' })
       }
+    }
+    // The countries blocked outright: the tenant's location, or the slot the
+    // countries step fills. Never a fall-through (rule 4 reads every other
+    // location on the countries goal as the allowed list).
+    if (token === BLOCKED_COUNTRIES && r.kind === 'namedLocation') {
+      ids.set(r.id, [tenant.blockedCountriesLocationId ?? BLOCKED_COUNTRIES_SLOT])
+      continue
     }
     if (token !== null && MAPPED_TOKENS.has(token)) {
       // A token the product maps means that object and no other. The trusted
@@ -852,7 +880,7 @@ export function implementable(
       missing.push({ token, stepId: null, unreadable: true })
       return
     }
-    const stepId = unresolved.get(key) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? null
+    const stepId = unresolved.get(key) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? (token === BLOCKED_COUNTRIES_SLOT ? stepIdForGoal('geo-restriction') : null)
     // A reference only a person can answer waits on their Baseline mapping (Plan settings), which no step ends.
     missing.push(refs.decisions?.get(key)?.answer === 'pending' ? { token, stepId, decision: true } : { token, stepId })
   }

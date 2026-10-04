@@ -52,6 +52,14 @@ export type SourceMeaning =
   | 'exclusionsGroup'
   | 'serviceAccountsGroup'
   | 'allowedCountries'
+  /**
+   * The countries a policy blocks outright, travellers included (Jon's "IAC -
+   * Blocked Countries", which his NoExclusions countries block includes; v1.1
+   * D4). The tenant's counterpart is the location Block Sign-ins From
+   * Countries Not Allowed makes from the countries the operator lists to block
+   * outright (roadmap/resolvePolicy.ts); never the allowed-countries location.
+   */
+  | 'blockedCountries'
   | 'trustedLocation'
   | 'authorEnvironment'
   | 'unknown'
@@ -180,7 +188,7 @@ export type ReferenceUsage = {
   context: Record<string, string>
 }
 
-const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
+const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
 const CLASSIFICATIONS: ReferenceClassification[] = ['knownSemantic', 'sourceOnly', 'decisionRequired', 'invalidSource']
 
 /** The one classification each meaning allows: a record whose two fields disagree cannot be checked by a reviewer. */

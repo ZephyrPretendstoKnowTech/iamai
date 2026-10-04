@@ -75,10 +75,10 @@
     {
       "id": "1267ac22-ce4d-4a2e-ae00-fd3a3a7f4748",
       "kind": "namedLocation",
-      "meaning": "unknown",
+      "meaning": "blockedCountries",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Named \"IAC - Blocked Countries\" in the README of IAC - GLOBAL - BLOCK - Countries not Allowed - NoExclusions, which includes it in order to block it. It is the blocked-countries list, so it is not the allowed-countries location a tenant supplies, and IAMAI holds no tenant object for a blocked-countries list. The policy naming it is a Cleanup row that implements no goal.",
+      "classification": "knownSemantic",
+      "evidence": "Named \"IAC - Blocked Countries\" in the README of IAC - GLOBAL - BLOCK - Countries not Allowed - NoExclusions, the only policy that includes it, in order to block it. It is the blocked-countries list, never the allowed-countries location. Its tenant counterpart is the countries location Block Sign-ins From Countries Not Allowed makes from the countries the operator lists to block outright (v1.1 D4, owner 2026-10-03); with none listed the policy is not on the plan.",
       "includedIn": [
         "1eaf943a-abad-4c77-b101-0c5342fc1044"
       ],
