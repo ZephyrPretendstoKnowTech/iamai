@@ -126,7 +126,9 @@ export function Picker({
   }
   // Done saves the selection as it stands, changed or not: it is how a
   // selection the picker opened with, and nobody has saved, is saved.
+  // Done leaves the list for the search field, never the page body (F-065).
   const done = (): void => {
+    focusAfter.current = `${base}-search`
     setOpen(false)
     save(latest.current)
   }
@@ -173,6 +175,13 @@ export function Picker({
     onChange(next)
     save(next)
   }
+  // A chip taken off at once hands focus to the next chip, else the search field (F-065), as one asked about does.
+  const removeNow = (id: string): void => {
+    const at = selected.findIndex((s) => s.id === id)
+    const after = selected[at + 1] ?? selected[at - 1] ?? null
+    focusAfter.current = after ? removeId(after.id) : `${base}-search`
+    remove(id)
+  }
   const removeId = (id: string): string => `${base}-remove-${id}`
   const keep = (): void => {
     if (pending) focusAfter.current = removeId(pending.id)
@@ -190,7 +199,7 @@ export function Picker({
     if (pending !== null || focusAfter.current === null) return
     document.getElementById(focusAfter.current)?.focus()
     focusAfter.current = null
-  }, [pending, selected])
+  }, [pending, selected, open])
 
   return (
     <div className="picker" ref={ref} role="group" aria-labelledby={labelledBy}>
@@ -200,7 +209,7 @@ export function Picker({
             <span key={s.id} className="chip-select">
               <span className="chip-name">{s.name}</span>
               {s.badge && <span className="chip-badge">{s.badge}</span>}
-              {!readOnly && <button type="button" className="chip-remove" id={removeId(s.id)} aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => (confirmRemoval ? setPending(s) : remove(s.id))}>
+              {!readOnly && <button type="button" className="chip-remove" id={removeId(s.id)} aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => (confirmRemoval ? setPending(s) : removeNow(s.id))}>
                 <Icon name="close" size={12} />
               </button>}
             </span>

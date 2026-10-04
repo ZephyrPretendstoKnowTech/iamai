@@ -15,7 +15,7 @@
 // The controls are the ones the Plan's decisions already use: the dropdown the
 // decision options draw (`decision-select`) and the shared Picker over the
 // pickers' own universes (pickerRows.ts). Every word is content.json's.
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { DirectionQuestion } from '../../roadmap/types.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
@@ -202,7 +202,8 @@ export function DirectionQuestions({ draft, ctx, heading, printing = false }: { 
   const tags = new Map(questions.map((q) => [q.key, cardTagOf(q, answerOf(q))]))
   return (
     <section className="step-section direction-section">
-      <h4>{heading}</h4>
+      {/* Focus lands here once the answers are approved and Approve answers is spent (F-065). */}
+      <h4 tabIndex={-1}>{heading}</h4>
       {!printing && [...tags.values()].includes('suggested') && <p className="reason">{W.notSure}</p>}
       {/* The Emergency Access subject grid (ContentStep.tsx EmergencySubjectReadiness):
           two columns of cards that size to their own content, so a question that
@@ -224,6 +225,7 @@ export function DirectionQuestions({ draft, ctx, heading, printing = false }: { 
  */
 export function ApproveAnswers({ draft, onDecide, saving = false, ctx }: { draft: DirectionDraft; onDecide?: (decision: StepDecisionInput) => void; saving?: boolean; ctx?: StepVarContext }) {
   const { answerOf } = draft
+  const wrap = useRef<HTMLDivElement>(null)
   // Only the questions asked are required and saved: the Azure Virtual Desktop groups only while it reads Yes (T2-AVD).
   const questions = askedOf(draft)
   const empty = questions.filter((q) => !q.optional && !directionAnswerComplete(q, answerOf(q)))
@@ -236,13 +238,17 @@ export function ApproveAnswers({ draft, onDecide, saving = false, ctx }: { draft
     onDecide?.(directionDecisionOf(answers, basis))
     // Approved: the cards read the saved answers from here, as the save normalised them.
     draft.release()
+    // The button is spent once nothing is left to approve: focus goes to the
+    // questions' heading, never the page body (F-065).
+    const heading = wrap.current?.closest('article')?.querySelector<HTMLElement>('.direction-section h4')
+    if (heading) requestAnimationFrame(() => heading.focus())
   }
   const why = [...new Set(empty.map((q) => q.control === 'locations' ? W.pickLocation : q.control === 'groups' ? W.pickGroup : W.pickAccount))]
   // An administrator or the signed-in account picked as a service or shared-device account says so before it is approved (F-056).
   const picked = questions.flatMap((q) => { const a = answerOf(q); return q.control === 'accounts' && q.pickedWith !== null && a.value === q.pickedWith ? a.picked : [] })
   const adminLine = ctx ? adminPickedLine(picked, adminsOf(ctx.snapshot), ctx.operatorId, ctx.nameOf, savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote') : null
   return (
-    <div className="direction-approve">
+    <div className="direction-approve" ref={wrap}>
       <Button variant="primary" disabled={empty.length > 0 || !pending || saving || !onDecide} onClick={approve}>{W.approve}</Button>
       {why.map((line) => <p key={line} className="reason">{line}</p>)}
       {adminLine && <p className="reason">{adminLine}</p>}

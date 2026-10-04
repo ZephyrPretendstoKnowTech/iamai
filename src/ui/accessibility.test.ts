@@ -892,3 +892,16 @@ test('F-097: in forced colours the selected tab, a pressed toggle, the track and
   assert.match(blocks, /\.step \.track \.stage\.current \.stage-fill\s*\{\s*forced-color-adjust: none;\s*background: Highlight;/)
   assert.match(blocks, /\.surface\.readiness \.state-dot\s*\{\s*forced-color-adjust: none;\s*border: 1px solid CanvasText;/)
 })
+
+test('F-065: after Defer, Put back, Approve answers, Done or a chip taken off, focus goes to the control that replaced the pressed one, never the page body', () => {
+  const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  assert.ok(step.includes(`stepRef.current?.querySelector<HTMLElement>('.rail-exceptions button')?.focus()`), 'Defer and Put back hand focus to the control that replaced them')
+  assert.ok(step.includes('<article ref={stepRef} className="step panel panel-key"'))
+  const direction = readFileSync('src/ui/surfaces/DirectionQuestions.tsx', 'utf8')
+  assert.ok(direction.includes('<h4 tabIndex={-1}>{heading}</h4>'), 'the questions heading can take focus')
+  assert.ok(direction.includes(`querySelector<HTMLElement>('.direction-section h4')`) && direction.includes('requestAnimationFrame(() => heading.focus())'), 'Approve answers hands focus to the heading')
+  const picker = readFileSync('src/ui/components/Picker.tsx', 'utf8')
+  assert.match(picker, /const done = \(\): void => \{\n\s+focusAfter\.current = `\$\{base\}-search`/, 'Done hands focus to the search field')
+  assert.match(picker, /const removeNow = \(id: string\): void => \{[\s\S]*?focusAfter\.current = after \? removeId\(after\.id\) : `\$\{base\}-search`/, 'a chip taken off at once hands focus on')
+  assert.ok(picker.includes(': removeNow(s.id))}'))
+})
