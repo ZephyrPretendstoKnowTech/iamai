@@ -23,7 +23,7 @@ import { implementationPackageFor, packageBindings, packageRuntime, packageState
 import { sectionThreeTasksOf } from './sectionThreeTasks.ts'
 import { existingObjectProcedureOf } from './prepareProcedures.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
-import { BOARD, SUBSTATUS_WORD, boardHolds, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor } from './planBoard.ts'
+import { BOARD, SUBSTATUS_WORD, boardHolds, boardWhenOf, laneViewAlone, laneViewFor, laneViewOf, laneWordOf, prerequisiteLabelFor, waveStartOf } from './planBoard.ts'
 import type { BoardReadings } from './planBoard.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { CleanupExport } from '../../roadmap/types.ts'
@@ -270,7 +270,12 @@ export function exportViewsOf(board: Pick<BoardReadings, 'readings' | 'titleOf'>
   // opened step builds its contract with it, so the Threshold card's sentence
   // names the first thing anybody can do, and the export says the same sentence.
   const { startOf } = prerequisiteLabelFor(board.readings)
-  return (s) => stepExportView(s, ctxOf(s), laneViewFor(s, board), startOf)
+  return (s) => {
+    const lane = laneViewFor(s, board)
+    // The row's When column, as the Plan draws it (F-130): the bundle said it
+    // carried dates and carried none for a step the board holds.
+    return { ...stepExportView(s, ctxOf(s), lane, startOf), when: boardWhenOf(s, waveStartOf(s), lane) }
+  }
 }
 
 /**

@@ -1109,6 +1109,13 @@ export type ExportStep = {
   doneWhen: string[]
   ifWrong: string | null
   dates: string | null
+  /**
+   * The Plan row's When column, word for word (ui/surfaces/planBoard.ts
+   * boardWhenOf): a plain date for every open row, the day a finished row was
+   * completed, a deferred row's word. Only the board's views carry it
+   * (stepExport.ts exportViewsOf); the grounding bundle states it (F-130).
+   */
+  when?: string
   /** Whether Foundation A hands over an implementation today: the same answer the JSON, the PowerShell and the download read. */
   implementation: boolean
   /**

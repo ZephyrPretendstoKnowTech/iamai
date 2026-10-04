@@ -9,7 +9,11 @@ import { runFixture } from './roadmap/fixtures/run.ts'
 import { groundingBundle } from './roadmap/prompts.ts'
 import { redactIdentifiers } from './redact.ts'
 import { buildIcs } from './roadmap/ics.ts'
-import { stepExportView } from './ui/surfaces/stepExport.ts'
+import { exportHoldOf, exportViewsOf, stepExportView } from './ui/surfaces/stepExport.ts'
+import { boardOf, boardWhenOf, laneViewFor, waveStartOf } from './ui/surfaces/planBoard.ts'
+import { planDates } from './ui/surfaces/stepVars.ts'
+import type { StepVarContext } from './ui/surfaces/stepVars.ts'
+import { planFinish, statedEstimate } from './derive/finish.ts'
 import { exportText, runbookRedaction } from './ui/exportGuard.ts'
 
 const f = fixture('small')
@@ -92,4 +96,26 @@ test('the redacted grounding bundle masks the organisation\'s name however short
   assert.ok(/\bQXZ\b/.test(unmasked), 'the step prose names the organisation')
   const bundle = JSON.stringify(groundingBundle({ view, tenant: 'QXZ', snapshot: m.snapshot, coverage: r.coverage, steps: r.steps, schedule: r.schedule, redacted: true, generated: '2026-08-28' }))
   assert.deepEqual(bundle.match(/.{0,40}\bQXZ\b.{0,20}/g) ?? [], [])
+})
+
+test('F-130: the grounding bundle carries the dates its readme promises: each row\'s When as the Plan draws it, and the Estimated finish, on a plan that holds its policies', () => {
+  const d = fixture('demo')
+  const r = runFixture(d, {}, null, d.snapshot.asOf)
+  const board = boardOf(r.steps, r.schedule.cleanup, d.mapping.breakGlassAnswers ?? null)
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, d.snapshot, exportHoldOf(board))
+  const ctxOf = (s: Parameters<typeof stepExportView>[0]): StepVarContext => ({ snapshot: d.snapshot, mapping: d.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: d.operatorId, now: d.snapshot.asOf, ...dates, reportOnlyAt: s.reportOnlyAt ?? null, groups: d.groups, naming: r.coverage.organisation.naming })
+  const bundle = groundingBundle({ view: exportViewsOf(board, ctxOf), tenant: 'Contoso Pty Ltd', snapshot: d.snapshot, coverage: r.coverage, steps: r.steps, schedule: r.schedule, redacted: false, generated: 'Oct 3, 2026', forecast: board.forecast }) as { _readme: string[]; plan: { finish: string | null; estimatedFinish: string | null; steps: { id: string; lane: string; when: string | null; dates: string | null }[] } }
+  assert.match(bundle._readme.join(' '), /dates/, 'the readme promises dates')
+  const plan = bundle.plan
+  assert.equal(plan.finish, null, 'the premise: the plan holds work, so it has no committed finish')
+  const finish = planFinish(r.steps, r.schedule.cleanup?.end ?? null)
+  assert.equal(plan.estimatedFinish, statedEstimate(r.steps, finish, r.schedule, board.forecast), 'the Estimated finish the Plan tile states')
+  const open = plan.steps.filter((s) => ['Ready', 'Up Next', 'On Hold'].includes(s.lane))
+  assert.ok(open.some((s) => s.lane === 'On Hold' && s.dates === null), 'the premise: held rows carry no Dates line')
+  for (const s of open) {
+    const step = r.steps.find((x) => x.id === s.id)!
+    assert.equal(s.when, boardWhenOf(step, waveStartOf(step), laneViewFor(step, board)), `${s.id}: the row's When, word for word`)
+    assert.match(s.when ?? '', /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/, `${s.id}: a plain date`)
+  }
+  assert.doesNotMatch(JSON.stringify(bundle), /\bEst\./, 'no "Est." anywhere')
 })

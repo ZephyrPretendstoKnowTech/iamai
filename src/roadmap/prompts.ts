@@ -5,7 +5,8 @@
 // bundle, redacted by default. Pure.
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { statedEnforcement } from './forecast.ts'
-import { planFinish, planLengthSentence } from '../derive/finish.ts'
+import type { PlanForecast } from './forecast.ts'
+import { planFinish, planLengthSentence, statedEstimate } from '../derive/finish.ts'
 import type { ForecastReading } from '../derive/finish.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
@@ -227,7 +228,7 @@ export function promptPackMarkdown(items: PackItem[], tenant: string): string {
 // which is why the "redacted" bundle still carried policy names, group names,
 // departments and named-location CIDRs (audit redact-02, redact-03, redact-07).
 
-export function groundingBundle(args: { view: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[]; groups?: ReadonlyMap<string, { displayName?: string | null }>; order?: ExportOrder | null }): Record<string, unknown> {
+export function groundingBundle(args: { view: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[]; groups?: ReadonlyMap<string, { displayName?: string | null }>; order?: ExportOrder | null; forecast?: Pick<PlanForecast, 'finish'> | null }): Record<string, unknown> {
   const { snapshot } = args
   // Every name the tenant contains, not just its users.
   // And the groups the plan loaded, which the scan's group rows do not name.
@@ -311,6 +312,10 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
       beforeTurnOn: v.beforeTurnOn,
       doneWhen: v.doneWhen,
       dates: v.dates,
+      // The row's When column, the date the Plan draws for it (F-130; planBoard.ts
+      // boardWhenOf): the readme says the steps carry their dates, and on a plan
+      // that holds its policies every `dates` and `enforcement.at` above is null.
+      when: v.when ?? null,
       ifWrong: v.ifWrong,
       implementation: v.implementation,
     }
@@ -320,13 +325,17 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
   // schedule drawn for the rest assumes the hold clears inside it.
   const finish = planFinish(args.steps, args.schedule.cleanup?.end ?? null)
   const held = finish.held
+  // The Estimated finish the Plan's tile and the printed cover state (derive/finish.ts
+  // statedEstimate, on the board's forecast): held work included, so a plan whose
+  // `finish` is null still says when it expects to end (F-130).
+  const estimatedFinish = args.forecast ? statedEstimate(args.steps, finish, args.schedule, args.forecast) : null
   const bundle = {
     _readme: GROUNDING.header(args.redacted ? '[the tenant]' : args.tenant, args.redacted, args.generated),
     tenant: args.redacted ? { name: '[the tenant]' } : { name: args.tenant, id: snapshot.tenantId },
     profile,
     // The Cleanup rows under their own key (E4), as the screen says them.
     // A Cleanup row the board dates nowhere carries no day here either (owner decision 2).
-    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, criticalPath: held ? null : args.schedule.derivation.criticalPath, steps, cleanup: inExportOrder((args.cleanup ?? []).map((c) => ({ id: `cleanup-${c.kind}`, c })), args.order).map(({ id, c }) => ({ ...numberOf(id), ...(c.undated && c.done === null ? { ...c, day: null } : c) })) },
+    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, estimatedFinish, criticalPath: held ? null : args.schedule.derivation.criticalPath, steps, cleanup: inExportOrder((args.cleanup ?? []).map((c) => ({ id: `cleanup-${c.kind}`, c })), args.order).map(({ id, c }) => ({ ...numberOf(id), ...(c.undated && c.done === null ? { ...c, day: null } : c) })) },
     findings,
   }
   return args.redacted ? redactDeepShared(bundle, vocabulary) : bundle
