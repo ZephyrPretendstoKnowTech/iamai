@@ -27,10 +27,11 @@ const JON = 'ab659968-2e8a-4448-9710-d930aada3499'
 const WAAD = '00000002-0000-0000-c000-000000000000'
 const FIXTURES: FixtureName[] = ['demo', 'small', 'getiamai']
 
-test('the pin maps Jon’s BaselineScopes policy to its own goal, and only the AVD allow-list stays hidden', () => {
+test('the pin maps Jon’s BaselineScopes policy to its own goal, and it is not hidden', () => {
   assert.deepEqual(PINNED_GOAL_MAP['directory-baseline-scopes-mfa'], [JON])
   assert.equal(hiddenPolicy('IAC - GLOBAL - GRANT - MFA - WindowsAzureAD-BaselineScopes'), false)
-  assert.equal(hiddenPolicy('IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers'), true)
+  // The AVD allow-list block is a step since T2-AVD (avdAllowedUsers.test.ts): nothing of Jon's is hidden but the agent blocks.
+  assert.equal(hiddenPolicy('IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers'), false)
   assert.ok(READINESS_EVERYONE_GOALS.has('directory-baseline-scopes-mfa'), 'the device-registration gate: everyone it covers')
 })
 

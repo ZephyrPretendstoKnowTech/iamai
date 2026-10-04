@@ -126,7 +126,7 @@
       "meaning": "authorEnvironment",
       "basis": "documented",
       "classification": "sourceOnly",
-      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Intune-AUG-AVD-Prod-ExternalUsers on the AVD policies (on SharePoint, probably GuestExclusions): the author's own AVD external-user population. The README refresh maps it to the Direction answer D1 Azure Virtual Desktop, not to a tenant object IAMAI resolves, so the body goes without it.",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Intune-AUG-AVD-Prod-ExternalUsers on the AVD policies (on SharePoint, probably GuestExclusions): the author's own AVD external-user population. The README refresh maps it to the Direction answer D1 Azure Virtual Desktop, not to a tenant object IAMAI resolves, so the body goes without it. v1.1 D6 (T2-AVD) gives the operator's AVD groups to its sibling 902993ed only: this group is also carved out of the SharePoint and AVD trusted-network blocks, where the allowed AVD users would excuse everyone allowed a desktop from the office rule, and on the allow-list block the operator's list, one or more groups, names every group allowed.",
       "includedIn": [],
       "context": {},
       "excludedFromAtLeast": 3,
@@ -135,14 +135,18 @@
     {
       "id": "902993ed-96f7-4af6-825c-510dfc97b258",
       "kind": "group",
-      "meaning": "authorEnvironment",
+      "meaning": "avdUsersGroup",
       "basis": "documented",
-      "classification": "sourceOnly",
-      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Intune-AUG-AVD-Prod-Users: the author's own AVD allowlist on IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers. The README refresh maps it to the Direction answer D1 Azure Virtual Desktop, not to a tenant object IAMAI resolves, so the body goes without it.",
+      "classification": "knownSemantic",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Intune-AUG-AVD-Prod-Users: the author's own AVD allowlist, the people IAC - APP – BLOCK – AVD - Exclude - AllowedAVDUsers carves out of its block of the Azure Virtual Desktop applications for everyone else. Its tenant counterpart is the groups the operator names under Confirm What You Use's Azure Virtual Desktop answer (v1.1 D4/D6, owner 2026-10-03): IAMAI cannot read Azure's app-group assignments. Its sibling 9ee031a3 (-ExternalUsers) stays the author's own: the operator's list, one or more groups, names every group allowed.",
       "includedIn": [],
-      "context": {},
+      "context": {
+        "9bc2ad69-4aed-4242-807d-788446196b8b": "f66442199ec352d6"
+      },
       "excludedFromAtLeast": 1,
-      "excludedFrom": []
+      "excludedFrom": [
+        "9bc2ad69-4aed-4242-807d-788446196b8b"
+      ]
     },
     {
       "id": "5628ad67-f9d1-4495-abe3-99dc8f9074f1",

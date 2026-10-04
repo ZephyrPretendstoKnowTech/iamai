@@ -295,6 +295,9 @@ export function usePlanData(
     const ge = exclusionsGroupIdToVerify(decided)
     if (ge) ids.add(ge)
     if (decided.serviceAccountsGroupId) ids.add(decided.serviceAccountsGroupId)
+    // The groups allowed to use Azure Virtual Desktop (T2-AVD): the AVD
+    // allow-list block excludes them, so who they hold is read like any carve-out.
+    for (const id of decided.avdUserGroupIds ?? []) ids.add(id)
     void (async () => {
       const map: GroupMembers = new Map()
       const reads: GroupRead[] = []

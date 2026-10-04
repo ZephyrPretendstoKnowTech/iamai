@@ -24,6 +24,7 @@ import type { CaPolicy, Reference, ReferenceKind } from '../baseline/types.ts'
 import { inventoryReferences, unresolvedReferences } from '../baseline/index.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
+import { DIRECTION_STEP_IDS } from './stepGroups.ts'
 import type { TemplatePlaceholder } from './template.ts'
 import { assumedAbsentSourceGroups } from './sourceMappings.ts'
 
@@ -71,6 +72,13 @@ export type TenantObjects = {
    * settles as `externalAuthGroup` falls back to a person's mapping.
    */
   externalAuthTargets?: readonly string[] | null
+  /**
+   * The groups the operator allowed to use Azure Virtual Desktop
+   * (MappingState.avdUserGroupIds; T2-AVD). Absent or empty: not answered, and a
+   * policy naming the author's AVD users names the slot `AVD_USERS_SLOT`, which
+   * waits on Confirm What You Use.
+   */
+  avdUserGroupIds?: readonly string[]
   /** The named locations the tenant marked as its trusted network; empty until it names one. */
   trustedLocationIds?: readonly string[]
   /**
@@ -513,6 +521,18 @@ const EXTERNAL_AUTH = 'externalAuthGroup'
 export const ALL_USERS_TARGET = 'all_users'
 
 /**
+ * The people allowed to use Azure Virtual Desktop (src/baseline/interpretation.ts
+ * `avdUsersGroup`; T2-AVD): the groups the operator names in Confirm What You
+ * Use. Until they are named the policy names this slot instead, so no channel
+ * hands over a block of the desktop applications that spares nobody: it waits
+ * on the Direction step that asks (`DIRECTION_USE_STEP`).
+ */
+export const AVD_USERS_SLOT = '{avdUserGroups}'
+const AVD_USERS = 'avdUsersGroup'
+/** Confirm What You Use: the Direction step that asks which groups may use Azure Virtual Desktop. */
+const DIRECTION_USE_STEP = DIRECTION_STEP_IDS[0]
+
+/**
  * The pin's token for a source reference this baseline's interpretation settles
  * as the author's own environment: something identified by evidence as theirs,
  * which this tenant does not have and does not need
@@ -683,6 +703,13 @@ function substitutionsFor(
     // location on the countries goal as the allowed list).
     if (token === BLOCKED_COUNTRIES && r.kind === 'namedLocation') {
       ids.set(r.id, [tenant.blockedCountriesLocationId ?? BLOCKED_COUNTRIES_SLOT])
+      continue
+    }
+    // The groups allowed to use Azure Virtual Desktop: the operator's, all of
+    // them where the author's one stood, or the slot Confirm What You Use fills.
+    if (token === AVD_USERS && r.kind === 'group') {
+      const groups = [...new Set(tenant.avdUserGroupIds ?? [])]
+      ids.set(r.id, groups.length > 0 ? groups : [AVD_USERS_SLOT])
       continue
     }
     if (token !== null && MAPPED_TOKENS.has(token)) {
@@ -936,7 +963,7 @@ export function implementable(
       missing.push({ token, stepId: null, unreadable: true })
       return
     }
-    const stepId = unresolved.get(key) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? (token === BLOCKED_COUNTRIES_SLOT ? stepIdForGoal('geo-restriction') : null)
+    const stepId = unresolved.get(key) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? (token === BLOCKED_COUNTRIES_SLOT ? stepIdForGoal('geo-restriction') : token === AVD_USERS_SLOT ? DIRECTION_USE_STEP : null)
     // A reference only a person can answer waits on their Baseline mapping (Plan settings), which no step ends.
     missing.push(refs.decisions?.get(key)?.answer === 'pending' ? { token, stepId, decision: true } : { token, stepId })
   }

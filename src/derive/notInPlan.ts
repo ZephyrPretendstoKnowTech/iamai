@@ -19,7 +19,6 @@
 //
 // Pure: no DOM, no network.
 import { directionWords, pages, stepById } from '../content/content.ts'
-import { HIDDEN_V1_POLICY } from '../roadmap/workflows.ts'
 import { fillText } from '../content/render.ts'
 import { goalInMap, policyKey } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
@@ -108,7 +107,7 @@ export function notInPlanRows(policies: readonly { id?: string | null; displayNa
   }
   const P = footer()
   return policies
-    .filter((p) => !shown.has(policyKey(p)) && !reviewed.has(p.displayName) && !HIDDEN_V1_POLICY.test(p.displayName))
+    .filter((p) => !shown.has(policyKey(p)) && !reviewed.has(p.displayName))
     .map((p) => {
       const reason = reasonFor(p, coverage, goalMap)
       return { policy: p.displayName, reason, text: fillText(P.notInPlanRow, { policy: p.displayName, reason }) }

@@ -35,6 +35,8 @@ const AZURE_MGMT_APP_IDS = new Set(['797f4846-ba00-4fd7-ba43-dac1f8f63013'])
 export const APP_SCOPED_GOALS: Readonly<Record<string, readonly string[]>> = {
   'inforcer-mfa': ['708861da-226e-4d65-a57a-24128df64524'],
   'avd-trusted-network': ['9cdead84-a844-4324-93f2-b2e6bb768d07', '0af06dc6-e4b5-4f28-818e-e78e62d137a5'],
+  // Jon's AVD allow-list block (T2-AVD): the same two applications.
+  'avd-allowed-users': ['9cdead84-a844-4324-93f2-b2e6bb768d07', '0af06dc6-e4b5-4f28-818e-e78e62d137a5'],
   'sharepoint-trusted-network': ['00000003-0000-0ff1-ce00-000000000000'],
   // Windows Azure Active Directory: the resource Microsoft maps baseline-scope
   // sign-ins to (Learn, concept-enforcement-resource-exclusions; owner 2026-09-29).

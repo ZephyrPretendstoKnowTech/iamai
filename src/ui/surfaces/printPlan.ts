@@ -5,6 +5,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
+import { directionAsked } from '../../roadmap/directionAnswers.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
@@ -190,7 +191,9 @@ export function readinessNeed(step: Step, ex: Record<string, unknown>): string {
  * None for a decision that asks no questions of its own.
  */
 export function decisionAsksOf(step: Pick<Step, 'directionQuestions'> | null | undefined): string[] {
-  return (step?.directionQuestions ?? []).filter((q) => q.saved === null || q.needsReview).map((q) => q.label)
+  const questions = step?.directionQuestions ?? []
+  // A question that follows another's answer is asked only while that answer is saved (T2-AVD).
+  return questions.filter((q) => directionAsked(q, questions, (x) => x.saved) && (q.saved === null || q.needsReview)).map((q) => q.label)
 }
 
 /**

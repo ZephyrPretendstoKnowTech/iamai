@@ -12,7 +12,7 @@ import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
 import { MFA_FOLLOW_UP_KEY, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
-import { WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
+import { AVD_USERS_STORAGE, WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
 import { COUNTRIES_BLOCKED_ANSWER, COUNTRIES_LEFT_OUT_ANSWER, blockedAndAllowed, parseCountryCodes } from './countriesLockout.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
@@ -397,6 +397,12 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       if (provenance === 'confirmed') next.serviceAccountsGroupId = picked[0] ?? null
     } else if (stepId === DECISION_STEPS.sharedDevices && provenance === 'confirmed') {
       next.sharedDeviceUserIds = picked
+    } else if (stepId === AVD_USERS_STORAGE && provenance === 'confirmed') {
+      // Who keeps Azure Virtual Desktop when the allow-list block is on: only an
+      // operator's Save names them (T2-AVD). None picked is no answer.
+      const groups = [...new Set(picked)]
+      if (groups.length > 0) next.avdUserGroupIds = groups
+      else delete next.avdUserGroupIds
     }
   }
   // The answers that add to a picker's list (E1): the travellers' countries

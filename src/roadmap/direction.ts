@@ -126,6 +126,19 @@ export function mailPickable(snapshot: Pick<TenantSnapshot, 'users'>, mapping: P
 function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: string) => ServiceSignal }): DirectionQuestion[] {
   const { snapshot } = ctx
   const out = SERVICE_KEYS.filter((k) => services.keys.includes(k)).map((k) => serviceQuestion(k, services.signal(k), ctx))
+  // Which groups may use Azure Virtual Desktop (T2-AVD; v1.1 D4/D6), right
+  // under the Azure Virtual Desktop card and asked only while it reads Yes: the
+  // people the baseline's AVD allow-list block leaves able to open a desktop.
+  // The scan holds no fact about who uses one, so the card suggests nothing and
+  // says nothing it did not see.
+  const avdAt = out.findIndex((q) => q.key === 'service:avd')
+  if (avdAt >= 0) {
+    out.splice(avdAt + 1, 0, question('avdUsers', ctx, {
+      label: Q.avdUsers.label, control: 'groups', options: [], pickedWith: 'groups',
+      suggested: answer('groups'), evidence: '', chosen: { groups: Q.avdUsers.chosen },
+      askedWhen: { key: 'service:avd', value: 'yes' },
+    }))
+  }
   // The evidence counts every sender the records show; the suggestion picks only
   // the ones the picker offers (mailPickable).
   const senders = mailSenderIds(snapshot)
@@ -398,6 +411,8 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   // Jon's AVD and SharePoint blocks outside the trusted network (Phase 2b): the office decides them; the service question comes from the goal's applicability.
   'avd-trusted-network': ['officeNetwork'],
   'sharepoint-trusted-network': ['officeNetwork'],
+  // Jon's AVD allow-list block (T2-AVD): the groups allowed to use Azure Virtual Desktop; the service question comes from the goal's applicability.
+  'avd-allowed-users': ['avdUsers'],
   // Phones Blocked from company data widens Jon's block to iOS and Android (deviations.ts BLOCK_PLATFORMS_GOAL).
   'block-unsupported-platforms': ['phones'],
   // Define the Trusted Network holds until the office question is answered, as

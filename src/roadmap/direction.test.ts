@@ -30,7 +30,10 @@ const q = (step: Step, key: string): DirectionQuestion => step.directionQuestion
 
 /** What Approve answers saves: every question at its saved answer, else its suggestion. */
 function approve(step: Step, change: Record<string, DirectionAnswer> = {}): StepDecision {
-  const answers = Object.fromEntries(step.directionQuestions!.map((x) => [x.key, change[x.key] ?? x.saved ?? x.suggested]))
+  // Azure Virtual Desktop answered Yes asks which groups may use it (T2-AVD), and
+  // Approve answers needs one: a group stands in for the person's pick.
+  const pick = (x: DirectionQuestion): DirectionAnswer => (x.key === 'avdUsers' && (x.saved ?? x.suggested).picked.length === 0 ? { value: 'groups', picked: ['0000a0d0-0000-4000-8000-0000000000a1'] } : x.saved ?? x.suggested)
+  const answers = Object.fromEntries(step.directionQuestions!.map((x) => [x.key, change[x.key] ?? pick(x)]))
   const basis = Object.fromEntries(step.directionQuestions!.filter((x) => x.basis !== null).map((x) => [x.key, x.basis!]))
   return { ...directionDecisionOf(answers, basis), at: AT }
 }
@@ -391,7 +394,9 @@ test('each service card says what Yes keeps as well as what No takes off, and Sh
   assert.equal(sharepoint.label, 'Limit SharePoint and OneDrive to the office network')
   assert.equal(sharepoint.chosen?.yes, "People can't open SharePoint or OneDrive files from outside the office.")
   assert.equal(sharepoint.chosen?.no, 'Takes Restrict SharePoint and OneDrive to the Trusted Network off your plan.')
-  assert.equal(card(qs, 'service:avd').chosen?.yes, "Virtual desktops can't be opened from outside the office.")
+  // Yes keeps both of Jon's AVD blocks since T2-AVD: the allow-list's line, then the office block's.
+  assert.equal(card(qs, 'service:avd').chosen?.yes, "People outside the allowed groups can't open a virtual desktop. Virtual desktops can't be opened from outside the office.")
+  assert.equal(card(qs, 'service:avd').chosen?.no, 'Takes Limit Azure Virtual Desktop to Its Allowed Groups and Restrict Azure Virtual Desktop to the Trusted Network off your plan.')
   assert.equal(card(qs, 'service:inforcer').chosen?.yes, 'Inforcer users confirm their sign-in with MFA.')
   // A saved No keeps its Yes line: switching back says what it brings back.
   const use = runFixture(f).steps.find((s) => s.id === DIRECTION_STEP.use)!

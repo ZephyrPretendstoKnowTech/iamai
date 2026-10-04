@@ -123,6 +123,15 @@ export type MappingState = {
    * decision refuses that contradiction.
    */
   countriesBlockedOutright?: string[]
+  /**
+   * The groups allowed to use Azure Virtual Desktop (v1.1 D4/D6, T2-AVD): Confirm
+   * What You Use's "Which groups may use Azure Virtual Desktop?", asked only while
+   * Azure Virtual Desktop is in use. IAMAI cannot read Azure's app-group
+   * assignments, so only an operator's Save writes them. Jon's AVD allow-list
+   * block excludes them, beside the exclusions group, and blocks everyone else
+   * (roadmap/resolvePolicy.ts `avdUsersGroup`). Absent or empty: not answered.
+   */
+  avdUserGroupIds?: string[]
   displayTimeZone: string | null
   frameworks: string[]
   /** Which answers exist, detected or confirmed (progress + auto vs human). */

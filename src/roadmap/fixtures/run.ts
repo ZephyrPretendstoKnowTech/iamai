@@ -25,7 +25,7 @@ import { settleForecast } from '../forecast.ts'
 import { settleRenames } from '../cleanupPhase.ts'
 import { cleanupRecord } from '../cleanupDone.ts'
 import { applyStepDecisions } from '../decisions.ts'
-import { DIRECTION_STEP, directionDecisionOf } from '../directionAnswers.ts'
+import { DIRECTION_STEP, directionAsked, directionDecisionOf } from '../directionAnswers.ts'
 import { observedRecoveryRecords, recoveryCandidate, withPreparedPasskeys } from './recoveryRecords.ts'
 import { recoveryAccountBasis } from '../cleanupDone.ts'
 import { recoveryPasskeyCandidateSet } from '../passkeyCompatibility.ts'
@@ -175,7 +175,9 @@ export function adminsAtRung5(viability: MfaViability[], at: string): MfaViabili
 export function withDirectionApproved(f: Fixture, ids: readonly DirectionStepId[] = Object.values(DIRECTION_STEP)): Fixture {
   const steps = runFixture(f).steps
   const decisions = Object.fromEntries(ids.map((id) => {
-    const questions = steps.find((s) => s.id === id)?.directionQuestions ?? []
+    const all = steps.find((s) => s.id === id)?.directionQuestions ?? []
+    // Only the questions the screen asks, as Approve answers saves them (T2-AVD: the Azure Virtual Desktop groups only while it reads Yes).
+    const questions = all.filter((q) => directionAsked(q, all, (x) => x.saved ?? x.suggested))
     const answers = Object.fromEntries(questions.map((q) => [q.key, q.saved ?? q.suggested]))
     const basis = Object.fromEntries(questions.filter((q) => q.basis !== null).map((q) => [q.key, q.basis!]))
     return [id, { ...directionDecisionOf(answers, basis), at: f.snapshot.asOf }]

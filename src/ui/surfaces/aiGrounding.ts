@@ -33,6 +33,7 @@
 import { PROCEDURE } from '../../roadmap/policyProcedure.ts'
 import { validOperations } from '../../roadmap/operations.ts'
 import { directionWords, workflowWords, shared } from '../../content/content.ts'
+import { directionAsked } from '../../roadmap/directionAnswers.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import type { ChannelArtifact } from '../../content/implementation/project.ts'
@@ -314,7 +315,8 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
 
   if (text('emergency.passkey.compatibility')) section((shared.passkeyCompatibility as Record<string, string>).heading, [text('emergency.passkey.compatibility')])
   // A Direction step's questions: each answer as saved, or the suggestion and that it is one, with its evidence.
-  if (i.step.directionQuestions) section(workflowWords.choiceContext, i.step.directionQuestions.map((q) => { const a = q.saved ?? q.suggested; const label = q.options.find((o) => o.value === a.value)?.label ?? a.picked.join(', '); return `${q.label}: ${label}${q.saved ? '' : ` (${directionWords.suggested})`}. ${q.evidence}` }))
+  // A question that follows another's answer only while that answer stands (T2-AVD: the Azure Virtual Desktop groups).
+  if (i.step.directionQuestions) section(workflowWords.choiceContext, i.step.directionQuestions.filter((q, _, all) => directionAsked(q, all, (x) => x.saved ?? x.suggested)).map((q) => { const a = q.saved ?? q.suggested; const label = q.options.find((o) => o.value === a.value)?.label ?? a.picked.join(', '); return `${q.label}: ${label}${q.saved ? '' : ` (${directionWords.suggested})`}. ${q.evidence}` }))
   if (i.step.baselineReviewSource) section(workflowWords.baselineContext, [i.step.baselineReviewSource.name, i.step.baselineReviewSource.reason, i.step.baselineReviewSource.json])
   if (sections.length === 0) return ''
   return [W.heading, W.boundary, ...sections.map((s) => s.join('\n'))].join('\n\n')

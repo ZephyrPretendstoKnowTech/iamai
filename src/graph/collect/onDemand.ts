@@ -25,14 +25,14 @@ export async function readUserTransitiveGroupIds(userId: string): Promise<string
   }
 }
 
-async function msalTokens(): Promise<TokenSource> {
+async function msalTokens(mode: 'redirect' | 'silent' = 'redirect'): Promise<TokenSource> {
   // Loaded when a token is first needed, so a reader handed its own token source never loads MSAL.
   const { getGraphToken } = await import('../msal.ts')
-  let token = await getGraphToken()
+  let token = await getGraphToken(mode)
   return {
     get: () => token,
     refresh: async () => {
-      token = await getGraphToken()
+      token = await getGraphToken(mode)
       return token
     },
   }
@@ -102,12 +102,23 @@ export async function resolveObjects(ids: string[]): Promise<Map<string, Resolve
   return out
 }
 
-// Typeahead group search for the Mapping pickers — runs only while the
-// operator types; returns id + displayName.
-export async function searchGroups(query: string): Promise<{ id: string; displayName: string }[]> {
+// Typeahead group search for the group pickers — runs only while the
+// operator types; returns id + displayName. Silent only: a keystroke never
+// sends the page to sign in, and a session that needs one finds nothing. Given
+// the plan's tenant, only an account signed in to that tenant searches: the
+// sample, or another tenant's plan, never lists the signed-in tenant's groups.
+export async function searchGroups(
+  query: string,
+  tenantId?: string,
+  auth: { accountTenantId: () => Promise<string | null>; tokens: () => Promise<TokenSource> } = {
+    accountTenantId: async () => (await import('../msal.ts')).msal.getActiveAccount()?.tenantId ?? null,
+    tokens: () => msalTokens('silent'),
+  },
+): Promise<{ id: string; displayName: string }[]> {
   const q = query.trim().replace(/'/g, "''")
   if (q.length < 2) return []
-  const tokens = await msalTokens()
+  if (tenantId !== undefined && ((await auth.accountTenantId()) ?? '').toLowerCase() !== tenantId.toLowerCase()) return []
+  const tokens = await auth.tokens()
   const body = await graphRequest(
     tokens,
     `${V1}/groups?$filter=${encodeURIComponent(`startswith(displayName,'${q}')`)}&$select=id,displayName&$top=20`,

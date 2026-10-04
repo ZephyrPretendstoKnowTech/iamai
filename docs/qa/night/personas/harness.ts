@@ -25,7 +25,7 @@ import { appliedMapping } from '../../../../src/ui/surfaces/pickerRows.ts'
 import { customerPlanSteps } from '../../../../src/ui/surfaces/customerPlanSteps.ts'
 import { BREAK_GLASS_STEP_ID } from '../../../../src/roadmap/stepIds.ts'
 import type { StepDecisionInput } from '../../../../src/roadmap/decisions.ts'
-import { directionAnswerComplete, directionDecisionOf, directionDraftOf } from '../../../../src/roadmap/directionAnswers.ts'
+import { directionAnswerComplete, directionAsked, directionDecisionOf, directionDraftOf } from '../../../../src/roadmap/directionAnswers.ts'
 import type { DirectionAnswer } from '../../../../src/roadmap/directionAnswers.ts'
 import { allWorkGroups, BOARD, boardOf, TAB_OF } from '../../../../src/ui/surfaces/planBoard.ts'
 import type { Board } from '../../../../src/ui/surfaces/planBoard.ts'
@@ -625,13 +625,16 @@ export const settleFoundations = (t: Tenant): Tenant => configurePasskeys(prepar
 export function acceptDirection(t: Tenant, r: FixtureRun): Tenant {
   let next = t
   for (const step of r.steps) {
-    const questions = step.directionQuestions ?? []
-    if (questions.length === 0) continue
-    const values: Record<string, DirectionAnswer> = {}
-    for (const q of questions) {
+    const all = step.directionQuestions ?? []
+    if (all.length === 0) continue
+    const drafts: Record<string, DirectionAnswer> = {}
+    for (const q of all) {
       const draft = directionDraftOf(q)
-      values[q.key] = { value: draft.value, picked: [...draft.picked] }
+      drafts[q.key] = { value: draft.value, picked: [...draft.picked] }
     }
+    // Only the questions the screen asks (directionAsked), as Approve answers saves them (T2-AVD).
+    const questions = all.filter((q) => directionAsked(q, all, (x) => drafts[x.key]))
+    const values = Object.fromEntries(questions.map((q) => [q.key, drafts[q.key]]))
     if (!questions.every((q) => directionAnswerComplete(q, values[q.key]))) continue
     const basis = Object.fromEntries(questions.filter((q) => q.basis !== null).map((q) => [q.key, q.basis as string]))
     next = decide(next, step.id, answers(values, basis))

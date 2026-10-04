@@ -587,9 +587,16 @@ export type Blocker =
 export type DirectionQuestion = {
   key: string
   label: string
-  control: 'choice' | 'accounts' | 'locations'
+  control: 'choice' | 'accounts' | 'locations' | 'groups'
   options: { value: string; label: string }[]
   pickedWith: string | null
+  /**
+   * Asked only while another question's answer is this one
+   * (directionAnswers.ts directionAsked): the Azure Virtual Desktop groups, only
+   * while Azure Virtual Desktop reads Yes (T2-AVD). Not asked, it is not shown,
+   * not required and not saved.
+   */
+  askedWhen?: { key: string; value: string }
   suggested: { value: string; picked: string[] }
   /** Why suggested, in one line; or that the suggestion is a default the scan did not see. */
   evidence: string

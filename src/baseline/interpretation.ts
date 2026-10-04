@@ -69,6 +69,15 @@ export type SourceMeaning =
    * its groups, or All users where it targets everyone. Nobody is asked.
    */
   | 'externalAuthGroup'
+  /**
+   * The people allowed to use Azure Virtual Desktop, whom the author's AVD
+   * allow-list block carves out of its block (Jon's
+   * SG-Intune-AUG-AVD-Prod-Users; v1.1 D4/D6). IAMAI cannot read Azure's
+   * app-group assignments, so the tenant's counterpart is the groups the
+   * operator names in Confirm What You Use (MappingState.avdUserGroupIds;
+   * roadmap/resolvePolicy.ts). Unanswered, the policy waits on that answer.
+   */
+  | 'avdUsersGroup'
   | 'trustedLocation'
   | 'authorEnvironment'
   | 'unknown'
@@ -197,7 +206,7 @@ export type ReferenceUsage = {
   context: Record<string, string>
 }
 
-const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
+const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'avdUsersGroup', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
 const CLASSIFICATIONS: ReferenceClassification[] = ['knownSemantic', 'sourceOnly', 'decisionRequired', 'invalidSource']
 
 /** The one classification each meaning allows: a record whose two fields disagree cannot be checked by a reviewer. */

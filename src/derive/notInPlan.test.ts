@@ -8,7 +8,6 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { fixture, withReviewRow } from '../roadmap/fixtures/index.ts'
-import { HIDDEN_V1_POLICY } from '../roadmap/workflows.ts'
 import type { FixtureName } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
@@ -42,11 +41,7 @@ test('every pinned baseline policy is shown somewhere in the plan: a step, Not l
     const listed = new Map(rows.map((r) => [r.policy, r]))
     const nowhere: string[] = []
     for (const p of policies) {
-      // Hidden from every surface for v1.0 (owner, decision 2): drawn nowhere, the footer included.
-      if (HIDDEN_V1_POLICY.test(p.displayName)) {
-        assert.ok(!listed.has(p.displayName), `${name}: "${p.displayName}" is hidden and listed`)
-        continue
-      }
+      // No policy is hidden any more: Jon's AVD allow-list block is a step since T2-AVD.
       const goals = goalsOf(p)
       const byStep = steps.some((s) => goals.includes(s.goalId))
       const byLicence = goals.some((g) => licenceTexts.some((t) => t.includes(titleOf(g))))

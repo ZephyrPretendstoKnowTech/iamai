@@ -26,8 +26,9 @@ function withServices(answer: 'yes' | 'no'): Fixture {
 test('the pin maps Jon’s AVD and SharePoint blocks outside the trusted network to goals of their own, and nothing else moved', () => {
   assert.deepEqual(PINNED_GOAL_MAP['avd-trusted-network'], ['b13dd393-f644-45c8-81bf-aa7f4032ebd3'], 'IAC - APP – BLOCK – AVD - NonTrustedLocations')
   assert.deepEqual(PINNED_GOAL_MAP['sharepoint-trusted-network'], ['1f960ec9-885f-4032-a6b2-a5c559279274'], 'IAC - APP - BLOCK - SharePoint-OneDrive-NonTrustedLocations')
-  const mapped = Object.values(PINNED_GOAL_MAP).flat()
-  assert.equal(mapped.includes('9bc2ad69-4aed-4242-807d-788446196b8b'), false, 'the AVD allow-list block is no goal’s')
+  // Since T2-AVD the AVD allow-list block is a goal's too, its own and no other's (avdAllowedUsers.test.ts).
+  const mapped = Object.entries(PINNED_GOAL_MAP).filter(([, keys]) => keys.includes('9bc2ad69-4aed-4242-807d-788446196b8b')).map(([g]) => g)
+  assert.deepEqual(mapped, ['avd-allowed-users'], 'the AVD allow-list block is its own goal’s')
 })
 
 test('used, they are policy steps; no review row stands for any of the four', () => {

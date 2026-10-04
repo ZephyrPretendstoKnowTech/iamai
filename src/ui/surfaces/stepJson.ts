@@ -4,11 +4,18 @@
 // none of them reads `action.json`, which is a derived projection the engine
 // writes for the plan file and the exports. Pure.
 import type { Step } from '../../roadmap/types.ts'
-import { app, stepById } from '../../content/content.ts'
+import { app, directionWords, stepById } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 import { implementationOffered, operationsOf, submitsEnforcementOnly } from '../../roadmap/operations.ts'
 import { OBJECT_TASK } from '../../roadmap/stepIds.ts'
+import { DIRECTION_STEP } from '../../roadmap/directionAnswers.ts'
+
+/** A Direction step's title (content.json pages.app.plan.direction.steps), or null for any other id. */
+function directionTitle(id: string): string | null {
+  const key = (Object.entries(DIRECTION_STEP) as [keyof typeof DIRECTION_STEP, string][]).find(([, v]) => v === id)?.[0]
+  return key ? directionWords.steps[key].title : null
+}
 
 /**
  * Whether the step has something to hand over: Foundation A's one implementation
@@ -35,6 +42,9 @@ export function missingObjects(step: Step): { token: string; stepId: string | nu
   // task used to be, which is no step of the plan any more.
   const titleOf = (id: string | null): string | null => {
     if (id === null) return null
+    // A Direction step, whose answer the policy names (T2-AVD: the groups allowed to use Azure Virtual Desktop).
+    const direction = directionTitle(id)
+    if (direction !== null) return direction
     const task = id === step.id ? OBJECT_TASK[id] : undefined
     return task !== undefined ? (stepById[task]?.taskTitle ?? null) : (stepById[id]?.title ?? null)
   }
@@ -78,8 +88,12 @@ export function waitingLine(step: Step, tenant: string, exclusionsUnconfirmed = 
   // answer, so it covers every object the same step makes, by step, not by token.
   const groupSteps = new Set(objects.filter((m) => m.token === '{exclusionsGroup}' && m.stepId).map((m) => m.stepId))
   const confirm = (m: (typeof objects)[number]): boolean => exclusionsUnconfirmed && m.wait === 'objectMissing' && m.stepId !== null && groupSteps.has(m.stepId)
-  const titles = (kind: WaitKind): string[] => [...new Set(objects.filter((m) => m.wait === kind && !confirm(m)).map((m) => m.title))]
+  // An answer a Direction step asks, which the policy names (T2-AVD), is not an object the tenant lacks.
+  const answered = (m: (typeof objects)[number]): boolean => m.stepId !== null && directionTitle(m.stepId) !== null
+  const titles = (kind: WaitKind): string[] => [...new Set(objects.filter((m) => m.wait === kind && !confirm(m) && !answered(m)).map((m) => m.title))]
   const lines: string[] = []
+  const asked = [...new Set(objects.filter((m) => m.wait === 'objectMissing' && answered(m)).map((m) => m.title))]
+  if (asked.length > 0) lines.push(fillText(app.plan.jsonWaitsAnswer, { steps: list(asked) }))
   const made = titles('objectMissing')
   // A reference whose meaning nobody has settled is not an object the tenant lacks:
   // it is mapped in Plan settings (S4), and named in words, never by the author's id.

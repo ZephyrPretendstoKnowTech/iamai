@@ -1019,7 +1019,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Whoever the tenant's own External authentication method targets: the
   // counterpart of Jon's EAM group (interpretation externalAuthGroup; v1.1 D6).
   const externalAuthTargets = externalAuthTargetsOf(snapshot)
-  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId, externalAuthTargets }
+  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId, externalAuthTargets, avdUserGroupIds: mapping.avdUserGroupIds ?? [] }
   const tenantObjects = companionTargets.length === 0 ? tenantObjectsBase : { ...tenantObjectsBase, omitted: new Set([...(tenantObjectsBase.omitted ?? []), ...companionTargets]) }
   /**
    * The resolved policy with its authentication strength as the request may

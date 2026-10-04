@@ -60,7 +60,24 @@ export const DIRECTION_BLOCKER = 'direction:'
  * each answer is stored, so the foundation gate (roadmap/foundations.ts) can
  * read it without reaching through the step builder.
  */
-export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => q.saved !== null && !q.needsReview)
+export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => !directionAsked(q, questions, (x) => x.saved) || (q.saved !== null && !q.needsReview))
+
+/**
+ * Whether a question is asked: always, unless it follows another question's
+ * answer (`askedWhen`), and then only while that answer, as `answerOf` reads it
+ * (the saved answer, or the card's draft on screen), is the one it follows —
+ * the Azure Virtual Desktop groups, only while Azure Virtual Desktop is Yes
+ * (T2-AVD). A question that is not asked is not shown, not required and not saved.
+ */
+export function directionAsked(q: Pick<DirectionQuestion, 'askedWhen'>, questions: readonly DirectionQuestion[], answerOf: (q: DirectionQuestion) => { value: string } | null): boolean {
+  if (!q.askedWhen) return true
+  const { key, value } = q.askedWhen
+  const other = questions.find((x) => x.key === key)
+  return other !== undefined && answerOf(other)?.value === value
+}
+
+/** Where the Azure Virtual Desktop groups answer is stored (MappingState.avdUserGroupIds; decisions.ts applyStepDecisions): a storage id, not a step. */
+export const AVD_USERS_STORAGE = 's-direction-use-avd-users'
 
 /** The Direction step a blocker waits on, or null for a blocker that is not one. */
 export function directionBlockerStep(b: { kind: string; label: string }): DirectionStepId | null {
@@ -85,7 +102,7 @@ export type DirectionAnswer = { value: string; picked: string[] }
  */
 export type DirectionQuestionKey =
   | `service:${string}`
-  | 'mailDevices' | 'partner'
+  | 'mailDevices' | 'partner' | 'avdUsers'
   | 'serviceAccounts' | 'sharedDevices'
   | 'computers' | 'phones' | 'officeNetwork'
 
@@ -98,6 +115,7 @@ export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, 
   service: { step: DIRECTION_STEP.use, storedAs: `stepDecisions['${WORKFLOW_DECISION_STEP}'] → workflowAnswers[<service>], facetOverrides[<service>]` },
   mailDevices: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.mailDevices}:<decision label>'], its basis questionAnswers['${DIRECTION_STEP.use}:mailDevices:basis']` },
   partner: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.partner}:<question label>'], its basis questionAnswers['${DIRECTION_STEP.use}:partner:basis']` },
+  avdUsers: { step: DIRECTION_STEP.use, storedAs: `stepDecisions['${AVD_USERS_STORAGE}'] → avdUserGroupIds` },
   serviceAccounts: { step: DIRECTION_STEP.accounts, storedAs: 'serviceAccountUserIds, wizardAnswered.serviceAccounts' },
   sharedDevices: { step: DIRECTION_STEP.accounts, storedAs: 'sharedDeviceUserIds' },
   computers: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.computers}']` },
@@ -150,7 +168,7 @@ export function answeredReasonOf(key: DirectionQuestionKey, value: string): stri
  */
 const OFFICE_NETWORK = ['office', 'remote'] as const
 
-type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds'>
+type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'avdUserGroupIds'>
 
 const answer = (value: string, picked: readonly string[] = []): DirectionAnswer => ({ value, picked: [...picked] })
 /** A picker's own answer was saved by a person, never by the detected pass (pickerRows.ts defaultDecisions). */
@@ -197,6 +215,9 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
       const a = answerOf(m, QUESTION_STEP.partner, 'question')
       return a === null ? null : answer(a.index === 0 ? 'no' : 'yes')
     }
+    case 'avdUsers':
+      // Only a list is an answer: "nobody may use it" is Azure Virtual Desktop answered No.
+      return (m.avdUserGroupIds ?? []).length > 0 ? answer('groups', m.avdUserGroupIds) : null
     case 'serviceAccounts':
       return confirmed(m, 'serviceAccounts') ? (m.serviceAccountUserIds.length > 0 ? answer('some', m.serviceAccountUserIds) : answer('none')) : null
     case 'sharedDevices':
@@ -367,6 +388,10 @@ export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LO
     const text = option(QUESTION_STEP.partner, 'question', partner.value === 'yes' ? 1 : 0)
     if (text !== null) out.push([QUESTION_STEP.partner, { ...previous[QUESTION_STEP.partner], answers: { ...(previous[QUESTION_STEP.partner]?.answers ?? {}), [partnerLabel]: text }, at }])
   }
+  // The groups allowed to use Azure Virtual Desktop, under their own storage id
+  // (decisions.ts applyStepDecisions writes avdUserGroupIds; T2-AVD).
+  const avd = answers.avdUsers
+  if (avd) out.push([AVD_USERS_STORAGE, { picked: avd.value === 'groups' ? avd.picked : [], at }])
   // The evidence the mail and partner answers were approved against, under the
   // key it is read from (savedBasisOf), as a service's basis is kept beside it.
   const basis: Record<string, string> = {}

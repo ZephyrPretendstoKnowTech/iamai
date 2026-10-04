@@ -11,6 +11,7 @@ import type { Blocker, Step } from './types.ts'
 import { holdOf, markHoldChains } from './holds.ts'
 import { unavailableReason } from './operations.ts'
 import { BREAK_GLASS_STEP_ID } from './stepIds.ts'
+import { isDirectionStep } from './directionAnswers.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 
 function thresholdFor(family: Step['readiness']['family']): number | null {
@@ -142,7 +143,10 @@ export function holdWaitsOn(step: Step): string[] {
   if (hold.kind === 'unavailable') {
     const reason = unavailableReason(step)
     // Never itself: an object the step makes is its own task (Stage 3).
-    if (reason === 'missing-object') for (const m of step.action.missing ?? []) if (m.stepId !== step.id) add(m.stepId)
+    // Nor a Direction step: an answer the policy names (T2-AVD: the groups allowed
+    // to use Azure Virtual Desktop) is the decision wait the step already carries
+    // (direction.ts gateOnDirection), as every other wait on a Direction answer is.
+    if (reason === 'missing-object') for (const m of step.action.missing ?? []) if (m.stepId !== step.id && !isDirectionStep(m.stepId ?? '')) add(m.stepId)
     if (reason === 'escape-hatch-unverified') add(step.action.escapeHatch?.stepId)
     if (reason === 'unsafe-emergency-access' || reason === 'unverified-emergency-exclusion') add(BREAK_GLASS_STEP_ID)
   }

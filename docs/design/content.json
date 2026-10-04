@@ -2126,6 +2126,8 @@
         "$commentDeferredWhy": "F-013 (owner, 2026-09-27): a deferred step's Next milestone is its deferral, the day and the reason the Defer dialog required, never the create it was deferred from.",
         "deferredWhy": "Deferred {date}: {reason}",
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
+        "$commentJsonWaitsAnswer": "T2-AVD: a policy that names an answer a Direction step asks, not an object (the groups allowed to use Azure Virtual Desktop, from Confirm What You Use). {steps} is that Direction step's title (ui/surfaces/stepJson.ts waitingLine).",
+        "jsonWaitsAnswer": "{steps} first: this policy names the groups you choose there.",
         "jsonWaitsDecision": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in {tenant} or is left out.",
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
         "$commentInPlaceKeep": "A goal already delivered, as its action (stepContract.ts actionOf): the policy by name and that it is On (walk list 4.x items 22 and 31). It read \"This is in place already: nothing to create. Keep the policy as it is.\" on every Satisfied policy card and in AI Info. inPlaceKeep stands where the scan names no policy.",
@@ -3426,6 +3428,7 @@
           "adminPicked": "Picked here: {list:names}. A picked account is treated as a service account and kept out of the policies that ask everyone for MFA.",
           "adminPickedRemote": "Picked here: {list:names}. A picked account is treated as a service account.",
           "pickLocation": "Pick at least one location, or choose another answer.",
+          "pickGroup": "Pick at least one group.",
           "notApproved": "Not approved yet",
           "done": "Every answer is approved.",
           "$commentWaiting": "The row label and Readiness tile of a policy held on a Direction answer nobody has approved (ui/surfaces/planBoard.ts). Owner, roadmap flow V2 decision A: it read 'Waiting on your direction' until section 2 became Define Your Rollout Scope; the wait is on the person's answers.",
@@ -3522,6 +3525,11 @@
               "$commentBaseline": "F-041: the baseline's B2B-Guest policy includes service provider users and asks them for its authentication strength ({strength}, read from the pinned baseline), so Yes departs from it, and the card says so in shared.deviation.line's words. No is the baseline's own version (F-067). Review fix: it read 'MFA like any guest', weaker than the baseline asks.",
               "baseline": "they sign in with {strength}, and only from your countries",
               "chosenNo": "Partner and MSP technicians sign in with {strength} and only from your countries, as the baseline asks."
+            },
+            "avdUsers": {
+              "$comment": "T2-AVD (v1.1 D4/D6, owner 2026-10-03): asked only while the Azure Virtual Desktop card reads Yes (direction.ts askedWhen). A group picker, one or more groups; the answer is MappingState.avdUserGroupIds. The baseline's AVD allow-list block excludes them and the exclusions group, and blocks everyone else from the two desktop applications (Limit Azure Virtual Desktop to Its Allowed Groups). No evidence line: the scan holds no fact about who uses a desktop.",
+              "label": "Which groups may use Azure Virtual Desktop?",
+              "chosen": "Everyone outside these groups and the exclusions group is blocked from Azure Virtual Desktop."
             },
             "accountOptions": {
               "none": "None",
@@ -8551,6 +8559,64 @@
         "from": "Aug 1"
       },
       "aiFocus": "Explain the two applications the policy blocks and the network it leaves open. Do not widen the trusted network to let a blocked sign-in through."
+    },
+    {
+      "id": "avd-allowed-users",
+      "brief": {
+        "matters": "A virtual desktop is a full work computer, so only the people who need one should be able to open it.",
+        "notice": "People outside the allowed groups can't open a virtual desktop."
+      },
+      "kind": "policy",
+      "$comment": "T2-AVD (v1.1 D4/D6, owner 2026-10-03): Jon's IAC - APP – BLOCK – AVD - Exclude - AllowedAVDUsers, hidden in v1.0 because its allowed users were unidentified. The operator names the groups in Confirm What You Use (asked only while Azure Virtual Desktop is Yes); the policy excludes them and the exclusions group and blocks everyone else. Answered No, it does not apply; unanswered, it waits on the answer. Created in Report-only by Create the Policies in Report-only, then turned on.",
+      "title": "Limit Azure Virtual Desktop to Its Allowed Groups",
+      "changeLine": null,
+      "why": "Only the groups you allow can open Azure Virtual Desktop, so a stolen password for anyone else cannot start a desktop session.",
+      "learn": {
+        "url": "https://learn.microsoft.com/azure/virtual-desktop/set-up-mfa",
+        "checkedOn": "2026-09-25"
+      },
+      "who": {
+        "lead": "{active} active people",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}"
+      ],
+      "ifWrong": "{policyIfWrong}",
+      "comms": null,
+      "doesntApply": true,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "Anyone outside the allowed groups who opens a virtual desktop is blocked once this is on, so check the groups hold everyone who uses one.",
+            "applies": "always"
+          },
+          {
+            "text": "It blocks the Windows 365 app as well as Azure Virtual Desktop, because the Windows App signs in to both, so a Cloud PC user outside the allowed groups is blocked too.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "A person who cannot open their virtual desktop: check whether they are in one of the allowed groups before changing anything."
+        ],
+        "manager": "Only the people allowed a virtual desktop can open one.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso",
+        "active": 12,
+        "policyName": "IAC - APP – BLOCK – AVD - Exclude - AllowedAVDUsers",
+        "signature": "IT",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain that the policy blocks the two desktop applications for everyone outside the allowed groups and the exclusions group. Do not add a person to an allowed group to let a blocked sign-in through."
     },
     {
       "id": "sharepoint-trusted-network",

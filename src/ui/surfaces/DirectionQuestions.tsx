@@ -15,11 +15,12 @@
 // The controls are the ones the Plan's decisions already use: the dropdown the
 // decision options draw (`decision-select`) and the shared Picker over the
 // pickers' own universes (pickerRows.ts). Every word is content.json's.
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { DirectionQuestion } from '../../roadmap/types.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
-import { directionAnswerComplete, directionDecisionOf, directionDraftOf, savedAnswerOf, trustedIpLocations } from '../../roadmap/directionAnswers.ts'
+import { AVD_USERS_STORAGE, directionAnswerComplete, directionAsked, directionDecisionOf, directionDraftOf, savedAnswerOf, trustedIpLocations } from '../../roadmap/directionAnswers.ts'
+import { searchGroups } from '../../graph/collect/onDemand.ts'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { answerTextOf } from '../../roadmap/direction.ts'
 import { directionWords, stepById } from '../../content/content.ts'
@@ -48,7 +49,36 @@ function universeOf(q: DirectionQuestion, ctx: StepVarContext): PickerObject[] {
     return pickerUniverse(stepId, 'accounts', pickerCtx).map((o) => withAccountMark(why.has(o.id) ? { ...o, badge: why.get(o.id) } : o, admins, ctx.operatorId))
   }
   if (q.control === 'locations') return pickerUniverse(PREREQ_STEP_ID.trustedLocation, 'locations', pickerCtx)
+  // The groups the plan knows (pickerRows.ts), for the Azure Virtual Desktop groups (T2-AVD).
+  if (q.control === 'groups') return pickerUniverse(AVD_USERS_STORAGE, 'groups', pickerCtx)
   return []
+}
+
+/**
+ * The tenant's groups whose name starts with what is typed, read on demand
+ * (graph/collect/onDemand.ts searchGroups, the registry's Group search lane):
+ * the group Azure Virtual Desktop is assigned to is often named by no policy,
+ * so the groups the plan already read may not hold it. Nothing typed, or a read
+ * that fails, offers nothing more.
+ */
+function useGroupSearch(enabled: boolean, query: string, tenantId: string): PickerObject[] {
+  const [found, setFound] = useState<PickerObject[]>([])
+  useEffect(() => {
+    const q = query.trim()
+    if (!enabled || q.length < 2) {
+      setFound([])
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      searchGroups(q, tenantId).then((rows) => { if (!cancelled) setFound(rows.map((g) => ({ id: g.id, name: g.displayName }))) }).catch(() => { if (!cancelled) setFound([]) })
+    }, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [enabled, query, tenantId])
+  return found
 }
 
 
@@ -74,9 +104,12 @@ function cardTagOf(q: DirectionQuestion, a: DirectionAnswer): CardTag {
 const TAG_WORDS: Readonly<Record<CardTag, string>> = { suggested: W.suggested, approved: W.approved, notApproved: W.notApproved }
 
 function QuestionTile({ q, tag, answer, onAnswer, ctx, printing }: { q: DirectionQuestion; tag: CardTag; answer: DirectionAnswer; onAnswer: (a: DirectionAnswer) => void; ctx: StepVarContext; printing: boolean }) {
-  const universe = useMemo(() => universeOf(q, ctx), [q, ctx])
-  const byId = useMemo(() => new Map(universe.map((o) => [o.id, o])), [universe])
+  const known = useMemo(() => universeOf(q, ctx), [q, ctx])
   const [query, setQuery] = useState('')
+  // A group picker also offers the tenant's groups that match what is typed, read on demand.
+  const searched = useGroupSearch(q.control === 'groups' && !printing, query, ctx.snapshot.tenantId)
+  const universe = useMemo(() => [...known, ...searched.filter((g) => !known.some((o) => o.id.toLowerCase() === g.id.toLowerCase()))], [known, searched])
+  const byId = useMemo(() => new Map(universe.map((o) => [o.id, o])), [universe])
   const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
   const nameOf = (id: string): string => byId.get(id)?.name ?? ctx.nameOf(id)
   const chips: PickerOption[] = answer.picked.map((id) => byId.get(id) ?? { id, name: nameOf(id) })
@@ -150,12 +183,19 @@ export function useDirectionDraft(step: Step, tenantId: string): DirectionDraft 
   }
 }
 
+/** The draft's questions that are asked, each read against the draft on screen (directionAnswers.ts directionAsked). */
+function askedOf(draft: DirectionDraft): DirectionQuestion[] {
+  return draft.questions.filter((q) => directionAsked(q, draft.questions, draft.answerOf))
+}
+
 /**
  * The Questions section: the Not sure line, only while a card reads Suggested
  * and never on paper, and one tile per question.
  */
 export function DirectionQuestions({ draft, ctx, heading, printing = false }: { draft: DirectionDraft; ctx: StepVarContext; heading: string; printing?: boolean }) {
-  const { questions, answerOf, setAnswer } = draft
+  const { answerOf, setAnswer } = draft
+  // A question that follows another's answer shows only while the card it follows reads that answer (T2-AVD).
+  const questions = askedOf(draft)
   const tags = new Map(questions.map((q) => [q.key, cardTagOf(q, answerOf(q))]))
   return (
     <section className="step-section direction-section">
@@ -180,7 +220,9 @@ export function DirectionQuestions({ draft, ctx, heading, printing = false }: { 
  * from disables it and says why under it; `saving` disables it while a save runs.
  */
 export function ApproveAnswers({ draft, onDecide, saving = false, ctx }: { draft: DirectionDraft; onDecide?: (decision: StepDecisionInput) => void; saving?: boolean; ctx?: StepVarContext }) {
-  const { questions, answerOf } = draft
+  const { answerOf } = draft
+  // Only the questions asked are required and saved: the Azure Virtual Desktop groups only while it reads Yes (T2-AVD).
+  const questions = askedOf(draft)
   const empty = questions.filter((q) => !directionAnswerComplete(q, answerOf(q)))
   const pending = questions.some((q) => cardTagOf(q, answerOf(q)) !== 'approved')
   const approve = (): void => {
@@ -191,7 +233,7 @@ export function ApproveAnswers({ draft, onDecide, saving = false, ctx }: { draft
     // Approved: the cards read the saved answers from here, as the save normalised them.
     draft.release()
   }
-  const why = [...new Set(empty.map((q) => q.control === 'locations' ? W.pickLocation : W.pickAccount))]
+  const why = [...new Set(empty.map((q) => q.control === 'locations' ? W.pickLocation : q.control === 'groups' ? W.pickGroup : W.pickAccount))]
   // An administrator or the signed-in account picked as a service or shared-device account says so before it is approved (F-056).
   const picked = questions.flatMap((q) => { const a = answerOf(q); return q.control === 'accounts' && q.pickedWith !== null && a.value === q.pickedWith ? a.picked : [] })
   const adminLine = ctx ? adminPickedLine(picked, adminsOf(ctx.snapshot), ctx.operatorId, ctx.nameOf, savedAnswerOf('officeNetwork', ctx.mapping)?.value === 'remote') : null

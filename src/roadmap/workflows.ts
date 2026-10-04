@@ -17,15 +17,12 @@ import { SERVICE_KEYS, answeredReasonOf } from './directionAnswers.ts'
 /** Incomplete pinned definitions retained in source, hidden for the V1 journey. */
 export const HIDDEN_AGENT_POLICY = /IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i
 /**
- * Jon's AVD allow-list block depends on a group his baseline never identifies
- * (the allowed desktop users): hidden from every surface for v1.0 (owner,
- * 2026-09-24, decision 2; docs/plans/roadmap-flow/v1.1-list.md).
- * WindowsAzureAD-BaselineScopes is a plan step since the owner approved it
- * (2026-09-29): its excluded group is the break-glass group, the exclusions group.
+ * A pinned policy no review row draws. Jon's AVD allow-list block was one for
+ * v1.0 (its allowed users were unidentified); since T2-AVD it is a policy step,
+ * Limit Azure Virtual Desktop to Its Allowed Groups, whose groups the operator
+ * names in Confirm What You Use (v1.1 D4/D6).
  */
-export const HIDDEN_V1_POLICY = /AVD.*AllowedAVDUsers/i
-/** A pinned policy no surface draws in v1.0. */
-export const hiddenPolicy = (name: string): boolean => HIDDEN_AGENT_POLICY.test(name) || HIDDEN_V1_POLICY.test(name)
+export const hiddenPolicy = (name: string): boolean => HIDDEN_AGENT_POLICY.test(name)
 const W = workflowWords
 /**
  * The one Microsoft page every generated review row cites, and the day the
@@ -149,16 +146,6 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], mapping
     step.guidance = { id: step.id, kind: 'check', title: words?.title ?? title, why: words?.why ?? step.why, card: { ...W.reviewCard }, taskTitle: W.reviewTaskTitle, whatToDo: { steps: [fillText(W.source, { policy: policy.name }), ...(words?.instructions ?? [W.generic]), ...W.reviewInstructions] }, doneWhen: [W.reviewDone], learn: PLAN_CA }
     if (applicable === 'no' && key) { step.doesntApply = answeredReasonOf(`service:${key}`, 'no'); step.doesntApplyByAnswer = true; setState(step, { setAside: true }) }
     else if (step.manualReview.confirmedAt) setState(step, { satisfied: true, inPlace: true })
-    // The pinned AVD block relies on four source exclusions whose allowed-user
-    // purpose has not been established. An acknowledgement cannot turn that
-    // unresolved definition into verified protection or a safe deny-all target.
-    if (applicable !== 'no' && /AVD.*Exclude.*AllowedAVDUsers/i.test(policy.name)) {
-      delete step.manualReview
-      step.configurationFindings = [{ key: 'avd-allowed-population', label: 'Allowed AVD Users', value: 'Source definition needs clarification', detail: 'The source blocks all users of the AVD applications and excludes several source groups. The group defining allowed desktop users has not been established. This needs the baseline author’s clarification.', outcome: 'unknown' }]
-      step.blockers = [{ kind: 'readiness', label: 'AVD allowed-user scope needs clarification' }]
-      setState(step, { satisfied: false, inPlace: false, condition: 'blocked' })
-      step.guidance.doneWhen = ['The intended allowed-user group has been established, the tenant policy preserves that access, and approved and unapproved desktop sign-ins have been tested.']
-    }
     steps.push(step)
   }
 }

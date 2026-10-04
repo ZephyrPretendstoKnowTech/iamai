@@ -2272,6 +2272,80 @@
       "cis": []
     },
     {
+      "id": "avd-allowed-users",
+      "name": "Azure Virtual Desktop limited to the groups allowed to use it",
+      "shortName": "Azure Virtual Desktop for everyone else",
+      "description": "Only the groups allowed to use Azure Virtual Desktop can open it; everyone else is blocked.",
+      "phase": 2,
+      "domain": "Specialist services",
+      "securityValue": 2,
+      "baseEffort": 1,
+      "applicability": "avd",
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "appsIdsInclude": [
+              "9cdead84-a844-4324-93f2-b2e6bb768d07",
+              "0af06dc6-e4b5-4f28-818e-e78e62d137a5"
+            ],
+            "grantBlock": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true,
+            "noLocations": true,
+            "noPlatforms": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "avd",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "avdUsers"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Azure Virtual Desktop for everyone not allowed",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "9cdead84-a844-4324-93f2-b2e6bb768d07",
+                  "0af06dc6-e4b5-4f28-818e-e78e62d137a5"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/azure/virtual-desktop/set-up-mfa",
+      "tldr": "Only the groups you allow can open a virtual desktop, so a stolen password for anyone else cannot open one.",
+      "cis": []
+    },
+    {
       "id": "sharepoint-trusted-network",
       "name": "SharePoint and OneDrive restricted to the trusted network",
       "shortName": "SharePoint and OneDrive outside the trusted network",

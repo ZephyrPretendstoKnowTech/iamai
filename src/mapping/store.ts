@@ -40,6 +40,8 @@ export function toCoverageMapping(state: MappingState, exclusionsGroupId: string
   const exclusionGroups: Record<string, string> = {}
   if (exclusionsGroupId) exclusionGroups[exclusionsGroupId] = 'breakGlass/globalExclusion'
   if (state.serviceAccountsGroupId) exclusionGroups[state.serviceAccountsGroupId] = 'serviceAccounts'
+  // The groups allowed to use Azure Virtual Desktop: the AVD allow-list block's own carve-out (T2-AVD).
+  for (const id of state.avdUserGroupIds ?? []) exclusionGroups[id] = exclusionGroups[id] ? `${exclusionGroups[id]}/avdUsers` : 'avdUsers'
   return {
     breakGlassUsers,
     exclusionGroups,
