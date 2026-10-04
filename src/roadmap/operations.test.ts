@@ -16,7 +16,7 @@ import type { PolicyEffect } from './operations.ts'
 import { undatedRows } from '../ui/surfaces/planRows.ts'
 import { buildSchedule } from './schedule.ts'
 import type { PolicyOperation, Step } from './types.ts'
-import { stateFields } from './lifecycle.ts'
+import { setState, stateFields } from './lifecycle.ts'
 import { jsonOffered, policyJson, policyJsonText, stepOperations } from '../ui/surfaces/stepJson.ts'
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 // On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
@@ -241,11 +241,23 @@ test('E: report-only → enabled is enabled in the body, in the target, in the i
   }
   // The tenant's guests are Ready first (Step 7): turning the policy on is an
   // enforcement, and the guest readiness gate would otherwise hold it.
-  const { r, ctx } = demoRun([memberA], {}, () => ({}), { guestsReady: true })
+  const half = demoRun([memberA], {}, () => ({}), { guestsReady: true })
+  const halfStep = half.r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
+  // With the other half still to create, nothing turns this half on (T1-6b): the
+  // pair's report-only week opens only once both halves are in Report-only.
+  assert.equal(stepOperations(halfStep).some((o) => o.mode === 'update'), false, 'a half turned on beside a create')
+  const memberB = { ...structuredClone(stepOperations(halfStep).find((o) => o.mode === 'create')!.body), id: 'p-guests-b', createdDateTime: '2026-01-10T00:00:00Z' }
+  const { r, ctx } = demoRun([memberA, memberB], {}, () => ({}), { guestsReady: true })
   const step = r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
   // Nobody the directory cannot place as a guest type is counted (owner decision
   // 7, 2026-09-25), so no guest gate holds the turn-on.
   assert.equal(step.action.readinessGate, undefined)
+  // Both halves in Report-only: the turn-on waits for the pair's week, and is
+  // offered once the week is served (foundationB.test.ts pair 5 earns the stage
+  // from records; this case is about how the turn-on reads, so it takes the stage).
+  assert.equal(step.state.lifecycle, 'report-only')
+  assert.equal(implementationOffered(step), false, 'the turn-on waits for the week')
+  setState(step, { lifecycle: 'ready-to-enforce' })
   assert.equal(implementationOffered(step), true)
   const update = stepOperations(step).find((o) => o.mode === 'update')
   assert.ok(update, 'the half the tenant has is an update')

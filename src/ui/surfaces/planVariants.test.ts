@@ -418,7 +418,6 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · needs-decision · open · do:decide · track · no-implementation · no-found · fix · one-policy · who-known', // demo/s-goal-geo-restriction
   'policy · create · not-deployed · needs-decision · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo+unanswered/s-goal-geo-restriction
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · members · who-known', // demo+no-ca/s-goal-guests-mfa
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · members · who-known', // demo+half-pair/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · found · fix · members · who-known', // demo+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · report-only · blocked · open · do:observe · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-block-auth-transfer
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-intune-enrollment-reauth

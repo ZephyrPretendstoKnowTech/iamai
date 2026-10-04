@@ -745,7 +745,12 @@ test('a partly-built pair is one update and one create, each on its own policy, 
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
   // The tenant's guests are Ready first (Step 7): the update enforces the half the
   // tenant has on run, and the guest readiness gate would otherwise hold it.
-  const { of } = withTenantPolicies([guestsMemberA('CA - Require - MFA for guests and external users', exclusions)], (p) => p, { guestsReady: true })
+  // The half is On and excludes an application the plan covers, so its update is
+  // a correction. A half in Report-only that owes nothing is never switched on
+  // beside a create (T1-6b, guestsStep.test.ts): it has no operation until the
+  // other half is in Report-only too.
+  const narrower = (p: Record<string, unknown>): Record<string, unknown> => ({ ...p, state: 'enabled', conditions: { ...(p.conditions as Record<string, unknown>), applications: { includeApplications: ['All'], excludeApplications: ['00000002-0000-0ff1-ce00-000000000000'] } } })
+  const { of } = withTenantPolicies([guestsMemberA('CA - Require - MFA for guests and external users', exclusions)], narrower, { guestsReady: true })
   const { step, portal } = of('guests-mfa')
   assert.equal(implementationOffered(step), true)
   const ops = stepOperations(step)

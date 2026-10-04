@@ -2267,6 +2267,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           const matched = pair.halves.flatMap((h) => (h.policy ? [h.policy] : []))
           let built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
           if (settleSections(sections, built, new Map(matched.map((q) => [String(q.id), q])), belowFloor)) built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
+          // No half is switched on while the other is still to create (T1-6b). The
+          // pair's report-only week is the pair's: it starts when its last half is
+          // in Report-only and the pair is ready when the last half is
+          // (tracking.ts aggregateTracking). Until then the pair reads not-deployed,
+          // its least advanced half, so nothing holds a switch for a week: Mixed-
+          // Guests in Report-only beside an absent B2B-Guest was offered On the
+          // same day. The half in Report-only owes nothing yet and stays as it is
+          // (idle, below); the step creates the other, and the scan after that
+          // finds both in Report-only and opens the pair's week.
+          if (sections.has('state') && withTargets.some((w) => w.target === null)) {
+            sections.delete('state')
+            built = buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections })
+          }
           // A half that owes nothing has no operation: an empty update is no
           // operation, and one invalid operation withholds every other
           // (operations.ts validOperations), so it held back the other half's

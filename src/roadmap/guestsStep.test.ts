@@ -26,6 +26,7 @@ import type { StepObservationRecord } from './observation.ts'
 import { serviceProvidersExcluded } from './answers.ts'
 import { EXCLUSIONS_RECORD_KEY } from '../mapping/safetyChoice.ts'
 import { REPORT_ONLY_STEP_ID } from './reportOnlyBatch.ts'
+import { enforcesOnRun, policyResult, submitsEnforcement } from './operations.ts'
 
 const GUESTS = 's-goal-guests-mfa'
 const MIXED = 'IAC - GLOBAL - GRANT - MFA - Mixed-Guests'
@@ -98,6 +99,30 @@ test("a tenant with Jon's Mixed-Guests by name: that half is its own and correct
   assert.ok(ops.some((o) => o.mode === 'create' && o.sourceName === B2B), 'B2B-Guest created')
   assert.equal(ops.some((o) => o.mode === 'create' && o.sourceName === MIXED), false, 'a second Mixed-Guests beside the named one')
   assert.equal(ops.some((o) => o.policyId === OLD), false, "an operation on the tenant's guest policy")
+})
+
+test('T1-6b: a half in Report-only beside an absent half is never turned On; the pair opens its week once both are in Report-only', () => {
+  const f0 = ownerShape()
+  const first = guestStep(f0).step
+  const mixed = structuredClone(first.action.resolution!.policies[0].body) as Row
+  // Jon's Mixed-Guests exactly as the plan writes it, created in Report-only yesterday; no B2B-Guest.
+  const day = new Date(Date.parse(f0.snapshot.asOf) - 86_400_000).toISOString()
+  const f = withRows(f0, (rows) => [...rows, { ...mixed, id: 'named-mixed', state: 'enabledForReportingButNotEnforced', createdDateTime: day, modifiedDateTime: day }])
+  const half = guestStep(f)
+  const ops = half.step.action.resolution?.policies ?? []
+  assert.equal(half.step.state.lifecycle, 'not-deployed', 'the pair reads its least advanced half')
+  assert.equal(ops.some(submitsEnforcement), false, `a half turned On with no report-only week: ${JSON.stringify(ops.map((o) => [o.mode, o.sourceName, o.body]))}`)
+  assert.equal(ops.some(enforcesOnRun), false, 'nothing the step submits enforces')
+  assert.deepEqual(ops.map((o) => [o.mode, o.sourceName, (o.body as { state?: string }).state]), [['create', B2B, 'enabledForReportingButNotEnforced']], 'the step creates the other half in Report-only')
+  assert.deepEqual((half.step.action.pairMembers ?? []).map((h) => [h.name, h.policyId]), [[MIXED, 'named-mixed'], [B2B, null]], 'the half in Report-only is still tracked')
+  assert.ok(half.run.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)?.reportOnlyBatch?.create.includes(GUESTS), '3.8 lists the B2B-Guest create')
+  // B2B-Guest created in Report-only as asked: the pair is in its report-only week, and the turn-on waits for it.
+  const both = created(f, half.step)
+  const week = guestStep(both, observationsOf(half.run.steps))
+  assert.equal(week.step.state.lifecycle, 'report-only')
+  const result = policyResult(week.step)
+  assert.equal(result.kind === 'held' && result.hold, 'observation-incomplete', 'the turn-on waits for the pair’s week')
+  assert.deepEqual((result.kind === 'held' ? result.operations : []).map((o) => [o.mode, o.body]), [['update', { state: 'enabled' }], ['update', { state: 'enabled' }]], 'the switch is both halves, once the week is served')
 })
 
 test('both halves present, On and exact: Completed, tracked by both halves under their own names, and B2B-Guest is proposed no rename', () => {
