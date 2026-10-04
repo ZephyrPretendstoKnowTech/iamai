@@ -96,10 +96,17 @@ test('T2-AVD: Confirm What You Use asks for the groups right under the Azure Vir
   const no = stepOf(runFixture(answered('no')).steps, 's-direction-use')
   assert.ok(directionComplete(no.directionQuestions ?? []), 'No needs no groups')
   assert.deepEqual(decisionAsksOf(no), [])
-  // Answered Yes with no group, the step waits on the groups.
-  const yes = stepOf(runFixture(answered('yes')).steps, 's-direction-use')
-  assert.equal(directionComplete(yes.directionQuestions ?? []), false)
+  // Answered Yes with no group (owner, 2026-10-04): the question is optional, so the
+  // step is settled and the foundation goes ahead; only the AVD allow-list step waits
+  // (the next test), and the question is still there to answer.
+  assert.equal(q.optional, true)
+  assert.equal(q.note, 'Optional. Leave it empty and only Limit Azure Virtual Desktop to Its Allowed Groups waits for it.')
+  const run = runFixture(answered('yes'))
+  const yes = stepOf(run.steps, 's-direction-use')
+  assert.equal(directionComplete(yes.directionQuestions ?? []), true)
   assert.deepEqual(decisionAsksOf(yes), ['Which groups may use Azure Virtual Desktop?'])
+  const mfa = stepOf(run.steps, 's-goal-mfa-all-users')
+  assert.ok(!mfa.blockers.some((b) => b.kind === 'decision' && b.label === 'direction:s-direction-use'), 'Require MFA for Everyone never waits on the groups')
 })
 
 test('T2-AVD: Azure Virtual Desktop answered Yes and no group named: the step waits on Confirm What You Use, and nothing of the author’s or a policy that spares nobody is handed over', () => {

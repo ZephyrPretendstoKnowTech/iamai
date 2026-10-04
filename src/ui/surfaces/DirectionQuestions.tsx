@@ -95,13 +95,16 @@ function sameAnswer(q: DirectionQuestion, a: DirectionAnswer, b: DirectionAnswer
  * scan reopened the saved answer), Approved only while it is the saved answer,
  * otherwise Not approved yet.
  */
-type CardTag = 'suggested' | 'approved' | 'notApproved'
+type CardTag = 'suggested' | 'approved' | 'notApproved' | 'optional'
 function cardTagOf(q: DirectionQuestion, a: DirectionAnswer): CardTag {
+  if (optionalEmpty(q, a)) return 'optional'
   if ((q.saved === null || q.needsReview) && sameAnswer(q, a, q.suggested)) return 'suggested'
   if (q.saved !== null && !q.needsReview && sameAnswer(q, a, q.saved)) return 'approved'
   return 'notApproved'
 }
-const TAG_WORDS: Readonly<Record<CardTag, string>> = { suggested: W.suggested, approved: W.approved, notApproved: W.notApproved }
+const TAG_WORDS: Readonly<Record<CardTag, string>> = { suggested: W.suggested, approved: W.approved, notApproved: W.notApproved, optional: W.optional }
+/** An optional question left empty (owner, 2026-10-04): nothing to approve, and nothing it blocks but its own step. */
+const optionalEmpty = (q: DirectionQuestion, a: DirectionAnswer): boolean => q.optional === true && !directionAnswerComplete(q, a)
 
 function QuestionTile({ q, tag, answer, onAnswer, ctx, printing }: { q: DirectionQuestion; tag: CardTag; answer: DirectionAnswer; onAnswer: (a: DirectionAnswer) => void; ctx: StepVarContext; printing: boolean }) {
   const known = useMemo(() => universeOf(q, ctx), [q, ctx])
@@ -223,8 +226,9 @@ export function ApproveAnswers({ draft, onDecide, saving = false, ctx }: { draft
   const { answerOf } = draft
   // Only the questions asked are required and saved: the Azure Virtual Desktop groups only while it reads Yes (T2-AVD).
   const questions = askedOf(draft)
-  const empty = questions.filter((q) => !directionAnswerComplete(q, answerOf(q)))
-  const pending = questions.some((q) => cardTagOf(q, answerOf(q)) !== 'approved')
+  const empty = questions.filter((q) => !q.optional && !directionAnswerComplete(q, answerOf(q)))
+  // An optional question left empty is nothing to approve, unless it clears a saved answer.
+  const pending = questions.some((q) => { const tag = cardTagOf(q, answerOf(q)); return tag === 'optional' ? q.saved !== null : tag !== 'approved' })
   const approve = (): void => {
     if (empty.length > 0 || !pending) return
     const answers = Object.fromEntries(questions.map((q) => [q.key, answerOf(q)]))

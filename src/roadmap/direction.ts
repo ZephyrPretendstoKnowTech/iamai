@@ -137,6 +137,8 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
       label: Q.avdUsers.label, control: 'groups', options: [], pickedWith: 'groups',
       suggested: answer('groups'), evidence: '', chosen: { groups: Q.avdUsers.chosen },
       askedWhen: { key: 'service:avd', value: 'yes' },
+      // Optional (owner, 2026-10-04): left empty, only the AVD allow-list step waits on it.
+      optional: true, note: Q.avdUsers.optional,
     }))
   }
   // The evidence counts every sender the records show; the suggestion picks only

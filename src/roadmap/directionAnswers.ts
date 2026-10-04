@@ -60,7 +60,7 @@ export const DIRECTION_BLOCKER = 'direction:'
  * each answer is stored, so the foundation gate (roadmap/foundations.ts) can
  * read it without reaching through the step builder.
  */
-export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => !directionAsked(q, questions, (x) => x.saved) || (q.saved !== null && !q.needsReview))
+export const directionComplete = (questions: readonly DirectionQuestion[]): boolean => questions.every((q) => !directionAsked(q, questions, (x) => x.saved) || (q.optional === true && q.saved === null) || (q.saved !== null && !q.needsReview))
 
 /**
  * Whether a question is asked: always, unless it follows another question's

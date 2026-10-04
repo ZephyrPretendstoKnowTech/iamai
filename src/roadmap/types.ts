@@ -610,6 +610,13 @@ export type DirectionQuestion = {
    * not required and not saved.
    */
   askedWhen?: { key: string; value: string }
+  /**
+   * Answering it is never required to settle its Direction step (owner,
+   * 2026-10-04): left empty, only the goals that depend on it wait
+   * (direction.ts GOAL_DEPENDS), and the foundation, and every other policy
+   * step, goes ahead. The Azure Virtual Desktop groups.
+   */
+  optional?: true
   suggested: { value: string; picked: string[] }
   /** Why suggested, in one line; or that the suggestion is a default the scan did not see. */
   evidence: string

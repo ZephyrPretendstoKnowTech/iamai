@@ -3437,6 +3437,8 @@
           "pickLocation": "Pick at least one location, or choose another answer.",
           "pickGroup": "Pick at least one group.",
           "notApproved": "Not approved yet",
+          "$commentOptional": "The state on an optional question's card left empty (owner, 2026-10-04: the Azure Virtual Desktop groups): it holds nothing but its own step.",
+          "optional": "Optional",
           "done": "Every answer is approved.",
           "$commentWaiting": "The row label and Readiness tile of a policy held on a Direction answer nobody has approved (ui/surfaces/planBoard.ts). Owner, roadmap flow V2 decision A: it read 'Waiting on your direction' until section 2 became Define Your Rollout Scope; the wait is on the person's answers.",
           "waiting": "Waiting on your answers",
@@ -3536,7 +3538,9 @@
             "avdUsers": {
               "$comment": "T2-AVD (v1.1 D4/D6, owner 2026-10-03): asked only while the Azure Virtual Desktop card reads Yes (direction.ts askedWhen). A group picker, one or more groups; the answer is MappingState.avdUserGroupIds. The baseline's AVD allow-list block excludes them and the exclusions group, and blocks everyone else from the two desktop applications (Limit Azure Virtual Desktop to Its Allowed Groups). No evidence line: the scan holds no fact about who uses a desktop.",
               "label": "Which groups may use Azure Virtual Desktop?",
-              "chosen": "Everyone outside these groups and the exclusions group is blocked from Azure Virtual Desktop."
+              "chosen": "Everyone outside these groups and the exclusions group is blocked from Azure Virtual Desktop.",
+              "$commentOptional": "Owner, 2026-10-04: the answer is optional. Left empty, only the AVD allow-list step waits, and the rest of the plan goes ahead; answered now, that policy is created with the others.",
+              "optional": "Optional. Leave it empty and only Limit Azure Virtual Desktop to Its Allowed Groups waits for it."
             },
             "accountOptions": {
               "none": "None",
