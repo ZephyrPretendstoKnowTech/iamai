@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Require a Strong Sign-in for Your Admin Accounts Group",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -13,10 +13,6 @@
     "Completion Criteria"
   ],
   "tiles": [
-    {
-      "label": "Threshold",
-      "state": "not measured"
-    },
     {
       "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
