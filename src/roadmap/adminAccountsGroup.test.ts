@@ -144,6 +144,13 @@ test('ADM-Users: unanswered, the step waits on Identify Service and Shared Accou
   assert.equal(s.action.json, null, 'no body is written while the groups are not named')
   assert.equal(JSON.stringify(s.action).toLowerCase().includes(JON_ADMINS), false, 'the author’s group is in nothing handed over')
   assert.equal(stepOf(r.steps, 's-create-report-only').reportOnlyBatch?.create.includes(ADM_STEP), false, '3.8 does not create it yet')
+  // Its threshold names no campaign: Prepare Your Team for MFA prepares nobody this policy reaches until the groups are named.
+  assert.equal(s.action.readinessGate?.route, undefined, JSON.stringify(s.action.readinessGate))
+  assert.equal(s.action.readinessGate?.routeId, undefined)
+  // Named, the campaign that gets the group's accounts ready is named again.
+  const f = answered([GROUP_A])
+  const named = stepOf(runFixture(withGroup(f, GROUP_A, f.snapshot.users.slice(0, 3).map((u) => u.id))).steps, ADM_STEP)
+  assert.equal(named.action.readinessGate?.routeId, 's-verify-mfa', JSON.stringify(named.action.readinessGate))
 })
 
 test('ADM-Users: groups named, Jon’s policy is created in Report-only through 3.8, including those groups, excluding the exclusions group, with the strength 3.5 made', () => {

@@ -3500,6 +3500,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // that number until the source can be read, and naming a campaign beside
       // it sends the reader to do work that will not change it.
       if (gate === undefined || gate.route !== undefined || gate.blind !== undefined) continue
+      // Nor where the step has no policy yet to count against: a policy that
+      // names who it reaches by the operator's answer (Require a Strong Sign-in
+      // for Your Admin Accounts Group, unanswered) reaches nobody the campaign
+      // could prepare until that answer is given, and the answer is what moves it.
+      if (methodTargets.has(s.goalId) && (methodTargets.get(s.goalId) ?? []).length === 0) continue
       // The gate's own family: its measure may name a strength rather than the family (R4-26).
       const family = readinessFamilyOf(gate)
       if (family === undefined || !movedByCampaign.has(family)) continue

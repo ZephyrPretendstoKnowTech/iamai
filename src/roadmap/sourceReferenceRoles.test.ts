@@ -129,14 +129,19 @@ test('the whole of who or where a policy applies is never left out (the referenc
   }
 
   // Part of who a policy reaches left out narrows it, and stands.
+  // Jon's admin-accounts group is settled since 2026-10-04 (adminAccountsGroup, the operator's
+  // answer in Identify Service and Shared Accounts); unsettled here, it is a second include-only
+  // reference a person answers.
   {
     const policy = structuredClone(policyOf(PASSKEY_REGISTRATION))
     ;((policy.conditions as { users: Record<string, unknown> }).users).includeGroups = [PASSKEY_PILOT, ADMIN_PASSKEYS]
-    const narrowed = resolve(policy, { [PASSKEY_PILOT]: OMIT(), [ADMIN_PASSKEYS]: MAP('tenant-group') })
+    const UNSETTLED_ADMINS = pkg.policies.map((p) => withoutTokens(p, [ADMIN_PASSKEYS]))
+    const resolve2 = (answers: Record<string, string>) => resolve(policy, answers, UNSETTLED_ADMINS)
+    const narrowed = resolve2({ [PASSKEY_PILOT]: OMIT(), [ADMIN_PASSKEYS]: MAP('tenant-group') })
     assert.deepEqual(narrowed.users.includeGroups, ['tenant-group'])
     assert.equal(narrowed.waitsOn(PASSKEY_PILOT), undefined)
     assert.ok(narrowed.whole.omitted.map((x) => x.toLowerCase()).includes(PASSKEY_PILOT))
-    const emptied = resolve(policy, { [PASSKEY_PILOT]: OMIT(), [ADMIN_PASSKEYS]: OMIT() })
+    const emptied = resolve2({ [PASSKEY_PILOT]: OMIT(), [ADMIN_PASSKEYS]: OMIT() })
     for (const id of [PASSKEY_PILOT, ADMIN_PASSKEYS]) assert.ok(emptied.waitsOn(id)?.decision, `${id}: leaving out every group it reaches emptied the policy`)
   }
 })
