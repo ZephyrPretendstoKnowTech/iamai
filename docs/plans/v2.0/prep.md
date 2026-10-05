@@ -40,7 +40,7 @@ baseline. v3.0 lets people add or configure their own.
    Jon's names). They don't break another baseline, but it can't declare its own.
 
 ## Prep order
-Phase A (items 1–5): no change in output for Jon's plan, so every step snapshot stays
+Phase A (items 1–5), **done on v2.0-prep (2026-10-04)**: no change in output for Jon's plan, so every step snapshot stays
 byte-identical as the acceptance. It sits on its own branch, off `v1.1`, so v1.1 is not
 touched.
 
