@@ -390,13 +390,17 @@ test('the Threshold card, its finding and the AI Info briefing say the same sent
     for (const step of r.steps) {
       const gate = step.action.readinessGate
       if (!gate?.routeId || gate.blind !== undefined || step.status === 'done' || step.status === 'skipped' || step.state.lifecycle === 'enforced') continue
-      held++
+      // A gate whose policy names no one yet routes to the Direction step that asks
+      // who it reaches (generate.ts; Require a Strong Sign-in for Your Admin Accounts
+      // Group, unanswered): the same one sentence everywhere, naming that step.
+      const campaign = gate.routeId === 's-verify-mfa'
+      if (campaign) held++
       const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: null }
       const reading = readings.get(step.id)!
       const b = stepBodyOf(step, ctx, { lane: laneViewOf(reading, titleOf), blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: label })
       const tile = b.readiness.tiles.find((t) => t.key === 'gate')!
       const finding = b.contract.found.find((x) => x.key === 'gate')
-      const where = `${gate.route} gets them ready.`
+      const where = campaign ? `${gate.route} gets them ready.` : `“${gate.route}”`
       assert.ok(tile.note!.includes(where), `${name}/${step.id}: the premise — the card names the campaign: ${tile.note}`)
       assert.equal(finding?.text, tile.note, `${name}/${step.id}: the Evidence dialog says a different threshold sentence from the card`)
       // ContentStep's printing branch: a finding a card already states, word for word, is not printed again.
