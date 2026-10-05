@@ -13,10 +13,9 @@ const fixtureWithUse = () => {
  return f
 }
 // Owner decision 17 (2026-09-25): Confirm What You Use says whether Inforcer is
-// used, never whether this scan saw it sign in. Used, the goal's coverage decides
-// the step like any other: an all-applications MFA policy that delivers it
-// completes it and is named, and where nothing delivers it the step writes Jon's
-// policy for the application. There is no application card and no step to
+// used, never whether this scan saw it sign in. Used, the step reads its own
+// policy like any other (policy identity is the name, owner, 2026-10-04), and
+// where it has none the step writes Jon's policy for the application. There is no application card and no step to
 // identify the application.
 test('Inforcer uses the ordinary scoped goal and exact application identity, never generic acknowledgement, and No is a meaningful not-applicable row', () => {
   // Used and not delivered: the step writes Jon's policy for the exact application, whether or not a sign-in was seen.
@@ -64,8 +63,13 @@ test('Inforcer recognizes an exact enforced policy and deletion reopens work wit
  assert.ok(deleted.action.resolution?.policies.every(p => p.mode === 'create'), 'missing exact policy is created without rewriting broad protection')
 })
 
-test('an all-applications MFA policy that delivers Inforcer completes it, and is the policy named', () => {
- let completed = 0
+// Policy identity is the name (owner, 2026-10-04; it supersedes decision 17's
+// "completes it"): controls alone never claim a policy, so an all-applications
+// MFA policy that delivers Inforcer to coverage is not the step's own. The step
+// creates Jon's policy for the application in Report-only, and never edits the
+// broad policy, which is another goal's.
+test('an all-applications MFA policy that delivers Inforcer does not complete it: the step creates Jon’s policy and never edits the broad one', () => {
+ let delivered = 0
  for (const name of ['small', 'mid', 'large'] as const) {
   const f = fixture(name)
   f.mapping.workflowAnswers = { ...(f.mapping.workflowAnswers ?? {}), inforcer: 'yes' }
@@ -74,14 +78,17 @@ test('an all-applications MFA policy that delivers Inforcer completes it, and is
   const result = runFixture(f)
   const step = result.steps.find(s => s.id === 's-goal-inforcer-mfa')!
   assert.equal(step.configurationFindings?.some(f => f.key === 'inforcerApplication') ?? false, false, `${name}: an application card`)
-  const all = (step.satisfiedBy?.policies ?? []).length > 0
-  assert.equal(step.status === 'done', step.state.satisfied, `${name}: done exactly when a policy delivers it`)
-  if (step.state.satisfied) {
-   completed++
-   assert.ok(all, `${name}: the Satisfied card names the policy that delivers it`)
-  }
+  assert.equal(step.status === 'done', step.state.satisfied, `${name}: done exactly when its own policy delivers it`)
+  const coverage = result.coverage.results.find(x => x.goal.id === 'inforcer-mfa')!
+  if (coverage.status !== 'enforced' || coverage.candidates.some(c => c.ownScope)) continue
+  delivered++
+  assert.equal(step.state.satisfied, false, `${name}: the all-applications policy completed the step`)
+  const ops = step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.map(p => p.mode), ['create'], `${name}: ${JSON.stringify(ops.map(p => [p.mode, p.policyId]))}`)
+  assert.equal((ops[0].body as { state?: string }).state, 'enabledForReportingButNotEnforced', `${name}: the create is not in Report-only`)
+  assert.ok(JSON.stringify(step.action).includes(APP), `${name}: the create is not for the exact application`)
  }
- assert.ok(completed > 0, 'the premise: a fixture whose all-users MFA policy delivers Inforcer')
+ assert.ok(delivered > 0, 'the premise: a fixture whose all-users MFA policy delivers Inforcer to coverage')
 })
 
 test('no step asks the reader to identify the Inforcer application or sign in to it', () => {

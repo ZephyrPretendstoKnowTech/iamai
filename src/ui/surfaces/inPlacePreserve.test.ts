@@ -25,9 +25,12 @@
 //     narrower than the goal can satisfy it together, and "Satisfied by A" over
 //     one of them would name a policy that does not cover the goal and imply
 //     the other is spare.
-//   * the name is the tenant's, whatever it is. A policy matched by shape under
-//     a custom name satisfies the goal under that name, and a name that differs
-//     from the baseline's never causes a second policy.
+//   * the policy preserved is the step's own, and policy identity is the name
+//     (owner, 2026-10-04): the one carrying the plan's tag or the baseline's
+//     name. A policy exactly the baseline's under a custom name is renamed by its
+//     step, its one edit, and never copied; one that is not is listed beside the
+//     baseline's policy the step creates. So the cases below that preserve a
+//     tenant policy start from it under the baseline's name (planNamed).
 //   * nothing is created and nothing is changed. No operation, no portal
 //     instructions, no JSON, no PowerShell, on any channel.
 //   * a stronger tenant control stays stronger. There is no operation to rewrite
@@ -84,6 +87,8 @@ const GOAL_ID = 'admins-phishing-resistant'
 /** The all-users MFA goal, whose tenant policy the control cases below edit. */
 const MFA_STEP = 's-goal-mfa-all-users'
 const MFA_GOAL = 'mfa-all-users'
+/** The baseline's name for the all-users MFA policy (Jon's, pinned). */
+const MFA_PLAN_NAME = 'IAC - GLOBAL - GRANT - MFA - AllUsers'
 
 /**
  * Words that would tell an operator to make a second policy rather than keep
@@ -123,11 +128,12 @@ function caseOf(run: ReturnType<typeof runFixture>, f: Fixture, stepId: string):
 /**
  * The canonical case, exactly as the fixture generates it: the mid tenant's own
  * plan, whose admins already sign in with a phishing-resistant method because a
- * policy the tenant wrote before IAMAI ever ran says they must. Nothing is
- * edited and no scan is replayed.
+ * policy the tenant wrote before IAMAI ever ran says they must. That policy
+ * carries the baseline's name, the one edit its step asks for (planNamed); nothing
+ * else is edited and no scan is replayed.
  */
 function canonical(): Case {
-  const f = fixture(FIXTURE)
+  const f = planNamed(fixture(FIXTURE), STEP_ID)
   return caseOf(runFixture(f), f, STEP_ID)
 }
 
@@ -166,6 +172,30 @@ function withPolicies(name: Parameters<typeof fixture>[0], edit: (rows: Record<s
   edit((snapshot as unknown as { config: { caPolicies: { rows: Record<string, unknown>[] } } }).config.caPolicies.rows)
   const f: Fixture = { ...base, snapshot }
   return caseOf(runFixture(f), f, stepId)
+}
+
+/**
+ * The fixture with a step's tenant policy under the baseline's name (owner,
+ * 2026-10-04: policy identity is the name). A step's own policy is the one
+ * carrying the plan's tag or the baseline's name; a tenant policy exactly the
+ * baseline's under another name is its own only through a rename, the step's one
+ * edit, and one that is not is listed beside a create. Preserving a policy the
+ * tenant already had is preserving one under the baseline's name, so the cases
+ * about In place start from the rename done: the step's rename target, else the
+ * one policy it lists beside its create.
+ */
+function planNamed(f: Fixture, stepId: string): Fixture {
+  const step = runFixture(f).steps.find((s) => s.id === stepId)
+  assert.ok(step?.createName, `${stepId} has no baseline name`)
+  const rename = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
+  const beside = step.action.besidePolicies ?? []
+  const target = rename?.policyId ?? (beside.length === 1 ? beside[0].policyId : undefined)
+  assert.ok(target, `${stepId}: no one tenant policy to give the baseline's name`)
+  const snapshot = structuredClone(f.snapshot)
+  const row = ((snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]).find((p) => p.id === target)
+  assert.ok(row, `${stepId}: ${target} is not in the scan`)
+  row.displayName = step.createName
+  return { ...f, snapshot }
 }
 
 /** The policy each expected person is covered by, from a run of the untouched fixture. */
@@ -285,9 +315,12 @@ test('every rollback an implementation package gives for a policy keeps it out o
   }
 })
 
-// ---- 10: a custom tenant name satisfies the goal, and never causes a duplicate ----
+// ---- 10: a custom tenant name exactly the baseline's is renamed, never duplicated ----
 
-test('a satisfying policy under a custom name is preserved under that name, not copied', () => {
+test('a satisfying policy exactly the baseline’s under a custom name is renamed by its step, not copied, and preserved under the baseline’s name', () => {
+  // Policy identity is the name (owner, 2026-10-04). The tenant's policy is the
+  // baseline's in every setting under a name of its own: the step's one edit is
+  // to give it the baseline's name, and nothing is created beside it.
   const custom = 'Contoso — Everyone Verifies'
   const { step, ctx, run } = variant(
     'small',
@@ -297,24 +330,30 @@ test('a satisfying policy under a custom name is preserved under that name, not 
     },
     MFA_STEP,
   )
-  // The classifier matched it by shape, so the rename changed nothing about
+  // The classifier matched it by shape, so the name changed nothing about
   // whether the goal is delivered.
   assert.equal(goalResult(run, MFA_GOAL).verdict, 'inPlace')
-  assert.equal(step.status, 'done')
-  assert.equal(isPreserved(step), true)
-  // The name IAMAI keeps is the tenant's, not the baseline's.
-  assert.deepEqual(step.satisfiedBy?.policies, [custom])
-  assert.equal(step.satisfiedBy?.sufficient, custom)
-  assert.ok(rowReason(step)?.includes(custom), 'the row shows the baseline name instead of the tenant\'s')
+  // Read off the action itself: the readiness that holds the step withholds what it hands over, not what it is.
+  const ops = step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.map((o) => [o.mode, o.body]), [['update', { displayName: step.createName }]], 'the one edit is the rename')
+  assert.equal(step.tracking?.policyName, custom, 'the step follows the tenant’s policy, under the name it has')
+  assert.equal(isPreserved(step), false, 'the baseline’s name is still to give')
+  // A name that differs from the baseline's is not a reason to make a second policy.
+  for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, CREATING, `a custom name caused a create instruction: ${line}`)
+
+  // Renamed, the same policy is preserved under the baseline's name.
+  const named = caseOf(runFixture(planNamed(fixture('small'), MFA_STEP)), planNamed(fixture('small'), MFA_STEP), MFA_STEP)
+  assert.equal(named.step.status, 'done')
+  assert.equal(isPreserved(named.step), true)
+  assert.deepEqual(named.step.satisfiedBy?.policies, [step.createName])
+  assert.equal(named.step.satisfiedBy?.sufficient, step.createName)
+  assert.ok(rowReason(named.step)?.includes(step.createName!), 'the row does not name the policy')
   assert.ok(
-    stepContract(step, ctx).found.some((x) => x.key === 'in-place' && x.text.includes(custom)),
+    stepContract(named.step, named.ctx).found.some((x) => x.key === 'in-place' && x.text.includes(step.createName!)),
     'What IAMAI found does not name the tenant policy',
   )
-  // And a name that differs from the baseline's is not a reason to make a
-  // second policy.
-  assert.equal(operationsOf(step).length, 0)
-  assert.equal(jsonOffered(step), false)
-  for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, CREATING, `a custom name caused a create instruction: ${line}`)
+  assert.equal(operationsOf(named.step).length, 0)
+  assert.equal(jsonOffered(named.step), false)
 })
 
 // ---- 11: a stronger tenant control is corrected or accepted, never kept silently ----
@@ -322,11 +361,15 @@ test('a satisfying policy under a custom name is preserved under that name, not 
 test('a stronger policy that still covers the required scope is corrected or accepted: its correction says it is stricter, and nothing writes the weaker grant for you', () => {
   // Owner, 2026-09-26: the policy points at exactly what the plan's has, and a
   // stricter difference is what an acceptance is for. It was kept silently.
+  // It carries the baseline's name, so it is the step's own to correct (owner,
+  // 2026-10-04: policy identity is the name); under another the step would build
+  // the baseline's beside it.
   const { step, ctx, run } = variant(
     'small',
     /MFA for all users/,
     (r) => {
       r.grantControls = STRONGER
+      r.displayName = MFA_PLAN_NAME
     },
     MFA_STEP,
   )
@@ -393,14 +436,14 @@ test('a policy still in report-only, or switched off, does not read as delivered
 // ---- 14: preservation is a reading of this scan, not a permanent verdict ----
 
 test('a later scan that finds the satisfying policy switched off stops preserving the goal', () => {
-  const base = fixture('small')
+  const base = planNamed(fixture('small'), MFA_STEP)
   const first = runFixture(base)
   const before = first.steps.find((s) => s.id === MFA_STEP)!
   assert.equal(isPreserved(before), true, 'the goal starts in place')
   // The same tenant, one material change: somebody switched the policy off.
   const snapshot = structuredClone(base.snapshot)
   const rows = (snapshot as unknown as { config: { caPolicies: { rows: Record<string, unknown>[] } } }).config.caPolicies.rows
-  rows.find((r) => /MFA for all users/.test(String(r.displayName)))!.state = 'disabled'
+  rows.find((r) => r.displayName === MFA_PLAN_NAME)!.state = 'disabled'
   const second = runFixture({ ...base, snapshot }, {}, observationsOf(first.steps))
   const after = second.steps.find((s) => s.id === MFA_STEP)!
   assert.equal(isPreserved(after), false, 'the goal is still preserved after the policy that delivered it was switched off')
@@ -414,53 +457,63 @@ test('two policies that satisfy the goal only together are both named, and neith
   // The tenant's one all-users MFA policy, replaced by two that split the same
   // people between them: each is enabled and meets the floor, and neither
   // covers the goal on its own. The classifier still finds the goal delivered —
-  // coverage is a union — so this is a real In-place case whose satisfaction
-  // has no single owner.
+  // coverage is a union — but no one policy delivers it.
   const base = fixture('small')
   const people = expectedPeople(runFixture(base), MFA_GOAL)
   const half = Math.ceil(people.length / 2)
   const FIRST = 'Contoso — MFA, first half'
   const SECOND = 'Contoso — MFA, second half'
-  const { step, ctx, run } = withPolicies(
-    'small',
-    (rows) => {
-      const i = rows.findIndex((r) => /MFA for all users/.test(String(r.displayName)))
-      const mfa = rows[i]
-      const users = (mfa.conditions as { users: Record<string, unknown> }).users
-      const split = (name: string, id: string, ids: string[]): Record<string, unknown> => ({
-        ...structuredClone(mfa),
-        id,
-        displayName: name,
-        conditions: { ...structuredClone(mfa.conditions as Record<string, unknown>), users: { includeUsers: ids, excludeGroups: users.excludeGroups } },
-      })
-      rows[i] = split(FIRST, String(mfa.id), people.slice(0, half))
-      rows.push(split(SECOND, '001e84ff-0000-4000-8000-00000000d0e5', people.slice(half)))
-    },
-    MFA_STEP,
-  )
-  assert.equal(goalResult(run, MFA_GOAL).verdict, 'inPlace', 'the two together do not deliver the goal')
-  assert.equal(isPreserved(step), true)
-  assert.equal(statusOf(step).word, 'In place')
-  // The classifier kept both identities, and refused to call either of them
-  // sufficient — which is the fact a singular sentence would need.
-  assert.deepEqual(step.satisfiedBy?.policies, [FIRST, SECOND])
-  assert.equal(step.satisfiedBy?.sufficient, null, 'a policy covering half the goal was called enough on its own')
-  // So the row and What IAMAI found name the set and say they do it together.
-  // Naming the first alone would call a policy that covers half the tenant the
-  // one that delivers the goal, and make the other look unnecessary.
-  const reason = rowReason(step)
-  assert.ok(reason, 'the row carries a reason')
-  for (const name of [FIRST, SECOND]) assert.ok(reason.includes(name), `the row drops ${name}: ${reason}`)
-  assert.match(reason, /together/)
-  const found = stepContract(step, ctx).found.find((x) => x.key === 'in-place')
-  assert.ok(found, 'the contract reports the goal as already delivered')
-  for (const name of [FIRST, SECOND]) assert.ok(found.text.includes(name), `What IAMAI found drops ${name}: ${found.text}`)
-  // And no export names one policy where the screen names two. A Completed
-  // step's export hands over no task (walk list item 19), so it names neither.
-  const all = stepLines(step, ctx).join('\n')
-  assert.equal(all.includes(FIRST), all.includes(SECOND), 'the export names one of the two policies as the coverage')
-  // Still preserve: two policies to keep is not a policy to create.
-  assert.equal(operationsOf(step).length, 0)
+  const SECOND_ID = '001e84ff-0000-4000-8000-00000000d0e5'
+  const halves = (first: string): Case =>
+    withPolicies(
+      'small',
+      (rows) => {
+        const i = rows.findIndex((r) => /MFA for all users/.test(String(r.displayName)))
+        const mfa = rows[i]
+        const users = (mfa.conditions as { users: Record<string, unknown> }).users
+        const split = (name: string, id: string, ids: string[]): Record<string, unknown> => ({
+          ...structuredClone(mfa),
+          id,
+          displayName: name,
+          conditions: { ...structuredClone(mfa.conditions as Record<string, unknown>), users: { includeUsers: ids, excludeGroups: users.excludeGroups } },
+        })
+        rows[i] = split(first, String(mfa.id), people.slice(0, half))
+        rows.push(split(SECOND, SECOND_ID, people.slice(half)))
+      },
+      MFA_STEP,
+    )
+
+  // Policy identity is the name (owner, 2026-10-04). Under the tenant's names
+  // neither is the step's own: it builds the baseline's policy and names both
+  // beside it, and calls neither the whole coverage.
+  const theirs = halves(FIRST)
+  assert.equal(goalResult(theirs.run, MFA_GOAL).verdict, 'inPlace', 'the two together do not deliver the goal')
+  assert.equal(isPreserved(theirs.step), false)
+  assert.deepEqual((theirs.step.action.resolution?.policies ?? []).map((o) => o.mode), ['create'])
+  assert.deepEqual((theirs.step.action.besidePolicies ?? []).map((p) => p.name), [FIRST, SECOND], 'both are named beside the create')
+  assert.equal(theirs.step.satisfiedBy?.sufficient ?? null, null, 'a policy covering half the goal was called enough on its own')
+
+  // The first under the baseline's name is the step's own, and it covers half the
+  // people: the classifier keeps both identities and refuses to call either
+  // sufficient, the step is not preserved on half a policy, and the second is
+  // named beside it, never the step's own. The step corrects its own half, so it
+  // is not satisfied and carries no satisfiedBy at all (generate.ts sets it only
+  // on a satisfied step): the classifier's answer is read from coverage itself,
+  // and the step claims no coverage, singular or shared (owner, 2026-10-04:
+  // identity is the name; this replaces the step-level satisfiedBy check).
+  const { step, ctx, run } = halves(MFA_PLAN_NAME)
+  const together = goalResult(run, MFA_GOAL)
+  assert.equal(together.verdict, 'inPlace', 'the two together do not deliver the goal')
+  const satisfaction = together.satisfaction as { policyNames: string[]; sufficientName: string | null }
+  assert.deepEqual(satisfaction.policyNames, [MFA_PLAN_NAME, SECOND])
+  assert.equal(satisfaction.sufficientName, null, 'a policy covering half the goal was called enough on its own')
+  assert.equal(step.state.satisfied, false, 'a step whose own policy covers half its goal read as delivered')
+  assert.equal(step.satisfiedBy, undefined, 'a step correcting its own half still claims the coverage')
+  assert.equal(isPreserved(step), false, 'half the goal under the baseline’s name is not the step’s policy as planned')
+  assert.ok((step.state.observation?.unwritten ?? []).includes('conditions.users'), JSON.stringify(step.state.observation?.unwritten))
+  assert.deepEqual((step.action.besidePolicies ?? []).map((p) => p.policyId), [SECOND_ID])
+  assert.equal(step.tracking?.policyName, MFA_PLAN_NAME, 'the step follows its own half, never the other')
+  // And nothing builds a second policy under the plan's name beside its own.
   for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, CREATING, `combined coverage drew a create instruction: ${line}`)
 })
 
@@ -658,7 +711,9 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   // was a clause inside the green coverage tile. A gate that congratulates you
   // for walking around it is not a gate. The finished step now carries the
   // threshold (Action.enforcedBelowReadiness) and states it as a warning.
-  const blind = caseOf(runFixture(fixture('hostile')), fixture('hostile'), 's-goal-mfa-all-users')
+  // The hostile tenant's all-users policy under the baseline's name: the policy the tenant already had (owner, 2026-10-04: policy identity is the name).
+  const hostile = planNamed(fixture('hostile'), MFA_STEP)
+  const blind = caseOf(runFixture(hostile), hostile, MFA_STEP)
   assert.equal(blind.step.status, 'done', 'the premise: an existing policy delivers this goal')
   assert.equal(blind.step.readiness.unmeasured, 'unreadable', 'the premise: readiness could not be read on this tenant')
   // It holds nothing: the work is done. The fact rides beside the gate, never as it.
@@ -676,7 +731,8 @@ test('In place says so about the POLICY, and a threshold never shown met is said
   // The large tenant's own policy for this goal requires Phishing-resistant MFA,
   // and the 73% is measured against that policy, so the threshold names that
   // strength rather than plain MFA (R4-26, Jordan D4).
-  const short = caseOf(runFixture(fixture('large')), fixture('large'), 's-goal-mfa-all-users')
+  const large = planNamed(fixture('large'), MFA_STEP)
+  const short = caseOf(runFixture(large), large, MFA_STEP)
   const shortReading = tileOf(readinessOf(short.step, stepContract(short.step, short.ctx)), FINISHED_READING)
   assert.ok(shortReading)
   // A fact under Satisfied (walk list 4.x item 2): the count, and nothing open.
@@ -868,7 +924,7 @@ test('a policy this plan built straight to On stays Completed and says it went l
 
   // In place: a policy the tenant already had, found enforced on the first scan.
   // Nothing went live under this plan, so neither the tile nor the check.
-  const m = fixture('mid')
+  const m = planNamed(fixture('mid'), MFA_STEP)
   const mRun = runFixture(m)
   const found = mRun.steps.find((s) => s.id === 's-goal-mfa-all-users')!
   assert.equal(found.state.satisfied && found.state.inPlace && found.state.lifecycle === 'enforced', true, 'the premise: In place when IAMAI first looked')

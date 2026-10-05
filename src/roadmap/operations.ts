@@ -1324,6 +1324,10 @@ export function awaitsMailMove(step: PolicyStep): boolean {
  */
 export function deliveredByEnforcedPolicy(step: PolicyStep): boolean {
   if (step.status === 'done') return true
+  // Exactly the baseline's and On, owing only its name: delivered today.
+  if (renamesEnforced(step) && step.state?.lifecycle === 'enforced' && !step.state.setAside) return true
+  // The tenant's own policies under other names enforce the goal while the step builds the baseline's beside them.
+  if (step.action.besideDelivers === true && !step.state?.setAside) return true
   const s = step.state
   return (s?.observation?.unwritten.length ?? 0) > 0 && s?.lifecycle === 'enforced' && s.condition !== 'blocked' && !s.setAside && step.action.intended !== undefined && (step.action.resolution?.policies ?? []).length === 0
 }
@@ -1366,7 +1370,7 @@ export function awaitsPimSettings(step: PolicyStep): boolean {
  * Scope are settled (roadmap/foundations.ts).
  */
 export function enforcementHeld(step: PolicyStep): boolean {
-  return step.action.readinessGate !== undefined && step.status !== 'done' && step.status !== 'skipped' && !addsExclusionsToEnforced(step)
+  return step.action.readinessGate !== undefined && step.status !== 'done' && step.status !== 'skipped' && !addsExclusionsToEnforced(step) && !renamesEnforced(step)
 }
 
 /**
@@ -1411,6 +1415,17 @@ export function createWaitsOnReadiness(step: PolicyStep): boolean {
  */
 export function createHeldOnReadiness(step: PolicyStep): boolean {
   return unavailableReason(step) === 'readiness-unmet' && createWaitsOnReadiness(step)
+}
+
+/**
+ * True when every operation only renames a policy the tenant already has on
+ * (PolicyOperation.renamesOnly; owner, 2026-10-04): the policy is exactly the
+ * baseline's and enforced, so it delivers the goal today, and a rename changes
+ * nobody's sign-in. No readiness number waits on it.
+ */
+export function renamesEnforced(step: PolicyStep): boolean {
+  const ops = validOperations(step.action)
+  return ops.length > 0 && ops.every((op) => op.mode === 'update' && op.renamesOnly === true && isObject(op.target) && op.target.state === 'enabled')
 }
 
 /** True when the step runs operations and each one only adds exclusions to a policy the tenant already has on, submitting no enforcement of its own. */

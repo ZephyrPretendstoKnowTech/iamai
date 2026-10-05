@@ -17,6 +17,7 @@ import { contentStepFor } from '../content/stepTitle.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import type { Step } from '../roadmap/types.ts'
 import { validOperations } from '../roadmap/operations.ts'
+import { materialFieldsOf } from '../roadmap/observation.ts'
 import { CONTRACT, stepContract } from '../ui/surfaces/stepContract.ts'
 import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
@@ -266,8 +267,15 @@ function deliveredWithGroup(policyName: string, stepId: string, sampled: boolean
   const f = structuredClone(withFoundationSettled(fixture('mid')))
   const policy = f.snapshot.config.caPolicies.rows.find((p) => (p as { displayName?: string }).displayName === policyName) as { conditions: { users: { excludeGroups?: string[] } } } | undefined
   assert.ok(policy, `the premise: mid has "${policyName}"`)
+  // Policy identity is the name (owner, 2026-10-04): the tenant's policy is the
+  // step's own, delivering the goal, once it carries the baseline's name. The
+  // group it also excludes is then a difference from the baseline, which is
+  // corrected or accepted with a reason (owner, 2026-09-26): accepted here, so
+  // the step stays delivered, as the case needs.
+  ;(policy as { displayName?: string }).displayName = runFixture(f).steps.find((s) => s.id === stepId)!.createName
   prepare(f, [...(policy.conditions.users.excludeGroups ?? [])])
   policy.conditions.users.excludeGroups = [...(policy.conditions.users.excludeGroups ?? []), GROUP]
+  f.mapping.acceptedDeviations = { ...f.mapping.acceptedDeviations, [stepId]: { fields: { 'conditions.users': materialFieldsOf(policy)['conditions.users'] }, reason: 'Contractors sign in elsewhere', at: f.snapshot.asOf } }
   const members = [...f.mapping.breakGlassUserIds]
   f.groups.set(GROUP, { memberIds: members, directMemberIds: members, memberCount: sampled ? 30_000 : members.length, sampled, displayName: 'Contractors' } as never)
   const r = runFixture(f)

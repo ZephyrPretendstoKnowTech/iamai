@@ -1,14 +1,21 @@
 import { readyEvidence } from './fixtures/readyEvidence.ts'
-// C01 (preview corrections): which tenant policy a goal's step corrects is decided
-// by what the policy is — who it is assigned to and which kind of control it
-// carries — never by the order the scan listed the policies in or by their names.
+// C01 (preview corrections): which tenant policies are of a goal's own scope is
+// decided by what the policy is — who it is assigned to and which kind of control
+// it carries — never by the order the scan listed the policies in.
+//
+// Which of them a goal's step corrects is decided by its name (owner, 2026-10-04:
+// policy identity is the name): the one carrying the plan's tag, else the
+// baseline's name for it. Controls alone never claim one: a policy of the goal's
+// own scope under another name is listed beside the step (Action.besidePolicies),
+// never edited, and the step creates the baseline's policy in Report-only; two
+// live policies carrying the plan's name hold the step.
 //
 // The tenant holds three overlapping policies: one assigned to a directory role
 // that requires the built-in phishing-resistant strength, one for All users with
 // guests excluded that requires MFA, and one assigned to the same role that sets
 // only a sign-in frequency. The expected answer is written down independently of
-// the engine: the all-users goal corrects the All users policy, the admins goal
-// the role policy with the grant, the admin-session goal the session policy.
+// the engine: the all-users goal's own scope is the All users policy, the admins
+// goal's the role policy with the grant, the admin-session goal's the session policy.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture, noExclusionsAnswer } from './fixtures/index.ts'
@@ -34,6 +41,11 @@ type Names = { admin: string; everyone: string; session: string }
 const NAMES: Names = { admin: 'Require strong MFA - admins', everyone: 'Require MFA - staff', session: 'Admin sign-in frequency' }
 // The admin policy carries the name an all-users policy would have, and the other way round.
 const SWAPPED: Names = { admin: 'Require MFA - staff', everyone: 'Require strong MFA - admins', session: 'Policy 1' }
+// The baseline's names (Jon's) for the all-users and admin-session policies: under
+// them the tenant's policies are the plan's own, which their steps correct in place.
+const ALL_USERS = 'IAC - GLOBAL - GRANT - MFA - AllUsers'
+const ADMIN_SESSION = 'IAC - GLOBAL – SESSION – Admin Persistence (4 Hours)'
+const PLAN_NAMED: Names = { admin: 'Require strong MFA - admins', everyone: ALL_USERS, session: ADMIN_SESSION }
 
 function run(opts: { reversed: boolean; names: Names; carveOut: boolean }): FixtureRun {
   const f = fixture('demo-week2')
@@ -82,7 +94,17 @@ test('C01: whatever the order, names or exclusions group, each goal corrects and
 
 test('C01/C02: correcting a policy that already meets the floor writes no grant from another policy, and a session raise is a session change', () => {
   for (const reversed of [false, true]) {
-    const r = run({ reversed, names: NAMES, carveOut: false })
+    // Under the tenant's own names both steps create the baseline's policy beside
+    // theirs and edit neither (owner, 2026-10-04: policy identity is the name).
+    const tenantNamed = run({ reversed, names: NAMES, carveOut: false })
+    for (const [goalId, theirs] of [['mfa-all-users', EVERYONE], ['admin-session', SESSION]] as const) {
+      const step = tenantNamed.steps.find((x) => x.goalId === goalId && x.kind !== 'verify')
+      assert.ok(step, goalId)
+      assert.ok((step.action.resolution?.policies ?? []).every((o) => o.mode === 'create'), `${goalId}: the tenant’s policy is not edited`)
+      assert.deepEqual((step.action.besidePolicies ?? []).map((p) => p.policyId), [theirs], `${goalId}: its policy is named beside the create`)
+    }
+    // Under the baseline's names they are the plan's own and corrected in place.
+    const r = run({ reversed, names: PLAN_NAMED, carveOut: false })
     // The all-users policy is the one corrected, not created beside it, and an
     // MFA-for-everyone correction of an MFA policy leaves its grant alone.
     const everyone = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind === 'adjust')
@@ -138,8 +160,35 @@ test('C01: a guests step does not claim the all-users policy that does not deliv
   const guestsStep = r.steps.find((x) => x.goalId === 'guests-mfa' && x.kind !== 'verify')
   assert.ok(guestsStep, 'the guests goal is on the plan')
   assert.notEqual(guestsStep.tracking?.policyId ?? null, everyoneId, 'the guests step does not name the all-users policy as its own')
+  assert.equal((guestsStep.action.besidePolicies ?? []).some((p) => p.policyId === everyoneId), false, 'nor lists it to retire')
+  // Policy identity is the name (owner, 2026-10-04): under the tenant's name the
+  // all-users policy is the all-users step's to retire, listed beside its create;
+  // under the baseline's name it is that step's own, and tracked.
   const everyoneStep = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
-  assert.equal(everyoneStep?.tracking?.policyId, everyoneId, 'the all-users step still finds it')
+  assert.deepEqual((everyoneStep?.action.besidePolicies ?? []).map((p) => p.policyId), [everyoneId], 'the all-users step names it beside its own')
+  // Under the baseline's name it is the step's own (owner, 2026-10-04: identity is
+  // the name). With the group answered (the fixture's own record) the policy is
+  // exactly the baseline's: the step reads it done and tracks it.
+  const rename = (g: typeof f): typeof f => {
+    ;((g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]).find((p) => p.id === everyoneId)!.displayName = ALL_USERS
+    return g
+  }
+  const named = runFixture(rename(fixture('small')))
+  const namedStep = named.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
+  assert.equal(namedStep?.tracking?.policyId, everyoneId, 'under the baseline’s name the all-users step finds it')
+  assert.equal(namedStep?.state.satisfied, true, 'exactly the baseline’s, it reads done')
+  const namedGuests = named.steps.find((x) => x.goalId === 'guests-mfa' && x.kind !== 'verify')
+  assert.notEqual(namedGuests?.tracking?.policyId ?? null, everyoneId, 'and the guests step still does not')
+  assert.equal((namedGuests?.action.besidePolicies ?? []).some((p) => p.policyId === everyoneId), false, 'nor lists it to retire')
+  // With no group answered it is still the step's own, to correct (the group is
+  // the correction), held on Configure Emergency Exclusions: nothing is created
+  // beside it, nothing listed to retire, and the step still finds its policy,
+  // which is On.
+  const held = runFixture(rename(f)).steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
+  assert.equal(held?.kind, 'adjust', 'under the baseline’s name, the group unanswered, the all-users step corrects it')
+  assert.equal((held?.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), false, 'and creates nothing beside it')
+  assert.deepEqual(held?.action.besidePolicies ?? [], [], 'nor lists it to retire')
+  assert.equal(held?.tracking?.policyId, everyoneId, 'held, the all-users step still finds its own policy by name')
 })
 
 test('C01: where the only MFA policy is assigned to an admin role, the all-users step neither rewrites nor tracks it', () => {
@@ -165,10 +214,13 @@ test('C01: where the only MFA policy is assigned to an admin role, the all-users
 // strength) and a staff policy assigned to a group (MFA) are both "assigned to
 // groups". Correcting the first listed for the all-users goal rewrote the admins
 // policy to All users. Expected, independent of the engine: neither is taken by
-// scan order or name. A group policy asking more than MFA of every sign-in is not
-// the all-users goal's to widen, alone (BLOCKED S5 23:30) or beside a staff policy;
-// two that ask the same and nothing tells apart hold the step and hand over
-// nothing; beside an All users policy that policy is the one.
+// scan order. A group policy asking more than MFA of every sign-in is not the
+// all-users goal's to widen, alone (BLOCKED S5 23:30) or beside a staff policy.
+// Since policy identity is the name (owner, 2026-10-04) none is taken by its
+// controls either: under other names the step creates the baseline's policy and
+// lists the goal's own-scope policies beside it; under the baseline's name the
+// staff policy is the one corrected; two carrying the baseline's name hold the
+// step and hand over nothing.
 const STRONG = { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } }
 const MFA = { operator: 'OR', builtInControls: ['mfa'] }
 const MFA_AND_DEVICE = { operator: 'AND', builtInControls: ['mfa', 'compliantDevice'] }
@@ -236,24 +288,37 @@ function handedOver(r: FixtureRun & { ctx: StepVarContext }, step: ReturnType<ty
   return [...body.artifacts.filter((a) => !a.unavailable).map((a) => a.text()), ...stepExportView(step, r.ctx).whatToDo].join('\n')
 }
 
-test('C01 R1-F2: two group-assigned MFA policies nothing tells apart hold the all-users step, whatever the order or names, and it hands over nothing', () => {
+test('C01 R1-F2: two group-assigned MFA policies are never edited for the all-users step; under other names it builds beside both, carrying its name both hold it and it hands over nothing', () => {
+  // Policy identity is the name (owner, 2026-10-04): under the tenant's names
+  // neither is the step's own, whatever the order: it creates the baseline's
+  // policy in Report-only and lists both to retire.
   for (const reversed of [false, true]) {
     for (const names of GROUP_NAMES) {
       const r = groupRun({ reversed, names, staff: 'group', admins: { grant: MFA, users: 'group' } })
       const step = allUsersStep(r)
       assert.deepEqual(ownOf(r), [ADMIN, EVERYONE].sort(), 'the premise: both group policies are candidates of the all-users goal')
-      assert.equal(step.kind, 'adjust', 'the premise: the step corrects a tenant policy rather than creating one, so the choice is made')
       const ops = step.action.resolution?.policies ?? []
       assert.deepEqual(ops.filter((o) => o.mode === 'update').map((o) => o.policyId), [], `no update of either policy (reversed ${reversed}, ${names.join('/')})`)
-      assert.equal(ops.some((o) => o.mode === 'create'), false, 'and no duplicate beside them')
-      assert.equal(step.action.ambiguousTarget, true, 'the step says it cannot tell which is the goal’s own')
-      assert.equal(nextSafeAction(step).executable, false, 'nothing is handed over')
+      assert.deepEqual(ops.map((o) => [o.mode, (o.body as { state?: unknown }).state]), [['create', 'enabledForReportingButNotEnforced']], 'the baseline’s policy is created in Report-only')
+      assert.deepEqual((step.action.besidePolicies ?? []).map((p) => p.policyId).sort(), [ADMIN, EVERYONE].sort(), 'both are named beside it')
+      assert.notEqual(step.action.ambiguousTarget, true)
       assert.equal(step.tracking?.policyId ?? null, null, 'neither is tracked as the all-users policy')
     }
   }
+  // Both carrying the baseline's name and no tag: the step will not guess, and
+  // never creates a third under the same name.
+  for (const reversed of [false, true]) {
+    const r = groupRun({ reversed, names: [ALL_USERS, ALL_USERS], staff: 'group', admins: { grant: MFA, users: 'group' } })
+    const step = allUsersStep(r)
+    const ops = step.action.resolution?.policies ?? []
+    assert.deepEqual(ops, [], `no update and no create (reversed ${reversed})`)
+    assert.equal(step.action.ambiguousTarget, true, 'the step says it cannot tell which is the goal’s own')
+    assert.equal(nextSafeAction(step).executable, false, 'nothing is handed over')
+    assert.equal(step.tracking?.policyId ?? null, null, 'neither is tracked as the all-users policy')
+  }
   // R2-N1: the held step’s Implementation region plans no create or correction the hold rules out.
   for (const reversed of [false, true]) {
-    const r = groupRun({ reversed, names: GROUP_NAMES[0], staff: 'group', admins: { grant: MFA, users: 'group' }, ready: true })
+    const r = groupRun({ reversed, names: [ALL_USERS, ALL_USERS], staff: 'group', admins: { grant: MFA, users: 'group' }, ready: true })
     const step = allUsersStep(r)
     assert.equal(step.action.ambiguousTarget, true, 'the premise: the step is held on the tie')
     const body = stepBodyOf(step, r.ctx)
@@ -264,12 +329,22 @@ test('C01 R1-F2: two group-assigned MFA policies nothing tells apart hold the al
   }
 })
 
-test('C01: a group-assigned policy asking more than MFA is not the all-users goal’s own; beside a staff group MFA policy the staff policy is corrected, beside an All users policy that one', () => {
+test('C01: a group-assigned policy asking more than MFA is not the all-users goal’s own; beside a staff group MFA policy carrying the baseline’s name the staff policy is corrected, beside an All users policy that one', () => {
   for (const reversed of [false, true]) {
     for (const names of GROUP_NAMES) {
       const r = groupRun({ reversed, names, staff: 'group' })
       const step = allUsersStep(r)
       assert.deepEqual(ownOf(r), [EVERYONE], `only the staff policy is the goal’s own (reversed ${reversed}, ${names.join('/')})`)
+      assert.notEqual(step.action.ambiguousTarget, true)
+      // Policy identity is the name (owner, 2026-10-04): under the tenant's names the
+      // staff policy is listed beside the create, and the admins policy not at all.
+      assert.deepEqual((step.action.resolution?.policies ?? []).map((o) => o.mode), ['create'], 'neither tenant policy is edited')
+      assert.deepEqual((step.action.besidePolicies ?? []).map((p) => p.policyId), [EVERYONE], 'only the staff policy is named beside it')
+    }
+    for (const admin of [GROUP_NAMES[0][0], GROUP_NAMES[1][0]]) {
+      const r = groupRun({ reversed, names: [admin, ALL_USERS], staff: 'group' })
+      const step = allUsersStep(r)
+      assert.deepEqual(ownOf(r), [EVERYONE], `only the staff policy is the goal’s own (reversed ${reversed}, ${admin})`)
       assert.notEqual(step.action.ambiguousTarget, true)
       const updates = (step.action.resolution?.policies ?? []).filter((o) => o.mode === 'update')
       assert.deepEqual(updates.map((o) => o.policyId), [EVERYONE], 'the update targets the staff policy')
@@ -282,11 +357,12 @@ test('C01: a group-assigned policy asking more than MFA is not the all-users goa
   }
   // R1-F2: beside an All users policy, a group-assigned admins policy is never the all-users step’s target.
   for (const reversed of [false, true]) {
-    for (const names of GROUP_NAMES) {
+    for (const names of [...GROUP_NAMES, [GROUP_NAMES[0][0], ALL_USERS] as [string, string]]) {
       const r = groupRun({ reversed, names, staff: 'all' })
       const step = allUsersStep(r)
       assert.notEqual(step.action.ambiguousTarget, true, 'the All users policy tells them apart')
       for (const op of step.action.resolution?.policies ?? []) assert.notEqual(op.mode === 'update' ? op.policyId : null, ADMIN, `the admins policy is not rewritten (reversed ${reversed})`)
+      assert.equal((step.action.besidePolicies ?? []).some((p) => p.policyId === ADMIN), false, 'nor named beside the step')
       if (step.tracking?.policyId) assert.equal(step.tracking.policyId, EVERYONE, 'tracking follows the All users policy')
     }
   }
@@ -338,9 +414,14 @@ test('C01: a lone group-assigned policy that is not the all-users goal’s own i
 const INTUNE_ENROLLMENT = 'd4ebce55-015a-49b5-a083-c84d1797ae8c'
 const RIGHTS_MANAGEMENT = '00000012-0000-0000-c000-000000000000'
 
+// The staff policy carries the baseline's name, so it is the step's own (owner,
+// 2026-10-04: policy identity is the name); under another name the step would
+// create the baseline's beside it, and there would be no correction to carry.
+const STAFF_PLAN_NAMED: [string, string] = [GROUP_NAMES[0][0], ALL_USERS]
+
 test('C01/C02 R1-F3: a lone staff group MFA policy is corrected to All users with the baseline’s Intune Enrollment exclusion, listed and carried in every channel', () => {
   for (const reversed of [false, true]) {
-    const r = groupRun({ reversed, names: GROUP_NAMES[0], staff: 'group', admins: null, ready: true })
+    const r = groupRun({ reversed, names: STAFF_PLAN_NAMED, staff: 'group', admins: null, ready: true })
     const step = allUsersStep(r)
     assert.deepEqual(ownOf(r), [EVERYONE])
     const ops = step.action.resolution?.policies ?? []
@@ -366,7 +447,7 @@ test('C01/C02 R1-F3: a lone staff group MFA policy is corrected to All users wit
     assert.match(stepExportView(step, r.ctx).whatToDo.join('\n'), /Under Target resources → Exclude, add Microsoft Rights Management Services and Microsoft Intune Enrollment\./, 'the export names them too')
   }
   // Where the tenant's policy already excludes it, the resources are not a change.
-  const r = groupRun({ reversed: false, names: GROUP_NAMES[0], staff: 'group', admins: null, staffApps: { includeApplications: ['All'], excludeApplications: [RIGHTS_MANAGEMENT, INTUNE_ENROLLMENT] } })
+  const r = groupRun({ reversed: false, names: STAFF_PLAN_NAMED, staff: 'group', admins: null, staffApps: { includeApplications: ['All'], excludeApplications: [RIGHTS_MANAGEMENT, INTUNE_ENROLLMENT] } })
   const step = allUsersStep(r)
   assert.ok((step.action.resolution?.policies ?? []).some((o) => o.mode === 'update'), 'the premise: the staff policy is still corrected')
   assert.equal((step.action.changes ?? []).some((c) => c.field === 'Target resources'), false, 'no resources change is listed')

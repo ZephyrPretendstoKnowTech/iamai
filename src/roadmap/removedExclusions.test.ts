@@ -36,8 +36,13 @@ function plan(rowOf: (g: Groups) => ReturnType<typeof pol>) {
   const staffGroup = [...f.groups.keys()].find((id) => id !== excl)!
   const ca = f.snapshot.config.caPolicies!
   const keep = (ca.rows as { displayName?: string }[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
-  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [rowOf({ staffGroup, excl }), ...keep] } } }
+  const row = rowOf({ staffGroup, excl })
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [row, ...keep] } } }
   readyEvidence(f, snapshot)
+  // Policy B carries the baseline's name, so it is the step's own and corrected in
+  // place; under any other name the step creates the baseline's policy beside it
+  // (owner, 2026-10-04: policy identity is the name).
+  row.displayName = runFixture({ ...f, snapshot } as never, { snapshot } as never).steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!.createName!
   const scored = runFixture({ ...f, snapshot } as never, { snapshot } as never).viability
   const r = runFixture({ ...f, snapshot } as never, { snapshot, viability: scored.map((v) => ({ ...v, readiness: READY })) } as never)
   const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!
@@ -45,18 +50,19 @@ function plan(rowOf: (g: Groups) => ReturnType<typeof pol>) {
   const ctx = { snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null } as never
   const ops = step.action.resolution?.policies ?? []
   assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', B]], 'the staff policy is corrected')
-  return { op: ops[0], lines: stepExportView(step, ctx).whatToDo, nameOf }
+  return { op: ops[0], lines: stepExportView(step, ctx).whatToDo, nameOf, name: row.displayName }
 }
 
 test('a correction that drops the tenant’s guest or external user exclusion, or replaces its excluded application, names what it removes beside the change', () => {
-  const { op, lines } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl], excludeGuestsOrExternalUsers: GUESTS }))
+  const { op, lines, name } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl], excludeGuestsOrExternalUsers: GUESTS }))
   const users = (op.body.conditions as { users: Record<string, unknown> }).users
   assert.equal(users.excludeGuestsOrExternalUsers, undefined, 'the request is the baseline\'s users section, unchanged')
   assert.deepEqual(op.removes, { guestsOrExternalUsers: true, ids: [] })
   const at = lines.findIndex((l) => REMOVES.test(l))
   assert.ok(at >= 0, lines.join('\n'))
   assert.match(REMOVES.exec(lines[at])![1], /^Guest or external users\b/)
-  assert.ok(at > lines.findIndex((line) => /Open.*Policy B/.test(line)), 'named in the correction of the policy it changes')
+  const open = lines.findIndex((line) => /Open/.test(line) && line.includes(name))
+  assert.ok(open >= 0 && at > open, 'named in the correction of the policy it changes')
 
   // A correction that replaces the tenant's excluded application names the application it removes.
   {

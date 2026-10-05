@@ -7,6 +7,7 @@ import { fixture } from './fixtures/index.ts'
 import type { FixtureName } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled, withRecoveryTested } from './fixtures/run.ts'
 import { conflictInput } from './fixtures/reviewedConflict.ts'
+import { asPlansOwn } from './fixtures/asPlanned.ts'
 import type { Step } from './types.ts'
 import { executableNow, implementationIsCurrent, nextSafeAction } from './nextSafeAction.ts'
 import { unavailableReason } from './operations.ts'
@@ -62,8 +63,11 @@ test('readiness holds enforcement and not report-only creation; a missing object
   const missing = all().find(({ step }) => nextSafeAction(step).blockedBy === 'missing-object')
   assert.ok(missing, 'no step waiting on a missing object')
   assert.equal(nextSafeAction(missing.step).executable, false)
-  // A correction held on the escape hatch is a correction, held, and says so.
-  const legacy = nextSafeAction(find('demo', 's-goal-block-legacy-auth'))
+  // A correction held on the escape hatch is a correction, held, and says so. The
+  // demo's legacy policy carries the baseline's name, so it is the step's own and
+  // corrected in place (owner, 2026-10-04: policy identity is the name; under the
+  // tenant's own name the step creates the baseline's policy beside it instead).
+  const legacy = nextSafeAction(runFixture(asPlansOwn(fixture('demo'), 's-goal-block-legacy-auth')).steps.find((s) => s.id === 's-goal-block-legacy-auth')!)
   assert.equal(legacy.kind, 'correct')
   assert.equal(legacy.executable, false)
   assert.notEqual(legacy.blockedBy, null)

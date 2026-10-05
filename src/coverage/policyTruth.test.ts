@@ -396,13 +396,19 @@ test('audit, demo: MFA for everyone and the legacy block are partly in place wit
   assert.ok(r.reasons.some((x) => x.kind === 'exclusion-missing'))
   // Step 2's own reading of the chosen group names the same policy.
   assert.ok(exclusionsGroupPolicies({ policies: rowsOf(f), groupId: chosenGroup(f), accountIds: f.mapping.breakGlassUserIds, activeRoles: f.snapshot.roles.active, membersOf: groupLookup(f.groups) }).some(p => p.outcome !== 'pass' && p.name === row.displayName))
-  // The Plan asks for a change to that policy's users, not a new policy.
+  // Policy identity is the name (owner, 2026-10-04): the tenant's policy carries
+  // its own name and is not the baseline's in every setting, so the Plan creates
+  // the baseline's policy in Report-only beside it, never edits it, and lists it
+  // for Cleanup to retire once the baseline's is On. (Configure Emergency
+  // Exclusions still adds the group to it meanwhile.)
   const step = goalStep(run, 'mfa-all-users')
   assert.notEqual(step.status, 'done')
-  assert.equal(step.kind, 'adjust')
-  const update = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
-  assert.equal(update?.policyId, mfa.policyId)
-  assert.ok((step.action.changes ?? []).some((c) => c.field === 'Users'))
+  assert.equal(step.kind, 'create')
+  const ops = step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.map((o) => o.mode), ['create'])
+  assert.equal(ops[0].body.state, 'enabledForReportingButNotEnforced')
+  assert.ok(!ops.some((o) => o.policyId === mfa.policyId), 'the tenant’s policy is never edited by the step')
+  assert.ok((step.action.besidePolicies ?? []).some((p) => p.policyId === mfa.policyId), 'it is listed beside the step, to retire')
 
   // The same tenant a week on, its policies carving out the chosen group: in place, by the same policy.
   const w = fixture('demo-week2')
@@ -549,6 +555,10 @@ test('no step, on any fixture, proposes an update that changes nothing on the po
             updates += 1
             const current = (rows.find((r) => r.id === op.policyId) ?? null) as Record<string, unknown> | null
             const state = (op.body as { state?: unknown }).state
+            // A rename is a change (owner, 2026-10-04: policy identity is the name): a
+            // tenant policy exactly the baseline's under another name takes its name.
+            const displayName = (op.body as { displayName?: unknown }).displayName
+            if (displayName !== undefined && displayName !== current?.displayName) continue
             if (changedFieldsOf(op.body as Record<string, unknown>, current).length > 0 || (state !== undefined && state !== current?.state)) continue
             noop.push(`${name}${settled ? '+settled' : ''}${on ? '+on' : ''}/${step.id}: ${JSON.stringify(op.body).slice(0, 120)}`)
           }

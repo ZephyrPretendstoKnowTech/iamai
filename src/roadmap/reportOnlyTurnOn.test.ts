@@ -151,8 +151,12 @@ test('R4-11: a report-only policy that still owes a correction takes the correct
   const people = [...activePeopleIds(f.snapshot, f.snapshot.asOf)].filter((id) => !f.mapping.breakGlassUserIds.includes(id))
   const template = [...f.groups.values()][0]
   const groups = new Map(f.groups).set(PILOT, { ...template, displayName: 'Pilot', memberIds: people.slice(0, 5) })
+  // W carries the baseline's name, so it is the goal step's own (owner, 2026-10-04:
+  // policy identity is the name; under another name the step creates the
+  // baseline's beside it and never corrects W).
+  const planName = runFixture(f).steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!.createName!
   const mfaAllUsers = (conditions: Record<string, unknown>) => {
-    const w = { id: W, displayName: 'Policy W', state: REPORT_ONLY, conditions: { applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], ...conditions }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
+    const w = { id: W, displayName: planName, state: REPORT_ONLY, conditions: { applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], ...conditions }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
     const ca = f.snapshot.config.caPolicies!
     const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [w] } } }
     const run = runFixture({ ...f, snapshot, groups }, { snapshot } as never)

@@ -401,7 +401,6 @@ const INVENTORY: string[] = [
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-passkey-settings
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // small/s-goal-block-auth-transfer
-  'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
   'campaign · verify · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-verify-mfa
   'policy · create · not-deployed · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // small/s-goal-avd-trusted-network
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known',
@@ -414,7 +413,6 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · blocked · set-aside · do:restore · no-track · no-implementation · no-found · fix · one-policy · who-known', // small+unanswered/s-goal-avd-trusted-network
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // getiamai/s-prereq-break-glass
   'check · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // getiamai/s-check-separate-admin-accounts
-  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // large+unanswered/s-goal-require-managed-device
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // messy/s-prereq-exclusion-group
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // messy/s-goal-admins-phishing-resistant
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
@@ -430,13 +428,9 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · members · who-known', // demo-week2+half-pair/s-goal-guests-mfa
   // Every control is exact (owner, 2026-09-25): a policy with a setting to correct, waiting on a foundation, reads Blocked, never Ready (foundations.ts).
   // A policy the tenant wrote, On, with a setting that is not the plan's: a person corrects it (every control is exact, owner 2026-09-25).
-  'policy · create · enforced · review-required · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+plans-own/s-goal-admins-phishing-resistant
-  'policy · adjust · not-deployed · review-required · open · do:observe · track · implementation · found · fix · members · who-known', // demo-week2+half-pair+rescan/s-goal-guests-mfa
-  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
   'decision · check · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-direction-use
   'policy · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-goal-avd-trusted-network
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-block-auth-transfer
-  'policy · create · enforced · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-block-legacy-auth
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-admin-session
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · members · who-known', // demo-week2+settled/s-goal-guests-mfa (both of Jon's guest policies created, owner 2026-09-29)
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · members · who-known', // demo/s-goal-guests-mfa (both of Jon's guest policies created, owner 2026-09-29)
@@ -446,6 +440,15 @@ const INVENTORY: string[] = [
   // Prepare the Lockdown Kit (T2-LK): three switches to create Off, waiting on the foundation, then ready.
   'object · prerequisite · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · fix · members · who-none', // small/s-lockdown-kit
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · members · who-none', // demo-week2+settled/s-lockdown-kit
+  // Policy identity is the name (owner, 2026-10-04): a policy exactly the baseline's under another
+  // name is renamed (an adjust on an enforced policy), one switched off goes back to Report-only,
+  // and the baseline's policy is created beside a tenant policy that is not the plan's.
+  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // small/s-goal-block-legacy-auth
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // midflight/s-goal-block-device-code
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // midflight+unanswered/s-goal-block-device-code
+  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-legacy-auth
+  'policy · adjust · enforced · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-device-code
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+plans-own/s-goal-admins-phishing-resistant
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

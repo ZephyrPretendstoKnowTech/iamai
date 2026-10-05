@@ -65,9 +65,30 @@ function withoutRecoveryTest(f: Fixture): Fixture {
  * turn-on days the schedule gave it - a held step with events, so the Dates
  * line, the email and the bundle have a day to lose.
  */
+/**
+ * The demo's second week with its admins policy built as the plan asks, and every
+ * policy the plan renames already renamed. Policy identity is the name (owner,
+ * 2026-10-04): the demo's policies that are exactly the baseline's carry the
+ * tenant's own names, so each step's one edit is a rename, still to do, and the
+ * steps they deliver are not finished. Renamed as asked, they are, as the week
+ * these cases read had them: Require MFA for Everyone done, and Turn Off Security
+ * Defaults behind nothing but its own wait.
+ */
+function weekTwo(): Fixture {
+  const f = structuredClone(curatedFixture('demo-week2'))
+  for (const s of runFixture(f).steps) {
+    const ops = s.action.resolution?.policies ?? []
+    const body = ops[0]?.body as { displayName?: string } | undefined
+    if (ops.length !== 1 || ops[0].mode !== 'update' || !body || Object.keys(body).join() !== 'displayName') continue
+    const row = (f.snapshot.config.caPolicies!.rows as { id?: string; displayName?: string }[]).find((p) => p.id === ops[0].policyId)
+    if (row) row.displayName = body.displayName
+  }
+  return asPlanned(f, 's-goal-admins-phishing-resistant')
+}
+
 const TURN_ON_HELD: [string, () => Fixture][] = [
-  ['demo-week2, recovery test not run', () => withoutRecoveryTest(withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant')))],
-  ['demo-week2, recovery test not run, security defaults on', () => withSecurityDefaultsOn(withoutRecoveryTest(withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant'))))],
+  ['demo-week2, recovery test not run', () => withoutRecoveryTest(withDirectionApproved(weekTwo()))],
+  ['demo-week2, recovery test not run, security defaults on', () => withSecurityDefaultsOn(withoutRecoveryTest(withDirectionApproved(weekTwo())))],
 ]
 
 const CASES: [string, () => Fixture][] = [
@@ -301,7 +322,7 @@ test('a held policy keeps the people its who-line names, without the day and wit
 // email's day, or the announcement the pack hands a model. Both now take the
 // board's hold, the way the printed plan's rows do.
 test('a day a held step carries is never another step\'s date, nor the prompt pack\'s announcement', () => {
-  const f = withDirectionApproved(asPlanned(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant'))
+  const f = withDirectionApproved(weekTwo())
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const dated = r.steps.filter((s) => typeof s.events?.enforce.at === 'string').sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))
   assert.ok(dated.length >= 2, 'the premise: two dated turn-ons')

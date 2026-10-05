@@ -145,6 +145,12 @@ test('an enforced policy finishes on what the scan reads, with no workflow recor
   // The baseline's two guest policies, built and On (owner, 2026-09-28: the tenant's own guest policy is never credited as them).
   const first = runFixture(f).steps.find(s => s.id === 's-goal-guests-mfa')!
   for (const o of first.action.resolution?.policies ?? []) if (o.mode === 'create') (f.snapshot.config.caPolicies.rows as unknown[]).push({ ...structuredClone(o.body), id: `built-${o.memberKey}`, state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf })
+  // The demo's device-code block is the baseline's under the tenant's own name, so
+  // the step's one edit would be a rename (owner, 2026-10-04: policy identity is the
+  // name). Under the baseline's name it is the step's own, as built from its procedure.
+  const rename = runFixture(f).steps.find(s => s.id === 's-goal-block-device-code')!.action.resolution?.policies.find(o => o.mode === 'update' && (o.body as { displayName?: string }).displayName !== undefined)
+  assert.ok(rename, 'the premise: the device-code step renames the tenant’s policy')
+  ;(f.snapshot.config.caPolicies.rows as { id?: string; displayName?: string }[]).find(p => p.id === rename.policyId)!.displayName = (rename.body as { displayName: string }).displayName
   const result = runFixture(f)
   const guests = result.steps.find(s => s.id === 's-goal-guests-mfa')!
   assert.equal(guests.state.lifecycle, 'enforced', 'the premise: deployment remains observable')

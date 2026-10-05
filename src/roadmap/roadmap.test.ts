@@ -165,6 +165,8 @@ function build(args: {
   mapping?: MappingState
   ready?: number
   snapshot?: TenantSnapshot
+  /** The group memberships coverage reads; none by default. */
+  coverageMembers?: GroupMembers
 }): { input: RoadmapInput; snapshot: TenantSnapshot } {
   const snapshot = args.snapshot ?? mkSnapshot()
   snapshot.config.caPolicies = { status: 'ok', reason: null, rows: args.tenantPolicies ?? [] }
@@ -175,7 +177,7 @@ function build(args: {
     baselinePolicies: args.baselinePolicies ?? [],
     baselineUnusable: [],
     strengths,
-    groupMembers: new Map(),
+    groupMembers: args.coverageMembers ?? new Map(),
   })
   for (const [i, row] of snapshot.registrationDetails.entries()) { row.isMfaCapable = i < (args.ready ?? 10); row.methodsRegistered = row.isMfaCapable ? ['fido2SecurityKey'] : []; snapshot.authMethods[row.id] = row.isMfaCapable ? [{ kind: 'fido2' }] : [] }
   const input: RoadmapInput = {
@@ -208,9 +210,26 @@ const stepFor = (steps: ReturnType<typeof generateRoadmap>['steps'], goalId: str
 }
 
 test('1 + 4: an enforced goal is a done step; a partial weaker-control goal is an adjust step with the exact field change', () => {
-  const { input } = build({ tenantPolicies: [mkPolicy({ displayName: 'MFA All' })] })
+  // The tenant's enforced policy is the step's own under the plan's name for it;
+  // under another name the step builds the plan's beside it (owner, 2026-10-04:
+  // policy identity is the name).
+  const named = stepFor(generateRoadmap(build({ tenantPolicies: [mkPolicy({ displayName: 'MFA All' })] }).input).steps, 'mfa-all-users')
+  assert.equal(named.kind, 'create', 'under the tenant’s own name the step creates the plan’s policy')
+  assert.deepEqual((named.action.besidePolicies ?? []).map((p) => p.policyId), ['p-MFA All'], 'and names the tenant’s beside it')
+  // Done is its own policy On and exactly the baseline's, every setting, the
+  // exclusions group included; the tenant's plain MFA policy under the plan's name
+  // lacks the group and the baseline's app exclusions, a correction (owner,
+  // 2026-10-04). So the tenant's policy here is the plan's create as written,
+  // switched On under its id, and untagged: the tenant built it. Coverage reads
+  // the exclusions group whole, as the scan does: an unread group holds the step.
+  const planned = named.action.resolution?.policies[0]?.body as P | undefined
+  assert.ok(planned, 'the premise: the plan writes the policy whole')
+  const { description: _tag, ...untagged } = planned
+  const exact: P = { ...untagged, id: 'p-MFA All', state: 'enabled' }
+  const { input } = build({ tenantPolicies: [exact], coverageMembers: exclusionsMembers() })
   const steps = generateRoadmap(input).steps
   assert.equal(stepFor(steps, 'mfa-all-users').status, 'done')
+  assert.equal(stepFor(steps, 'mfa-all-users').state.inPlace, true, 'the tenant’s own, In place')
 
   // 4: partial weaker-control → adjust step with the exact field change.
   {
@@ -219,7 +238,9 @@ test('1 + 4: an enforced goal is a done step; a partial weaker-control goal is a
       displayName: 'Baseline PR MFA',
       grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PR } },
     })
-    const { input } = build({ tenantPolicies: [mkPolicy({ displayName: 'Plain MFA' })], baselinePolicies: [baseline] })
+    // Plain MFA under the plan's name, so it is the step's own and corrected in place.
+    const own = stepFor(generateRoadmap(build({ tenantPolicies: [mkPolicy({ displayName: 'Plain MFA' })], baselinePolicies: [baseline] }).input).steps, 'mfa-all-users').createName
+    const { input } = build({ tenantPolicies: [mkPolicy({ id: 'p-Plain MFA', displayName: own })], baselinePolicies: [baseline] })
     const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
     assert.equal(step.kind, 'adjust')
     assert.ok((step.action.changes?.length ?? 0) > 0, 'field-by-field changes')
@@ -330,32 +351,40 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   // that is exactly how the Plan came to count 11 in place against Findings' 6.
   applyProgress(steps, clean, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone, groupMembers: { [XGROUP]: ['u9'] } })
   assert.equal(step.status, 'ready-to-enforce', 'an enabled policy does not make a step done while coverage disagrees')
-  // On a real re-scan coverage is recomputed and agrees; then, and only then, the step is done.
-  const agreeing = {
-    ...input.coverage,
-    results: input.coverage.results.map((r) => (r.goal.id === 'mfa-all-users' ? { ...r, status: 'enforced' as const, verdict: 'inPlace' as const } : r)),
-  }
-  applyProgress(steps, clean, agreeing, PLAN, undefined, null, watched, { activePeople: everyone, groupMembers: { [XGROUP]: ['u9'] } })
-  assert.equal(step.status, 'done')
-  assert.equal(step.history.length, 3)
+  assert.equal(step.history.length, 2, 'report-only, then ready to enforce, each recorded')
+  // A goal step is done on its own policy, On and as planned, as the plan's
+  // generation reads it from the scan (owner, 2026-10-04: policy identity is the
+  // name; tracking.ts builtBeside), never on a coverage verdict alone. So the
+  // real re-scan generates the plan again from the scan, as the app does
+  // (ui/surfaces/planData.ts): coverage is recomputed and agrees, and then, and
+  // only then, the step is done.
+  const rescan = build({ baselinePolicies: [baseline], tenantPolicies: rowsOf(clean), snapshot: { ...mkSnapshot(), evidencePolicyResults: clean.evidencePolicyResults }, coverageMembers: exclusionsMembers() })
+  const again = settleFoundation(generateRoadmap(rescan.input).steps)
+  applyProgress(again, rescan.snapshot, rescan.input.coverage, PLAN, undefined, null, watched, { activePeople: everyone, groupMembers: { [XGROUP]: ['u9'] } })
+  assert.equal(stepFor(again, 'mfa-all-users').status, 'done')
 })
 
 test('7: regression after done → re-opened with a dated note (missing policy: a create step again)', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
-  const { input } = build({ baselinePolicies: [baseline] })
-  const steps = generateRoadmap(input).steps
+  // Where the last scan left it: the step's own policy, under the plan's name, On
+  // and delivering, and the step done on it. A goal step is done on its own policy
+  // and reopened on its own policy (owner, 2026-10-04: policy identity is the name;
+  // tracking.ts builtBeside), never on the goal's coverage alone, so the last scan
+  // is one that found that policy and recorded it.
+  const name = stepFor(generateRoadmap(build({ baselinePolicies: [baseline] }).input).steps, 'mfa-all-users').createName
+  const own = mkPolicy({ id: 'p-own', displayName: name, conditions: { users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [XGROUP], includeRoles: [], excludeRoles: [] }, applications: { includeApplications: ['All'], excludeApplications: [], includeUserActions: [] }, clientAppTypes: ['all'] } })
+  const { input, snapshot } = build({ baselinePolicies: [baseline], tenantPolicies: [own], coverageMembers: exclusionsMembers() })
+  const steps = settleFoundation(generateRoadmap(input).steps)
   const step = stepFor(steps, 'mfa-all-users')
-  // Where the last scan left it. It is set through the state, not restored from a
-  // saved status word: a word is a projection, and a policy step's lifecycle comes
-  // from the current scan (progress.ts mergePersisted).
-  step.history = [{ at: '2026-08-01T00:00:00Z', from: 'ready', to: 'done', note: null }]
-  setState(step, { satisfied: true, inPlace: true })
-  assert.equal(step.status, 'done')
-  // coverage for this run says absent (no tenant policy) → drift reopen.
-  applyProgress(steps, mkSnapshot(), input.coverage, PLAN)
+  applyProgress(steps, snapshot, input.coverage, PLAN, undefined, null, null, { groupMembers: { [XGROUP]: ['u9'] } })
+  assert.equal(step.status, 'done', 'the premise: done on its own policy')
+  assert.equal(step.tracking?.policyId, 'p-own', 'the premise: the scan recorded the policy it is done on')
+  // This scan finds no tenant policy and coverage says absent → drift reopen.
+  const gone = build({ baselinePolicies: [baseline] })
+  applyProgress(steps, gone.snapshot, gone.input.coverage, PLAN)
   assert.equal(step.status, 'ready')
   assert.equal(step.kind, 'create')
-  assert.match(step.history.at(-1)?.note ?? '', /changed since .*missing again/)
+  assert.match(step.history.at(-1)?.note ?? '', /was deleted after .*the goal is open again/)
 })
 
 test('9 + 13: valid break-glass answers keep the emergency-access step standing by its checks and build no drill step; confirmed service accounts with no group build the phase-0 step that creates it', () => {

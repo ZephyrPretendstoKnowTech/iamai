@@ -122,10 +122,10 @@ const ARTIFACT_ONLY = new Map([
   // MSAL ships a known-authority table for every sovereign cloud. IAMAI's
   // authority is login.microsoftonline.com (src/graph/msal.ts:14); the rest are
   // constants MSAL compares against and never contacts on our configuration.
+  // (Its test authority, login.windows-ppe.net, left the bundle with 5.24.)
   ['login.microsoftonline.us', '@azure/msal-browser sovereign-cloud authority table'],
   ['login.microsoftonline.de', '@azure/msal-browser sovereign-cloud authority table'],
   ['login.chinacloudapi.cn', '@azure/msal-browser sovereign-cloud authority table'],
-  ['login.windows-ppe.net', '@azure/msal-browser test authority constant'],
   // The Azure instance-metadata address, in MSAL's managed-identity path. That
   // path is unreachable from a browser SPA and is not configured here.
   ['169.254.169.254', '@azure/msal-browser managed-identity IMDS constant'],

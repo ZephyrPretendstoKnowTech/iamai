@@ -129,12 +129,16 @@ test('the floor flag is provenance, not permission: a floor step whose reference
 })
 
 test('the active baseline lacking a goal and the tenant already delivering it are two facts', () => {
-  // The demo tenant already blocks legacy authentication. Take the goal out of
+  // The small tenant already blocks legacy authentication. Take the goal out of
   // the active baseline and the recommendation becomes the floor's — but the
   // tenant's own policy still delivers it, so nothing offers to create a second
-  // one, and the row is not drawn in the floor group. Week two: the block carves
-  // out the chosen exclusions group, which on day one it does not (Step 3 correction).
-  const r = runFixture(fixture('demo-week2'), { goalMap: without('block-legacy-auth') })
+  // one, and the row is not drawn in the floor group. Policy identity is the name
+  // (owner, 2026-10-04): the tenant's policy is the floor step's own by the
+  // template's name, and done only when exactly the template's. The small tenant's
+  // is (untagged, so In place); week two's is not, since the template also excludes
+  // the service accounts group week two has still to create, so it is no longer
+  // the premise here.
+  const r = runFixture(fixture('small'), { goalMap: without('block-legacy-auth') })
   const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')!
   assert.equal(legacy.floor, true, 'provenance survives: the active baseline does not carry it')
   assert.equal(legacy.status, 'done', 'the tenant\'s own policy delivers it')

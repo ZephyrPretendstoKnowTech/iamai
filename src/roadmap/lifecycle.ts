@@ -539,5 +539,7 @@ export function nextMilestone(step: Step, opts: { undated?: boolean } = {}): Mil
   const ops = operationsOf(step)
   const correcting = ops.length > 0 && ops.every((o) => o.mode === 'update')
   // A User Action policy is created On (evidenceStrategy.ts stepCreatedOn; Phase 2e).
-  return { kind: 'deploy', label: correcting ? MILESTONE.correct : stepCreatedOn(step) ? MILESTONE.deployOn : MILESTONE.deploy, at: undated ? null : step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
+  // Its one change the name (PolicyOperation.renamesOnly; owner, 2026-10-04): a rename, never a correction.
+  const renaming = correcting && ops.every((o) => o.renamesOnly === true)
+  return { kind: 'deploy', label: renaming ? MILESTONE.rename : correcting ? MILESTONE.correct : stepCreatedOn(step) ? MILESTONE.deployOn : MILESTONE.deploy, at: undated ? null : step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
 }

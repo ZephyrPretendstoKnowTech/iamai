@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepBodyOf } from './stepBody.ts'
@@ -19,9 +20,11 @@ import type { StepVarContext } from './stepVars.ts'
 const F = CONTRACT.implementation.aiFacts
 type Opened = { f: Fixture; run: ReturnType<typeof runFixture>; ctx: StepVarContext; step: Step; ai: string; unavailable: boolean }
 const runs = new Map<string, { f: Fixture; run: ReturnType<typeof runFixture> }>()
-function opened(name: 'demo' | 'demo-week2' | 'messy' | 'hostile', id: string): Opened {
+function opened(name: 'demo' | 'demo-week2' | 'messy' | 'hostile' | 'demo, legacy policy its own', id: string): Opened {
   if (!runs.has(name)) {
-    const f = fixture(name)
+    // The demo with its legacy-authentication policy under the baseline's name, so
+    // it is the step's own (owner, 2026-10-04: policy identity is the name).
+    const f = name === 'demo, legacy policy its own' ? asPlansOwn(fixture('demo'), 's-goal-block-legacy-auth') : fixture(name)
     runs.set(name, { f, run: runFixture(f, {}, null, f.snapshot.asOf) })
   }
   const { f, run } = runs.get(name)!
@@ -82,11 +85,15 @@ test("the briefing carries the tenant's own facts after the package's words, and
 
 test('a policy briefing names the tenant policy, its state and resolved exclusions, keeps existing tenant exclusions, and invents no findings, enforced or in report-only', () => {
   {
-    const o = opened('demo', 's-goal-block-legacy-auth')
+    // The step's own policy is the one carrying its name; under the tenant's own
+    // name the step creates the baseline's beside it and has no current policy.
+    const o = opened('demo, legacy policy its own', 's-goal-block-legacy-auth')
     const { own, facts } = split(o.ai)
     assert.ok(own.length > 0 && facts.length > 0)
     assert.equal(o.step.state.lifecycle, 'enforced', 'the premise: the policy is On')
-    assert.match(facts, new RegExp(`^${F.current}: Core - Block - Legacy authentication \\([0-9a-f-]{36}\\)$`, 'm'))
+    const current = facts.split('\n').find((l) => l.startsWith(`${F.current}: `))
+    assert.match(current ?? '', /\([0-9a-f-]{36}\)$/)
+    assert.equal(current?.replace(/ \([0-9a-f-]{36}\)$/, ''), `${F.current}: ${o.step.createName}`)
     assert.match(facts, new RegExp(`^${F.currentState}: ${CONTRACT.lifecycle.enforced}$`, 'm'))
     // The raw field path is gone (walk list 4.x item 40): the Observed line says what differs in words.
     assert.doesNotMatch(facts, /conditions\.users\.excludeGroups/)

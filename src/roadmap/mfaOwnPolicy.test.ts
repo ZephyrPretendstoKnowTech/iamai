@@ -56,50 +56,73 @@ function split(name = INTERNAL): Fixture {
   })
 }
 
-test('week two follows the baseline: its own MFA policy is compared, Completed, and Align Policy Names renames it; after the rename nothing reopens', () => {
+// Policy identity is the name (owner, 2026-10-04): a tenant policy exactly the
+// baseline's under another name is the step's own through a rename, the step's one
+// edit; it is not Completed under the tenant's name. Once renamed it is Completed.
+const renameOf = (step: Step) => (step.action.resolution?.policies ?? []).filter((o) => o.mode === 'update' && 'displayName' in ((o.body ?? {}) as Row))
+const createOf = (step: Step) => (step.action.resolution?.policies ?? []).find((o) => o.mode === 'create')
+
+test('week two follows the baseline: its own MFA policy, exact under the tenant’s name, is renamed by the step; after the rename it is Completed and nothing else moves', () => {
   const run = runFixture(WEEK2)
   const step = stepOf(run, MFA)
   const own = named((WEEK2.snapshot.config.caPolicies?.rows ?? []) as Row[], OWN)
-  assert.equal(step.action.intendedFor, own.id)
   assert.equal(step.tracking?.members?.[0]?.policyId, own.id)
-  assert.equal(step.status, 'done')
-  assert.ok(renames(run).includes(`${OWN} → ${ALL_USERS}`), JSON.stringify(renames(run)))
+  const rename = renameOf(step)
+  assert.deepEqual(rename.map((o) => [o.policyId, o.body]), [[own.id, { displayName: ALL_USERS }]], 'the step’s one edit is the rename')
+  assert.equal(createOf(step), undefined, 'no second MFA policy beside it')
+  assert.notEqual(step.status, 'done', 'the plan’s name is still to be given')
   const after = runFixture(edited(WEEK2, (rows) => { named(rows, OWN).displayName = ALL_USERS }))
-  assert.deepEqual(reading(after), reading(run), 'a rename changes no step')
+  const renamed = stepOf(after, MFA)
+  assert.equal(renamed.status, 'done')
+  assert.equal(renamed.action.intendedFor, own.id)
+  assert.equal(renamed.tracking?.members?.[0]?.policyId, own.id)
+  const others = (r: Run) => reading(r).filter((x) => !x.startsWith(`${MFA}|`))
+  assert.deepEqual(others(after), others(run), 'a rename changes no other step')
   assert.ok(!renames(after).some((r) => r.startsWith(`${ALL_USERS} →`)))
 })
 
-test('the owner-like split tenant: its internal users’ policy is compared against AllUsers, directed to exclude Intune Enrollment and RMS, and renamed', () => {
+test('the owner-like split tenant: 4.4 creates AllUsers with Intune Enrollment and RMS excluded beside its internal users’ policy, which it never edits or renames', () => {
   const f = split()
   const run = runFixture(f)
   const result = run.coverage.results.find((r) => r.goal.id === 'mfa-all-users')!
   assert.equal(result.status, 'enforced', 'the premise: the three deliver it together')
   const step = stepOf(run, MFA)
   const own = named((f.snapshot.config.caPolicies?.rows ?? []) as Row[], INTERNAL)
-  assert.equal(step.action.intendedFor, own.id)
-  assert.equal(step.tracking?.members?.[0]?.policyName, INTERNAL)
-  const excluded = (appsOf(step.action.intended).excludeApplications ?? []) as string[]
-  assert.deepEqual([...excluded].map((x) => x.toLowerCase()).sort(), [RMS, INTUNE_ENROLLMENT].sort(), 'the correction names both of Jon’s exclusions')
-  assert.ok((step.state.observation?.unwritten ?? []).includes('conditions.applications'), JSON.stringify(step.state.observation?.unwritten))
-  assert.ok(renames(run).includes(`${INTERNAL} → ${ALL_USERS}`), JSON.stringify(renames(run)))
-  // A correction owed on 4.4 is not MFA missing: nobody meets it for the first time.
-  assert.notEqual(step.status, 'done', 'the premise: a correction is owed')
+  // Policy identity is the name (owner, 2026-10-04): the internal users' policy is
+  // not the baseline's in every setting and carries another name, so the step
+  // creates AllUsers in Report-only and lists that policy beside it to retire.
+  const create = createOf(step)
+  assert.equal((create?.body as Row | undefined)?.displayName, ALL_USERS)
+  assert.equal((create?.body as Row | undefined)?.state, 'enabledForReportingButNotEnforced')
+  assert.deepEqual(renameOf(step), [], 'the tenant’s policy is never edited')
+  assert.deepEqual((step.action.besidePolicies ?? []).map((b) => b.policyId), [own.id])
+  const excluded = (appsOf(create?.body).excludeApplications ?? []) as string[]
+  assert.deepEqual([...excluded].map((x) => x.toLowerCase()).sort(), [RMS, INTUNE_ENROLLMENT].sort(), 'the create names both of Jon’s exclusions')
+  assert.ok(!renames(run).some((r) => r.startsWith(`${INTERNAL} →`)), JSON.stringify(renames(run)))
+  // A policy still to build on 4.4 is not MFA missing: everyone it reaches already
+  // meets MFA through the tenant's own policies, so nobody meets it for the first time.
+  assert.notEqual(step.status, 'done', 'the premise: the baseline’s policy is still to build')
   assert.equal(deliveredByEnforcedPolicy(step), true)
   assert.equal(planDates(run.steps, run.schedule.start, run.coverage.organisation.naming, f.snapshot).mfaInPlace, true)
   // 7.3 is never held for the session loop, and Inforcer stays delivered.
   assert.ok(!stepOf(run, REAUTH).blockers.some((b) => b.label === 'session-loop'))
 })
 
-test('correcting the split tenant’s policy exactly to AllUsers completes it, and Inforcer and Azure management stay delivered', () => {
+test('correcting the split tenant’s policy exactly to AllUsers makes it the step’s own by a rename, and named it completes; Inforcer and Azure management stay delivered', () => {
   const before = runFixture(split())
-  const intended = stepOf(before, MFA).action.intended as Row
+  const intended = createOf(stepOf(before, MFA))?.body as Row
+  assert.ok(intended, 'the premise: the step creates AllUsers')
   const corrected = edited(split(), (rows) => {
     const p = named(rows, INTERNAL)
     p.conditions = structuredClone(intended.conditions)
     p.grantControls = structuredClone(intended.grantControls)
     p.sessionControls = structuredClone(intended.sessionControls ?? null)
   })
-  const after = runFixture(corrected)
+  // Policy identity is the name (owner, 2026-10-04): exact under another name, the
+  // step's one edit is the rename; under the baseline's name it is Completed.
+  const own = named((corrected.snapshot.config.caPolicies?.rows ?? []) as Row[], INTERNAL)
+  assert.deepEqual(renameOf(stepOf(runFixture(corrected), MFA)).map((o) => [o.policyId, o.body]), [[own.id, { displayName: ALL_USERS }]])
+  const after = runFixture(edited(corrected, (rows) => { named(rows, INTERNAL).displayName = ALL_USERS }))
   assert.equal(stepOf(after, MFA).status, 'done', JSON.stringify(stepOf(after, MFA).state.observation?.unwritten))
   assert.ok(!stepOf(after, REAUTH).blockers.some((b) => b.label === 'session-loop'))
   for (const goal of ['inforcer-mfa', 'azure-management-mfa']) {
@@ -125,11 +148,14 @@ test('an excluded app outside the goal’s resources gives nothing away; an excl
   assert.ok(coverageOf(['Office365'], 'inforcer-mfa')!.candidates.some((c) => c.policyName === OWN && c.caveats.includes('apps-excluded')), 'an excluded Microsoft group still counts')
 })
 
-test('day one directs 4.4’s correction with both of Jon’s exclusions', () => {
+test('day one builds 4.4’s policy with both of Jon’s exclusions', () => {
+  // Policy identity is the name (owner, 2026-10-04): day one's MFA policy carries
+  // the tenant's name and is not the baseline's in every setting, so 4.4 creates
+  // the baseline's beside it rather than correcting it.
   const step = stepOf(runFixture(DAY1), MFA)
-  const update = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
-  assert.ok(update, 'the premise: day one corrects its MFA policy')
-  const excluded = ((appsOf(update!.target).excludeApplications ?? []) as string[]).map((x) => x.toLowerCase())
+  const create = createOf(step)
+  assert.ok(create, 'the premise: day one builds its MFA policy')
+  const excluded = ((appsOf(create!.body).excludeApplications ?? []) as string[]).map((x) => x.toLowerCase())
   assert.ok(excluded.includes(INTUNE_ENROLLMENT) && excluded.includes(RMS), JSON.stringify(excluded))
 })
 
@@ -142,8 +168,11 @@ test('a duplicate the scan lists first that does not deliver it gets no comparis
   const result = run.coverage.results.find((r) => r.goal.id === 'mfa-all-users')!
   assert.ok(!(result.satisfaction?.policyIds ?? []).includes('dup-mfa-except-exchange'), 'the premise: it does not deliver the goal')
   const step = stepOf(run, MFA)
+  const own = named((f.snapshot.config.caPolicies?.rows ?? []) as Row[], OWN)
   assert.equal(step.tracking?.members?.[0]?.policyName, OWN)
-  assert.equal(step.status, 'done')
+  // Policy identity is the name (owner, 2026-10-04): the exact one is renamed by the
+  // step; the duplicate is listed beside it to retire, never renamed.
+  assert.deepEqual(renameOf(step).map((o) => o.policyId), [own.id])
+  assert.deepEqual((step.action.besidePolicies ?? []).map((b) => b.policyId), ['dup-mfa-except-exchange'])
   assert.ok(!renames(run).some((r) => r.startsWith('Contoso - MFA except Exchange')), JSON.stringify(renames(run)))
-  assert.ok(renames(run).includes(`${OWN} → ${ALL_USERS}`))
 })

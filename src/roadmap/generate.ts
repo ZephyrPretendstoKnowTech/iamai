@@ -677,6 +677,8 @@ export function buildCreateAction(
     const pending = whole.missing.length > 0 ? implementable(drawn, { ...p.resolved, keep: new Set(whole.missing.map((m) => m.token.toLowerCase())) }).policy : undefined
     if (target) {
       const patch = patchOf(whole.policy, sections)
+      // A policy found switched off goes back to Report-only first, never straight On (owner, 2026-09-23).
+      if (target.state === 'disabled' && patch.state === 'enabled') patch.state = 'enabledForReportingButNotEnforced'
       // The policy the change leaves behind: the tenant's own policy with this
       // patch applied. Read for explanation, impact and audit; never submitted.
       // Without the tenant's policy there is no complete target, and the whole
@@ -686,6 +688,7 @@ export function buildCreateAction(
       operations.push({
         ...(removes ? { removes } : {}),
         ...(!removes && addsExclusionsOnly(patch, current) ? { addsExclusionsOnly: true as const } : {}),
+        ...(typeof patch.displayName === 'string' && Object.keys(patch).every((k) => k === 'displayName') ? { renamesOnly: true as const } : {}),
         sourceName: p.sourceName,
         memberKey,
         mode: 'update',
@@ -823,6 +826,8 @@ function settleSections(sections: Set<ChangedSection>, built: Action, current: R
   } else if (updates.length > 0 && !reportOnly && operations.every((o) => o.mode === 'update')) {
     for (const section of [...sections]) if (!owed.includes(section)) sections.delete(section)
   }
+  // A policy found switched off goes back to Report-only whatever else it owes (buildCreateAction writes that state).
+  if (updates.some((u) => u.held.state === 'disabled')) sections.add('state')
   return [...sections].sort().join() !== before
 }
 
@@ -2052,7 +2057,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // and the steps with two policies read by name already (pairOf, the EAM
     // companion), and a goal the scan could not read stays held: those keep the
     // branches below.
-    const pilot = ((): { own: RawPolicy | null; rename: boolean; ambiguous: RawPolicy[]; beside: NonNullable<Action['besidePolicies']> } | null => {
+    const pilot = ((): { own: RawPolicy | null; rename: boolean; ownExact: boolean; ownDone: boolean; ambiguous: RawPolicy[]; beside: NonNullable<Action['besidePolicies']> } | null => {
       if (pair !== null || stepSources.length > 1 || result.status === 'unknown') return null
       const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
       const live = (p: RawPolicy | undefined): p is RawPolicy => p !== undefined && (p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced')
@@ -2076,7 +2081,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         .filter(live)
         .filter((p) => !ours.has(String(p.id)) && !matchedPolicyIds.includes(String(p.id)) && !anotherStepsJob(String(p.id)))
       let rename = false
-      if (own === null && ambiguous.length === 0 && theirs.length > 0) {
+      // Exact: every setting the baseline's, short at most of the exclusions group, or accepted.
+      let exact = (_p: RawPolicy): boolean => false
+      // The plan's own, as it stands: the exclusions group gone from it is a correction its step writes back.
+      let exactAsIs = (_p: RawPolicy): boolean => false
+      // Whether the plan's body could be read at all: an object it names still to
+      // make (the exclusions group held) leaves nothing to compare against.
+      let bodyKnown = false
+      if (own !== null || (ambiguous.length === 0 && theirs.length > 0)) {
         const built = buildCreateAction(named(stepSources.length > 0 ? stepPolicies() : templatePolicy(), planName), mapping, planId, stepId, goal.id)
         const body = (built.missing ?? []).length === 0 ? (built.resolution?.policies[0]?.body as RawPolicy | undefined) : undefined
         const accepted = mapping.acceptedDeviations?.[stepId]?.fields ?? {}
@@ -2089,7 +2101,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           if (groups.some((g) => g.toLowerCase() === group.toLowerCase())) return p
           return { ...p, conditions: { ...((p.conditions ?? {}) as RawPolicy), users: { ...users, excludeGroups: [...groups, group] } } }
         }
-        const exact = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, withGroup(p)).every((d) => accepted[d] !== undefined)
+        exact = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, withGroup(p)).every((d) => accepted[d] !== undefined)
+        exactAsIs = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, p).every((d) => accepted[d] !== undefined)
+        bodyKnown = body !== undefined
+      }
+      if (own === null && ambiguous.length === 0 && theirs.length > 0) {
         // The one renamed: On first, then by id, so the reading is the same scan to scan.
         const exactOnes = theirs.filter(exact).sort((a, b) => Number(b.state === 'enabled') - Number(a.state === 'enabled') || String(a.id).localeCompare(String(b.id)))
         if (exactOnes.length > 0) {
@@ -2099,7 +2115,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       }
       const ownId = String(own?.id ?? '')
       const beside = theirs.filter((p) => String(p.id) !== ownId).map((p) => ({ policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state) }))
-      return { own, rename, ambiguous, beside }
+      const ownExact = own !== null && (rename ? exact(own) : exactAsIs(own))
+      // Done: its own policy On and exact. Where the plan's body cannot be read yet,
+      // exactness cannot be proven either way, and the classifier's reading that the
+      // policy delivers the goal stands (it did before identity was the name): the
+      // plan's own policy, On, never reopens on an empty correction.
+      const ownDone = own !== null && !rename && own.state === 'enabled' && (bodyKnown ? ownExact : (result.satisfaction?.policyIds ?? []).includes(String(own.id)))
+      return { own, rename, ownExact, ownDone, ambiguous, beside }
     })()
     if (pilot !== null && pilot.ambiguous.length > 0) {
       // Two live policies carry the plan's name and neither its tag: the step will
@@ -2115,6 +2137,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const proposed = uniqueName(planName, stepId)
       if (!source) for (const p of resolveTemplate(impl.template as TemplateBody, templateValues).unresolved) blockPlaceholder(p)
       action = buildCreateAction(named(source ? stepPolicies() : templatePolicy(), proposed.name), mapping, planId, stepId, goal.id)
+      // The tenant's own policies, under other names, already enforce the goal: its people are protected today.
+      if (result.verdict === 'inPlace') action = { ...action, besideDelivers: true }
       namingNote = proposed
     } else if (pilot !== null && pilot.own !== null) {
       // The plan's own policy beside the tenant's: compared and corrected as now,
@@ -2127,14 +2151,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const own = pilot.own
       const ownId = String(own.id)
       const mine = source ? stepPolicies() : templatePolicy()
-      // Delivering: coverage counts it, or it delivers the goal by itself, enforced,
-      // at the floor, over the goal's whole population with no caveat of its own.
-      // The tenant's policies beside it are Cleanup's: a weaker one (Microsoft's
-      // MFA-for-admins template) reads the goal as partly delivered to coverage,
-      // and must not hold the step whose own policy is On and whole.
-      const ownReading = result.candidates.find((c) => c.policyId === ownId)
-      const deliversAlone = ownReading !== undefined && ownReading.contribution === 'strong' && ownReading.meetsFloor !== false && ownReading.reachesWhole === true && ownReading.caveats.length === 0
-      if (!pilot.rename && own.state === 'enabled' && ((result.satisfaction?.policyIds ?? []).includes(ownId) || deliversAlone)) {
+      // Done: its own policy On and exact, every setting the baseline's or accepted
+      // (owner, 2026-10-04: name and controls). What coverage reads of the goal as a
+      // whole does not decide it: the tenant's other policies beside it are Cleanup's,
+      // and a difference in the step's own policy (one person excluded by hand) is a
+      // correction, whatever the goal's other readings say.
+      if (pilot.ownDone) {
         kind = 'create'
         state = { ...state, satisfied: true, inPlace: !matchedPolicyIds.includes(ownId) }
         const would = buildCreateAction(named(mine, planName), mapping, planId, stepId, goal.id)
@@ -2160,6 +2182,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         if (existing && existing.meetsFloor === false && existing.contribution !== 'disabled') sections.add(goal.implementations[0].floor.grant !== undefined ? 'grantControls' : 'sessionControls')
         // A rename's one edit is the name; the plan's own keeps the name it has (8.2 aligns names later).
         if (pilot.rename) sections.add('displayName')
+        // Switched off, it goes back to Report-only (buildCreateAction), never On, and never a second one beside it.
+        if (own.state === 'disabled') sections.add('state')
         const one = named(mine, pilot.rename ? planName : String(own.displayName ?? planName))
         one[0] = { ...one[0], target: { policyId: ownId, state: String(own.state ?? 'enabled'), policy: own } }
         let built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
@@ -2651,7 +2675,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // the goal by itself, where one does: the whole contributing set brought in
     // the admins' phishing-resistant policy, and Require MFA for Everyone
     // counted an admin short of its own requirement (net-new 25).
-    const delivering = result.satisfaction?.sufficientId != null ? [result.satisfaction.sufficientId] : (result.satisfaction?.policyIds ?? [])
+    // A step done on its own policy, exact (owner, 2026-10-04: name and controls), is
+    // delivered by that policy, whatever the classifier reads of the goal as a whole:
+    // an accepted narrowing it reads as partly delivered must still say whom it misses.
+    const ownDone = pilot !== null && pilot.own !== null && pilot.ownDone ? String(pilot.own.id) : null
+    const delivering = ownDone !== null ? [ownDone] : result.satisfaction?.sufficientId != null ? [result.satisfaction.sufficientId] : (result.satisfaction?.policyIds ?? [])
     const deliveringEffects: PolicyEffect[] | null = state.satisfied
       ? (snapshot.config.caPolicies.rows as RawPolicy[]).filter(p => delivering.includes(String(p.id))).map(effectOf)
       : null
@@ -2786,14 +2814,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // threshold had never been met (Priya D3). A gate that congratulates you
     // for walking around it is not a gate. It holds nothing — the work is done
     // — and it is a fact about the tenant.
-    if (state.satisfied && unmet) enforcedBelowReadiness = thresholdReading()
+    // A policy On and exactly the baseline's that owes only its name (owner, 2026-10-04) is read as the finished step
+    // reads its policy: enforced already, so a readiness number is a fact about the tenant, never a hold on a rename.
+    const renameOnlyOn = (action.resolution?.policies ?? []).length > 0 && (action.resolution?.policies ?? []).every((o) => o.mode === 'update' && o.renamesOnly === true && (o.target as RawPolicy | undefined)?.state === 'enabled')
+    if ((state.satisfied || renameOnlyOn) && unmet) enforcedBelowReadiness = thresholdReading()
     if (!state.satisfied) {
       // The blocker is the word; `action.readinessGate` is the fact, and it is
       // what holds the enforcement (roadmap/operations.ts policyResult,
       // enforcementHeld). The step read "Blocked · when device readiness reaches
       // 80% (now 29%)" with four dated rings, an enforcement event, a calendar
       // entry and every implementation channel beside it.
-      if (unmet) {
+      if (unmet && !renameOnlyOn) {
         readinessGate = thresholdReading()
         blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(readinessGate.measure, readinessGate.threshold, readinessGate.value) })
         state = { ...state, condition: conditionFor(blockers) }
@@ -2927,7 +2958,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       : null
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
-    if (opVerdict?.stranded && !state.satisfied) {
+    if (opVerdict?.stranded && !state.satisfied && !renameOnlyOn) {
       blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.operator })
       state = { ...state, condition: conditionFor(blockers) }
     }

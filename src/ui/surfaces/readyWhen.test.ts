@@ -335,10 +335,12 @@ test('a policy the tenant enforces never finishes on a report-only period it is 
     const ctxOf = (f: Fixture): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
     const hostile = withFoundationSettled(plainFixture('hostile'))
     const run = runFixture(hostile)
-    // No step waits on a workflow record (owner, 2026-09-25): the guests policy the
-    // first scan found enforced finishes on the scan, and on no report-only window.
-    const step = run.steps.find((s) => s.id === 's-goal-guests-mfa')
-    assert.ok(step && step.state.lifecycle === 'enforced' && !awaitsWorkflowRecord(step), 'the premise: the guests policy is enforced and waits on nobody')
+    // No step waits on a workflow record (owner, 2026-09-25): the device-code block the
+    // first scan found enforced finishes on the scan, and on no report-only window. (Its
+    // guests step creates the baseline's own policy since identity is the name, owner
+    // 2026-10-04; the device-code block is exactly the baseline's and owes only its name.)
+    const step = run.steps.find((s) => s.id === 's-goal-block-device-code')
+    assert.ok(step && step.state.lifecycle === 'enforced' && !awaitsWorkflowRecord(step), 'the premise: the device-code policy is enforced and waits on nobody')
     for (const line of stepContract(step, ctxOf(hostile)).doneWhen) assert.doesNotMatch(line, /required report-only period|during those days/, line)
 
     // Watched in report-only, then turned on: it had its window, and nothing says it missed one.

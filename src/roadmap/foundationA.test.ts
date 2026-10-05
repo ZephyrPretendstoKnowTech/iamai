@@ -895,15 +895,27 @@ test('a final policy that reaches an emergency account is offered by no channel 
       if (ids.length > 0) adjusted.set(s.id, new Set(ids))
     }
     if (adjusted.size === 0) continue
-    covered += 1
     const all = new Set([...adjusted.values()].flatMap((x) => [...x]))
     const unsafe = runFixture(withoutTenantExclusions(f, all))
     for (const stepId of adjusted.keys()) {
       const s = unsafe.steps.find((x) => x.id === stepId)
       if (!s) continue
-      const targets = (s.action.resolution?.policies ?? []).map((o) => (o.mode === 'update' ? o.target : o.body) as Record<string, unknown> | undefined)
-      const reaches = bg.some((id) => targets.some((t) => t !== undefined && accountApplicability(effectOf(t).scope, id, f.snapshot as never, membersOf(f)) === 'in'))
-      assert.equal(reaches, true, `${f.name} ${stepId}: the policy the tenant would be left with really does reach an emergency account`)
+      // The policy the tenant would be left with: the update written over its target.
+      // Since policy identity is the name (owner, 2026-10-04) most of these updates
+      // are a rename of a policy exact but for its name, and a rename of an enforced
+      // policy writes the exclusions group back with the name: that policy reaches
+      // nobody it should not, and has nothing to withhold. A guest policy never
+      // reached a member account to begin with. Every policy that does reach one is
+      // withheld by every channel.
+      const finals = (s.action.resolution?.policies ?? []).map((o) => {
+        if (o.mode !== 'update') return o.body as Record<string, unknown> | undefined
+        const t = o.target as Record<string, unknown> | undefined
+        const b = o.body as Record<string, unknown>
+        return t === undefined ? undefined : { ...t, ...b, conditions: { ...(t.conditions as object), ...(b.conditions as object | undefined) } }
+      })
+      const reaches = bg.some((id) => finals.some((t) => t !== undefined && accountApplicability(effectOf(t).scope, id, f.snapshot as never, membersOf(f)) === 'in'))
+      if (!reaches) continue
+      covered += 1
       // One result, and every channel reads it.
       assert.equal(unavailableReason(s), 'unsafe-emergency-access', `${f.name} ${stepId}: named for what it is`)
       assert.equal(implementationOffered(s), false, `${f.name} ${stepId}: no implementation`)
@@ -921,7 +933,7 @@ test('a final policy that reaches an emergency account is offered by no channel 
       for (const id of bg) assert.equal((rolloutCohort(s) ?? []).includes(id), false, `${f.name} ${stepId}: and no cohort`)
     }
   }
-  assert.ok(covered > 0, 'at least one fixture adjusts a policy without rewriting its users clause')
+  assert.ok(covered > 0, 'at least one fixture adjusts a policy without rewriting its users clause, and is left with one that reaches an emergency account')
 })
 
 test('the reading itself: out is the only answer that lets a policy through', () => {
@@ -1154,8 +1166,16 @@ test('an existing tenant policy that excludes an emergency account directly is p
     const apps = (rows0.find((p) => p.id === c.policyId)?.conditions ?? {}).applications
     if (apps) apps.excludeApplications = [...(apps.excludeApplications ?? []), 'cc15fd57-2c6c-4117-a88c-83b1d56b4bbe']
   }
+  // The step's own policy is the one carrying the baseline's name (owner,
+  // 2026-10-04: policy identity is the name): the tenant's first all-users MFA
+  // policy in Report-only takes it, so the step corrects that policy in place
+  // rather than creating the baseline's beside it. In Report-only the correction
+  // is offered now; an enforced one's waits on the readiness of the people it reaches.
+  const own = mfa?.candidates.find((x) => x.state === 'enabledForReportingButNotEnforced' && x.ownScope)
+  const mfaStep = runFixture(f).steps.find((s) => s.goalId === 'mfa-all-users' && s.createName !== undefined)
+  ;(rows0.find((p) => p.id === own?.policyId) as { displayName?: string }).displayName = mfaStep?.createName
   const r = runFixture(f)
-  const adjust = openPolicies(r.steps).find((s) => operationsOf(s).some((o) => o.mode === 'update'))
+  const adjust = openPolicies(r.steps).find((s) => s.id === mfaStep?.id && operationsOf(s).some((o) => o.mode === 'update'))
   assert.ok(adjust, 'the fixture adjusts a policy the tenant already has')
   const update = declared(adjust as Step).find((o) => o.mode === 'update')!
   const bg = f.mapping.breakGlassUserIds

@@ -322,16 +322,16 @@ test('an enforced activation policy names each eligible role whose PIM activatio
 
 /**
  * The PIM step with its policy already in the tenant, in report-only: the plan's
- * own (its tag in the description), or — `own` — the tenant's, found by its
- * settings with no tag, on context `context`.
+ * own (its tag in the description), or — `own` — the tenant's, with no tag, on
+ * context `context`. The tenant's keeps the baseline's name: a policy is the
+ * step's own by its tag or its name, never by its settings alone (owner,
+ * 2026-10-04: policy identity is the name), and these cases are about how the
+ * step's own policy names its context, not about which policy is its own.
  */
 const reportOnlyOn = (context: string, own: boolean): Fixture =>
   enforcedOn(PIM_STEP, (p) => {
     p.state = 'enabledForReportingButNotEnforced'
-    if (own) {
-      delete p.description
-      p.displayName = 'Contoso PIM step-up'
-    }
+    if (own) delete p.description
     ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = [context]
   })
 
@@ -353,13 +353,15 @@ test('a tenant’s own activation policy, enforced or in report-only, names its 
   // the ID its policy targets, and the premise of this test's last assertion changes
   // with it: no stand-in, and the proposed-name line drops.
   {
+    // No tag, and the baseline's name: the step's own by its name (owner,
+    // 2026-10-04: policy identity is the name), not the plan's by its tag.
     const { step, body, ctx } = pimOn(withEligible(enforcedOn(PIM_STEP, (p) => {
       delete p.description
-      p.displayName = 'PIM step-up'
       ;(p.conditions as { applications: { includeAuthenticationContextClassReferences: string[] } }).applications.includeAuthenticationContextClassReferences = ['c7']
     }), null))
     assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy reads enforced')
-    assert.equal(step.tracking?.matchedBy, 'fingerprint', 'the premise: the scan tied it by its settings, not by the plan’s tag')
+    // The tie is no tag (owner, 2026-10-04: policy identity is the name; its settings no longer tie it).
+    assert.ok(!['member-tag', 'step-tag'].includes(String(step.tracking?.members[0]?.matchedBy)), 'the premise: the scan tied it by its name, not by the plan’s tag')
     const bindings = packageBindings(step, ctx, body.contract)
     assert.equal(bindings['authContext.target.id'], 'c7')
     assert.equal(bindings['authContext.target.displayName'], undefined)

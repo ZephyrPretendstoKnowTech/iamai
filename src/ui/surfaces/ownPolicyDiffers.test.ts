@@ -12,14 +12,19 @@ import type { StepVarContext } from './stepVars.ts'
 const TOKEN = 's-goal-token-protection'
 type Row = Record<string, unknown>
 
-/** The tenant's own policy: the plan's token-protection body under the tenant's own name, on, with `change` applied. */
-function withOwnPolicy(f: Fixture, change: (row: Row) => void): Fixture {
+/**
+ * The tenant's own policy: the plan's token-protection body, on, with `change`
+ * applied, under the baseline's name (the body's own), so it is the step's own
+ * policy, or under `name`. A policy is the step's own by its tag or its name,
+ * never by its settings alone (owner, 2026-10-04: policy identity is the name).
+ */
+function withOwnPolicy(f: Fixture, change: (row: Row) => void, name?: string): Fixture {
   const plan = runFixture(f).steps.find((s) => s.id === TOKEN)
   assert.ok(plan, 'the premise: the fixture plans token protection')
   const body = structuredClone(plan.action.resolution?.policies[0]?.body) as Row | undefined
   assert.ok(body, 'the premise: the step would create a policy')
-  // Written by the tenant: its own name, and no plan tag (the tag lives in the description, generate.ts findTaggedPolicies).
-  const row: Row = { ...body, id: 'c0100000-0000-4000-8000-00000000c0de', displayName: 'Contoso token binding', description: 'Our token binding', state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf }
+  // Written by the tenant: no plan tag (the tag lives in the description, generate.ts findTaggedPolicies).
+  const row: Row = { ...body, id: 'c0100000-0000-4000-8000-00000000c0de', displayName: name ?? body.displayName, description: 'Our token binding', state: 'enabled', createdDateTime: f.snapshot.asOf, modifiedDateTime: f.snapshot.asOf }
   change(row)
   const g = structuredClone(f)
   const ca = g.snapshot.config.caPolicies!
@@ -56,4 +61,9 @@ test("a tenant's own policy that differs from the baseline in any setting is not
   const same = opened(withOwnPolicy(base, () => {}))
   assert.equal(same.step.state.satisfied, true)
   assert.equal(same.tile, null)
+  // Exactly the baseline's under the tenant's own name is not yet the step's own:
+  // its one edit is the rename (owner, 2026-10-04: policy identity is the name).
+  const other = opened(withOwnPolicy(base, () => {}, 'Contoso token binding'))
+  assert.equal(other.step.state.satisfied, false)
+  assert.deepEqual((other.step.action.resolution?.policies ?? []).map((o) => [o.mode, o.policyId, Object.keys(o.body)]), [['update', 'c0100000-0000-4000-8000-00000000c0de', ['displayName']]])
 })

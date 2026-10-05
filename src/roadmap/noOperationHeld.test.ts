@@ -124,10 +124,20 @@ test('patch Q3: the demo\'s device policy, turned on as the step built it with p
   }
 })
 
-test('patch Q3: a tenant\'s own enforced compliant-device policy that leaves phones out, as decided, is the goal in place on its first scan', () => {
+// Policy identity is the name (owner, 2026-10-04): the tenant's policy, exactly
+// the plan's under its own name, delivers the goal as decided, and the step's one
+// edit is the rename. Carrying the baseline's name, it is the goal in place.
+test('patch Q3: a tenant\'s own enforced compliant-device policy that leaves phones out, as decided, delivers the goal; the step renames it, and under the baseline\'s name it is in place on its first scan', () => {
   const f = withDirectionApproved(fixture('demo-week2'))
-  const run = scanned(f, tenantOwn(created(f), { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] }))
-  assertDelivered(run, 'In place', 'the tenant\'s own policy')
+  const body = created(f)
+  const own = tenantOwn(body, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] })
+  const theirs = scanned(f, own)
+  const cov = theirs.r.coverage.results.find((x) => x.goal.id === theirs.step.goalId)!
+  assert.equal(cov.status, 'enforced', 'the tenant\'s policy: the recorded narrowing reads as a gap')
+  assert.match(cov.statement, CHOSEN)
+  const ops = theirs.step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.map((o) => [o.mode, o.policyId, o.body]), [['update', POLICY, { displayName: body.displayName }]], 'the step\'s one edit is not the rename')
+  assertDelivered(scanned(f, { ...own, displayName: body.displayName }), 'In place', 'the tenant\'s own policy under the baseline\'s name')
 })
 
 test('patch Q3: a platform narrowing nobody recorded is still a gap', () => {
@@ -195,7 +205,16 @@ test("R4-11: a policy enforced as its step asked (token protection) or as the ba
   // baseline's does. It used to read narrower than the goal's "all applications"
   // and came back as an Office365 -> Office365 update (Nadia D7); it is the goal
   // in place, and the step offers nothing.
-  const large = runFixture(withFoundationSettled(fixture('large'))).steps.find((s) => s.id === DEVICE)!
+  // Policy identity is the name (owner, 2026-10-04): one of large's enforced
+  // Office 365 device policies is the step's own once it carries the baseline's
+  // name and its platforms are the plan's (phones left out, as decided).
+  const settled = structuredClone(withFoundationSettled(fixture('large')))
+  const seed = runFixture(settled).steps.find((s) => s.id === DEVICE)!
+  const plan = seed.action.resolution!.policies[0].body as Row
+  const office = (settled.snapshot.config.caPolicies!.rows as Row[]).find((p) => p.state === 'enabled' && (seed.action.besidePolicies ?? []).some((b) => b.policyId === p.id))!
+  office.displayName = seed.createName
+  office.conditions = { ...office.conditions, platforms: structuredClone(plan.conditions!.platforms) }
+  const large = runFixture(settled).steps.find((s) => s.id === DEVICE)!
   assert.equal(large.state.lifecycle, 'enforced', 'premise: the tenant enforces it')
   assert.equal(large.status, 'done')
   assert.deepEqual(large.action.resolution?.policies ?? [], [], 'no update re-submits what the policy holds')

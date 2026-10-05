@@ -93,7 +93,11 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
       dates: /^Announce .+ · Change .+$/,
       snapshot: (f) => {
         const exclusions = f.mapping.records['__globalExclusion']?.resolvedId
-        const policy = { id: 'p-token', displayName: 'Core - Require - Token Protection (Windows)', state: 'enabled', createdDateTime: '2026-01-10T00:00:00Z', conditions: { users: { includeUsers: ['All'], excludeUsers: [...f.mapping.breakGlassUserIds], excludeGroups: exclusions ? [exclusions] : [] }, applications: { includeApplications: ['00000002-0000-0ff1-ce00-000000000000', '00000003-0000-0ff1-ce00-000000000000'] }, platforms: { includePlatforms: ['windows'] }, clientAppTypes: ['mobileAppsAndDesktopClients'] }, grantControls: null, sessionControls: { secureSignInSession: { isEnabled: true } } }
+        // Under the baseline's name it is the step's own, corrected in place (owner,
+        // 2026-10-04: policy identity is the name); under another the step would
+        // build the baseline's beside it in Report-only, which is no live change.
+        const displayName = runFixture(f).steps.find((s) => s.id === 's-goal-token-protection')!.createName
+        const policy = { id: 'p-token', displayName, state: 'enabled', createdDateTime: '2026-01-10T00:00:00Z', conditions: { users: { includeUsers: ['All'], excludeUsers: [...f.mapping.breakGlassUserIds], excludeGroups: exclusions ? [exclusions] : [] }, applications: { includeApplications: ['00000002-0000-0ff1-ce00-000000000000', '00000003-0000-0ff1-ce00-000000000000'] }, platforms: { includePlatforms: ['windows'] }, clientAppTypes: ['mobileAppsAndDesktopClients'] }, grantControls: null, sessionControls: { secureSignInSession: { isEnabled: true } } }
         const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
         return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [...(ca.rows ?? []), policy] } } }
       },

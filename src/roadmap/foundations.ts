@@ -127,7 +127,8 @@ export function gateOnFoundations(steps: Step[]): void {
     // And a policy with a setting to correct by hand (every control is exact, owner
     // 2026-09-25) that would read Ready: blocked binds harder than its review
     // (lifecycle.ts CONDITION_RANK), and a Ready row never waits on another step.
-    const correcting = step.state.condition === 'review-required' && step.status === 'ready' && (step.state.observation?.unwritten.length ?? 0) > 0
+    // A rename the step hands over (owner, 2026-10-04) waits as any other edit does.
+    const correcting = step.state.condition === 'review-required' && step.status === 'ready' && ((step.state.observation?.unwritten.length ?? 0) > 0 || (step.action.resolution?.policies ?? []).length > 0)
     if (step.state.condition === 'healthy' || correcting) setState(step, { condition: 'blocked' })
     // A policy something holds is never Ready to enforce (roadmap/tracking.ts,
     // which reads the holds before this pass writes this one): a watched policy

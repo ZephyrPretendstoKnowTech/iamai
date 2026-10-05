@@ -53,9 +53,29 @@ test('prompt 50 item 10: at least twelve scenarios fire on the demo, and these a
   }
 })
 
+/**
+ * The fixture as it stands once every rename its plan asks for is done: a tenant
+ * policy exactly the baseline's under another name is its step's own through a
+ * rename, the step's one edit (owner, 2026-10-04: policy identity is the name).
+ */
+function renamedAsPlanned(f: ReturnType<typeof fixture>): ReturnType<typeof fixture> {
+  const snapshot = structuredClone(f.snapshot)
+  const rows = (snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
+  for (const s of runFixture(f).steps) {
+    for (const op of s.action.resolution?.policies ?? []) {
+      const name = (op.body as { displayName?: unknown }).displayName
+      const row = op.mode === 'update' ? rows.find((p) => p.id === op.policyId) : undefined
+      if (row && typeof name === 'string') row.displayName = name
+    }
+  }
+  return { ...f, snapshot }
+}
+
 test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracking story, and the in-place count rises', () => {
   const day1 = runFixture(fixture('demo'))
-  const week2 = runFixture(asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant'))
+  // By week two the technician has also given the policies exactly the baseline's
+  // their baseline names, the one edit each of their steps asks for.
+  const week2 = runFixture(renamedAsPlanned(asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant')))
   // Ready is phishing-resistant readiness (Step 7, scoring/phishingResistant.ts), over the active people.
   // Ready counts Seamless too (isReady): a person is Ready or better.
   const ready = (r: ReturnType<typeof runFixture>): number => r.viability.filter((v) => rolloutBucket(v) !== null && (v.readiness.state === 'ready' || v.readiness.state === 'seamless')).length
@@ -70,8 +90,13 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
   // carve out the group its technician chose rather than the break-glass group:
   // three more steps are in place — and so is every goal whose tenant policy
   // lacked only that group on day one (Step 3 correction).
+  // A step whose goal another goal's policy delivers (Inforcer, through the
+  // all-users MFA policy) creates its own policy in week two as well: it had no
+  // policy of its own to be short of the group (owner, 2026-10-04: policy identity
+  // is the name).
+  const createsOwn = (id: string) => (week2.steps.find((x) => x.id === id)?.action.resolution?.policies ?? []).some((o) => o.mode === 'create')
   const exclusionOnly = day1.steps.filter((s) => {
-    if (!s.id.startsWith('s-goal-') || s.status === 'done') return false
+    if (!s.id.startsWith('s-goal-') || s.status === 'done' || createsOwn(s.id)) return false
     const kinds = (day1.coverage.results.find((x) => x.goal.id === s.goalId)?.reasons ?? []).filter((x) => !x.expected).map((x) => x.kind)
     return kinds.length > 0 && kinds.every((k) => k === 'exclusion-missing')
   })

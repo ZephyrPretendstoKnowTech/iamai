@@ -22,6 +22,7 @@ test('the line is the owner\'s words', () => {
 test('a correction says the policy is On exactly when the tenant\'s policy is On: on its card, its task and its script', () => {
   let on = 0
   let notOn = 0
+  let renamed = 0
   // The same tenants with their On policies in Report-only: since 4.3 builds beside the
   // tenant's own admin policy (T4-PM), the samples hold no correction to a policy that is
   // not On, and these variants give the other half its cases.
@@ -30,7 +31,19 @@ test('a correction says the policy is On exactly when the tenant\'s policy is On
     for (const r of (f.snapshot.config.caPolicies?.rows ?? []) as { state?: string }[]) if (r.state === 'enabled') r.state = 'enabledForReportingButNotEnforced'
     return f
   }
-  const tenants = [...(['demo', 'demo-week2', 'mid', 'large', 'midflight', 'messy'] as FixtureName[]).map((n) => [n, fixture(n)] as const), ...(['demo-week2', 'mid', 'large', 'midflight', 'messy'] as FixtureName[]).map((n) => [`${n} (report-only)`, asReportOnly(n)] as const)]
+  // Since identity is the name (owner, 2026-10-04) the samples' On policies exactly the
+  // baseline's are renamed, not corrected: this variant's legacy block carries the
+  // baseline's name and blocks only Exchange ActiveSync, a real correction to a policy On.
+  const ownDrifted = (state: string) => {
+    const f = structuredClone(fixture('demo-week2'))
+    const step = runFixture(f).steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+    const row = ((f.snapshot.config.caPolicies?.rows ?? []) as { displayName?: string; conditions?: { clientAppTypes?: string[] } }[]).find((r) => r.displayName === 'Core - Block - Legacy authentication')!
+    row.displayName = step.createName
+    row.conditions = { ...row.conditions, clientAppTypes: ['exchangeActiveSync'] }
+    ;(row as { state?: string }).state = state
+    return f
+  }
+  const tenants = [...(['demo', 'demo-week2', 'mid', 'large', 'midflight', 'messy'] as FixtureName[]).map((n) => [n, fixture(n)] as const), ...(['demo-week2', 'mid', 'large', 'midflight', 'messy'] as FixtureName[]).map((n) => [`${n} (report-only)`, asReportOnly(n)] as const), ['demo-week2 (its own legacy block drifted)', ownDrifted('enabled')] as const, ['demo-week2 (its own legacy block drifted, report-only)', ownDrifted('enabledForReportingButNotEnforced')] as const]
   for (const [name, f] of tenants) {
     const run = runFixture(f)
     const rows = (f.snapshot.config.caPolicies?.rows ?? []) as { displayName?: string; state?: string }[]
@@ -41,6 +54,16 @@ test('a correction says the policy is On exactly when the tenant\'s policy is On
       if (!correct) continue
       const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks).filter((c) => c.key.startsWith('correct:'))
       const ps = body.artifacts.find((a) => a.id === 'ps')?.text() ?? ''
+      // A rename writes only the name (owner, 2026-10-04): nobody's sign-in changes, so
+      // the policy being On is no warning, on the card, the task or the script.
+      const ops = step.action.resolution?.policies ?? []
+      if (ops.length > 0 && ops.every((o) => o.renamesOnly === true)) {
+        renamed++
+        for (const card of cards) assert.equal(String(card.detail ?? '').split('\n').includes(ON), false, `${name}/${step.id}/${card.upn}: a rename says the policy is On`)
+        assert.equal(correct.steps.includes(ON), false, `${name}/${step.id}: the Rename task says the policy is On`)
+        assert.ok(!ps.split('\n').includes(`# ${ON}`), `${name}/${step.id}: the rename's script says the policy is On`)
+        continue
+      }
       for (const card of cards) {
         const state = rows.find((r) => r.displayName === card.upn)?.state
         const where = `${name}/${step.id}/${card.upn}`
@@ -63,4 +86,5 @@ test('a correction says the policy is On exactly when the tenant\'s policy is On
   }
   assert.ok(on > 0, 'the premise: a correction to a policy that is On')
   assert.ok(notOn > 0, 'the premise: a correction to a policy in report-only or off')
+  assert.ok(renamed > 0, 'the premise: a rename of a policy that is On')
 })

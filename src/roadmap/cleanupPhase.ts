@@ -274,9 +274,11 @@ export function renamesOf(steps: readonly Step[], tenantNames: readonly string[]
   const live = steps.filter((s) => s.status !== 'skipped' && !s.doesntApply && !s.state.setAside)
   const owned = live.flatMap((s) => {
     const updates = new Set((s.action.resolution?.policies ?? []).filter((o) => o.mode === 'update' && o.policyId).map((o) => String(o.policyId).toLowerCase()))
+    // A policy the step itself renames (its update writes the name) is the step's to rename, not Align Policy Names' (owner, 2026-10-04).
+    const renamedHere = new Set((s.action.resolution?.policies ?? []).filter((o) => o.mode === 'update' && o.policyId && typeof o.body.displayName === 'string').map((o) => String(o.policyId).toLowerCase()))
     // The one policy a finished step names for its comparison (Action.intendedFor), and no other.
     const compared = (id: string): boolean => s.action.intended !== undefined && (s.action.intendedFor === undefined || s.action.intendedFor.toLowerCase() === id.toLowerCase())
-    return (s.tracking?.members ?? []).filter((m) => m.policyId && m.policyName && (compared(m.policyId) || updates.has(m.policyId.toLowerCase())))
+    return (s.tracking?.members ?? []).filter((m) => m.policyId && m.policyName && !renamedHere.has(m.policyId.toLowerCase()) && (compared(m.policyId) || updates.has(m.policyId.toLowerCase())))
   })
   const taken = new Set([...tenantNames, ...live.flatMap((s) => s.tracking?.members ?? []).map((m) => m.policyName ?? '')].filter((n) => n !== '').map(key))
   const out = new Map<string, Rename>()

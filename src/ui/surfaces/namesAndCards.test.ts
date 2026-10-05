@@ -36,7 +36,10 @@ test('Completion Criteria describe the plan’s target, never the setting the st
   const { r, ctx } = run('demo-week2', true)
   const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   assert.ok(step.state.observation?.unwritten.includes('conditions.users'), 'the premise: who it applies to is to correct')
-  assert.equal((step.action.resolution?.policies ?? []).length, 0, 'the premise: a person corrects it in Entra')
+  // Owned by its name (owner, 2026-10-04: identity is the name), the policy is the
+  // step's update target, so the resolution names it with a patch that submits
+  // nothing; the correction is still a person's, as policyResult reads it.
+  assert.equal(unavailableReason(step), 'manual-correction', 'the premise: a person corrects it in Entra')
   const first = stepBodyOf(step, ctx).contract.doneWhen[0]
   assert.ok(first.includes('requiring Modern MFA + TAP for admin roles except'), first)
   assert.doesNotMatch(first, /Global Administrator/)
@@ -75,9 +78,12 @@ test('a policy to correct is one card: the policy, "Correct {fields}", and the c
   assert.doesNotMatch(open[0].detail ?? '', /\*\*/)
   // The demo's 4.4 corrects its resources alone: adding Core - Exclusions to it is
   // Configure Emergency Exclusions' edit, which lists it since F-002 (it said so twice).
-  const demo = run('demo')
-  const mfa = demo.r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
-  const b = stepBodyOf(mfa, demo.ctx)
+  // Policy identity is the name (owner, 2026-10-04): the demo's MFA policy is 4.4's
+  // own, which it corrects, under the baseline's name.
+  const own = asPlansOwn(fixture('demo'), 's-goal-mfa-all-users')
+  const ownRun = runFixture(own, {}, null, own.snapshot.asOf)
+  const mfa = ownRun.steps.find((s) => s.id === 's-goal-mfa-all-users')!
+  const b = stepBodyOf(mfa, { snapshot: own.snapshot, mapping: own.mapping, nameOf: (x) => ownRun.input.names!.label(x), signature: 'IT', operatorId: own.operatorId, now: own.snapshot.asOf, groups: own.groups, naming: ownRun.coverage.organisation.naming, ...planDates(ownRun.steps, ownRun.schedule.start, ownRun.coverage.organisation.naming, own.snapshot) })
   assert.deepEqual(policySubjectsOf(b.contract, b.readiness, b.emergencyAccountTasks).filter((c) => c.key.startsWith('correct:')).map((c) => c.title), ['Correct target resources'])
 })
 
@@ -151,7 +157,12 @@ test('a policy typed by hand with hyphens for the baseline’s en dashes (or the
   delete body.description
   ;(f.snapshot.config.caPolicies.rows as unknown[]).push(body)
   const step = runFixture(f).steps.find((s) => s.id === 's-goal-block-device-code')!
-  assert.deepEqual(step.tracking?.members?.map((m) => [m.policyId, m.matchedBy, m.plannedName ?? null]), [['p-typed-dashes', 'member-name', null]])
+  // Policy identity is the name (owner, 2026-10-04): carrying the plan's name, the
+  // policy is the step's own, and the step's operation is written to it, so the
+  // tracking finds it as that operation's target. Nothing renames it.
+  assert.deepEqual(step.tracking?.members?.map((m) => [m.policyId, m.matchedBy, m.plannedName ?? null]), [['p-typed-dashes', 'operation-target', null]])
+  const ops = step.action.resolution?.policies ?? []
+  assert.ok(ops.length > 0 && ops.every((o) => o.policyId === 'p-typed-dashes' && (o.body as { displayName?: string }).displayName === undefined), JSON.stringify(ops.map((o) => [o.mode, o.policyId, o.body])))
   assert.equal(nameKey(typed), nameKey(planned))
 })
 
@@ -166,8 +177,12 @@ test('N-001: a held step whose tabs hand over a live change says first that it w
   const body = stepBodyOf(step, ctx)
   assert.equal(body.rail.headline, `Not yet: ${reason}`)
   assert.equal(body.wait, `Not yet. Do this only ${reason}: it changes a live setting in the tenant.`)
-  // A prerequisite wait reads as a sentence, never "after: …".
-  const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+  // A prerequisite wait reads as a sentence, never "after: …". The demo's legacy
+  // block is the step's own, which it turns on, under the baseline's name (policy
+  // identity is the name, owner, 2026-10-04): under its own the step creates the
+  // baseline's in Report-only, which changes nothing live.
+  const owned = asPlansOwn(fixture('demo'), 's-goal-block-legacy-auth')
+  const legacy = runFixture(owned, {}, null, owned.snapshot.asOf).steps.find((s) => s.id === 's-goal-block-legacy-auth')!
   assert.match(heldLiveChange(legacy) ?? '', /^after [^:]/)
   // A held create in report-only denies nobody and keeps its words; so does a step nothing holds.
   for (const s of r.steps.filter((x) => x.action?.resolution?.policies?.length)) {

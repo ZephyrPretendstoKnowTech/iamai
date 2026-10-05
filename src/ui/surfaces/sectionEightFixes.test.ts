@@ -29,6 +29,27 @@ const demo = () => {
   return { f, r, phase, row }
 }
 
+/**
+ * The demo with its three policies built from the plan's procedure (its tag in
+ * the description) and renamed in the tenant since. Since policy identity is the
+ * name (owner, 2026-10-04) a tenant policy is the step's own by its tag or the
+ * baseline's name, so a policy the plan tracks under another name is one carrying
+ * its tag: the demo's own policies under their own names are not the steps' own
+ * (each step creates the baseline's beside it), and 8.2 has nothing of theirs to list.
+ */
+const TAGGED: readonly (readonly [string, string])[] = [
+  ['Core - Block - Legacy authentication', 's-goal-block-legacy-auth'],
+  ['Core - Block - Device code flow', 's-goal-block-device-code'],
+  ['Core - Grant - MFA for all users', 's-goal-mfa-all-users'],
+]
+const tagged = () => {
+  const f = structuredClone(fixture('demo'))
+  const rows = f.snapshot.config.caPolicies.rows as { displayName?: string; description?: string }[]
+  for (const [name, stepId] of TAGGED) rows.find((p) => p.displayName === name)!.description = `[IAMAI:${f.planId}:${stepId}]`
+  const r = runFixture(f)
+  return { f, r, phase: r.schedule.cleanup! }
+}
+
 test('8.1 stays Ongoing Checks and Cleanup’s first step, after the security rollout, and holds nothing', { skip: heldBack('alerting') }, () => {
   // Owner, 2026-09-26: never moved into Establish Emergency Access.
   assert.equal(groupOf('cleanup-alerting')?.key, 'ongoing')
@@ -84,9 +105,9 @@ test('8.1 exports the same procedure the step draws, and one completion line', {
 
 test('8.2 lists each policy the plan tracks under a name other than the baseline’s, with its ID, last of Ongoing Checks and Cleanup', () => {
   // Owner, 2026-09-26 (Jon's names): the baseline author's own name, verbatim.
-  const { phase } = demo()
+  const { phase } = tagged()
   const naming = phase.rows.find((x) => x.kind === 'naming')!
-  assert.ok(naming, 'the demo tenant has policies under its own names')
+  assert.ok(naming, 'the plan tracks policies under the tenant’s own names')
   assert.deepEqual(naming.lists.renames.map((l) => l.replace(/ \(ID: [^)]+\)$/, '')), [
     'Core - Block - Legacy authentication → IAC - GLOBAL – BLOCK - Legacy Authentication',
     'Core - Block - Device code flow → IAC - GLOBAL - BLOCK - Device Code Auth Flow',
@@ -132,7 +153,12 @@ test('8.2 skips a difference in capitals, never gives two policies one name, and
 
 test('doing every rename 8.2 lists reopens no step', () => {
   // Review, 2026-09-26: the baseline's name made an adopted policy the plan's own.
-  for (const f of [fixture('demo'), fixture('mid'), fixture('large'), fixture('midflight'), curatedFixture('demo-week2')]) {
+  // Since policy identity is the name (owner, 2026-10-04), a policy exactly the
+  // baseline's under another name is its step's own once renamed: the rename is
+  // that step's one edit, so doing it finishes the step. What a rename never does
+  // is move a step back: nothing finished reopens, no status falls, and no
+  // setting reads as a difference it did not before.
+  for (const f of [tagged().f, fixture('mid'), fixture('large'), fixture('midflight'), curatedFixture('demo-week2')]) {
     const r1 = runFixture(f)
     const renames = r1.schedule.cleanup?.namingProposals ?? []
     const snapshot = structuredClone(f.snapshot)
@@ -143,13 +169,19 @@ test('doing every rename 8.2 lists reopens no step', () => {
     const r2 = runFixture({ ...f, snapshot })
     for (const s of r1.steps) {
       const t = r2.steps.find((x) => x.id === s.id)!
+      // The step whose own edit was this rename: done once it is made.
+      const renamedBy = (s.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && renames.some((x) => x.id === o.policyId && (o.body as { displayName?: unknown }).displayName === x.to))
+      if (renamedBy) {
+        assert.equal(t.status, 'done', `${f.name} ${s.id}: the rename was its one edit`)
+        continue
+      }
       assert.deepEqual([t.status, t.state.satisfied, JSON.stringify(t.state.observation?.unwritten ?? [])], [s.status, s.state.satisfied, JSON.stringify(s.state.observation?.unwritten ?? [])], `${f.name} ${s.id}`)
     }
   }
 })
 
 test('8.2 is drawn on the step template with no fields and no Save, and exports the procedure it draws', () => {
-  const { phase } = demo()
+  const { phase } = tagged()
   const row = phase.rows.find((x) => x.kind === 'naming')!
   const cards = namingSubjects(phase)
   assert.equal(cards.length, 1, 'one card for the renames')
@@ -163,8 +195,9 @@ test('8.2 is drawn on the step template with no fields and no Save, and exports 
 })
 
 test('8.2 leaves the plan once a scan finds every baseline name', () => {
-  const f = fixture('demo')
+  const { f } = tagged()
   const renames = runFixture(f).schedule.cleanup!.namingProposals!
+  assert.ok(renames.length > 0, 'the premise: renames to make')
   const snapshot = structuredClone(f.snapshot)
   for (const row of snapshot.config.caPolicies.rows as { id: string; displayName: string }[]) {
     const rename = renames.find((x) => x.id === row.id)

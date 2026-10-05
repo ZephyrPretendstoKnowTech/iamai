@@ -34,6 +34,23 @@ import { withOneMethodListMissed } from '../../testing/unreadMethods.ts'
 
 type Run = ReturnType<typeof runFixture>
 
+/**
+ * The tenant with every policy the plan renames already renamed. Policy identity
+ * is the name (owner, 2026-10-04): a tenant policy exactly the baseline's under
+ * its own name is its step's rename, still to do; renamed, it is the step's own
+ * and the goal it delivers is in place, as these cases need.
+ */
+function renamedAsAsked(f: Fixture): Fixture {
+  for (const s of runFixture(f).steps) {
+    const ops = s.action.resolution?.policies ?? []
+    const body = ops[0]?.body as { displayName?: string } | undefined
+    if (ops.length !== 1 || ops[0].mode !== 'update' || !body || Object.keys(body).join() !== 'displayName') continue
+    const row = (f.snapshot.config.caPolicies.rows as { id?: string; displayName?: string }[]).find((p) => p.id === ops[0].policyId)
+    if (row) row.displayName = body.displayName
+  }
+  return f
+}
+
 function ctxFor(f: Fixture, r: Run, step: Step, snapshot = f.snapshot): StepVarContext {
   return {
     snapshot,
@@ -436,9 +453,30 @@ test('of two prerequisites where one waits on the other, the tile names the one 
 // either. What is worth saying is the size, which needs no judgement at all.
 test('a goal delivered for a fraction of the people it is written for says so', () => {
   const f = structuredClone(fixture('messy'))
+  // Policy identity is the name (owner, 2026-10-04): a step is done only on its own
+  // policy, On and exactly the baseline's (exclusions group included) or with the
+  // difference accepted. messy's Core - Exclusions holds 116 of 122 accounts, so it
+  // is no group a policy may use, and the step waits on sorting it out rather than
+  // reading delivered. So the premise is re-made the one way a step can still be
+  // done while missing most of its people: the exclusions group sorted out (Core -
+  // Break glass, the emergency accounts alone), the MFA policy under the baseline's
+  // name excluding it AND Core - Exclusions, and that difference in who it applies
+  // to accepted by a person. The size is then still the thing worth saying.
+  const STEP = 's-goal-mfa-all-users'
+  const bg = [...f.groups].find(([, g]) => g.displayName === 'Core - Break glass')![0]
+  const record = (f.mapping.records as Record<string, { resolvedId: string | null; resolvedName?: string | null }>).__globalExclusion
+  record.resolvedId = bg
+  record.resolvedName = 'Core - Break glass'
+  const row = (f.snapshot.config.caPolicies.rows as { displayName?: string; conditions: { users: { excludeGroups: string[] } } }[]).find((p) => p.displayName === 'Core - Grant - MFA for all users')!
+  row.displayName = runFixture(f).steps.find((s) => s.id === STEP)!.createName
+  row.conditions.users.excludeGroups = [...row.conditions.users.excludeGroups, bg]
+  const differs = runFixture(f).steps.find((s) => s.id === STEP)!
+  const users = differs.state.observation?.latest.fields['conditions.users']
+  assert.ok(users, 'the premise: who the policy applies to differs from the baseline')
+  f.mapping.acceptedDeviations = { [STEP]: { fields: { 'conditions.users': users }, reason: 'Most of the tenant signs in elsewhere.', at: f.snapshot.asOf } }
   const r = runFixture(f)
-  const step = r.steps.find((s) => s.goalId === 'mfa-all-users')!
-  assert.equal(step.state.satisfied, true, 'the premise: the classifier calls it delivered')
+  const step = r.steps.find((s) => s.id === STEP)!
+  assert.equal(step.state.satisfied, true, 'the premise: its own policy, its difference accepted, delivers it')
   const line = stepContract(step, ctxFor(f, r, step)).found.find((x) => x.key === 'shortfall')?.text ?? ''
   assert.match(line, /written for 122 people/, line)
   assert.match(line, /116 of them are excluded/, line)
@@ -484,7 +522,7 @@ test('a policy IAMAI watched arrive is never also reported as coverage the tenan
   }
   // And a goal the tenant genuinely already had, on a scan that watched nothing:
   // the existing-coverage report stands, and never claims IAMAI watched it.
-  const mid = structuredClone(fixture('mid'))
+  const mid = renamedAsAsked(structuredClone(fixture('mid')))
   const fr = runFixture(mid)
   const already = fr.steps.filter((s) => isPreserved(s) && s.state.observation?.latest.since !== 'observed-change')
   assert.ok(already.length > 0, 'the premise: this tenant has goals it already delivered')
@@ -504,12 +542,14 @@ test('a policy IAMAI watched arrive is never also reported as coverage the tenan
 test('a step whose goal is already delivered does not wait on a scan that cannot help it', () => {
   let checked = 0
   for (const name of ['mid', 'large', 'midflight', 'messy', 'hostile'] as const) {
-    const f = structuredClone(fixture(name))
+    const f = renamedAsAsked(structuredClone(fixture(name)))
     const run = runFixture(f)
     const ctx = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: null } as unknown as StepVarContext
     // A delivered step held open: nothing to write. The fixtures' own case was
-    // Require MFA for Inforcer Access, which now completes from the policy that
-    // delivers it (owner decision 17, 2026-09-25).
+    // Require MFA for Inforcer Access, which completed from the policy that
+    // delivered it (owner decision 17, 2026-09-25) until policy identity became
+    // the name (owner, 2026-10-04): now the steps delivered by their own policy,
+    // renamed as asked (Require MFA for Guests, Require a Managed Device).
     for (const delivered of run.steps) {
       // Where a person can decline it (content doesntApply), as the Inforcer step can.
       if (delivered.status !== 'done' || !delivered.satisfiedBy?.policies.length || (contentStepFor(delivered) as { doesntApply?: unknown } | undefined)?.doesntApply !== true) continue

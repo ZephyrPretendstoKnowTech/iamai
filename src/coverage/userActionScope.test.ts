@@ -8,29 +8,39 @@ import assert from 'node:assert/strict'
 import { curatedFixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 
-test('an all-users Register security information policy in Report-only is 5.1’s own: tracked in Report-only, never Not deployed', () => {
+// Policy identity is the name (owner, 2026-10-04): under the tenant's own name
+// the policy is 5.1's to retire beside the baseline's, which 5.1 creates; under
+// the baseline's name it is 5.1's own, tracked in Report-only. Either way it is
+// 5.1's, never Require MFA for Everyone's.
+test('an all-users Register security information policy in Report-only is 5.1’s: named beside its create under its own name, tracked in Report-only under the baseline’s', () => {
   const f = curatedFixture('getiamai')
-  const snapshot = structuredClone(f.snapshot)
-  const rows = snapshot.config.caPolicies!.rows as Record<string, unknown>[]
-  snapshot.config.caPolicies!.rows = [...rows, {
-    id: 'security-info-policy',
-    displayName: 'Core - Require - Security info registration',
-    state: 'enabledForReportingButNotEnforced',
-    conditions: {
-      users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [] },
-      applications: { includeApplications: [], excludeApplications: [], includeUserActions: ['urn:user:registersecurityinfo'] },
-      locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] },
-      clientAppTypes: ['all'],
-    },
-    grantControls: { operator: 'OR', builtInControls: ['mfa'], authenticationStrength: null },
-  }] as typeof snapshot.config.caPolicies.rows
-  const r = runFixture({ ...f, snapshot })
+  const withPolicy = (displayName: string) => {
+    const snapshot = structuredClone(f.snapshot)
+    const rows = snapshot.config.caPolicies!.rows as Record<string, unknown>[]
+    snapshot.config.caPolicies!.rows = [...rows, {
+      id: 'security-info-policy',
+      displayName,
+      state: 'enabledForReportingButNotEnforced',
+      conditions: {
+        users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [], includeRoles: [], excludeRoles: [] },
+        applications: { includeApplications: [], excludeApplications: [], includeUserActions: ['urn:user:registersecurityinfo'] },
+        locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] },
+        clientAppTypes: ['all'],
+      },
+      grantControls: { operator: 'OR', builtInControls: ['mfa'], authenticationStrength: null },
+    }] as typeof snapshot.config.caPolicies.rows
+    return runFixture({ ...f, snapshot })
+  }
+  const r = withPolicy('Core - Require - Security info registration')
   const candidate = r.coverage.results.find((x) => x.goal.id === 'register-info-protected')?.candidates.find((c) => c.policyId === 'security-info-policy')
   assert.ok(candidate, 'the premise: coverage reads it as a candidate')
   assert.equal(candidate.ownScope, true, 'an all-users user-action policy is its own goal’s')
   const step = r.steps.find((s) => s.id === 's-goal-register-info-protected')!
-  assert.equal(step.state.lifecycle, 'report-only')
-  assert.equal(step.tracking?.members?.[0]?.policyName, 'Core - Require - Security info registration')
+  assert.equal(step.action.resolution?.policies[0]?.mode, 'create', 'under another name, 5.1 creates the baseline’s policy')
+  assert.deepEqual((step.action.besidePolicies ?? []).map((p) => p.policyId), ['security-info-policy'], 'and names the tenant’s beside it, for Cleanup to retire')
+  const named = withPolicy(step.createName!).steps.find((s) => s.id === 's-goal-register-info-protected')!
+  assert.equal(named.state.lifecycle, 'report-only')
+  assert.equal(named.tracking?.members?.[0]?.policyName, step.createName)
   // Require MFA for Everyone takes no user-action policy, so nothing moves there.
   assert.ok(!(r.coverage.results.find((x) => x.goal.id === 'mfa-all-users')?.candidates ?? []).some((c) => c.policyId === 'security-info-policy'))
 })

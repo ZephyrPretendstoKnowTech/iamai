@@ -96,6 +96,24 @@ function later(id: string, state: string, f: Fixture = withFoundationSettled(str
 }
 
 /**
+ * The fixture with the tenant policy each step builds beside under the step's
+ * baseline name (owner, 2026-10-04: policy identity is the name): the first one
+ * it lists, which is then the step's own, tracked and corrected, while any other
+ * stays beside it. Every step that builds beside, or only those named.
+ */
+function ownByName(f: Fixture, ids?: readonly string[]): Fixture {
+  const g = structuredClone(f)
+  const rows = (g.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
+  for (const step of runFixture(f).steps) {
+    if (ids && !ids.includes(step.id)) continue
+    const first = step.action.besidePolicies?.[0]
+    const row = first ? rows.find((r) => r.id === first.policyId) : undefined
+    if (row && step.createName) row.displayName = step.createName
+  }
+  return g
+}
+
+/**
  * Every channel of a step with a tracked policy Off says to set each Off policy
  * to Report-only, and none turns one on or builds a second one. `reason` is the
  * step's own reason: `switched-off`, or `missing-object`, which outranks it and
@@ -322,8 +340,11 @@ test('a policy found Off on a step waiting on a missing object is set to Report-
   // have yet, a reason that holds the step before its policy being Off does.
   // The create procedure ("Policies → New policy") stood below it on the
   // screen and in AI Info, beside the policy that is there.
+  // The tenant's legacy block carries the baseline's name, so it is the step's own
+  // (owner, 2026-10-04: policy identity is the name); under its own the step
+  // builds the baseline's beside it and tracks nothing.
   const ID = 's-goal-block-legacy-auth'
-  const scan = later(ID, 'disabled', structuredClone(fixture('messy')))
+  const scan = later(ID, 'disabled', ownByName(fixture('messy'), [ID]))
   assertReportOnlyEverywhere(scan, ID, 'missing object', 'missing-object')
 })
 
@@ -331,8 +352,12 @@ test('no step with a tracked policy Off builds a second one or turns one on, in 
   // Every tracked policy switched Off at once, on tenants with and without the
   // foundation settled: whatever reason holds each step, none of its channels
   // creates the policy that is there or switches it straight on.
+  // messy's policies all carry the tenant's names, so its steps build beside them and
+  // track none (owner, 2026-10-04: policy identity is the name): it is read with
+  // them under the baseline's names, its steps' own.
+  const tenantOf = (name: 'messy' | 'demo-week2' | 'midflight'): Fixture => (name === 'messy' ? ownByName(fixture(name)) : structuredClone(fixture(name)))
   for (const name of ['messy', 'demo-week2', 'midflight'] as const) {
-    for (const f of [structuredClone(fixture(name)), withFoundationSettled(structuredClone(fixture(name)))]) {
+    for (const f of [tenantOf(name), withFoundationSettled(tenantOf(name))]) {
       const first = runFixture(f)
       const tracked = new Set(first.steps.flatMap((s) => (s.tracking?.members ?? []).map((m) => m.policyId)))
       const g = structuredClone(f)

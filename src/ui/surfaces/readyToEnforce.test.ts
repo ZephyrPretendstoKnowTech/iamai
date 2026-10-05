@@ -1071,7 +1071,22 @@ test("007.14: an enforced policy, found on by a later scan or the tenant's own, 
     // word is In place, the preservation result, and not Enforced: nothing here
     // was rolled out by the plan, and saying Enforced over a control IAMAI never
     // touched claims work it did not do.
-    const run = runFixture(fixture(FIXTURE))
+    //
+    // Policy identity is the name (owner, 2026-10-04): those exactly the
+    // baseline's carry the tenant's names, so each step's one edit is a rename.
+    // Read here once those renames are done: the policies the tenant already had,
+    // under the baseline's names.
+    const f = fixture(FIXTURE)
+    const snapshot = structuredClone(f.snapshot)
+    const rows = (snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
+    for (const s of runFixture(f).steps) {
+      for (const op of s.action.resolution?.policies ?? []) {
+        const name = (op.body as { displayName?: unknown }).displayName
+        const row = op.mode === 'update' ? rows.find((p) => p.id === op.policyId) : undefined
+        if (row && typeof name === 'string') row.displayName = name
+      }
+    }
+    const run = runFixture({ ...f, snapshot })
     const enforced = run.steps.filter((s) => s.state.lifecycle === 'enforced')
     assert.ok(enforced.length > 0, 'the fixture has policies the tenant already enforces')
     for (const step of enforced) {

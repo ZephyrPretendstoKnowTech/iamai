@@ -12,7 +12,7 @@ import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { Step } from './types.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
 import { canDenyAccess } from './strand.ts'
-import { addsExclusionsToEnforced, enforcesOnRun, enforcementHeld, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
+import { addsExclusionsToEnforced, enforcesOnRun, enforcementHeld, implementationOffered, operationsOf, renamesEnforced, unavailableReason } from './operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
 
 const NAMES = FIXTURE_SPECS.map((s) => s.name)
@@ -87,6 +87,9 @@ test('every fixture: no MFA or device requirement is offered below its readiness
     for (const s of steps) {
       if (!open(s) || !offered(s)) continue
       if (s.manualReview?.readyToConfirm && s.state.lifecycle === 'enforced') { assert.deepEqual(operationsOf(s), []); continue }
+      // A rename of a policy already On and exactly the baseline's (owner, 2026-10-04)
+      // requires nothing of anyone that is not required today: no threshold holds it.
+      if (renamesEnforced(s)) { assert.ok(operationsOf(s).every((o) => o.renamesOnly === true)); continue }
       if (s.readiness.percent === null) continue
       // The campaign is the step that runs at low readiness by design: it is
       // how readiness gets to the threshold in the first place.

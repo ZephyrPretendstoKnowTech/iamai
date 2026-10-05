@@ -34,6 +34,7 @@ import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { heldForReview } from '../lifecycle.ts'
 import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../operations.ts'
 import { observationsOf } from '../tracking.ts'
+import { materialFieldsOf } from '../observation.ts'
 import { applySkips } from '../progress.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import type { ReadinessRow, ReadinessView } from '../../derive/mfaReadiness.ts'
@@ -275,28 +276,41 @@ export function setAsideCase(): Case | null {
  * its policy reaches is not established (derive/population.ts reached), so
  * every assertion about `unknownReach` runs against a delivered step too. No
  * curated tenant has one; a scan of a tenant with a group over the member cap
- * does. The step is chosen by state, never by name: the first the tenant's own
- * policy delivers with a reach the scan settled, and the policy its tracking
- * matched. The group holds the emergency accounts, so read in full it would
- * change nothing.
+ * does.
+ *
+ * Since policy identity is the name (owner, 2026-10-04) mid's policies carry the
+ * tenant's names, and a step delivered by one is a rename. The step is chosen by
+ * state, never by name: the first whose one edit renames an enforced policy
+ * exactly the baseline's. Renamed, the policy is the step's own, and the group it
+ * also excludes is a difference accepted with a reason (owner, 2026-09-26), so the
+ * step stays delivered. The group holds the emergency accounts, so read in full
+ * it would change nothing.
  *
  * Null where no fixture offers such a step, so a change to the fixtures shows up
  * as a corpus gap rather than as a silently skipped scenario.
  */
-export function deliveredUnsettledCase(): Case | null {
+export function deliveredUnsettledCase(): (Case & { stepId: string }) | null {
   const f = structuredClone(curatedFixture('mid'))
-  const delivered = runFixture(f).steps.find((s) => s.state.satisfied && s.deliveredReach && typeof s.tracking?.policyId === 'string')
-  const target = delivered?.tracking?.policyId
-  if (target === undefined) return null
-  const policy = ((f.snapshot.config.caPolicies?.rows ?? []) as { id?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]).find((p) => p.id === target)
+  const rows = (f.snapshot.config.caPolicies?.rows ?? []) as { id?: string; state?: string; displayName?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]
+  const renameOf = (s: Step) => {
+    const ops = s.action.resolution?.policies ?? []
+    const body = ops[0]?.body as { displayName?: unknown } | undefined
+    return ops.length === 1 && ops[0].mode === 'update' && body && Object.keys(body).join() === 'displayName' && rows.find((p) => p.id === ops[0].policyId)?.state === 'enabled' ? ops[0] : null
+  }
+  const first = runFixture(f).steps.find((s) => renameOf(s) !== null)
+  if (!first) return null
+  const rename = renameOf(first)!
+  const policy = rows.find((p) => p.id === rename.policyId)
   const users = policy?.conditions?.users
-  if (!users) return null
+  if (!policy || !users) return null
+  policy.displayName = (rename.body as { displayName: string }).displayName
   // A group no fixture holds, so nothing it names is an object the fixture moves.
   const group = 'corpus-sampled-exclusion-group'
   users.excludeGroups = [...(users.excludeGroups ?? []), group]
+  f.mapping.acceptedDeviations = { ...f.mapping.acceptedDeviations, [first.id]: { fields: { 'conditions.users': materialFieldsOf(policy as Record<string, unknown>)['conditions.users'] }, reason: 'Contractors sign in elsewhere', at: f.snapshot.asOf } }
   const members = [...f.mapping.breakGlassUserIds]
   f.groups.set(group, { memberIds: members, directMemberIds: members, memberCount: 30_000, sampled: true, displayName: 'Contractors' } as never)
-  return caseOf(f, 'mid (a delivering policy excludes a group the scan could only sample)')
+  return { ...caseOf(f, 'mid (its own delivering policy excludes a group the scan could only sample)'), stepId: first.id }
 }
 
 /**

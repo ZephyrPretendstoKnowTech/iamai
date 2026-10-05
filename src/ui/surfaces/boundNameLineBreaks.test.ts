@@ -68,7 +68,12 @@ test('a removed exclusion named with a line break stays one comment line in the 
     const keep = (ca.rows as { displayName?: string }[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
     const row = { id: B, displayName: 'Policy B', state: 'enabled', conditions: { users: { includeGroups: [staffGroup], excludeGroups: [excl, X] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
     const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [row, ...keep] } } }
-    const scored = runFixture({ ...f, snapshot } as never, { snapshot } as never).viability
+    const first = runFixture({ ...f, snapshot } as never, { snapshot } as never)
+    // Policy B carries the baseline's name, so it is the step's own and corrected
+    // in place; under any other name the step creates the baseline's policy beside
+    // it (owner, 2026-10-04: policy identity is the name).
+    row.displayName = first.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!.createName!
+    const scored = first.viability
     const r = runFixture({ ...f, snapshot } as never, { snapshot, viability: scored.map((v) => ({ ...v, readiness: READY })) } as never)
     const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')!
     const nameOf = (id: string): string => r.input.names!.label(id)

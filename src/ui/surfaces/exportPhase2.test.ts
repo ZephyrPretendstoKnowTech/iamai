@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture, FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withDirectionApproved, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
@@ -294,7 +295,10 @@ test('every export carries the Threshold card that holds a step\'s turn-on, word
     }
   }
   assert.ok(gated > 0, 'the premise: a Threshold card')
-  const demo = exportPage(fixture('demo'))
+  // The demo's all-users MFA policy carries the tenant's own name; under the
+  // baseline's it is the step's own, already on, and the step corrects it (owner,
+  // 2026-10-04: policy identity is the name).
+  const demo = exportPage(asPlansOwn(fixture('demo'), 's-goal-mfa-all-users'))
   const everyone = demo.r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
   assert.equal(everyone.state.lifecycle, 'enforced', 'the premise: Require MFA for Everyone is already on')
   const lines = stepArtifactLines(demo.view(everyone))

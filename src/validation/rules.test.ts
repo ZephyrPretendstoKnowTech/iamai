@@ -657,7 +657,18 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
 })
 
 test('a healthy tenant carries no blocker step, and its deny-capable steps are offered', () => {
-  const { steps } = runFixture(fixture('small'))
+  // Policy identity is the name (owner, 2026-10-04): small's blocks are exactly the
+  // baseline's under its own names, so each step's one edit is a rename. Renamed as
+  // asked, they are the steps' own, in place, and nothing holds them.
+  const f = structuredClone(fixture('small'))
+  for (const s of runFixture(f).steps) {
+    const ops = s.action.resolution?.policies ?? []
+    const body = ops[0]?.body as { displayName?: string } | undefined
+    if (ops.length !== 1 || ops[0].mode !== 'update' || !body || Object.keys(body).join() !== 'displayName') continue
+    const row = (f.snapshot.config.caPolicies.rows as { id?: string; displayName?: string }[]).find((p) => p.id === ops[0].policyId)
+    if (row) row.displayName = body.displayName
+  }
+  const { steps } = runFixture(f)
   assert.equal(steps.some((s) => s.id.startsWith('s-blocker-')), false)
   assert.ok(steps.some((s) => canDenyAccess(s) && s.status !== 'blocked'), 'nothing is held on a tenant with a working escape hatch')
 })

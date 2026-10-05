@@ -89,7 +89,7 @@ test('a fresh tenant: 4.3 creates the baseline’s policy as before, names nothi
   const { step, retire } = plan(f)
   assert.equal(step.kind, 'create')
   assert.deepEqual(step.action.besidePolicies, [], 'nothing beside it: the name reads no tenant policy')
-  assert.ok(retire === null || !retire.waitsOn.includes(ADMINS), 'Retire Replaced Policies waits on nothing of 4.3')
+  assert.ok(retire === null || !(retire.waitsOn ?? []).includes(ADMINS), 'Retire Replaced Policies waits on nothing of 4.3')
 })
 
 test('a tenant with Microsoft’s template admin policies: 4.3 creates the baseline’s policy beside them in Report-only, edits neither, names both, and 3.8 lists the create', () => {
@@ -156,7 +156,7 @@ test('Retire Replaced Policies: listed with each policy’s state and ID, held u
   // Require MFA for Everyone retires its own beside the admin templates (owner, 2026-10-04: identity is the name on every step).
   assert.ok(lines.some((l) => l === `Require multifactor authentication for admins (On, ID: ${MFA_ADMINS})`), lines.join(' | '))
   assert.ok(lines.some((l) => l === `Require phishing-resistant multifactor authentication for administrators (Report-only, ID: ${PR_ADMINS})`), lines.join(' | '))
-  assert.ok(retire.waitsOn.includes(ADMINS))
+  assert.ok((retire.waitsOn ?? []).includes(ADMINS))
   // What Keep With This Reason saves (ui/surfaces/CleanupStep.tsx): every policy listed, by id, with the reason.
   for (const id of [MFA_ADMINS, PR_ADMINS]) assert.ok((plan(f).r.schedule.cleanup!.retiringPolicyIds ?? []).includes(id), id)
   const source = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
@@ -285,6 +285,6 @@ test('the owner-like fixtures: demo-week2’s own enforced admin policy is built
     const { step, retire } = plan(f)
     assert.equal(step.kind, 'adjust', 'the plan’s own tagged policy is corrected, as before')
     assert.deepEqual(step.action.besidePolicies, [])
-    assert.ok(retire === null || !retire.waitsOn.includes(ADMINS))
+    assert.ok(retire === null || !(retire.waitsOn ?? []).includes(ADMINS))
   }
 })

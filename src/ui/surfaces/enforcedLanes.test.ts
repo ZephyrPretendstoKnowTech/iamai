@@ -3,7 +3,7 @@
 // 8, 9, 17; U11, U19, U20, U21, U22, U28). The engine over the real graph first,
 // then the demo's own plans as the Plan reads them.
 import { test } from 'node:test'
-import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
+import { asPlanned, asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import assert from 'node:assert/strict'
 import data from '../../actionability/dependency-data.json' with { type: 'json' }
 import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
@@ -72,9 +72,37 @@ test('engine: an enforced policy as pinned is Completed, a drifted one is Ready 
   }
 })
 
-const demo = fixture('demo')
+/** The step's rename: its one edit where the tenant's policy is the baseline's under another name. */
+const renameOf = (step: Step | undefined) => (step?.action.resolution?.policies ?? []).find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
+
+/**
+ * The fixture with each named step's tenant policy under the baseline's name, so
+ * it is the step's own (owner, 2026-10-04: policy identity is the name): the
+ * policy the step would create the baseline's beside, or would rename. These
+ * cases are about the states of a policy already the step's, as the demo's were
+ * read before identity moved to the name.
+ */
+function ownedBy(f: Fixture, ...ids: string[]): Fixture {
+  let g = f
+  for (const id of ids) {
+    const rename = renameOf(runFixture(g).steps.find((s) => s.id === id))
+    if (!rename) {
+      g = asPlansOwn(g, id)
+      continue
+    }
+    g = structuredClone(g)
+    const row = (g.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).find((r) => r.id === rename.policyId)!
+    row.displayName = (rename.body as { displayName: string }).displayName
+  }
+  return g
+}
+
+const demo = ownedBy(fixture('demo'), 's-goal-block-device-code', LEGACY, 's-goal-mfa-all-users')
 const demoRun = runFixture(demo, {}, null, demo.snapshot.asOf)
-const week2 = asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant')
+const LEGACY_ID = String((fixture('demo').snapshot.config.caPolicies!.rows as Record<string, unknown>[]).find((r) => r.displayName === 'Core - Block - Legacy authentication')!.id)
+// The follow-up scan's policies are the baseline's under the tenant's names: each step's one edit would be its rename. Renamed, they are the steps' own.
+const week2Base = asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant')
+const week2 = ownedBy(week2Base, ...runFixture(week2Base).steps.filter((s) => renameOf(s) !== undefined).map((s) => s.id))
 const answered: Fixture = { ...week2, mapping: applyStepDecisions(week2.mapping, week2.decisions) }
 
 const ctxOf = (f: Fixture, run: ReturnType<typeof runFixture>, snapshot: TenantSnapshot): StepVarContext =>
@@ -172,7 +200,7 @@ test('U19: an enforced block policy missing the exclusions group is a safe corre
     assert.equal(packageStateOf(own, stepContract(own, ctxOf(demo, demoRun, demo.snapshot)), demo.snapshot), 'blocked', 'and it is held')
   }
   const onlyGroup = structuredClone(demo)
-  const legacyRow = (onlyGroup.snapshot.config.caPolicies!.rows as Record<string, any>[]).find((r) => r.displayName === 'Core - Block - Legacy authentication')!
+  const legacyRow = (onlyGroup.snapshot.config.caPolicies!.rows as Record<string, any>[]).find((r) => r.id === LEGACY_ID)!
   legacyRow.conditions.users.excludeGroups = []
   const onlyRun = runFixture(onlyGroup, {}, null, onlyGroup.snapshot.asOf)
   const step = stepOf(onlyRun, LEGACY)

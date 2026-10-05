@@ -337,6 +337,8 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     // Sign-in for Intune Enrollment read "Core - Require - Sign-in risk", owner
     // 2026-09-25). No tag and no target make it this step's.
     if (by === 'owned' && (riskOnlyFor(step, coverage, policy) || anotherStepsJob(step, m, policy))) continue
+    // A step the name reads (Action.besidePolicies; owner, 2026-10-04): a record is no claim without its tag, its target or its name.
+    if (by === 'owned' && step.action.besidePolicies !== undefined && !(step.createName !== undefined && baselineNameKey(String(policy.displayName ?? '')) === baselineNameKey(step.createName))) continue
     claim(m, policy, by)
   }
 
@@ -403,7 +405,8 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   // that one is its member, whatever order the scan listed the others in.
   const pinned = sole && !out[0].policy && !out[0].ambiguous && step.action.intendedFor !== undefined ? byId.get(step.action.intendedFor) : undefined
   if (pinned && !claimed.has(pinned.id as string)) claim(out[0], pinned, 'fingerprint')
-  else if (sole && !out[0].policy && !out[0].ambiguous && step.action.intendedFor === undefined) {
+  // Not for a step the name reads (Action.besidePolicies; owner, 2026-10-04): its controls never claim a policy.
+  else if (sole && !out[0].policy && !out[0].ambiguous && step.action.intendedFor === undefined && step.action.besidePolicies === undefined) {
     const result = coverage.results.find((r) => r.goal.id === step.goalId)
     // The goal's own policy (coverage.ts ownScope), whatever order the scan listed
     // policies in. Another goal's policy stands for this step only where the
@@ -447,6 +450,17 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
     if (want.length === 0) continue
     const off = all.filter((p) => p.state === 'disabled' && !claimed.has(p.id as string) && want.includes(nameKey(p.displayName)))
     if (off.length === 1) claim(m, off[0], 'member-name')
+  }
+
+  // 6. A step the name reads (Action.besidePolicies; owner, 2026-10-04): its one
+  // live policy carrying the plan's name is its own, whatever the step hands over
+  // today. Held for an answer (the exclusions group unconfirmed) it hands over no
+  // operation, and its policy, On in the tenant, read as never deployed. Two live
+  // ones carrying the name are no one policy (generate.ts ambiguousTarget).
+  if (sole && !out[0].policy && !out[0].ambiguous && step.action.besidePolicies !== undefined && step.createName) {
+    const want = nameKey(step.createName)
+    const named = all.filter((p) => (p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced') && nameKey(p.displayName) === want)
+    if (named.length === 1 && !claimed.has(named[0].id as string)) claim(out[0], named[0], 'member-name')
   }
   return out
 }
@@ -1408,6 +1422,9 @@ function correctionOf(m: MemberMatch, step: Step, coverage: CoverageReport, unwr
   if (m.op.policyId !== owned.id) {
     return { safe: false, reason: 'unowned-target', note: fillText(TRACK.correctionUnowned, { target: nameOfOp(m.op) ?? m.op.policyId, owned: owned.displayName ?? owned.id ?? '' }) }
   }
+  // A rename writes no control (PolicyOperation.renamesOnly; owner, 2026-10-04): no
+  // other goal counting the policy can be taken out of place by it.
+  if (m.op.renamesOnly === true) return { safe: true }
   const other = coverage.results.find((r) => r.goal.id !== step.goalId && (r.satisfaction?.policyIds ?? []).includes(owned.id as string))
   if (other) return { safe: false, reason: 'shared-satisfier', note: fillText(TRACK.correctionShared, { name: owned.displayName ?? owned.id ?? '', goal: other.goal.name }) }
   // The owned policy is not what the plan asked for in a part the operation does

@@ -86,7 +86,14 @@ test('everyone remote, with a Countries block: the three blocks read Doesn’t a
   const country = 'c0c0c0c0-0000-4000-8000-00000000c0c0'
   const ex = (f.mapping.records[EXCLUSIONS_RECORD_KEY] as { resolvedId?: string } | undefined)?.resolvedId
   ;(f.snapshot.config.namedLocations!.rows as unknown[]).push({ '@odata.type': '#microsoft.graph.countryNamedLocation', id: country, displayName: 'Allowed countries', countriesAndRegions: ['AU'], countryLookupMethod: 'clientIpAddress', includeUnknownCountriesAndRegions: false })
-  ;(f.snapshot.config.caPolicies!.rows as unknown[]).push({ id: 'p-countries', displayName: 'Block - Countries not allowed', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [ex] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: [country] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } })
+  // Policy identity is the name (owner, 2026-10-04): the block, exactly the
+  // baseline's under the tenant's own name, is the Countries step's to rename (its
+  // one edit), and under the baseline's name it is the step's own and completes it.
+  const block = { id: 'p-countries', displayName: 'Block - Countries not allowed', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [ex] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: [country] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }
+  ;(f.snapshot.config.caPolicies!.rows as unknown[]).push(block)
+  const theirs = runFixture(f).steps.find((x) => x.goalId === 'geo-restriction')!
+  assert.deepEqual((theirs.action.resolution?.policies ?? []).map((o) => [o.mode, o.policyId, o.body]), [['update', 'p-countries', { displayName: theirs.createName }]], 'the Countries step does not rename the Countries block')
+  block.displayName = theirs.createName!
   const r = runFixture(f)
   const reason = answeredReasonOf('officeNetwork', 'remote')
   for (const id of BLOCKS) {

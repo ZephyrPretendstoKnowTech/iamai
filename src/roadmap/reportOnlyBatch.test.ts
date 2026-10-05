@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
+import { asPlansOwn } from './fixtures/asPlanned.ts'
 import { REPORT_ONLY_STEP_ID, reportOnlyOutlier, settleReportOnlyBatch } from './reportOnlyBatch.ts'
 import { FOUNDATION_WAIT } from './holds.ts'
 import { setState } from './lifecycle.ts'
@@ -36,9 +37,13 @@ test('it lists every policy the plan can create now, by its own step, and leaves
 })
 
 test('a policy already in Report-only or On is a fact of the step, judged as the tenant holds it', () => {
-  const r = runFixture(fixture('demo'))
+  // Policy identity is the name (owner, 2026-10-04): the demo's three On policies
+  // are the plan's own once they carry the baseline's names; under the tenant's
+  // names their steps would build the baseline's beside them instead.
+  const own = ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-mfa-all-users']
+  const r = runFixture(own.reduce((f, id) => asPlansOwn(f, id), fixture('demo')))
   const { create, created } = r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!.reportOnlyBatch!
-  for (const id of ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-mfa-all-users']) assert.ok(created.includes(id), `${id} is already created`)
+  for (const id of own) assert.ok(created.includes(id), `${id} is already created`)
   // The demo's own admin policy in Report-only is not the baseline's: 4.3 creates
   // the baseline's beside it (T4-PM), so that create is listed here like any other.
   assert.ok(create.includes('s-goal-admins-phishing-resistant') && !created.includes('s-goal-admins-phishing-resistant'), 'the admin policy built beside the tenant’s is a create')

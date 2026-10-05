@@ -87,8 +87,20 @@ test("Require MFA for Everyone in place empties the ordinary-MFA list and no rea
   const { runFixture } = await import('../roadmap/fixtures/run.ts')
   const { statusOf } = await import('../ui/surfaces/statusWord.ts')
   const { planDates } = await import('../ui/surfaces/stepVars.ts')
+  // Policy identity is the name (owner, 2026-10-04): demo-week2's MFA policy is
+  // the baseline's in every setting under the tenant's own name, so the step's one
+  // edit is its rename. The case is about a policy in place: it carries the name.
+  const renamed = (f: ReturnType<typeof fixture>): ReturnType<typeof fixture> => {
+    const step = runFixture(f).steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')!
+    const rename = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
+    if (!rename) return f
+    const g = structuredClone(f)
+    const row = (g.snapshot.config.caPolicies?.rows ?? []).find((p) => (p as { id?: string }).id === rename.policyId) as { displayName?: unknown }
+    row.displayName = (rename.body as { displayName: string }).displayName
+    return g
+  }
   for (const [name, inPlace] of [['demo-week2', true], ['demo', false], ['getiamai', false]] as const) {
-    const f = fixture(name)
+    const f = inPlace ? renamed(fixture(name)) : fixture(name)
     const r = runFixture(f)
     const mfa = r.steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')!
     const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)

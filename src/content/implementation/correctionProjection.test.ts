@@ -38,7 +38,13 @@ test('a person excluded by hand is asked to be removed, and the correction chang
   const raw = fixture('demo-week2')
   const source = BASELINE_MAPPINGS_KEY
   const pending = sourceMappingsOf(runFixture(raw).steps)
-  const base = { ...raw, mapping: applyStepDecisions(raw.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: raw.snapshot.asOf } }) }
+  const answered = { ...raw, mapping: applyStepDecisions(raw.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: raw.snapshot.asOf } }) }
+  // Policy identity is the name (owner, 2026-10-04): the tenant's block carries its
+  // own name, so the step's one edit would be the rename. Given the baseline's
+  // name, it is the step's own policy, in place, which this case corrects.
+  const renamed = runFixture(answered).steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+  const base = structuredClone(answered)
+  ;(base.snapshot.config!.caPolicies!.rows as Record<string, unknown>[]).find((x) => x.id === renamed.tracking!.policyId)!.displayName = renamed.createName
   const before = runFixture(base).steps.find((s) => s.id === 's-goal-block-legacy-auth')!
   assert.equal(before.state.satisfied, true, 'the premise: the policy is in place before the change')
   const person = (base.snapshot.users ?? []).find((u) => !JSON.stringify(base.mapping).includes(String(u.id)) && u.accountEnabled !== false)!.id

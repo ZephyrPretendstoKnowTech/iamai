@@ -4,6 +4,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { REPORT_ONLY_STEP_ID } from '../../roadmap/reportOnlyBatch.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { byPlanPlace } from '../../roadmap/stepGroups.ts'
@@ -20,8 +22,8 @@ import type { Step } from '../../roadmap/types.ts'
 /** The create's line for a policy that targets Windows Azure Active Directory, in any of its readings. */
 const DIRECTORY_LINE = /\*\*Windows Azure Active Directory\*\* can't be picked from Select resources/
 
-function plan(name: 'getiamai' | 'demo') {
-  const f = fixture(name)
+function plan(name: 'getiamai' | 'demo', edit: (f: Fixture) => Fixture = (f) => f) {
+  const f = edit(fixture(name))
   const r = runFixture(f)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
   const step = r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!
@@ -86,7 +88,10 @@ test('T1-6d: 3.8 counts policies where it counts steps: its rail, its impact and
 })
 
 test('one card per policy still to create, headed by its step and naming the policy; none for a policy already created (owner, 2026-09-26)', () => {
-  const { r, ctx, step, body } = plan('demo')
+  // Policy identity is the name (owner, 2026-10-04): the demo's report-only admins
+  // policy is a policy the plan created once it carries the baseline's name; under
+  // its own name 4.3 creates the baseline's beside it, and nothing is created yet.
+  const { r, ctx, step, body } = plan('demo', (f) => asPlansOwn(f, 's-goal-admins-phishing-resistant'))
   const { create, created } = step.reportOnlyBatch!
   const open = body.readiness.tiles.filter((t) => t.key.startsWith('batch:'))
   const done = body.readiness.satisfied.filter((t) => t.key.startsWith('batch:'))

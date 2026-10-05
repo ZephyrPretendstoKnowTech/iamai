@@ -156,7 +156,12 @@ test('the plan’s own office network is the trusted network before the tenant m
   assert.ok(!candidates(partner).includes('p-sa'), 'a block outside a partner site read as the service-accounts block')
 })
 
-test('a tenant’s own block that carves out the trusted network and a partner site stays the step’s policy, corrected in place', () => {
+// Policy identity is the name (owner, 2026-10-04): the coverage reading is as it
+// was, but a block under the tenant's own name is no longer the step's by its
+// controls. Under its own name the step builds the baseline's in Report-only and
+// lists the tenant's beside it; carrying the baseline's name, it is the step's own
+// and its partner carve-out is corrected in place.
+test('a tenant’s block that carves out the trusted network and a partner site is listed beside the baseline’s, and corrected in place once it carries the baseline’s name', () => {
   const cases = [
     { goal: 'sharepoint-trusted-network', id: 'p-sp', policy: (_f: Fixture, ex: string) => block('p-sp', [SHAREPOINT], ['AllTrusted', PARTNER], { includeUsers: ['All'], excludeGroups: [ex] }) },
     { goal: 'service-accounts-trusted-network', id: 'p-sa', policy: (f: Fixture, ex: string) => block('p-sa', ['All'], [headOf(f), PARTNER], { includeGroups: [SERVICE_ACCOUNTS_GROUP], excludeGroups: [ex] }) },
@@ -171,9 +176,15 @@ test('a tenant’s own block that carves out the trusted network and a partner s
     assert.ok(own, `${c.goal}: the tenant's block is not the goal's policy`)
     assert.ok(own.caveats.includes('conditions-narrower'), `${c.goal}: the partner carve-out is not named: ${own.caveats}`)
     assert.notEqual(result.status, 'enforced', c.goal)
-    const ops = opsOf(f, c.goal, r)
+    const step = r.steps.find((s) => s.goalId === c.goal)!
+    assert.deepEqual(opsOf(f, c.goal, r), [['create', null]], `${c.goal}: the tenant's block under its own name was edited`)
+    assert.deepEqual((step.action.besidePolicies ?? []).map((b) => b.policyId), [c.id], `${c.goal}: the tenant's block is not listed beside the baseline's`)
+    // The same block carrying the baseline's name is the step's own.
+    const named = structuredClone(f)
+    ;(named.snapshot.config.caPolicies!.rows as { id: string; displayName: string }[]).find((p) => p.id === c.id)!.displayName = step.createName!
+    const ops = opsOf(named, c.goal)
     assert.ok(ops.some(([mode, id]) => mode === 'update' && id === c.id), `${c.goal}: ${JSON.stringify(ops)}`)
-    assert.ok(!ops.some(([mode]) => mode === 'create'), `${c.goal}: a second block beside the tenant's: ${JSON.stringify(ops)}`)
+    assert.ok(!ops.some(([mode]) => mode === 'create'), `${c.goal}: a second block beside the plan's own: ${JSON.stringify(ops)}`)
   }
 })
 
@@ -269,6 +280,9 @@ test('a block that carves out only trusted locations, two of them, is not narrow
 test('a scan that did not read the named locations holds the Countries step, and keeps the day it was completed', () => {
   const f = demoWith('office', (ex) => [block('p-countries', ['All'], [COUNTRY], { includeUsers: ['All'], excludeGroups: [ex] })])
   const id = 's-goal-geo-restriction'
+  // Policy identity is the name (owner, 2026-10-04): the Countries block is the
+  // step's own, as this case needs, once it carries the baseline's name.
+  ;(f.snapshot.config.caPolicies!.rows as { id: string; displayName: string }[]).find((p) => p.id === 'p-countries')!.displayName = runFixture(f).steps.find((s) => s.id === id)!.createName!
   const earlier = '2026-08-20T09:00:00.000Z'
   const first = runFixture({ ...f, completedAt: { [id]: earlier } }, {}, null, f.snapshot.asOf)
   assert.equal(first.steps.find((s) => s.id === id)!.status, 'done', 'the premise: the Countries block completes the Countries step')

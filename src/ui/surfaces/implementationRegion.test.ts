@@ -49,8 +49,26 @@ function bodiesOf(f: Fixture, over: Partial<RoadmapInput> = {}): Map<string, Ste
 const tabs = (b: StepBody | undefined): string[] => (b ? channelTabsOf(b.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)) : [])
 const named = (name: FixtureName) => bodiesOf(fixture(name))
 
+/**
+ * The fixture with each named step's policy under the baseline's name: mid holds
+ * them exactly as the baseline does under the tenant's own names, so each step's
+ * one edit is a rename (owner, 2026-10-04: policy identity is the name). Renamed,
+ * each is the step's own policy, enforced, as these cases need.
+ */
+function withOwnNames(f: Fixture, stepIds: readonly string[]): Fixture {
+  const steps = runFixture(f).steps
+  const g = structuredClone(f)
+  const rows = g.snapshot.config.caPolicies.rows as { id?: string; displayName?: string }[]
+  for (const id of stepIds) {
+    const rename = steps.find((s) => s.id === id)?.action.resolution?.policies.find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
+    assert.ok(rename, `the premise: ${id} renames the tenant's policy`)
+    rows.find((p) => p.id === rename.policyId)!.displayName = (rename.body as { displayName: string }).displayName
+  }
+  return g
+}
+
 test('held policy resources stay copyable, useful and free of repeated disclaimer panels', () => {
-  const bodies = bodiesOf(noExclusionsAnswer(fixture('mid')))
+  const bodies = bodiesOf(noExclusionsAnswer(withOwnNames(fixture('mid'), ['s-goal-block-legacy-auth', 's-goal-guests-mfa'])))
   // No read-only PowerShell or JSON stands in, and Block Legacy Authentication has no Email tab (walk list 4.x item 29).
   for (const [id, expected] of [['s-goal-block-legacy-auth', ['Entra', 'AI Info']], ['s-goal-guests-mfa', ['Entra', 'AI Info', 'Email']]] as const) {
     const body = bodies.get(id)!

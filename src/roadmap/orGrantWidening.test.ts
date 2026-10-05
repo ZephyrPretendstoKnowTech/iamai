@@ -26,7 +26,7 @@ const PHISHING_RESISTANT = '00000000-0000-0000-0000-000000000004'
 
 type Grant = Record<string, unknown>
 
-function plan(grant: Grant, group: 'admins' | 'staff', reversed: boolean) {
+function plan(grant: Grant, group: 'admins' | 'staff', reversed: boolean, name = 'Policy A') {
   const base = curatedFixture('demo-week2')
   const f = { ...base, groups: new Map(base.groups) }
   const excl = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') })!
@@ -35,7 +35,7 @@ function plan(grant: Grant, group: 'admins' | 'staff', reversed: boolean) {
   f.groups.set(ADMINS, { ...(src as object), groupId: ADMINS, memberIds: (src.memberIds ?? []).slice(0, 1), memberCount: 1 } as never)
   const ca = f.snapshot.config.caPolicies!
   const keep = (ca.rows as { displayName?: unknown }[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
-  const row = { id: A, displayName: 'Policy A', state: 'enabled', conditions: { users: { includeGroups: [group === 'admins' ? ADMINS : staff], excludeGroups: [excl] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: grant }
+  const row = { id: A, displayName: name, state: 'enabled', conditions: { users: { includeGroups: [group === 'admins' ? ADMINS : staff], excludeGroups: [excl] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: grant }
   const rows = reversed ? [...keep, row] : [row, ...keep]
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
   snapshot.registrationDetails = snapshot.users.filter(u => !f.mapping.breakGlassUserIds.includes(u.id)).map(u => ({ ...snapshot.registrationDetails[0], id:u.id, userType:u.userType, isMfaCapable:true, methodsRegistered:['fido2SecurityKey'] })).concat(snapshot.registrationDetails.filter(r => f.mapping.breakGlassUserIds.includes(r.id)))
@@ -52,6 +52,12 @@ function plan(grant: Grant, group: 'admins' | 'staff', reversed: boolean) {
 const drawn = (step: Parameters<typeof stepBodyOf>[0], ctx: never): Record<string, string> =>
   Object.fromEntries(stepBodyOf(step, ctx).artifacts.filter((a) => !a.unavailable).map((a) => [a.id, a.text()]))
 
+// Policy identity is the name (owner, 2026-10-04): a tenant policy is the step's
+// own, and corrected in place, when it carries the baseline's name for it; under
+// any other name the step creates the baseline's beside it. The corrections below
+// are of the step's own policy, so Policy A takes the baseline's name for them.
+const OWN = (): string => plan({ operator: 'OR', builtInControls: ['mfa'] }, 'staff', false).step.createName!
+
 // Two representative shapes: each way round the floor, on each kind of group, in each listing order.
 const WAYS_ROUND: [string, Grant, 'admins' | 'staff', boolean][] = [
   ['phishing-resistant strength OR compliant device', { operator: 'OR', builtInControls: ['compliantDevice'], authenticationStrength: { id: PHISHING_RESISTANT } }, 'admins', false],
@@ -59,8 +65,9 @@ const WAYS_ROUND: [string, Grant, 'admins' | 'staff', boolean][] = [
 ]
 
 test('R1: an enabled group policy granting a way round the floor is widened with the floor grant, not its own, on every channel', () => {
+  const own = OWN()
   for (const [label, grant, group, reversed] of WAYS_ROUND) {
-    const { step, ctx, ops } = plan(grant, group, reversed)
+    const { step, ctx, ops } = plan(grant, group, reversed, own)
     assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', A]], label)
     const body = ops[0].body as { grantControls?: { operator?: string; builtInControls?: string[]; authenticationStrength?: unknown }; conditions?: { users?: { includeUsers?: string[] } } }
     assert.deepEqual(body.conditions?.users?.includeUsers, ['All'])
@@ -95,13 +102,14 @@ test('R1: an enabled group policy granting a way round the floor is widened with
     const exported = stepExportView(step, ctx).whatToDo.join('\n')
     // The correction names the grant it sets, by value (roadmap/policyProcedure.ts correctionSettings).
     assert.match(exported, /Under Grant, select Require multifactor authentication, and clear any other grant\./)
-    assert.match(exported, /Conditional Access → Policies → Policy A\./)
+    assert.ok(exported.includes(`Conditional Access → Policies → ${own}.`), exported)
   }
 })
 
 test('R1 controls: plain MFA on a staff group is widened without a grant change; phishing-resistant AND compliant device on an admins group is not the all-users goal’s own (C01)', () => {
+  const own = OWN()
   for (const reversed of [false, true]) {
-    const staff = plan({ operator: 'OR', builtInControls: ['mfa'] }, 'staff', reversed)
+    const staff = plan({ operator: 'OR', builtInControls: ['mfa'] }, 'staff', reversed, own)
     assert.deepEqual(staff.ops.map((o) => [o.mode, o.policyId]), [['update', A]])
     assert.ok(!('grantControls' in staff.ops[0].body), JSON.stringify(Object.keys(staff.ops[0].body)))
     assert.ok(!(staff.step.action.changes ?? []).some((c) => c.field === 'Grant controls'))

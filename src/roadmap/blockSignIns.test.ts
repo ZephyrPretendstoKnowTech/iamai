@@ -23,8 +23,22 @@ function naming(f: Fixture, id: string, legacy: boolean): Fixture {
   return next
 }
 
+/**
+ * The tenant with its legacy-authentication policy under the baseline's name.
+ * Policy identity is the name (owner, 2026-10-04): the demo's policy carries the
+ * tenant's own name, so the step would rename it (or create the baseline's beside
+ * it); these cases are about the step's own policy, so it carries the name.
+ */
+function legacyNamed(f: Fixture): { fixture: Fixture; policyId: string } {
+  const next = structuredClone(f)
+  const rows = next.snapshot.config.caPolicies!.rows as { id?: string; displayName?: string }[]
+  const row = rows.find((r) => /Legacy authentication/i.test(r.displayName ?? ''))!
+  row.displayName = runFixture(f).steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)!.createName!
+  return { fixture: next, policyId: row.id! }
+}
+
 test('item 4: a named mail account still signing in with legacy authentication keeps the enforced policy open; the scan completes it once it has moved', () => {
-  const week2 = fixture('demo-week2')
+  const week2 = legacyNamed(fixture('demo-week2')).fixture
   const id = week2.snapshot.users.find((u) => u.userPrincipalName === 'mfp-reception@demo.example.com')!.id
   const open = runFixture(naming(week2, id, true)).steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)!
   assert.equal(open.state.lifecycle, 'enforced', 'the premise: the policy is on')
@@ -52,9 +66,11 @@ test('item 7: the exclusions edit Configure Emergency Exclusions asks for is not
   // The demo's legacy policy also excludes a group the plan's does not, which is a
   // correction of its own (every control is exact, owner 2026-09-25): taken out, so
   // the exclusions group is all it lacks.
-  const demo = structuredClone(fixture('demo'))
-  for (const row of demo.snapshot.config.caPolicies!.rows as { displayName?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]) {
-    if (/Legacy authentication/.test(row.displayName ?? '') && row.conditions?.users) row.conditions.users.excludeGroups = []
+  // It carries the baseline's name, so it is the step's own (owner, 2026-10-04:
+  // policy identity is the name), corrected in place rather than renamed.
+  const { fixture: demo, policyId } = legacyNamed(fixture('demo'))
+  for (const row of demo.snapshot.config.caPolicies!.rows as { id?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]) {
+    if (row.id === policyId && row.conditions?.users) row.conditions.users.excludeGroups = []
   }
   const first = runFixture(demo)
   const legacy = first.steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)!
@@ -64,8 +80,8 @@ test('item 7: the exclusions edit Configure Emergency Exclusions asks for is not
   // The person makes the edit in Configure Emergency Exclusions; the next scan reads it.
   const group = legacy.action.resolution!.tenant.exclusionsGroupId!
   const edited = structuredClone(demo)
-  for (const row of edited.snapshot.config.caPolicies!.rows as { displayName?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]) {
-    if (!/Legacy authentication/.test(row.displayName ?? '') || !row.conditions?.users) continue
+  for (const row of edited.snapshot.config.caPolicies!.rows as { id?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]) {
+    if (row.id !== policyId || !row.conditions?.users) continue
     row.conditions.users.excludeGroups = [...new Set([...(row.conditions.users.excludeGroups ?? []), group])]
   }
   const next = runFixture(edited, {}, observationsOf(first.steps), edited.snapshot.asOf).steps.find((s) => s.id === LEGACY_AUTH_STEP_ID)!

@@ -165,6 +165,8 @@ type ProcedureMember = {
   exclusionsFirst?: boolean
   /** The name the create writes, where it is not the name the other tasks open (a goal a tenant policy delivers). */
   createName?: string
+  /** Its one change is the plan's name (PolicyOperation.renamesOnly; owner, 2026-10-04): nobody's sign-in changes. */
+  renamesOnly?: boolean
 }
 
 /**
@@ -298,6 +300,7 @@ function membersOf(step: Step, input: PolicyProcedureInput, ctx: ProcedureContex
         exists: true,
         on: found?.state === 'enabled',
         off: found?.state === 'disabled',
+        ...(op.renamesOnly === true && correction.length === 1 ? { renamesOnly: true } : {}),
         correction: stricterGrant(correction, t),
         exclusionsEdit: found !== null && current !== found,
         // Done before Configure Emergency Exclusions adds the group, removing the
@@ -571,8 +574,11 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // A correction to a policy that is already On takes effect at the next sign-in,
   // with no report-only week: its card, its task and its script say so (owner,
   // 2026-09-28; 7.5 widened an enforced policy with nothing saying so).
+  // A rename changes nobody's sign-in: it says nothing of the next sign-in, and is titled a rename (owner, 2026-10-04).
   const onLine = PW.policyOn
-  if (correct.length > 0) tasks.push({ ...task('correct', 'correct', correct.flatMap((m) => [...(exclusionsFirst(m) ? [firstLine] : []), ...(m.on ? [onLine] : []), ...correctionLines(m.name, m.correction)]), true), corrections: correct.map((m) => ({ name: m.name, settings: m.correction, ...(exclusionsFirst(m) ? { after: fillText(PW.card.afterExclusions, { step: exclusionsStep, group: exclusionsGroup }) } : {}), ...(m.on ? { on: onLine } : {}) })) })
+  const warns = (m: ProcedureMember): boolean => m.on && m.renamesOnly !== true
+  const renaming = correct.length > 0 && correct.every((m) => m.renamesOnly === true)
+  if (correct.length > 0) tasks.push({ ...task('correct', renaming ? 'rename' : 'correct', correct.flatMap((m) => [...(exclusionsFirst(m) ? [firstLine] : []), ...(warns(m) ? [onLine] : []), ...correctionLines(m.name, m.correction)]), true), corrections: correct.map((m) => ({ name: m.name, settings: m.correction, ...(exclusionsFirst(m) ? { after: fillText(PW.card.afterExclusions, { step: exclusionsStep, group: exclusionsGroup }) } : {}), ...(warns(m) ? { on: onLine } : {}), ...(m.renamesOnly === true ? { renamesOnly: true } : {}) })) })
   // The turn-on is the same task in every state, but while the plan's own
   // prerequisites hold it (roadmap/enforceWaits.ts: the recovery test not
   // recorded, security defaults still on) it hands over no instruction that
@@ -655,7 +661,7 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // In doing order: the accounts move before the turn-on that waits for them.
   const at = tasks.findIndex((t) => t.id === 'turn-on')
   const ordered = mail === null ? tasks : at < 0 ? [...tasks, mail] : [...tasks.slice(0, at), mail, ...tasks.slice(at)]
-  return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}), ...(correct.some(exclusionsFirst) ? { exclusionsFirst: firstLine } : {}), ...(correct.some((m) => m.on) ? { policyOn: onLine } : {}) }
+  return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}), ...(correct.some(exclusionsFirst) ? { exclusionsFirst: firstLine } : {}), ...(correct.some(warns) ? { policyOn: onLine } : {}) }
 }
 
 /**
@@ -1089,7 +1095,7 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   const corrections = correcting ? projected!.tasks.find((t) => t.id === 'correct')?.corrections ?? [] : []
   const corrected: EmergencySubjectTile[] = corrections.map((c, i) => {
     const fields = [...new Set(c.settings.map(correctionSectionOf).filter((f): f is string => f !== null).map((f) => f.toLowerCase()))]
-    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: [...c.settings.map(cardLineOf), ...(c.after ? [c.after] : []), ...(c.on ? [c.on] : [])].join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
+    return { key: `correct:${i}`, accountId: null, heading: subject, upn: c.name, title: c.renamesOnly === true ? PW.tasks.rename : fields.length > 0 ? fillText(CONTRACT.drift.correct, { fields: list(fields) }) : PW.tasks.correct, detail: [...c.settings.map(cardLineOf), ...(c.after ? [c.after] : []), ...(c.on ? [c.on] : [])].join('\n'), instruction: '', completed: [], remainingCount: null, satisfied: false }
   })
   const rest = [...readiness.tiles.filter((tile) => corrected.length === 0 || tile.key !== 'drift').map((tile) => card(tile, false)), ...readiness.satisfied.map((tile) => card(tile, true))]
   // One sentence, said once. The policy card's sentence is the contract's one

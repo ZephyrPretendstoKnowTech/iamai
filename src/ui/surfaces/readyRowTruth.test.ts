@@ -24,6 +24,7 @@ import { WITHHELD_CLEANUP } from '../../roadmap/cleanup.ts'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { addsExclusionsOnly } from '../../roadmap/changedFields.ts'
 import { addsExclusionsToEnforced, enforcementHeld, implementationOffered, policyResult, unavailableReason } from '../../roadmap/operations.ts'
 import { FOUNDATION_WAIT, holdOf } from '../../roadmap/holds.ts'
@@ -41,8 +42,14 @@ const MFA = 's-goal-mfa-all-users'
 const DEVICE = 's-goal-require-managed-device'
 type Row = Record<string, unknown>
 
+/**
+ * The demo with its all-users MFA policy under the baseline's name, so it is
+ * Require MFA for Everyone's own policy and the step corrects it (owner,
+ * 2026-10-04: policy identity is the name; under the tenant's own name the step
+ * creates the baseline's beside it, and corrects nothing).
+ */
 function demo() {
-  const f = fixture('demo')
+  const f = asPlansOwn(fixture('demo'), MFA)
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   return { f, r, ctx }
@@ -79,15 +86,20 @@ test('only a correction that adds exclusions and takes none away is bounded, and
     const f0 = withFoundationSettled(curatedFixture('large'))
     const f = { ...f0, baseline: { ...f0.baseline, policies: f0.baseline.policies.map((p) => (/CompliantOffice/.test(p.displayName) ? { ...p, conditions: { ...p.conditions, applications: { ...p.conditions.applications, includeApplications: ['All'] } } } : p)) } } as typeof f0
     const ca = f.snapshot.config.caPolicies!
+    // The policy the change corrects carries the baseline's name, so it is the
+    // step's own (owner, 2026-10-04: policy identity is the name); under the
+    // tenant's own name the step would create the baseline's beside it instead.
+    const own = runFixture(f).steps.find((s) => s.id === DEVICE)!.createName
     const rows = (ca.rows as Row[]).map((p) => {
       if (!/Compliant device for Office/.test(String(p.displayName))) return p
       if (p.displayName !== 'Core - Grant - Compliant device for Office') return { ...p, state: 'enabled' }
       const conditions = (p.conditions ?? {}) as Row
-      return { ...p, state: 'enabled', conditions: { ...conditions, applications: { ...(conditions.applications as Row), excludeApplications: ['00000003-0000-0ff1-ce00-000000000000'] } } }
+      return { ...p, displayName: own, state: 'enabled', conditions: { ...conditions, applications: { ...(conditions.applications as Row), excludeApplications: ['00000003-0000-0ff1-ce00-000000000000'] } } }
     })
     const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot
     const r = runFixture({ ...f, snapshot }, { snapshot } as never)
     const step = r.steps.find((s) => s.id === DEVICE)!
+    assert.equal(step.action.resolution!.policies[0].mode, 'update', 'the premise: the step corrects its own enforced policy')
     assert.ok(step.action.readinessGate, 'the premise: a threshold nobody has met')
     assert.equal(step.action.resolution!.policies[0].addsExclusionsOnly, undefined, 'the change does more than add exclusions')
     assert.equal(addsExclusionsToEnforced(step), false)

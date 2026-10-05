@@ -45,7 +45,7 @@ export type EmergencyAccountTask = {
   /** The Threshold card states what this task waits for, so no card of its own is drawn (owner, 2026-09-26). */
   onThresholdCard?: true
   /** A correction's own settings, per policy, for its Tasks Remaining card (policyTasks.ts policySubjectsOf). */
-  corrections?: { name: string; settings: string[]; after?: string; on?: string }[]
+  corrections?: { name: string; settings: string[]; after?: string; on?: string; renamesOnly?: true }[]
   /**
    * A create's lines, per policy it creates, in its order (policyTasks.ts): what
    * the create needs first leads the first. `steps` is these, joined. 3.8 Create

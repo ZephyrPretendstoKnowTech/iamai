@@ -696,8 +696,19 @@ test('the guests pair carries both policies, in the baseline’s order, on every
 // ---- a step with nothing to create ----
 
 test('a goal already in place has no artifact, so it offers no implementation on any channel', () => {
-  const { rows } = policySteps('demo-week2')
-  const done = rows.filter((x) => x.step.status === 'done' && x.cs.kind === 'policy')
+  // Policy identity is the name (owner, 2026-10-04): the demo's policies exactly
+  // the baseline's under its own names are each a step's rename. Renamed as the
+  // steps ask, they are the goals in place this case reads.
+  const renames = new Map<string, string>()
+  for (const s of runFixture(fixture('demo-week2')).steps) {
+    const ops = s.action.resolution?.policies ?? []
+    const body = ops[0]?.body as Record<string, unknown> | undefined
+    if (ops.length === 1 && ops[0].mode === 'update' && body && Object.keys(body).join() === 'displayName') renames.set(String(ops[0].policyId), String(body.displayName))
+  }
+  const { r, ctx } = withTenantPolicies((fixture('demo-week2').snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[], (p) => (renames.has(String(p.id)) ? { ...p, displayName: renames.get(String(p.id)) } : p))
+  const done = r.steps
+    .filter((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status === 'done' && (contentStepFor(s) as Record<string, unknown> | undefined)?.kind === 'policy')
+    .map((step) => ({ step: step as Step, portal: stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) }))
   assert.ok(done.length >= 3, `the demo holds goals already in place (${done.length})`)
   for (const { step, portal } of done) {
     assert.equal(step.action.json, null, `${step.id}: nothing to create`)

@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { curatedFixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { smsRetirementOf } from '../../derive/smsRetirement.ts'
 import { readinessContextOf } from '../../derive/readinessContext.ts'
@@ -83,8 +84,8 @@ test('a finished step draws no pitfall card', () => {
 })
 
 // 4.4: the people Require MFA for Everyone would prompt for the first time.
-function stepAt(name: 'getiamai' | 'demo' | 'small', id: string) {
-  const f = curatedFixture(name)
+function stepAt(name: 'getiamai' | 'demo' | 'small', id: string, edit: (f: Fixture) => Fixture = (f) => f) {
+  const f = edit(curatedFixture(name))
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === id)!
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
@@ -102,8 +103,10 @@ test('4.4 names the people who hold a method and have no MFA sign-in in 30 days,
   assert.deepEqual(tile.names, personLines(ctx, ids), 'each named with MFA Readiness’s next step')
   assert.match(tile.note ?? '', /^Before you turn this on, get each one signed in once with the method named beside them\. For a passkey: After the username, choose Other ways to sign in, then Face, fingerprint, PIN or security key\.$/)
   assert.ok(tile.link && 'href' in tile.link && tile.link.href.endsWith(CAMPAIGN_STEP_ID), 'it opens Prepare Your Team for MFA')
-  // The policy On: every sign-in completes MFA, and the card goes.
-  const on = stepAt('demo', 's-goal-mfa-all-users')
+  // The policy On: every sign-in completes MFA, and the card goes. The demo's MFA
+  // policy is the step's own under the baseline's name (owner, 2026-10-04: policy
+  // identity is the name); under its own the step builds the baseline's beside it.
+  const on = stepAt('demo', 's-goal-mfa-all-users', (f) => asPlansOwn(f, 's-goal-mfa-all-users'))
   assert.equal(on.step.state.lifecycle, 'enforced')
   assert.equal(on.tiles.find((t) => t.key === 'pitfall:unproven'), undefined)
 })

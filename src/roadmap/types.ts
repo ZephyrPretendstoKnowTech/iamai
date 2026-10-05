@@ -182,6 +182,12 @@ type PolicyOperationBase = {
    * (roadmap/operations.ts enforcementHeld); no channel submits it.
    */
   addsExclusionsOnly?: true
+  /**
+   * The update only renames the policy (owner, 2026-10-04: a tenant policy exactly
+   * the baseline's under another name takes the plan's name): nobody's sign-in
+   * changes, so nothing that waits on people waits on it (operations.ts renamesEnforced).
+   */
+  renamesOnly?: true
 }
 
 /**
@@ -338,6 +344,13 @@ export type Action = {
    * weaken a sign-in.
    */
   besidePolicies?: { policyId: string; name: string; state: string }[]
+  /**
+   * The tenant's own policies beside the step, under other names, enforce its goal
+   * today (coverage verdict inPlace): the step still creates the baseline's policy
+   * (owner, 2026-10-04: identity is the name), but its people are already protected,
+   * which is what operations.ts deliveredByEnforcedPolicy answers.
+   */
+  besideDelivers?: true
   /**
    * Why the step offers no implementation although nothing it names is missing:
    * the plan cannot tell which of the tenant's policies is which half of a pair,

@@ -12,6 +12,12 @@ import { CONTRACT } from '../ui/surfaces/stepContract.ts'
 test('5.3 with the policy On and no guest in the directory is Completed, and asks for no workflow test', () => {
   const f = withRecoveryTested(withFoundationSettled(curatedFixture('small')))
   assert.equal(f.snapshot.users.filter((u) => u.userType === 'guest').length, 0, 'the premise: no guests')
+  // Policy identity is the name (owner, 2026-10-04): the small tenant's all-users MFA
+  // policy reaches guests, but it is the all-users step's, never 5.3's. 5.3's own
+  // policy is the one it creates, here switched On as its procedure ends.
+  const built = runFixture(f).steps.find((s) => s.id === 's-goal-guests-mfa')!.action.resolution?.policies[0]
+  assert.equal(built?.mode, 'create', 'the premise: 5.3 creates its own policy')
+  ;(f.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).push({ ...structuredClone(built!.body as Record<string, unknown>), id: 'aaaaaaaa-0000-4000-8000-000000000053', state: 'enabled' })
   const step = runFixture(f).steps.find((s) => s.id === 's-goal-guests-mfa')!
   assert.equal(step.state.lifecycle, 'enforced', 'the premise: the policy is On')
   assert.equal(step.status, 'done')

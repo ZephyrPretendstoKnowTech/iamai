@@ -5,7 +5,7 @@
 // steps (their own producers, frozen) and the four Direction steps (the decision
 // anatomy) are outside it.
 import { test } from 'node:test'
-import { asPlanned } from '../../roadmap/fixtures/asPlanned.ts'
+import { asPlanned, asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -29,6 +29,20 @@ import { SNAPSHOT_FIXTURES } from '../../testing/stepSnapshots.ts'
 import { planProposedNames } from './proposedNames.ts'
 
 const PILOT = 's-goal-admin-session'
+
+/**
+ * The fixture with the step's policy under the baseline's name: a tenant policy
+ * exactly the baseline's under another name is renamed by its step, its one edit
+ * (owner, 2026-10-04: policy identity is the name). Renamed, it is the step's
+ * own policy, in place.
+ */
+function renamed(f: Fixture, stepId: string): Fixture {
+  const rename = runFixture(f).steps.find((s) => s.id === stepId)?.action.resolution?.policies.find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
+  assert.ok(rename, `the premise: ${stepId} renames the tenant's policy`)
+  const g = structuredClone(f)
+  ;(g.snapshot.config.caPolicies.rows as { id?: string; displayName?: string }[]).find((p) => p.id === rename.policyId)!.displayName = (rename.body as { displayName: string }).displayName
+  return g
+}
 
 /** `settled` settles the plan's foundation, so nothing holds the step (roadmap/foundations.ts). */
 function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false, over: Partial<RoadmapInput> = {}, shape: (f: Fixture) => Fixture = (f) => f) {
@@ -202,7 +216,10 @@ test('"No tasks remaining" is shown only where nothing is left, and never over a
 
 test('a policy in place, or at its last stage with nothing to submit, is a satisfied card; one with a task left is not', () => {
   {
-    const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
+    // The tenant's all-users policy under the baseline's name: the step's own, in
+    // place (owner, 2026-10-04: policy identity is the name; under its own name the
+    // step's one edit is the rename).
+    const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2', false, {}, (x) => renamed(x, 's-goal-mfa-all-users'))
     assert.equal(body.contract.state.satisfied, true, 'the premise: nothing to create; keep it as it is')
     const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
     // Every card: this policy is enforced over a tenant where eleven of
@@ -336,7 +353,9 @@ test('a policy card states no stage it is not at, and no check the plan never re
     // (item 7). The group the tenant excludes beyond the plan is asked to be
     // removed (owner, 2026-09-26: every difference is corrected or accepted), and
     // the card names the steps that must come first.
-    const correction = bodyOf('s-goal-block-legacy-auth', 'demo')
+    // The demo's legacy-auth block under the baseline's name, so it is the step's
+    // own and corrected in place (owner, 2026-10-04: policy identity is the name).
+    const correction = bodyOf('s-goal-block-legacy-auth', 'demo', false, {}, (x) => asPlansOwn(x, 's-goal-block-legacy-auth'))
     assert.equal(correction.body.contract.state.stage, 'Enforced', 'the premise: the policy is enforced and lacks the exclusions group')
     const correct = (correction.body.emergencyAccountTasks?.tasks ?? []).find((t) => t.id === 'correct')
     assert.ok(correct?.steps.includes('Under **Users → Exclude**, remove the group **Core - Break glass**.'), JSON.stringify(correct?.steps))
@@ -358,7 +377,7 @@ test('a policy card states no stage it is not at, and no check the plan never re
     }
     // A policy the very first scan found enforced: the stage is the tenant fact
     // the step's head states, and the card claims no history for it.
-    const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
+    const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2', false, {}, (x) => renamed(x, 's-goal-mfa-all-users'))
     assert.equal(body.contract.state.fact, 'Enforced', 'the step still states the stage, as a fact of the tenant')
   }
   {

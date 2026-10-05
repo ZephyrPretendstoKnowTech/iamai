@@ -29,7 +29,9 @@ function opened(name: FixtureName, stepId: string, edit: (f: Fixture) => Fixture
 }
 
 test('before Configure Emergency Exclusions, the removal of the old exclusion says to wait for it, on the card, the task and the script', () => {
-  const { correct, cards, ps } = opened('demo', DEVICE_CODE)
+  // Policy identity is the name (owner, 2026-10-04): the demo's device-code policy
+  // under the baseline's name is the step's own, which it corrects in place.
+  const { correct, cards, ps } = opened('demo', DEVICE_CODE, (f) => asPlansOwn(f, DEVICE_CODE))
   assert.ok(correct, 'the premise: the demo corrects its device-code policy')
   assert.ok(correct.steps.some((l) => /remove the group \*{0,2}Core - Break glass/.test(l)), `the premise: the correction removes the old exclusion: ${correct.steps.join(' | ')}`)
   const first = 'Do this after Configure Emergency Exclusions adds Core - Exclusions to this policy.'

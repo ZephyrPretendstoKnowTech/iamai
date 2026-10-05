@@ -232,6 +232,22 @@ function mutated(edit: (policy: Row, snapshot: Fixture['snapshot']) => void, nam
 }
 
 const stepOf = (run: ReturnType<typeof runFixture>, goal: string): Step => run.steps.find((s) => s.id === stepIdForGoal(goal))!
+
+// Policy identity is the name (owner, 2026-10-04): the demo's policies carry the
+// tenant's own names, so a drifted one is not the step's (the step creates the
+// baseline's beside it). The cases about drift in the step's own policy start
+// from the demo's policy under the plan's name for it, the baseline's.
+const planNames = new Map<string, string>()
+const planNameOf = (goal: string): string => {
+  if (!planNames.has(goal)) planNames.set(goal, stepOf(runFixture(ANSWERED), goal).createName!)
+  return planNames.get(goal)!
+}
+/** As `mutated`, the edited policy carrying the plan's name for `goal`: the step's own policy. */
+const mutatedOwn = (edit: (policy: Row, snapshot: Fixture['snapshot']) => void, name: string, goal: string): ReturnType<typeof runFixture> =>
+  mutated((row, snapshot) => {
+    row.displayName = planNameOf(goal)
+    edit(row, snapshot)
+  }, name)
 const goalOf = (run: ReturnType<typeof runFixture>, goal: string) => run.coverage.results.find((r) => r.goal.id === goal)!
 const conditions = (row: Row): Row => row.conditions as Row
 const users = (row: Row): Row => conditions(row).users as Row
@@ -303,7 +319,7 @@ test('A3: client-app or grant drift on the name-matched legacy-auth policy reads
     ['client apps', (row: Row): void => { conditions(row).clientAppTypes = ['exchangeActiveSync'] }],
     ['grant', (row: Row): void => { row.grantControls = { operator: 'OR', builtInControls: ['mfa'] } }],
   ] as const) {
-    const run = mutated(edit, LEGACY)
+    const run = mutatedOwn(edit, LEGACY, 'block-legacy-auth')
     const step = stepOf(run, 'block-legacy-auth')
     const policy = rowsOf(ANSWERED.snapshot).find((p) => p.displayName === LEGACY)!
     assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), `${what}: no "(2)" duplicate is offered`)
@@ -319,7 +335,7 @@ test('A4: location or platform drift on an enforced block policy is a stated man
     ['location', (row: Row): void => { conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }],
     ['platform', (row: Row): void => { conditions(row).platforms = { includePlatforms: ['windows'], excludePlatforms: [] } }],
   ] as const) {
-    const run = mutated(edit, LEGACY)
+    const run = mutatedOwn(edit, LEGACY, 'block-legacy-auth')
     const step = stepOf(run, 'block-legacy-auth')
     assert.notEqual(unavailableReason(step), 'no-operation', `${what}: the row no longer waits for a scan to rebuild the step`)
     const update = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
@@ -439,6 +455,7 @@ test('a report-only legacy-authentication block with a trusted-location exclusio
   // procedure, and no channel hands over a write.
   const snapshot = structuredClone(ANSWERED.snapshot)
   const row = rowsOf(snapshot).find((p) => p.displayName === LEGACY)!
+  row.displayName = planNameOf('block-legacy-auth')
   row.state = 'enabledForReportingButNotEnforced'
   conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] }
   const run = runFixture({ ...ANSWERED, snapshot })
@@ -472,6 +489,7 @@ test('a report-only legacy-authentication block with a trusted-location exclusio
     for (const [label, edit] of cases) {
       const snapshot = structuredClone(ANSWERED.snapshot)
       const row = rowsOf(snapshot).find((p) => p.displayName === LEGACY)!
+      row.displayName = planNameOf('block-legacy-auth')
       conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] }
       edit(row)
       const run = runFixture({ ...ANSWERED, snapshot })
@@ -493,13 +511,23 @@ test('a policy the tenant wrote under its own name is not told to take the plan\
   // narrowing of a policy the plan never built. Only a policy the plan tagged,
   // or one carrying the name the plan gives the goal's policy, is read against
   // the plan's (generate.ts Action.intended).
+  //
+  // Policy identity is the name (owner, 2026-10-04): the tenant's own policies are
+  // no longer the step's at all. The step creates the baseline's policy in
+  // Report-only and lists the tenant's beside it for Cleanup to retire, never
+  // editing them or reading them against the plan's shape.
   const f = withFoundationSettled(fixtures.find((x) => x.name === 'large')!)
   const run = runFixture(f)
   const step = run.steps.find((s) => s.goalId === 'require-managed-device')!
-  assert.equal(step.tracking?.matchedBy, 'fingerprint', 'the premise: the tenant\'s own policy delivers the goal')
+  const theirs = rowsOf(f.snapshot).filter((p) => /Compliant device for Office/.test(String(p.displayName)) && p.state !== 'disabled').map((p) => String(p.id))
+  assert.ok(theirs.length > 0, 'the premise: the tenant has compliant-device policies of its own')
+  assert.equal(step.tracking?.policyId ?? null, null, 'a tenant policy under its own name is tracked as the step\'s')
   assert.equal(step.action.intended, undefined, 'the tenant\'s own policy is read against the plan\'s')
   assert.deepEqual(step.state.observation?.unwritten ?? [], [])
-  assert.equal(step.status, 'done')
+  const ops = step.action.resolution?.policies ?? []
+  assert.deepEqual(ops.map((o) => o.mode), ['create'], 'the baseline\'s policy is created; nothing of the tenant\'s is updated')
+  assert.equal(ops[0].body.state, 'enabledForReportingButNotEnforced')
+  for (const id of theirs) assert.ok((step.action.besidePolicies ?? []).some((p) => p.policyId === id), `${id} is listed beside the step, to retire`)
 })
 
 test('a step whose policy differs where the update does not write never says to leave every other setting as it is', () => {
@@ -511,7 +539,7 @@ test('a step whose policy differs where the update does not write never says to 
   // filter, the legacy-authentication block with a trusted-location exclusion.
   const cases: [string, string, (row: Row) => void][] = [
     ['token protection without the Cloud PC filter', TOKEN, (row) => { delete conditions(row).devices }],
-    ['legacy authentication with a trusted-location exclusion', LEGACY, (row) => { row.state = 'enabledForReportingButNotEnforced'; conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }],
+    ['legacy authentication with a trusted-location exclusion', LEGACY, (row) => { row.displayName = planNameOf('block-legacy-auth'); row.state = 'enabledForReportingButNotEnforced'; conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }],
   ]
   const untouched = String(shared.changeUntouched)
   for (const [label, name, edit] of cases) {
@@ -531,9 +559,10 @@ test('A6: an ordinary person excluded from MFA-for-all is a coverage gap, as it 
   assert.equal(member.userType, 'member')
   for (const name of [MFA_ALL, LEGACY]) {
     const goal = name === MFA_ALL ? 'mfa-all-users' : 'block-legacy-auth'
-    const run = mutated((row) => {
+    // The policy carries the plan's name, so the gap is the step's own to correct.
+    const run = mutatedOwn((row) => {
       users(row).excludeUsers = [member.id]
-    }, name)
+    }, name, goal)
     const result = goalOf(run, goal)
     assert.notEqual(result.verdict, 'inPlace', `${goal}: an unauthorised exclusion left the goal in place`)
     assert.ok(result.reasons.some((r) => r.kind === 'excluded' && !r.expected && r.userIds.includes(member.id)), JSON.stringify(result.reasons))

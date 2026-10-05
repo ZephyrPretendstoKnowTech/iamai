@@ -779,7 +779,17 @@ test('a Completed or Deferred row is one compact line: number, title, its lane w
   // boardColumns.test.ts). Selecting it opens the step as before.
   for (const lane of ['Completed', 'Deferred'] as const) assert.equal(drawsCompact(lane), true, lane)
   for (const lane of ['Ready', 'Up Next', 'On Hold'] as const) assert.equal(drawsCompact(lane), false, lane)
-  const r = runFixture(fixture('demo-week2'))
+  // The Follow-up demo's enforced policies are the baseline's under the tenant's
+  // own names, so each step's one edit is their rename (owner, 2026-10-04: policy
+  // identity is the name). Renamed, as a person following the plan does, they
+  // are the steps' own, and the steps complete on this scan.
+  const week2 = structuredClone(fixture('demo-week2'))
+  for (const step of runFixture(week2).steps) {
+    const rename = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
+    const row = rename && (week2.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).find((p) => p.id === rename.policyId)
+    if (row) row.displayName = (rename!.body as { displayName: string }).displayName
+  }
+  const r = runFixture(week2)
   const readings = laneReadings(r.steps)
   const done = r.steps.find((s) => readings.get(s.id)?.lane === 'Completed' && s.history.some((h) => h.to === 'done'))
   assert.ok(done, 'the premise: the Follow-up demo has a step completed on a recorded day')

@@ -167,6 +167,16 @@ test('one verdict: task completion requires coverage and any explicit workflow e
       // old (owner, 2026-09-27). Its completion is adminsBuildBeside.test.ts's.
       if ((s.action.besidePolicies ?? []).length > 0) continue
       const stepDone = s.status === 'done'
+      // Policy identity is the name (owner, 2026-10-04): the step's own policy is
+      // the one carrying the plan's tag or the baseline's name. Where the step still
+      // creates it, or its one edit is the rename that makes a tenant policy exactly
+      // the baseline's its own, coverage a policy under another name gives does not
+      // finish the step, and the step must not read done.
+      const ownPending = (s.action.resolution?.policies ?? []).some((p) => p.mode === 'create' || (p.mode === 'update' && 'displayName' in ((p.body ?? {}) as Record<string, unknown>)))
+      if (ownPending) {
+        if (stepDone) disagreements.push(`${f.name}: ${s.id} is done while its own policy is still to be created or renamed`)
+        continue
+      }
       const unresolvedIdentity = s.blockers.some(b => b.kind === 'evidence' && b.label === 'inforcer-application')
       // Every control is exact (owner, 2026-09-25): a goal in place through a policy with a setting that is not the plan's is not done.
       const asPlanned = s.state.members.every((m) => m.change.unwritten.length === 0)

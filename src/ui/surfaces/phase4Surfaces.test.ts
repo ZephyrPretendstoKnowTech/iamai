@@ -174,10 +174,17 @@ test('the coverage line never names the policy the step itself corrects, nor a C
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const own = (step.tracking?.members ?? []).map((m) => m.policyName ?? '').filter(Boolean)
-  assert.ok(step.deliveredBy.some((d) => own.some((n) => d.startsWith(`${n} (`))), `the premise: its own policy delivers the goal: ${step.deliveredBy} / ${own}`)
+  assert.ok(own.length > 0, 'the premise: the step follows its own policy')
+  // Found by its name (owner, 2026-10-04: identity is the name), the policy is the
+  // step's own enforced policy, which generate.ts's deliveredBy keeps as the goal's
+  // delivery and never lists, so the engine no longer hands the surface the own
+  // policy to filter. The surface's filter is still asserted below, on the own
+  // policy put back into deliveredBy by hand.
+  assert.ok(!step.deliveredBy.some((d) => own.includes(policyName(d))), `the engine names its own policy as coverage: ${step.deliveredBy}`)
   assert.deepEqual(stepVars(step, ctxOf(f, r)).existingPolicies, [])
   // Only the step's own policy goes: one whose name merely begins with it stays.
-  const [mine] = step.deliveredBy
+  const mine = `${own[0]} (On)`
+  assert.deepEqual(stepVars({ ...step, deliveredBy: [mine] } as Step, ctxOf(f, r)).existingPolicies, [], 'the step’s own policy is named as coverage beside it')
   const pilot = `${policyName(mine)} (Pilot) (On)`
   assert.deepEqual(stepVars({ ...step, deliveredBy: [mine, pilot] } as Step, ctxOf(f, r)).existingPolicies, [pilot])
   // A policy beside the step's own still says so.

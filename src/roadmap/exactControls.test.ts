@@ -1,6 +1,10 @@
 // Every control is exact (owner, 2026-09-25): a policy completes its step only
-// where each condition, grant and session setting is the plan's. Only the name
-// may differ, and Align Policy Names lists the rename.
+// where each condition, grant and session setting is the plan's. Which policy is
+// the step's is read by its name (owner, 2026-10-04: policy identity is the name):
+// the plan's tag, else the baseline's name. A policy carrying the tag keeps it
+// under any name, and Align Policy Names lists the rename; an untagged policy
+// exactly the baseline's under another name is renamed by the step itself, and
+// under the baseline's name it completes the step.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures } from './fixtures/index.ts'
@@ -155,7 +159,13 @@ test('every difference is corrected or accepted, a stricter one too: accepted, m
   const more = withRoles((r) => [...r, 'adb2368d-a9be-41b5-8667-d96778e081b0', '6b942400-691f-4bf0-9d12-d8a254a2baf5'], decisions)
   assert.deepEqual(more.state.members.flatMap((m) => [...m.change.unwritten]), [], 'another role later keeps the acceptance')
   const gap = withRoles((r) => [...r.slice(1), 'adb2368d-a9be-41b5-8667-d96778e081b0'], decisions)
-  assert.deepEqual([...new Set(gap.state.members.flatMap((m) => [...m.change.unwritten]))], ['conditions.users'], 'a role taken off reopens it')
+  // The step's own policy (owner, 2026-10-04: policy identity is the name) has a
+  // role the goal needs taken off: the step's update now writes the users back
+  // itself, so the gap is a correction the operation carries, not one left unwritten.
+  assert.equal(gap.state.satisfied, false, 'a role taken off reopens it')
+  const writes = (gap.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && o.policyId === id && ((o.body as Row).conditions as Row | undefined)?.users !== undefined)
+  const unwritten = gap.state.members.flatMap((m) => [...m.change.unwritten])
+  assert.ok(writes || unwritten.includes('conditions.users'), 'a role taken off reopens it: its users are corrected')
 })
 
 test('a difference accepted with a reason completes the step and says so; changing the accepted setting reopens it', () => {
@@ -185,4 +195,30 @@ test('a difference accepted with a reason completes the step and says so; changi
   assert.match(String(tile?.note), /differs from the baseline's policy in session controls\. Accepted .+: Reception kiosks sign in again every four hours/)
   const moved = accepting(8)
   assert.deepEqual([...new Set(moved.step.state.members.flatMap((m) => [...m.change.unwritten]))], ['sessionControls'], 'the accepted setting moved: the step reopens')
+})
+
+test('exactly the baseline’s policy, untagged, under another name: the step’s one edit is the rename (owner, 2026-10-04: policy identity is the name)', () => {
+  // A person built the policy by hand from the step's procedure, kept no IAMAI
+  // tag and gave it the tenant's own name: its controls are the plan's, so the
+  // step renames it to the baseline's name rather than creating a second one.
+  const { step } = rescan((row) => {
+    delete row.description
+    row.displayName = 'Renamed by someone'
+  })
+  const ops = step.action.resolution?.policies ?? []
+  assert.equal(ops.length, 1)
+  assert.equal(ops[0].mode, 'update')
+  assert.equal(ops[0].policyId, 'p-built-from-step')
+  assert.equal((ops[0].body as Row).displayName, step.createName, 'the rename writes the baseline’s name')
+  assert.ok(!(step.action.besidePolicies ?? []).some((p) => p.policyId === 'p-built-from-step'), 'it is the step’s own, never one to retire')
+})
+
+test('exactly the baseline’s policy, untagged, under the baseline’s name: the step finds it and has nothing to correct (owner, 2026-10-04: policy identity is the name)', () => {
+  const { step } = rescan((row) => {
+    delete row.description
+  })
+  assert.equal(step.tracking?.policyId, 'p-built-from-step', 'the name alone makes it the step’s own')
+  assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [])
+  assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), 'nothing is created beside it')
+  assert.equal(step.state.lifecycle, 'report-only')
 })

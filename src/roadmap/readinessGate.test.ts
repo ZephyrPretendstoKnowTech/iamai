@@ -101,13 +101,20 @@ function largeDevices(over: { enabled?: boolean; everyoneCompliant?: boolean; ow
   const f0 = withFoundationSettled(fixture('large'))
   const f = { ...f0, baseline: { ...f0.baseline, policies: f0.baseline.policies.map((p) => (/CompliantOffice/.test(p.displayName) ? { ...p, conditions: { ...p.conditions, applications: { ...p.conditions.applications, includeApplications: ['All'] } } } : p)) } } as typeof f0
   const ca = f.snapshot.config.caPolicies!
+  // The tenant's own compliant-device policy carries the baseline's name, so it is
+  // the step's own and the step corrects it in place (owner, 2026-10-04: policy
+  // identity is the name; under the tenant's name the step would create the
+  // baseline's beside it). The others stay the tenant's, listed beside it.
+  const OWN = 'Core - Grant - Compliant device for Office'
+  const planName = f.baseline.policies.find((p) => /CompliantOffice/.test(p.displayName))!.displayName
   const rows = (ca.rows as Row[]).map((p) => {
     if (!/Compliant device for Office/.test(String(p.displayName))) return p
     const q = over.enabled ? { ...p, state: 'enabled' } : p
-    if (!over.owesCorrection || q.displayName !== 'Core - Grant - Compliant device for Office') return q
+    if (q.displayName !== OWN) return q
+    if (!over.owesCorrection) return { ...q, displayName: planName }
     // New objects: this fixture's policies share their conditions.
     const conditions = (q.conditions ?? {}) as Row
-    return { ...q, conditions: { ...conditions, applications: { ...(conditions.applications as Row), excludeApplications: [SHAREPOINT] } } }
+    return { ...q, displayName: planName, conditions: { ...conditions, applications: { ...(conditions.applications as Row), excludeApplications: [SHAREPOINT] } } }
   })
   const devices = over.everyoneCompliant
     ? [...f.snapshot.devices, ...f.snapshot.users.map((u, i) => ({ id: `d-ready-${i}`, displayName: `PC ${i}`, operatingSystem: 'Windows', isCompliant: true, trustType: 'AzureAd', ownerIds: [u.id] }))]

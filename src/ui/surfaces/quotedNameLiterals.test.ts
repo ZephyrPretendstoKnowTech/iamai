@@ -124,7 +124,10 @@ function correctionCall(policyName: string): string {
   const staffGroup = [...f.groups.keys()].find((id) => id !== excl)!
   const ca = f.snapshot.config.caPolicies!
   const keep = (ca.rows as { displayName?: string }[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
-  const row = { id: B, displayName: policyName, state: 'enabled', conditions: { users: { includeGroups: [staffGroup], excludeGroups: [excl] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
+  // The policy carries the plan's tag, so it is the step's own under any name (owner,
+  // 2026-10-04: policy identity is the name, else the tag); untagged, under a name
+  // that is not the baseline's, the step would create the baseline's beside it.
+  const row = { id: B, displayName: policyName, description: `[IAMAI:${f.planId}:s-goal-mfa-all-users]`, state: 'enabled', conditions: { users: { includeGroups: [staffGroup], excludeGroups: [excl] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [row, ...keep] } } }
   const scored = runFixture({ ...f, snapshot } as never, { snapshot } as never).viability
   const r = runFixture({ ...f, snapshot } as never, { snapshot, viability: scored.map((v) => ({ ...v, readiness: READY })) } as never)

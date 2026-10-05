@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
+import { asPlansOwn } from '../../roadmap/fixtures/asPlanned.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { implementationOffered } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -54,7 +55,10 @@ test('a change that is due keeps its portal lines', () => {
 // package — a CorrectConditions call and a PATCH whose excluded groups drop Core - Break
 // glass — with Copy enabled, while the export above held them. Both surfaces hold it now.
 test('the same held corrections are a planning preview on screen: resources remain copyable without repeated disclaimers', () => {
-  const f = curatedFixture('demo')
+  // The two block policies carry the baseline's names, so each is its step's own
+  // and corrected in place (owner, 2026-10-04: policy identity is the name; under
+  // the tenant's names the steps create the baseline's beside them instead).
+  const f = asPlansOwn(asPlansOwn(curatedFixture('demo'), 's-goal-block-legacy-auth'), 's-goal-block-device-code')
   const r = runFixture(f, {}, null, f.snapshot.asOf)
   const readings = laneReadings(r.steps)
   const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null

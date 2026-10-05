@@ -77,6 +77,9 @@ test('the Accept panel says which setting the step’s own correction writes, be
   const f = structuredClone(fixture('demo'))
   const row = (f.snapshot.config.caPolicies.rows as Row[]).find((p) => p.displayName === 'Core - Block - Legacy authentication')!
   row.conditions.locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] }
+  // Under the baseline's name it is the step's own to correct (owner, 2026-10-04:
+  // policy identity is the name); under the tenant's the step builds beside it.
+  row.displayName = runFixture(f).steps.find((s) => s.id === 's-goal-block-legacy-auth')!.createName
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
   const panel = acceptPanelOf(step, ctxOf(f, r))

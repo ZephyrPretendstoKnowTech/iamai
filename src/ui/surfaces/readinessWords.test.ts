@@ -563,5 +563,8 @@ test('a readiness number is labelled by the strength its policies require, so tw
   // Registration waits on its own Modern MFA + TAP number beside it now that no
   // unmapped group holds it (Phase 2a).
   // Protect Sign-in Method Registration waits on the same number beside it since it is Jon's policy (2026-09-25).
-  assert.deepEqual(planFinish(runFixture(pinned).steps).waiting.map((w) => w.measure), ['Modern MFA + TAP readiness', 'admin Modern MFA + TAP readiness'])
+  // Require MFA for Everyone creates the baseline's policy beside small's own (policy
+  // identity is the name, owner, 2026-10-04), and its turn-on waits on plain MFA
+  // readiness: a third requirement, under its own label.
+  assert.deepEqual(planFinish(runFixture(pinned).steps).waiting.map((w) => w.measure), ['Modern MFA + TAP readiness', 'MFA readiness', 'admin Modern MFA + TAP readiness'])
 })

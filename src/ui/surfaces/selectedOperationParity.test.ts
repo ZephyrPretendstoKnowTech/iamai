@@ -167,7 +167,9 @@ test('every policy step whose lines are handed over: the export carries the task
     for (const step of p.steps) {
       if (!implementationOffered(step) || !implementationIsCurrent(step)) continue
       const o = p.open(step)
-      const next = stepBodyOf(step, o.ctx, { lane: o.lane }).emergencyAccountTasks?.tasks.find((t) => t.required)
+      // The task the screen opens on (ContentStep.tsx activeTask): the recommended one, else the first required.
+      const projected = stepBodyOf(step, o.ctx, { lane: o.lane }).emergencyAccountTasks
+      const next = projected?.tasks.find((t) => t.id === projected.recommendedTaskId) ?? projected?.tasks.find((t) => t.required)
       if (!next) continue
       const expected = next.steps.map((line, i) => `${i + 1}. ${line.replace(/\*\*/g, '')}`)
       const lines = stepExportView(step, o.ctx, o.lane).whatToDo

@@ -38,7 +38,11 @@ function opened(rowOf: (g: Groups) => ReturnType<typeof pol>) {
   const staffGroup = [...f.groups.keys()].find((id) => id !== excl)!
   const ca = f.snapshot.config.caPolicies!
   const keep = (ca.rows as { displayName?: string }[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
-  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [rowOf({ staffGroup, excl }), ...keep] } } }
+  // Policy B carries the plan's tag, so it is the step's own under its own name (owner,
+  // 2026-10-04: policy identity is the name, else the tag); untagged, the step would
+  // create the baseline's policy beside it and correct nothing.
+  const own = { ...rowOf({ staffGroup, excl }), description: `[IAMAI:${f.planId}:s-goal-mfa-all-users]` }
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [own, ...keep] } } }
   readyEvidence(f, snapshot)
   const scored = runFixture({ ...f, snapshot } as never, { snapshot } as never).viability
   const r = runFixture({ ...f, snapshot } as never, { snapshot, viability: scored.map((v) => ({ ...v, readiness: READY })) } as never)

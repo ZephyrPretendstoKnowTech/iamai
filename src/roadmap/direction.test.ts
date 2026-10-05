@@ -289,8 +289,12 @@ test('(e) a policy with an unanswered Direction dependency is held Waiting on yo
     assert.notEqual(readings.get(s.id)?.reason?.kind, 'decision', goal)
   }
   // A policy already enforced is not held by an answer it is written from, and
-  // asks nothing on the step itself (walk list 4.x item 6).
-  const code = r.steps.find((s) => s.goalId === 'block-device-code')!
+  // asks nothing on the step itself (walk list 4.x item 6). The demo's device-code
+  // block carries the tenant's own name; under the baseline's it is the step's own
+  // (owner, 2026-10-04: policy identity is the name), and the step reads it enforced.
+  const { asPlansOwn } = await import('./fixtures/asPlanned.ts')
+  const codeId = r.steps.find((s) => s.goalId === 'block-device-code')!.id
+  const code = runFixture(asPlansOwn(f, codeId)).steps.find((s) => s.id === codeId)!
   assert.equal(code.state.lifecycle, 'enforced', 'the premise: the demo already blocks device code')
   assert.ok(!code.blockers.some((b) => b.kind === 'decision' && b.label.startsWith('direction:')), 'an enforced policy waits on an answer it does not need')
   assert.equal(code.unsavedInputs, undefined, 'Block Device Code Sign-in asks a question of its own')

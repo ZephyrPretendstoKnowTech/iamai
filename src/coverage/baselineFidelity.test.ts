@@ -424,7 +424,12 @@ test('whole path: pinned member to goal identity to classification to coverage t
   const rows = (f.snapshot.config.caPolicies as { rows: Raw[] }).rows
   const mfa = rows.find((p) => /MFA for all users/i.test(String(p.displayName)))
   assert.ok(mfa, 'the fixture tenant has an all-users MFA policy')
-  const before = runFixture(fixture('small'))
+  // Policy identity is the name (owner, 2026-10-04): the step's own policy is the
+  // one carrying the baseline's name. Under the tenant's own name the step's one
+  // edit would be a rename; this path is about coverage reaching the step, so the
+  // policy starts as the plan's own, finished.
+  mfa.displayName = policiesForGoal(PINNED_GOAL_MAP, PINNED_POLICIES, 'mfa-all-users')[0]?.displayName
+  const before = runFixture(f)
   assert.equal(before.coverage.results.find((r) => r.goal.id === 'mfa-all-users')?.status, 'enforced', 'the fixture starts with the goal in place')
   assert.equal(before.steps.find((s) => s.id === 's-goal-mfa-all-users')?.status, 'done')
 

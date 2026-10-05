@@ -23,6 +23,9 @@ test('an extra excluded group is asked to be removed; an emergency account exclu
   const extra = 'c0100000-0000-4000-8000-00000000beef'
   row.conditions.users.excludeGroups = [...(row.conditions.users.excludeGroups ?? []), extra]
   f.groups.set(extra, { memberIds: [], memberCount: 0, sampled: false, displayName: 'Old VIP exclusions' } as never)
+  // Policy identity is the name (owner, 2026-10-04): under the baseline's name the
+  // tenant's policy is the step's own, which it corrects in place.
+  row.displayName = runFixture(f).steps.find((s) => s.id === 's-goal-mfa-all-users')!.createName
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
   const op = (step.action.resolution?.policies ?? [])[0]

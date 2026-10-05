@@ -69,10 +69,12 @@ test('a step whose policy exists and is switched off says so, instead of asking 
   }
   // A delivered step held open, so it has no operation to offer and only the
   // members move. The fixtures' own case was Require MFA for Inforcer Access,
-  // which now completes from the policy that delivers it (owner decision 17,
-  // 2026-09-25).
-  const delivered = run.steps.find((s) => s.id === 's-goal-inforcer-mfa' && s.status === 'done' && (s.state.members ?? []).length > 0)
-  assert.ok(delivered, 'midflight no longer carries its delivered Inforcer step')
+  // which completed from the policy that delivered it (owner decision 17,
+  // 2026-09-25); since policy identity is the name (owner, 2026-10-04) that step
+  // creates the baseline's own policy instead, so the case is Require MFA for
+  // Everyone, delivered by the policy carrying the plan's tag.
+  const delivered = run.steps.find((s) => s.id === 's-goal-mfa-all-users' && s.status === 'done' && (s.state.members ?? []).length > 0)
+  assert.ok(delivered, 'midflight no longer carries its delivered MFA for Everyone step')
   const base = { ...delivered, status: 'ready' as const }
   assert.equal(unavailableReason(base), 'no-operation', 'the premise: nothing to write')
   const because = (x: typeof base): string => { const impl = stepContract(x, ctx).implementation; return impl.offered ? '' : (impl.because ?? '') }

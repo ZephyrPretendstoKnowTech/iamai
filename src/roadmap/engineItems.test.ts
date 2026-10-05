@@ -18,7 +18,15 @@ import type { CaPolicy } from '../baseline/types.ts'
 test('the three blocks are evidence-gated with no device-readiness gate; the admin session policy has no admin-readiness gate', () => {
   // Week two: the device-code block carves out the chosen exclusions group and is delivered, so its
   // evidence stands as the step's own. On day one it lacks the group and is partly in place (Step 3 correction).
+  // Policy identity is the name (owner, 2026-10-04): the demo's device-code block is
+  // exactly the baseline's under the tenant's own name, so its step's one edit would
+  // be a rename. This case is about the evidence gate, so the block carries the
+  // baseline's name: the step's own policy, delivered.
   const f = fixture('demo-week2')
+  const named = runFixture(f).steps.find((x) => x.goalId === 'block-device-code')!
+  const block = (f.snapshot.config.caPolicies?.rows ?? []).find((p) => (p as { id?: unknown }).id === named.tracking?.policyId) as { displayName?: unknown } | undefined
+  assert.ok(block && named.createName, 'the demo has its device-code block')
+  block.displayName = named.createName
   const r = runFixture(f)
   for (const goalId of ['block-device-code', 'block-auth-transfer', 'block-unsupported-platforms']) {
     const s = r.steps.find((x) => x.goalId === goalId)!

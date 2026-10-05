@@ -128,8 +128,9 @@ test('GetIAMAI: the countries block waits on the allowed-countries location, the
   assert.ok(!missingObjects(withLocation).some((m) => m.stepId === 's-prereq-allowed-countries'))
 })
 
-// A partly covered goal's step names the tenant's policy as the one to change,
-// and its row reads Blocked · <date> or Ready · now, never Blocked · now.
+// A partly covered goal's step names the tenant's policy beside the baseline's it
+// creates (owner, 2026-10-04: policy identity is the name), and its row reads
+// Blocked · <date> or Ready · <date>, never Blocked · now.
 test('GetIAMAI: with a Windows-only token-protection policy on, the step names that policy and its blocked row carries a date', () => {
   // With the plan's foundation settled (roadmap/foundations.ts): until Emergency Access
   // and Direction are, every policy step is held and its row reads no day.
@@ -146,12 +147,18 @@ test('GetIAMAI: with a Windows-only token-protection policy on, the step names t
   const cov = r.coverage.results.find((x) => x.goal.id === 'token-protection')!
   assert.equal(cov.status, 'partial', 'the goal is partly covered')
   const step = r.steps.find((s) => s.id === 's-goal-token-protection')!
-  assert.equal(step.kind, 'adjust')
+  // Policy identity is the name (owner, 2026-10-04): the tenant's policy carries its
+  // own name, so the step creates the baseline's in Report-only and names the
+  // tenant's beside it, to retire once the baseline's is On; it never edits it.
+  assert.equal(step.kind, 'create')
+  assert.ok((step.action.besidePolicies ?? []).some((p) => p.policyId === 'p-token'), 'the tenant\'s policy is listed beside the step')
   const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const ex = stepVars(step, ctx)
-  assert.equal(ex.policyName, 'Core - Require - Token Protection (Windows)', 'Name: is the tenant\'s policy')
+  assert.ok(((ex.existingPolicies ?? []) as string[]).some((p) => p.startsWith('Core - Require - Token Protection (Windows)')), 'the step names the tenant\'s policy')
+  assert.equal(ex.policyName, step.createName, 'Name: is the baseline\'s policy the step creates')
   const lines = stepPortalLines(step, portalNamesFor(ctx, ex, 'Require Token Protection')) ?? []
-  assert.ok(lines.some((l) => l.includes('Core - Require - Token Protection (Windows)')), 'the portal lines name it')
+  assert.ok(lines.some((l) => l === `Name: ${step.createName}`), 'the portal lines name the policy it creates')
+  assert.ok(!lines.some((l) => /Name: Core - Require - Token Protection/.test(l)), 'the tenant\'s policy is never the one written')
   assert.ok(!lines.some((l) => /Name: Require Token Protection/.test(l)), 'never the step title')
   const now = (pages.plan as { now: string }).now
   const wave = r.schedule.waves.find((w) => w.stepIds.includes(step.id)) ?? null
@@ -163,7 +170,11 @@ test('GetIAMAI: with a Windows-only token-protection policy on, the step names t
   assert.equal(rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'), rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'))
   assert.notEqual(rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'), now)
   // With no day of its own and none the plan schedules, Ready reads now; with the plan's day, that day (roadmap/stepSchedule.ts).
-  assert.equal(rowWhen({ ...step, status: 'ready', events: null, rings: [], scheduled: undefined }, '2026-10-05T12:00:00.000Z'), now, 'Ready · now')
+  // The step creates the baseline's policy (owner, 2026-10-04: policy identity is the
+  // name), so its own day is the one it is created in Report-only (reportOnlyAt),
+  // never a "now" nothing has made true.
+  assert.ok(step.reportOnlyAt, 'the premise: the create carries its Report-only day')
+  assert.equal(rowWhen({ ...step, status: 'ready', events: null, rings: [], scheduled: undefined }, '2026-10-05T12:00:00.000Z'), absoluteDate(step.reportOnlyAt!), 'Ready · its Report-only day')
   const settled = { ...step, status: 'ready' as const, events: null, rings: [] }
   if (settled.scheduled && scheduleOf(settled).at) assert.equal(rowWhen(settled, '2026-10-05T12:00:00.000Z'), absoluteDate(scheduleOf(settled).at!), 'Ready · its scheduled day')
 })

@@ -23,8 +23,9 @@ import { test } from 'node:test'
 import { WITHHELD_CLEANUP } from './roadmap/cleanup.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { corpus, ctxFor, peopleIn, stepsIn } from './roadmap/fixtures/semantics.ts'
-import type { PersonScenario, StepScenario } from './roadmap/fixtures/semantics.ts'
+import { corpus, ctxFor, deliveredUnsettledCase, peopleIn, stepsIn } from './roadmap/fixtures/semantics.ts'
+import type { Case, PersonScenario, StepScenario } from './roadmap/fixtures/semantics.ts'
+import type { Step } from './roadmap/types.ts'
 import { heldForReview } from './roadmap/lifecycle.ts'
 import { implementationOffered, operationsOf, policyHold, unavailableReason } from './roadmap/operations.ts'
 import { emergencySelection, operatorConfirmedEmergency } from './mapping/emergencyChoice.ts'
@@ -344,12 +345,25 @@ test('042.9: nobody is Ready without a usable phishing-resistant method confirme
 
 // ---- 11. unknown does not become safe through a presentation fallback ----
 
+/**
+ * A mid step delivered by its own policy, which also excludes a group the scan
+ * could read only a sample of (over the member cap): the corpus's own case
+ * (fixtures/semantics.ts deliveredUnsettledCase).
+ */
+function deliveredUnsettled(): { c: Case; step: Step } {
+  const c = deliveredUnsettledCase()
+  assert.ok(c, 'the premise: mid holds a baseline policy, enforced, under another name')
+  return { c, step: c.steps.find((s) => s.id === c.stepId)! }
+}
+
 test('042.11: an unmeasured fact is stated as unmeasured, never as a zero or a pass', () => {
   // A delivered step's reach is the delivering policies' own, and unsettled the
-  // same way an open policy's is (deliveredUnsettledCase): the corpus has one,
-  // or every line below says nothing about it.
-  assert.ok(stepsIn('unknownReach').some(({ step }) => step.state.satisfied && step.status === 'done'), 'no delivered step with an unsettled reach in the corpus')
-  for (const { c, step } of stepsIn('unknownReach')) {
+  // same way an open policy's is: the corpus has one, or every line below says
+  // nothing about it.
+  const delivered = deliveredUnsettled()
+  assert.equal(delivered.step.status, 'done', 'the premise: the step is delivered')
+  assert.equal(reached(delivered.step), null, 'the premise: its reach is unsettled')
+  for (const { c, step } of [...stepsIn('unknownReach'), delivered]) {
     const ctx = ctxFor(c, step)
     // The who line is the row's Impact, which counts the goal's people where the scope settles nobody (walk list 4.x item 25; owner, 2026-09-24).
     assert.equal(stepExportView(step, ctx).population, null, `${c.label}/${step.id}: an unsettled reach written down as a number`)
