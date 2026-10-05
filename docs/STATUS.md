@@ -135,15 +135,22 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   - Name and controls match: in place.
   - Name matches, controls differ: the step shows the edits.
   - No name match: the step creates the baseline's policy in report-only.
-  - Exact controls under another name: the step suggests a rename.
+  - Exact controls under another name: the step asks for the rename, and is done once the
+    policy carries the plan's name (owner, 2026-10-05: required, not suggested; "someone is
+    choosing to adopt this baseline"). A rename changes nobody's sign-in: no readiness hold.
   - The same job under another name: listed to be retired, and Retire Replaced Policies
     turns it off once the new one is On.
   - Two policies with the plan's name: the step asks which is its own.
   - IAMAI never creates a policy whose name already exists.
   - Configure Emergency Exclusions still edits every policy, to add the exclusions group.
   - v1.1 waits for this (owner, 2026-10-04).
-- Jon's ADM-Users, BreakGlass-TrustedLocations and two AGENT blocks are to be built as steps
-  (owner, 2026-10-04). ADM-Users covers admins only eligible in PIM. BreakGlass is Microsoft's
+  - A step building the baseline's policy beside the tenant's says so on its policy card, and
+    Retire Replaced Policies pairs each old policy with its replacement and flags one stricter
+    than the baseline's (owner, 2026-10-05; overnight audit).
+- Jon's ADM-Users, BreakGlass-TrustedLocations and two AGENT blocks are steps in v1.1
+  (owner, 2026-10-04; in v1.1 on 2026-10-05). BreakGlass sits in section 8, after Harden
+  Emergency Access, because section 1 is frozen: the owner confirms the placement in the live
+  test. ADM-Users covers admins only eligible in PIM. BreakGlass is Microsoft's
   two-account pattern and needs a deliberate exception to "never an emergency account by
   name". The AGENT blocks need Graph beta reads and the agent fields Jon's export lost.
 - New policies take the baseline's own names; renames live in 8.2 Align Policy Names
