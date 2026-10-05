@@ -254,7 +254,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-question-partner` | Exclude the Partner or MSP Accounts | owner decision / exception design | guests | decision | | yes |
 | `s-question-travel` | Add a Travel Notice and Exclusion | operational exception workflow | all-users | operational | | yes |
 | `s-goal-mfa-all-users` | Require MFA for Everyone | CA policy | all-users | portal | | yes |
-| `s-goal-admins-phishing-resistant` | Require Phishing-Resistant MFA for Admins | CA policy | admins | portal | | yes |
+| `s-goal-admins-phishing-resistant` | Require a Strong Sign-in for Admins | CA policy | admins | portal | | yes |
 | `s-goal-azure-management-mfa` | Require MFA for Azure Management | CA policy | admins | portal | | no — not in pinned baseline |
 | `s-goal-admin-session` | Shorten Admin Sessions | CA policy | admins | portal | | yes |
 | `s-goal-admin-portals-protected` | Block the Admin Portals for Non-Admins | CA policy | all-users | portal | | yes |
@@ -527,7 +527,7 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Observation predicate: Report-only results reviewed; failure population understood; readiness threshold met (threshold is a product decision, not set here).
 - Rationale: create early. Security Defaults is a cutover relationship (§10.1), never a reason to postpone creation.
 
-#### `s-goal-admins-phishing-resistant` — Require Phishing-Resistant MFA for Admins
+#### `s-goal-admins-phishing-resistant` — Require a Strong Sign-in for Admins
 - Work type: CA policy · scope_class: admins · effort_kind: portal · actions: create → observe → enforce
 - Non-step blockers: `evidence:` every admin in scope holds a method satisfying the target strength; `fact:` baseline source-reference mappings resolve.
 - Observation predicate: Report-only shows no in-scope admin lacking a qualifying method.
