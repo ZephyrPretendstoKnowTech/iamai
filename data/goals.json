@@ -219,6 +219,77 @@
       "cis": []
     },
     {
+      "id": "emergency-account-strong-signin",
+      "name": "One emergency account signs in with a security key outside the office",
+      "shortName": "Security key for one emergency account",
+      "description": "One emergency access account must sign in with a phishing-resistant method outside the trusted network, while the other stays excluded from every policy.",
+      "phase": 3,
+      "domain": "Admins",
+      "securityValue": 4,
+      "baseEffort": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "includesOnlyUsers": true,
+            "grantHasAuthControl": true,
+            "appsAll": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "emergencyAccount"
+          },
+          "expectedApps": "all",
+          "floor": {
+            "grant": "phishingResistant"
+          },
+          "allowedExclusions": [],
+          "template": {
+            "displayName": "{namePrefix} - Require - Security key for one emergency account outside the office",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "{emergencyStrongAccount}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "locations": {
+                "includeLocations": [
+                  "All"
+                ],
+                "excludeLocations": [
+                  "{trustedLocations}"
+                ]
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000004"
+              }
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access",
+      "tldr": "Microsoft's two-account pattern: one emergency account signs in with its security key away from the office, and the other stays out of every policy, so a broken policy can never lock out both.",
+      "cis": []
+    },
+    {
       "id": "admin-portals-protected",
       "name": "Admin portals need strong auth or are blocked for non-admins",
       "shortName": "Admin portals",

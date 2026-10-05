@@ -139,6 +139,13 @@ export type CoverageInput = {
      */
     adminAccountGroupIds?: string[]
     /**
+     * The one emergency access account the operator named to sign in with its
+     * security key outside the office (MappingState.emergencyStrongAccountId,
+     * always one of the emergency accounts): the population of Jon's BreakGlass -
+     * TrustedLocations goal. Absent: not answered.
+     */
+    emergencyStrongAccountId?: string
+    /**
      * The office network the plan picked (MappingState.trustedLocationIds): the
      * locations the service-accounts step carves out. They are the trusted network
      * whether or not the tenant has marked them trusted yet, so the step's own
@@ -452,7 +459,10 @@ function evaluateGoal(
     ? { ids: new Set(input.mapping?.serviceAccountUsers ?? []), estimated: false, unresolvedGroups: [] }
     : impl.expectedWho.kind === 'adminAccounts'
       ? adminAccountsPopulation(input.mapping?.adminAccountGroupIds ?? [], input.groupMembers)
-      : resolvePopulation(impl.expectedWho, input.snapshot)
+      // The one emergency account the operator named, and nobody else.
+      : impl.expectedWho.kind === 'emergencyAccount'
+        ? { ids: new Set(input.mapping?.emergencyStrongAccountId ? [input.mapping.emergencyStrongAccountId] : []), estimated: false, unresolvedGroups: [] }
+        : resolvePopulation(impl.expectedWho, input.snapshot)
   const E = expected.ids
   base.expectedCount = E.size
   // No service accounts confirmed: nothing for the goal to restrict, so it does not apply here.

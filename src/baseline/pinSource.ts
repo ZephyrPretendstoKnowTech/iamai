@@ -48,6 +48,8 @@ export function pinPolicy(p: CaPolicy, placeholderFor: Map<string, string>): { p
   }
   const u = p.conditions?.users
   for (const g of [...s(u?.includeGroups), ...s(u?.excludeGroups)]) note(g)
+  // The author's emergency accounts, by id (Jon's BreakGlass - TrustedLocations).
+  for (const x of [...s(u?.includeUsers), ...s(u?.excludeUsers)]) note(x)
   for (const l of [...s(p.conditions?.locations?.includeLocations), ...s(p.conditions?.locations?.excludeLocations)]) note(l)
   note(p.grantControls?.authenticationStrength?.id)
   // Strip author-specific app exclusions: an excluded application id that is not a

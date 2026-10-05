@@ -21,6 +21,12 @@ export type TemplateBody = Record<string, unknown>
  * one. The boundary is the exclusions group, in a group field
  * (`{exclusionsGroup}`, and resolvePolicy.ts adds it to every policy the plan
  * writes); a template that wants emergency access protected asks for the group.
+ *
+ * One placeholder names an emergency account, and only ever to include it:
+ * `{emergencyStrongAccount}`, the one account Jon's BreakGlass - TrustedLocations
+ * asks for a security key outside the office (owner, 2026-10-05;
+ * roadmap/emergencyStrongAccount.ts). It is a single account the operator chose,
+ * never a list IAMAI built, and nothing excludes an emergency account by it.
  */
 export const TEMPLATE_PLACEHOLDERS = [
   '{namePrefix}',
@@ -31,6 +37,8 @@ export const TEMPLATE_PLACEHOLDERS = [
   '{coreAdminRoles}',
   // The groups that hold the admin accounts (MappingState.adminAccountGroupIds), a list.
   '{adminAccountGroups}',
+  // The one emergency account that must use its security key (MappingState.emergencyStrongAccountId), a single id, include only.
+  '{emergencyStrongAccount}',
 ] as const
 export type TemplatePlaceholder = (typeof TEMPLATE_PLACEHOLDERS)[number]
 
@@ -144,4 +152,5 @@ export const SAMPLE_VALUES: TemplateValues = {
   '{serviceAccountsGroup}': '55555555-5555-4555-8555-555555555555',
   '{coreAdminRoles}': [...CORE_ADMIN_ROLE_IDS],
   '{adminAccountGroups}': ['66666666-6666-4666-8666-666666666666'],
+  '{emergencyStrongAccount}': '77777777-7777-4777-8777-777777777777',
 }

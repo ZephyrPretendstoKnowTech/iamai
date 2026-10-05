@@ -250,7 +250,8 @@ test('(g) Direction is three steps, D3 asks the office network and shows even wi
     const keys = steps.flatMap((s) => (s.directionQuestions ?? []).map((x) => x.key))
     for (const retired of ['externalMethods', 'deviceExceptions', 'travel', 'workCountries']) assert.ok(!keys.includes(retired as never), `${retired} is still asked`)
     const devices = stepOf(steps, 's-direction-devices')
-    assert.deepEqual(devices.directionQuestions!.map((x) => x.key), ['computers', 'phones', 'officeNetwork'])
+    // And, since 2026-10-05 (owner), which emergency account must use its security key: the demo saves two.
+    assert.deepEqual(devices.directionQuestions!.map((x) => x.key), ['computers', 'phones', 'officeNetwork', 'emergencyStrong'])
     // The plan draws the same three, on the tenant closest to the owner's.
     const plan = runFixture(withFoundationSettled(curatedFixture('getiamai'))).steps
     assert.deepEqual(plan.filter((s) => isGroupMember(s.id, DIRECTION_GROUP)).map((s) => s.id), ['s-direction-use', 's-direction-accounts', 's-direction-devices'])

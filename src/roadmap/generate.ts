@@ -7,7 +7,10 @@ import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps, directionTitleOf } from './direction.ts'
 import type { DirectionStepId } from './directionAnswers.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
-import { SERVICE_KEYS, answeredReasonOf, isDirectionStep, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
+import { SERVICE_KEYS, answeredReasonOf, everyoneRemote, isDirectionStep, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
+import { emergencyStrongAccountOf } from '../mapping/emergencyChoice.ts'
+import { EMERGENCY_STRONG_GOAL, acceptedEmergencyStrongPolicy, acceptedOwnExposure, emergencyStrongContent } from './emergencyStrongAccount.ts'
+import { emergencyStrongGatesOf } from './emergencyStrongGates.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, mailAnswerMoot, settleBlockSignIns } from './blockSignIns.ts'
 import { COUNTRIES_LOCKOUT_WAIT, countriesLockout, countriesLockoutWait } from './countriesLockout.ts'
@@ -1038,7 +1041,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Whoever the tenant's own External authentication method targets: the
   // counterpart of Jon's EAM group (interpretation externalAuthGroup; v1.1 D6).
   const externalAuthTargets = externalAuthTargetsOf(snapshot)
-  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId, externalAuthTargets, avdUserGroupIds: mapping.avdUserGroupIds ?? [], adminAccountGroupIds: mapping.adminAccountGroupIds ?? [] }
+  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId, externalAuthTargets, avdUserGroupIds: mapping.avdUserGroupIds ?? [], adminAccountGroupIds: mapping.adminAccountGroupIds ?? [], emergencyStrongAccountId: emergencyStrongAccountOf(mapping), noOfficeNetwork: everyoneRemote(mapping) }
   const tenantObjects = companionTargets.length === 0 ? tenantObjectsBase : { ...tenantObjectsBase, omitted: new Set([...(tenantObjectsBase.omitted ?? []), ...companionTargets]) }
   /**
    * The resolved policy with its authentication strength as the request may
@@ -1777,8 +1780,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Impact (rowWho.ts): the policies the group must be excluded from, every
     // one On or in Report-only, chosen group or not: the picker's "of M
     // policies" (validation/exclusionsGroupPolicies.ts exclusionsReach).
-    if (snapshot.config.caPolicies?.status === 'ok') geStep.impactCount = exclusionsReach(snapshot.config.caPolicies.rows, '').policyCount
-    geStep.configurationFindings = journeyGroupFindings(geReport, savedExclusions?.name ?? exclusions.actionableName ?? exclusions.suggested?.name ?? null, savedExclusions !== null, snapshot, savedExclusions?.id ?? exclusions.actionableId, input.groupMembers, mapping.breakGlassUserIds)
+    if (snapshot.config.caPolicies?.status === 'ok') geStep.impactCount = exclusionsReach(snapshot.config.caPolicies.rows, '', acceptedEmergencyStrongPolicy(snapshot.tenantId, mapping)).policyCount
+    geStep.configurationFindings = journeyGroupFindings(geReport, savedExclusions?.name ?? exclusions.actionableName ?? exclusions.suggested?.name ?? null, savedExclusions !== null, snapshot, savedExclusions?.id ?? exclusions.actionableId, input.groupMembers, mapping.breakGlassUserIds, acceptedEmergencyStrongPolicy(snapshot.tenantId, mapping))
   }
   const validationSteps = blockerSteps(validationReports)
   steps.push(...validationSteps)
@@ -1809,6 +1812,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     '{coreAdminRoles}': [...CORE_ADMIN_ROLE_IDS],
     // The groups that hold the admin accounts, once the operator names them (Identify Service and Shared Accounts).
     '{adminAccountGroups}': (mapping.adminAccountGroupIds ?? []).length > 0 ? [...(mapping.adminAccountGroupIds ?? [])] : null,
+    // The one emergency account that must use its security key, once the operator names it (Decide How and Where People Sign In).
+    '{emergencyStrongAccount}': emergencyStrongAccountOf(mapping),
   }
 
   // ---- Goal steps ----
@@ -1971,8 +1976,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The service accounts are the mapping's, and the one population every other
     // step excludes (E9): the step that restricts them names them all.
     // The admin accounts by group are the members of the groups the operator named (Jon's ADM-Users).
-    const whoIds = (): string[] => whoKey === 'adminAccounts' ? [...adminAccountsPopulation(mapping.adminAccountGroupIds ?? [], input.groupMembers ?? new Map()).ids] : [...resolvePopulation(impl.expectedWho, snapshot).ids]
-    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' || whoKey === 'agents' ? [] : whoKey === 'serviceAccounts' ? [...serviceAccountIds] : whoIds().filter((id) => !excluded.has(id)))
+    // The one emergency account the operator named (Jon's BreakGlass - TrustedLocations): it is an emergency account, which every other population leaves out.
+    const strongAccount = emergencyStrongAccountOf(mapping)
+    const whoIds = (): string[] => whoKey === 'adminAccounts' ? [...adminAccountsPopulation(mapping.adminAccountGroupIds ?? [], input.groupMembers ?? new Map()).ids] : whoKey === 'emergencyAccount' ? (strongAccount !== null ? [strongAccount] : []) : [...resolvePopulation(impl.expectedWho, snapshot).ids]
+    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' || whoKey === 'agents' ? [] : whoKey === 'serviceAccounts' ? [...serviceAccountIds] : whoKey === 'emergencyAccount' ? whoIds() : whoIds().filter((id) => !excluded.has(id)))
     // THIS goal's own accounts that can sign in, before the plan's exclusions
     // take anybody out. The line above subtracts them from the goal's
     // population, so a policy that excludes a group holding 116 of 122 accounts
@@ -2724,7 +2731,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     {
       const probe = { goalId: goal.id, kind, status: statusNow(), action } as unknown as Step
       const finalEffects = isOpenPolicy(probe) ? stepEffects(probe) : []
-      const exposure = emergencyExposureOf(finalEffects, mapping.breakGlassUserIds, snapshot, strandContext)
+      const found = emergencyExposureOf(finalEffects, mapping.breakGlassUserIds, snapshot, strandContext)
+      // The one exception (roadmap/emergencyStrongAccount.ts): this goal's own
+      // policy reaches the emergency account the operator chose, on purpose, and
+      // is accepted only while every body it writes reaches that account alone,
+      // with a strength and no block. Any other account it reaches stays exposed.
+      const exposure = goal.id === EMERGENCY_STRONG_GOAL
+        ? acceptedOwnExposure(found, (action.resolution?.policies ?? []).map((o) => (o.mode === 'update' ? o.target : o.body) as unknown).filter((b) => b !== undefined && b !== null), emergencyStrongAccountOf(mapping))
+        : found
       if (exposure !== null) action = { ...action, emergencyExposure: { ...exposure, ...(exclusions.actionableName ? { group: exclusions.actionableName } : {}) } }
     }
 
@@ -3834,6 +3848,30 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       setState(s, { setAside: true })
     }
   }
+  // Jon's BreakGlass - TrustedLocations (owner, 2026-10-05): the pattern needs
+  // two emergency accounts, because the other has to stay excluded from
+  // everything. With fewer saved it does not apply, whatever the tenant holds;
+  // a policy of the tenant's that reaches its only emergency account is still
+  // flagged by every emergency reading, because nothing is accepted then
+  // (emergencyStrongAccount.ts acceptedEmergencyStrongPolicy). With everyone
+  // remote its words say everywhere: the body has no office to carve out.
+  {
+    const strong = steps.find((s) => s.goalId === EMERGENCY_STRONG_GOAL)
+    if (strong !== undefined && strong.status !== 'skipped') {
+      if (mapping.breakGlassUserIds.length < 2) {
+        const reason = emergencyStrongContent(false)?.oneAccount ?? ''
+        strong.doesntApply = reason
+        strong.doesntApplyByAnswer = true
+        strong.skipReason = reason
+        setState(strong, { setAside: true })
+      }
+      if (officeNetworkRemote) {
+        const words = emergencyStrongContent(true)
+        strong.guidance = words
+        strong.title = words.title ?? strong.title
+      }
+    }
+  }
   // A step set aside above is rolled out in no rings: they were proposed before
   // the answers took it off the plan, and the schedule dates none of them.
   for (const s of steps) if (s.state.setAside) s.rings = []
@@ -4088,6 +4126,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // record and the scan (roadmap/enforceWaits.ts): here, where the drill row
   // and every title exist. It holds the turn-on in every channel
   // (operations.ts `policyResult`, hold `prerequisite-unmet`) and nothing else.
+  // The emergency account's security key (roadmap/emergencyStrongGates.ts): what
+  // its turn-on waits on, read here where the drill record and the scan are both
+  // to hand, and held by the same hold as every other prerequisite.
+  {
+    const strong = steps.find((s) => s.goalId === EMERGENCY_STRONG_GOAL)
+    const account = emergencyStrongAccountOf(mapping)
+    if (strong !== undefined && account !== null && strong.doesntApply == null) {
+      const bodies = (strong.action.resolution?.policies ?? []).map((o) => (o.mode === 'update' ? o.target : o.body)).filter((b): b is Record<string, unknown> => b !== undefined && b !== null)
+      strong.emergencyStrongGates = emergencyStrongGatesOf({ snapshot, mapping, groups: input.groupMembers ?? new Map(), records: input.cleanupRecord?.records ?? [], now: input.reviewNow ?? snapshot.asOf, accountId: account, bodies, exclusionsGroupId: policyUsableExclusionsGroupId, evidence: strandContext })
+    }
+  }
   settleEnforceWaits(steps, schedule, mapping)
   // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a
   // plan cannot fix by itself surface as Housekeeping.
@@ -4112,10 +4161,7 @@ export function supersededPolicies(steps: readonly Step[]): string[] {
   return out
 }
 
-/** The plan's id for a tenant, the one rule (the page, the export and the demo agree): the policies the plan creates carry it in their tag. */
-export function planIdFor(tenantId: string): string {
-  return `plan-${tenantId.slice(0, 8)}`
-}
+export { planIdFor } from './stepIds.ts'
 
 /**
  * Every tenant policy carrying this plan's tag for this step, and which member

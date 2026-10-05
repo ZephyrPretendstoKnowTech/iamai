@@ -93,7 +93,7 @@ function companionOf(first: PolicyForMap, policies: PolicyForMap[]): PolicyForMa
   return found.length === 1 ? found[0] : null
 }
 
-type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members' | 'serviceAccounts' | 'adminAccounts' | 'agents'
+type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members' | 'serviceAccounts' | 'adminAccounts' | 'agents' | 'emergencyAccount'
 type CondTag = string // 'locations' | 'platforms' | 'clientAppsRestricted' | 'flows' | 'deviceFilter' | 'userActions' | 'authContext' | 'signInRisk:high' | 'userRisk:medium' | …
 
 function userClass(f: PolicyFacts, placeholders: Record<string, string> = {}): UserClass {
@@ -107,6 +107,8 @@ function userClass(f: PolicyFacts, placeholders: Record<string, string> = {}): U
   if (f.who.groups.size > 0 && [...f.who.groups].some((g) => Object.entries(placeholders).some(([id, token]) => id.toLowerCase() === g.toLowerCase() && token === 'serviceAccountsGroup'))) return 'serviceAccounts'
   // A policy that includes the author's admin-accounts group (the pin's token) targets the admin accounts by group (Jon's ADM-Users).
   if (f.who.groups.size > 0 && [...f.who.groups].some((g) => Object.entries(placeholders).some(([id, token]) => id.toLowerCase() === g.toLowerCase() && token === 'adminAccountsGroup'))) return 'adminAccounts'
+  // A policy that includes the author's emergency account by id (the pin's token) targets that one emergency account (Jon's BreakGlass - TrustedLocations).
+  if (f.who.users.size > 0 && f.who.groups.size === 0 && [...f.who.users].some((u) => Object.entries(placeholders).some(([id, token]) => id.toLowerCase() === u.toLowerCase() && token === 'emergencyStrongAccount'))) return 'emergencyAccount'
   return 'members'
 }
 

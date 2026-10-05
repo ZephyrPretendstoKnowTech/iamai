@@ -143,6 +143,18 @@ export type MappingState = {
    * `adminAccountsGroup`). Absent or empty: not answered, and only that step waits.
    */
   adminAccountGroupIds?: string[]
+  /**
+   * The one emergency access account that must sign in with its security key
+   * outside the office (owner, 2026-10-05): Decide How and Where People Sign In's
+   * "Which emergency account must use its security key?", optional, asked while
+   * two or more emergency accounts are saved. Only an operator's Save writes it,
+   * and only an id in `breakGlassUserIds` counts (mapping/emergencyChoice.ts
+   * emergencyStrongAccountOf). Jon's BreakGlass - TrustedLocations policy includes
+   * that account alone; the other stays excluded from everything through the
+   * exclusions group (roadmap/emergencyStrongAccount.ts). Absent: not answered,
+   * and only that step waits.
+   */
+  emergencyStrongAccountId?: string
   displayTimeZone: string | null
   frameworks: string[]
   /** Which answers exist, detected or confirmed (progress + auto vs human). */

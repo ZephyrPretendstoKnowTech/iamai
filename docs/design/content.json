@@ -1319,8 +1319,6 @@
           "$comment": "Why a baseline policy is in no step (derive/notInPlan.ts picks one by the pinned policy's stable id, else by the policy's own name for another baseline, else by the tenant fact that switched its goal off; a policy with none reads generic). {step} is a step's title from the content file, never its number, because the numbers move. Each reason is at most two short sentences, each within the sentence rule (docs/qa/page-contracts.json rules.sentenceMaxWords). Policies sharing one reason are one line (notInPlanLines).",
           "$commentExternalMfaRisk": "The external authentication methods companion of the high-risk remediation policy, scoped to the external MFA group. {step} is the high-risk remediation step's title.",
           "externalMfaRisk": "{step} for people who sign in with an external MFA provider such as Duo. Needs Microsoft Entra ID P2, and only matters if you use one.",
-          "$commentEmergencyAccount": "The trusted-locations policy that names one emergency account: IAMAI keeps emergency accounts out of every policy through the exclusions group instead (binding emergency decision). {step} is the emergency access group's title.",
-          "emergencyAccount": "Requires a strong sign-in from one emergency account outside the office network, while the other stays excluded from everything ({step}). Not in this release.",
           "$commentBlockedCountries": "Jon's NoExclusions countries block, optional (v1.1 D4, owner 2026-10-03): it is on the plan, as {step}'s second policy, once countries to block outright are listed on its Work countries decision, and here until then. {step} is the geo step's title.",
           "blockedCountries": "Blocks countries outright, travellers included. Optional: list them under Countries to block outright in {step}.",
           "$commentNoServiceAccounts": "Jon's Service Accounts block where no service account is confirmed, so its goal does not apply (coverage.ts: facet serviceAccounts). {step} is the Direction step that names them (Identify Service and Shared Accounts).",
@@ -3649,6 +3647,13 @@
               "remoteAccounts": "Your service and shared-device accounts then get MFA like anyone.",
               "$commentUnused": "A saved answer of \"Everyone works remotely\" beside a location Entra marks trusted says what the answer does with it.",
               "savedRemoteUnused": "{names} is marked trusted in Entra; this answer doesn't use it as your office."
+            },
+            "emergencyStrong": {
+              "$comment": "Owner, 2026-10-05: Jon's BreakGlass - TrustedLocations policy includes one emergency account and nobody else. The picker offers only the emergency accounts Establish Emergency Access saved, exactly one is picked, and nothing is suggested: the scan cannot tell which one carries the security key. Asked while two or more are saved. Optional: left empty, only that step waits. Saved as MappingState.emergencyStrongAccountId (roadmap/direction.ts emergencyStrongQuestion). {step} is the step's title.",
+              "label": "Which emergency account must use its security key?",
+              "chosen": "This account signs in with its security key away from the office. The other emergency account stays out of every policy.",
+              "chosenRemote": "This account signs in with its security key everywhere. The other emergency account stays out of every policy.",
+              "optional": "Leave it empty and only {step} waits for it."
             },
             "$commentWorkCountries": "The work countries question, asked since Stage 3 on Block Sign-ins From Countries Not Allowed rather than in Direction. Its words are kept here as Direction wrote them: the label heads that step's countries picker, and the seen line sits under it where the scan saw sign-in countries (ui/surfaces/stepBody.ts withObjectTask).",
             "workCountries": {
@@ -9024,6 +9029,78 @@
         "from": "Aug 1"
       },
       "aiFocus": "Explain that the policy blocks every AI agent identity not excluded from it, that IAMAI creates it in Report-only and does not turn it on, and how to exclude the agents the tenant approves. Do not turn it on before the approved agents are excluded."
+    },
+    {
+      "id": "emergency-account-strong-signin",
+      "brief": {
+        "matters": "Your emergency accounts are the way back in when every other sign-in fails, so a stolen password alone must never be enough to use one.",
+        "notice": "Nobody but the emergency account you named notices it: that account signs in with its security key away from the office."
+      },
+      "kind": "policy",
+      "$comment": "Owner, 2026-10-05: Jon's IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations, until now listed under In the baseline, not in this plan. Microsoft's two-account pattern: it includes the one emergency account the operator names in Decide How and Where People Sign In (interpretation emergencyStrongAccount) and nobody else, so the other emergency account is out of its scope; it excludes no account by name and does not exclude the exclusions group, which holds the account it is for (roadmap/emergencyStrongAccount.ts). Created in Report-only by Create the Policies in Report-only; turned on only once the scan reads that the account holds a method the strength accepts, Verify Emergency Access has a recorded sign-in for it, and the other account is still excluded from every other policy through the exclusions group. With Everyone works remotely there is no office to carve out, and the words of `everywhere` replace these.",
+      "title": "Require a Security Key for One Emergency Account Outside the Office",
+      "changeLine": null,
+      "why": "Microsoft's pattern for emergency accounts: one signs in with a phishing-resistant method away from the office, so a stolen password alone can't use it, and the other stays out of every policy, so no policy can lock out both.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
+      },
+      "who": {
+        "lead": "One emergency account, the one you named in Decide How and Where People Sign In",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}",
+        "The emergency account has signed in with its security key in Verify Emergency Access, and the other emergency account is still excluded from every other policy."
+      ],
+      "ifWrong": "Set the policy back to Report-only. The other emergency account is excluded from every policy, so it still signs in while you fix it.",
+      "comms": null,
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": true,
+      "everywhere": {
+        "$comment": "Decide How and Where People Sign In answered Everyone works remotely: no office network, so the policy has no location condition and asks for the security key everywhere (generate.ts; owner, 2026-10-05).",
+        "title": "Require a Security Key for One Emergency Account Everywhere",
+        "why": "Microsoft's pattern for emergency accounts: one signs in with a phishing-resistant method wherever it signs in, so a stolen password alone can't use it, and the other stays out of every policy, so no policy can lock out both.",
+        "notice": "Nobody but the emergency account you named notices it: that account signs in with its security key everywhere."
+      },
+      "$commentTurnOnWaits": "What the turn-on waits on, each said after \"Wait for\" (roadmap/enforceWaits.ts from roadmap/emergencyStrongGates.ts): a method the strength accepts on the chosen account, its recorded Verify Emergency Access sign-in, and the other emergency account excluded from every other policy. Unread counts as not yet.",
+      "turnOnWaits": {
+        "method": "a security key, passkey, Windows Hello or certificate on the emergency account you named",
+        "drilled": "a recorded Verify Emergency Access sign-in by the emergency account you named",
+        "otherExcluded": "the other emergency account in the exclusions group, and that group excluded from every other policy"
+      },
+      "$commentOneAccount": "Doesn't apply while Establish Emergency Access has saved fewer than two emergency accounts (generate.ts): the other account has to stay excluded from everything, so the pattern needs two.",
+      "oneAccount": "Fewer than two emergency accounts are saved in Establish Emergency Access. One of them has to stay excluded from every policy, so this needs two.",
+      "more": {
+        "risks": [
+          {
+            "text": "The emergency account loses its security key: it can't sign in where the policy applies until IT registers a new one.",
+            "applies": "always"
+          },
+          {
+            "text": "The policy reaches the other emergency account too: then both could be locked out at once.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "The emergency account can't sign in: use the other emergency account, which no policy reaches, then register a new security key for the first.",
+          "Never add the other emergency account to this policy, and never take it out of the exclusions group."
+        ],
+        "manager": "One emergency account needs its security key to sign in, and the other is kept apart from every policy, so we can always get back in.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso Pty Ltd",
+        "policyName": "IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations",
+        "existingPolicies": [],
+        "strengthName": "Modern MFA + TAP",
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain that the policy asks one emergency account for its security key away from the office and reaches no one else, and that the other emergency account stays excluded from every policy through the exclusions group. Never add an exclusion, never add the other emergency account, and never exclude the exclusions group from this policy."
     }
   ]
 }

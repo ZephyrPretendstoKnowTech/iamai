@@ -7,6 +7,11 @@ export function idFor(prefix: string, key: string): string {
   return `s-${prefix}-${key.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}`
 }
 
+/** The plan's id for a tenant, the one rule (the page, the export and the demo agree): the policies the plan creates carry it in their tag. */
+export function planIdFor(tenantId: string): string {
+  return `plan-${tenantId.slice(0, 8)}`
+}
+
 /** The id the engine gives a goal's step. */
 export function stepIdForGoal(goalId: string): string {
   return idFor('goal', goalId)

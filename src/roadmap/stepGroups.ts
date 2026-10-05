@@ -173,12 +173,17 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   },
   // Care after the rollout: nothing above waits on it. Prepare the Lockdown Kit
   // (T2-LK) follows Harden Emergency Access: its switches leave only the
-  // emergency access exclusions group online.
+  // emergency access exclusions group online. Require a Security Key for One
+  // Emergency Account (Jon's BreakGlass - TrustedLocations, owner 2026-10-05)
+  // sits right after Harden Emergency Access, the nearest emergency row here:
+  // Establish Emergency Access, which holds the drill, is a finished section and
+  // takes no new row. Its turn-on waits on the drill, drawn above it. The
+  // placement is the owner's to confirm.
   {
     key: 'ongoing',
     titleKey: 'pages.app.plan.groups.ongoing.title',
     completedTitleKey: 'pages.app.plan.groups.ongoing.completedTitle',
-    members: ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming'],
+    members: ['cleanup-alerting', 'cleanup-hardening', 's-goal-emergency-account-strong-signin', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming'],
     memberPrefixes: ['s-review-baseline-'],
     catchAll: true,
     anatomy: 'task',

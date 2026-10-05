@@ -21,6 +21,7 @@ import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevic
 import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
 import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import { exclusionsReach } from '../../validation/exclusionsGroupPolicies.ts'
+import { acceptedEmergencyStrongPolicy } from '../../roadmap/emergencyStrongAccount.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { fillText, missingVars } from '../../content/render.ts'
@@ -211,7 +212,8 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     // "Excluded from N of M policies" by the one rule, which Impact counts too
     // (validation/exclusionsGroupPolicies.ts exclusionsReach): M is every policy
     // On or in Report-only, never an Off one.
-    const reach = new Map([...known.values()].map((id) => [id, exclusionsReach(policies, id)]))
+    const accepted = acceptedEmergencyStrongPolicy(snapshot.tenantId, mapping)
+    const reach = new Map([...known.values()].map((id) => [id, exclusionsReach(policies, id, accepted)]))
     const excludedFrom = (id: string): number => reach.get(id)?.excludedFrom ?? 0
     const ids = [...known.values()].sort((a, b) => isStored(b) - isStored(a) || isRecorded(b) - isRecorded(a) || Number(candidate.has(lc(b))) - Number(candidate.has(lc(a))) || excludedFrom(b) - excludedFrom(a) || nameOf(a).localeCompare(nameOf(b)))
     const rows = ids.map((id) => {

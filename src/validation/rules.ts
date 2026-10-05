@@ -154,6 +154,14 @@ export type ValidationContext = {
   /** Every emergency access drill the plan recorded (the Cleanup drill row's Done): a sign-in on one of these days is the drill. */
   drillDates: string[]
   drillRecords?: import('../roadmap/cleanupDone.ts').CleanupCheckpoint[]
+  /**
+   * The one tenant policy the plan writes to include an emergency account on
+   * purpose (roadmap/emergencyStrongAccount.ts acceptedEmergencyStrongPolicy):
+   * this step's own, by tag or plan name, reaching the operator's chosen account
+   * alone with a strength. The emergency exclusion checks accept it and nothing
+   * else. Absent on a hand-built context: nothing is accepted.
+   */
+  acceptedEmergencyPolicy?: (policy: unknown) => boolean
 }
 
 export type ValidationRule<S = string> = {
@@ -322,12 +330,15 @@ function livePolicies(ctx: ValidationContext): PolicyShape[] {
 // Jon's AGENT blocks) cannot reach an emergency account, which is a user: it is
 // no policy the account has to be excluded from (exclusionsGroupPolicies.ts
 // includesNoPerson).
+// Neither reads the one policy the plan writes to include an emergency account on
+// purpose (ValidationContext.acceptedEmergencyPolicy): it reaches the chosen
+// account alone, and excluding it would undo it. Every other policy is read.
 function enforcingPolicies(ctx: ValidationContext): PolicyShape[] {
-  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabled' && !includesNoPerson(p))
+  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabled' && !includesNoPerson(p) && ctx.acceptedEmergencyPolicy?.(p) !== true)
 }
 
 function reportOnlyPolicies(ctx: ValidationContext): PolicyShape[] {
-  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabledForReportingButNotEnforced' && !includesNoPerson(p))
+  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabledForReportingButNotEnforced' && !includesNoPerson(p) && ctx.acceptedEmergencyPolicy?.(p) !== true)
 }
 
 /** Policies Microsoft created and will enable on its own after about 30 days. */
@@ -873,7 +884,7 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
     if (!entry) return groupUnknown()
     // One rule for Step 2, its tile and Step 4 (validation/exclusionsGroupPolicies.ts):
     // every applicable policy, Report-only included, excludes the group.
-    const needing = exclusionsGroupPolicies({ policies: ctx.tenantPolicies, groupId: entry.groupId, accountIds: ctx.breakGlassIds, activeRoles: ctx.snapshot.roles.active, membersOf: (id) => ctx.groupMembers.find((g) => g.groupId.toLowerCase() === id.toLowerCase()) })
+    const needing = exclusionsGroupPolicies({ policies: ctx.tenantPolicies, groupId: entry.groupId, accountIds: ctx.breakGlassIds, activeRoles: ctx.snapshot.roles.active, membersOf: (id) => ctx.groupMembers.find((g) => g.groupId.toLowerCase() === id.toLowerCase()), ...(ctx.acceptedEmergencyPolicy ? { accepted: ctx.acceptedEmergencyPolicy } : {}) })
     // Nothing to check is not the same as checked and correct. Over a tenant
     // with no Conditional Access policies this passed silently and the tile read
     // "Required references present", which is verification the scan never did.

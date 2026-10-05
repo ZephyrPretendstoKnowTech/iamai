@@ -37,6 +37,7 @@ import type { NamingConvention } from '../../coverage/naming.ts'
 import { usable as usableConvention } from '../../roadmap/convention.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { exclusionsGroupPolicies, exclusionsReach, groupLookup } from '../../validation/exclusionsGroupPolicies.ts'
+import { acceptedEmergencyStrongPolicy } from '../../roadmap/emergencyStrongAccount.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { isHeld } from '../../roadmap/holds.ts'
@@ -540,7 +541,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     const policies = ctx.snapshot.config.caPolicies?.rows ?? []
     // "Excluded from N of M policies" by the picker's rule, which Impact counts
     // too (validation/exclusionsGroupPolicies.ts exclusionsReach).
-    const excludedFrom = (id: string): number => exclusionsReach(policies, id).excludedFrom
+    const accepted = acceptedEmergencyStrongPolicy(ctx.snapshot.tenantId, ctx.mapping)
+    const excludedFrom = (id: string): number => exclusionsReach(policies, id, accepted).excludedFrom
     const id = choice.actionableId
     // Two different sentences again. `needsCreate` is a proof: a reading that
     // covered the tenant and found nothing that qualifies. `createIfNeeded` is
@@ -552,7 +554,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // And only where nothing plausible is in view: beside a group IAMAI found,
     // "create one if you do not already have one" asks for a second.
     v.createIfNeeded = choice.status === 'undetermined' && choice.suggested === null
-    v.policyCount = exclusionsReach(policies, '').policyCount
+    v.policyCount = exclusionsReach(policies, '', accepted).policyCount
     // No group in use: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
     if (id === null) delete v.total
     if (id !== null) {
@@ -620,7 +622,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // five. With no group in use there is no such group to name policies for.
     if (DECISION_STEPS.emergency.has(step.id)) {
       const groupId = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }).actionableId
-      const notExcluding = groupId === null ? [] : exclusionsGroupPolicies({ policies: ctx.snapshot.config.caPolicies?.rows ?? [], groupId, accountIds: ctx.mapping.breakGlassUserIds, activeRoles: ctx.snapshot.roles.active, membersOf: groupLookup(ctx.groups) }).filter(p => p.outcome !== 'pass').map(p => p.name)
+      const notExcluding = groupId === null ? [] : exclusionsGroupPolicies({ policies: ctx.snapshot.config.caPolicies?.rows ?? [], groupId, accountIds: ctx.mapping.breakGlassUserIds, activeRoles: ctx.snapshot.roles.active, membersOf: groupLookup(ctx.groups), accepted: acceptedEmergencyStrongPolicy(ctx.snapshot.tenantId, ctx.mapping) }).filter(p => p.outcome !== 'pass').map(p => p.name)
       if (notExcluding.length > 0) v.policiesNotExcluding = notExcluding
     }
     v.tenantId = ctx.snapshot.tenantId

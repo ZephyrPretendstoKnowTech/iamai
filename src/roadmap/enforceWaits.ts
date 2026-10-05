@@ -42,6 +42,8 @@ import type { PlanAnswers } from './graphConditions.ts'
 import { positionInGroup } from './stepGroups.ts'
 import type { Schedule } from './schedule.ts'
 import type { Step } from './types.ts'
+import { BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID } from './stepIds.ts'
+import { emergencyStrongContent, emergencyStrongWaits } from './emergencyStrongAccount.ts'
 
 /** The Cleanup row that is the emergency-access recovery test, by the id the graph gives it. */
 export const DRILL_PREREQUISITE = 'cleanup-drill'
@@ -115,6 +117,17 @@ export function enforceWaitsOf(steps: readonly Step[], schedule: Pick<Schedule, 
       if (e.step !== s.id || waits.some((w) => w.id === e.prerequisite)) continue
       const w = open(e)
       if (w !== null) waits.push(w)
+    }
+    // The emergency account's security key (owner, 2026-10-05; emergencyStrongGates.ts):
+    // its method, its recorded drill sign-in, and the other account excluded everywhere else.
+    if (s.emergencyStrongGates !== undefined) {
+      const words = emergencyStrongContent(false)?.turnOnWaits
+      const ids = { method: BREAK_GLASS_STEP_ID, drilled: DRILL_PREREQUISITE, otherExcluded: EXCLUSION_GROUP_STEP_ID } as const
+      for (const k of emergencyStrongWaits(s.emergencyStrongGates)) {
+        const at = waits.findIndex((w) => w.id === ids[k])
+        if (at >= 0) waits.splice(at, 1)
+        waits.push({ id: ids[k], title: words?.[k] ?? k })
+      }
     }
     if (waits.length > 0) out.set(s.id, waits)
   }

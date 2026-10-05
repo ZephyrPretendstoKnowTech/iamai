@@ -229,6 +229,35 @@
       "context": {
         "a53c4c2b-b577-4d88-b64d-36b92f8f3ca0": "c919ce14ccb76838"
       }
+    },
+    {
+      "id": "cec6164b-ea04-4646-b1b0-125cb7b0c71b",
+      "kind": "user",
+      "meaning": "emergencyStrongAccount",
+      "basis": "documented",
+      "classification": "knownSemantic",
+      "evidence": "The only include of IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations at the pin 8af3b118: one emergency account, All resources outside the author's trusted location, his Modern MFA + TAP strength. Jon Hope's README for the policy names its exclusion BreakglassAccounts, his emergency accounts (docs/baselines/jhope188-conditionalaccesspolicies/readme-refresh-2026-09-19.md): the two-account pattern, one emergency account asked for a strong sign-in away from the office, the other out of every policy. Its tenant counterpart is the one emergency access account the operator names under Decide How and Where People Sign In's \"Which emergency account must use its security key?\" (owner, 2026-10-05), always one of the accounts Establish Emergency Access saved: IAMAI cannot tell which of the tenant's emergency accounts carries the security key. Unanswered, the policy waits on that answer.",
+      "includedIn": [
+        "1588fdc7-f34a-468e-8023-4d788ef5d226"
+      ],
+      "context": {
+        "1588fdc7-f34a-468e-8023-4d788ef5d226": "96ff1183ebea5f74"
+      }
+    },
+    {
+      "id": "ebb6b745-eb22-4e8e-8b09-95e9bb568ce2",
+      "kind": "user",
+      "meaning": "emergencyOtherAccount",
+      "basis": "documented",
+      "classification": "knownSemantic",
+      "evidence": "The same policy's only user exclusion at the pin 8af3b118: the author's other emergency account (his README names the exclusion BreakglassAccounts). IAMAI never excludes an emergency account by name (exclusions go through the exclusions group), and the policy reaches only the one account it includes, so the other is out of its scope without the exclusion: it has no counterpart and is left out of the body. It stays excluded from every other policy through the exclusions group (owner, 2026-10-05).",
+      "includedIn": [],
+      "excludedFrom": [
+        "1588fdc7-f34a-468e-8023-4d788ef5d226"
+      ],
+      "context": {
+        "1588fdc7-f34a-468e-8023-4d788ef5d226": "96ff1183ebea5f74"
+      }
     }
   ],
   "policies": [
@@ -276,6 +305,6 @@
       }
     }
   ],
-  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted. Re-read 2026-09-29 against Jon's README at pin 8af3b118: the groups it names were settled (break-glass to the exclusions group; the author's own travellers, device, AVD and unnamed standing exclusions to authorEnvironment, their tenant side being Direction answers); the three include-only groups stay unknown because the body cannot go without its only target. Since 2026-10-04 one of them, Jon's admin-accounts group (5f96c57d), is adminAccountsGroup: its counterpart is the operator's answer to \"Which group holds your admin accounts?\" (Identify Service and Shared Accounts).",
+  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted. Re-read 2026-09-29 against Jon's README at pin 8af3b118: the groups it names were settled (break-glass to the exclusions group; the author's own travellers, device, AVD and unnamed standing exclusions to authorEnvironment, their tenant side being Direction answers); the three include-only groups stay unknown because the body cannot go without its only target. Since 2026-10-04 one of them, Jon's admin-accounts group (5f96c57d), is adminAccountsGroup: its counterpart is the operator's answer to \"Which group holds your admin accounts?\" (Identify Service and Shared Accounts). Since 2026-10-05 the two emergency accounts IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations names by id are read too: the one it includes is emergencyStrongAccount (the operator's answer to \"Which emergency account must use its security key?\"), the one it excludes emergencyOtherAccount (left out of the body).",
   "policiesNote": "Each policy reading records what IAMAI reads a whole exported policy to be where the export itself lost part of it (src/baseline/interpretation.ts PolicyReading). agentReconstructed: the policy targets agent identities through fields only Graph beta carries, which the exporting SDK dropped; the targeting is reconstructed from the author's README intent plus Microsoft's documented beta shape (sources), applied where the step's body is built and where the pin derives its goal map, and checked against the policy's context at every pin. Settled 2026-10-04 against pin 8af3b118."
 }

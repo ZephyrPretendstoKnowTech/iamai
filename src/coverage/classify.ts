@@ -132,6 +132,12 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
       case 'rolesIntersectCoreAdmins':
         if (![...f.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))) return false
         break
+      case 'includesOnlyUsers':
+        // A policy that names the accounts it reaches one by one and nobody else
+        // (Jon's BreakGlass - TrustedLocations: one emergency account). A policy
+        // reaching anyone by group, role, guest type or All is another goal's.
+        if (f.who.all || f.who.groups.size > 0 || f.who.roles.size > 0 || f.who.guests !== null || f.who.users.size === 0) return false
+        break
       case 'includesGroups':
         // A policy that reaches people by group, and not everyone (Jon's ADM-Users:
         // the admin accounts by group). An All-users policy is another goal's.
@@ -330,6 +336,11 @@ export function populationReach(f: PolicyFacts, kind: PopulationSpec['kind']): '
       // (admins-phishing-resistant), and one for All users is Require MFA for
       // Everyone's: neither may stand for this one.
       return f.who.groups.size > 0 ? 'part' : 'none'
+    case 'emergencyAccount':
+      // The one emergency account by id (Jon's BreakGlass - TrustedLocations):
+      // only a policy that names accounts one by one reaches it as that policy
+      // does, and which account it is is the mapping's.
+      return f.who.users.size > 0 && !f.who.all && f.who.groups.size === 0 && f.who.roles.size === 0 && f.who.guests === null ? 'part' : 'none'
     case 'agents':
       // Every agent identity, or some. The agents a tenant approves are carved out
       // of the untrusted-agents block by design (Microsoft's own shape for it), so

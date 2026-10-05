@@ -31,6 +31,7 @@ import type { StepDecision, StepDecisionInput } from './decisions.ts'
 import { DEVICE_ANSWER_KEYS, QUESTION_STEP, answerKey, answerOf, answerTextFor, devicePlanOf, questionLabels, questionOptions } from './answers.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { DIRECTION_STEP_IDS } from './stepGroups.ts'
+import { emergencyStrongAccountOf } from '../mapping/emergencyChoice.ts'
 import { directionWords, workflowWords } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
@@ -80,6 +81,8 @@ export function directionAsked(q: Pick<DirectionQuestion, 'askedWhen'>, question
 export const AVD_USERS_STORAGE = 's-direction-use-avd-users'
 /** Where the admin accounts groups answer is stored (MappingState.adminAccountGroupIds; decisions.ts applyStepDecisions): a storage id, not a step. */
 export const ADMIN_ACCOUNTS_STORAGE = 's-direction-accounts-admin-groups'
+/** Where the emergency account for the security key is stored (MappingState.emergencyStrongAccountId; decisions.ts applyStepDecisions): a storage id, not a step. */
+export const EMERGENCY_STRONG_STORAGE = 's-direction-devices-emergency-strong'
 
 /** The Direction step a blocker waits on, or null for a blocker that is not one. */
 export function directionBlockerStep(b: { kind: string; label: string }): DirectionStepId | null {
@@ -106,7 +109,7 @@ export type DirectionQuestionKey =
   | `service:${string}`
   | 'mailDevices' | 'partner' | 'avdUsers'
   | 'serviceAccounts' | 'sharedDevices' | 'adminAccounts'
-  | 'computers' | 'phones' | 'officeNetwork'
+  | 'computers' | 'phones' | 'officeNetwork' | 'emergencyStrong'
 
 /**
  * The alias table: each question, the Direction step that asks it, and where
@@ -124,6 +127,7 @@ export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, 
   computers: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.computers}']` },
   phones: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.phoneManagement}'], [...:${DEVICE_ANSWER_KEYS.phoneAppProtection}]` },
   officeNetwork: { step: DIRECTION_STEP.devices, storedAs: `trustedLocationIds, wizardAnswered.trustedLocations, questionAnswers['${DIRECTION_LOCATIONS_STORAGE}:officeNetwork']` },
+  emergencyStrong: { step: DIRECTION_STEP.devices, storedAs: `stepDecisions['${EMERGENCY_STRONG_STORAGE}'] → emergencyStrongAccountId` },
 }
 
 /**
@@ -171,7 +175,7 @@ export function answeredReasonOf(key: DirectionQuestionKey, value: string): stri
  */
 const OFFICE_NETWORK = ['office', 'remote'] as const
 
-type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'avdUserGroupIds' | 'adminAccountGroupIds'>
+type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'avdUserGroupIds' | 'adminAccountGroupIds'> & Partial<Pick<MappingState, 'emergencyStrongAccountId' | 'breakGlassUserIds'>>
 
 const answer = (value: string, picked: readonly string[] = []): DirectionAnswer => ({ value, picked: [...picked] })
 /** A picker's own answer was saved by a person, never by the detected pass (pickerRows.ts defaultDecisions). */
@@ -224,6 +228,11 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
     case 'adminAccounts':
       // Only a list is an answer: left empty, it is not answered and only Jon's ADM-Users policy waits.
       return (m.adminAccountGroupIds ?? []).length > 0 ? answer('groups', m.adminAccountGroupIds) : null
+    case 'emergencyStrong': {
+      // Only one of the saved emergency accounts, two or more of them, is an answer (mapping/emergencyChoice.ts).
+      const id = emergencyStrongAccountOf({ emergencyStrongAccountId: m.emergencyStrongAccountId, breakGlassUserIds: m.breakGlassUserIds ?? [] })
+      return id !== null ? answer('some', [id]) : null
+    }
     case 'serviceAccounts':
       return confirmed(m, 'serviceAccounts') ? (m.serviceAccountUserIds.length > 0 ? answer('some', m.serviceAccountUserIds) : answer('none')) : null
     case 'sharedDevices':
@@ -307,8 +316,8 @@ export function officeLocationsCreated(snapshot: Pick<TenantSnapshot, 'config'>,
  * the step passes (DirectionQuestions.tsx); anything that approves on a person's
  * behalf reads the same rule.
  */
-export function directionAnswerComplete(q: Pick<DirectionQuestion, 'control' | 'pickedWith'>, a: DirectionAnswer): boolean {
-  return q.pickedWith !== null && a.value === q.pickedWith ? a.picked.length > 0 : true
+export function directionAnswerComplete(q: Pick<DirectionQuestion, 'control' | 'pickedWith' | 'pickOne'>, a: DirectionAnswer): boolean {
+  return q.pickedWith !== null && a.value === q.pickedWith ? (q.pickOne === true ? a.picked.length === 1 : a.picked.length > 0) : true
 }
 
 /**
@@ -410,6 +419,8 @@ export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LO
   if (answers.sharedDevices) out.push(['s-shared-devices', { picked: answers.sharedDevices.value === 'some' ? answers.sharedDevices.picked : [], at }])
   // The groups that hold the admin accounts, under their own storage id (decisions.ts applyStepDecisions writes adminAccountGroupIds).
   if (answers.adminAccounts) out.push([ADMIN_ACCOUNTS_STORAGE, { picked: answers.adminAccounts.value === 'groups' ? answers.adminAccounts.picked : [], at }])
+  // The emergency account for the security key, under its own storage id (decisions.ts applyStepDecisions writes emergencyStrongAccountId).
+  if (answers.emergencyStrong) out.push([EMERGENCY_STRONG_STORAGE, { picked: answers.emergencyStrong.value === 'some' ? answers.emergencyStrong.picked : [], at }])
   const computers = answers.computers
   const phones = answers.phones
   if (computers || phones) {

@@ -14,6 +14,7 @@ import { evaluateSubject, isBlocking } from './rules.ts'
 import type { GroupFacts, RuleResult, RuleSubject, ValidationContext } from './rules.ts'
 import { HOUSEKEEPING } from '../copy/validation.ts'
 import { personLabels } from '../names.ts'
+import { acceptedEmergencyStrongPolicy } from '../roadmap/emergencyStrongAccount.ts'
 
 export type ValidationInputs = {
   snapshot: TenantSnapshot
@@ -57,6 +58,7 @@ export function buildContext(i: ValidationInputs): ValidationContext {
     custodyBasis: i.state.breakGlassCustodyBasis ?? {},
     drillDates: i.drillDates ?? [],
     drillRecords: i.drillRecords ?? [],
+    acceptedEmergencyPolicy: acceptedEmergencyStrongPolicy(i.snapshot.tenantId, i.state),
   }
 }
 

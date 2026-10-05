@@ -1,5 +1,6 @@
 import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import { exclusionsGroupPolicies, groupLookup } from '../../validation/exclusionsGroupPolicies.ts'
+import { acceptedEmergencyStrongPolicy } from '../../roadmap/emergencyStrongAccount.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -64,7 +65,7 @@ export function emergencyGroupTasksOf(step: Step, ctx: StepVarContext): Emergenc
   // The one rule (validation/exclusionsGroupPolicies.ts): the applicable policies,
   // On or Report-only, that confirmedly lack the group. Unread evidence is never a task.
   const missingPolicies: { id: string; name: string; mode: string }[] = groupId && actionableGroupId && groupFinding?.taskSafe === true && ctx.snapshot.config.caPolicies?.status === 'ok'
-    ? exclusionsGroupPolicies({ policies: ctx.snapshot.config.caPolicies.rows, groupId, accountIds: selected, activeRoles: ctx.snapshot.roles.active, membersOf: groupLookup(ctx.groups) })
+    ? exclusionsGroupPolicies({ policies: ctx.snapshot.config.caPolicies.rows, groupId, accountIds: selected, activeRoles: ctx.snapshot.roles.active, membersOf: groupLookup(ctx.groups), accepted: acceptedEmergencyStrongPolicy(ctx.snapshot.tenantId, ctx.mapping) })
       .flatMap(policy => policy.outcome === 'fail' && policy.id && policy.mode ? [{ id: clean(policy.id), name: clean(policy.name), mode: policy.mode }] : [])
     : []
   // Exclusions group is a single-choice list: choosing a group saves it and

@@ -28,6 +28,7 @@ import { DIRECTION_STEP_IDS } from './stepGroups.ts'
 import type { TemplatePlaceholder } from './template.ts'
 import { assumedAbsentSourceGroups } from './sourceMappings.ts'
 import { readPolicy } from '../baseline/policyReadings.ts'
+import { EMERGENCY_STRONG_GOAL, EMERGENCY_STRONG_SLOT, emergencyStrongShape } from './emergencyStrongAccount.ts'
 
 export type RawPolicy = Record<string, unknown>
 
@@ -44,6 +45,8 @@ export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}
   '{serviceAccountsGroup}': PREREQ_STEP_ID.serviceAccountsGroup,
   // The groups that hold the admin accounts: Identify Service and Shared Accounts asks for them (`ADMIN_ACCOUNTS_SLOT`).
   '{adminAccountGroups}': DIRECTION_STEP_IDS[1],
+  // The emergency account that must use its security key: Decide How and Where People Sign In asks for it (emergencyStrongAccount.ts).
+  '{emergencyStrongAccount}': DIRECTION_STEP_IDS[2],
 }
 
 /**
@@ -89,6 +92,19 @@ export type TenantObjects = {
    * `ADMIN_ACCOUNTS_SLOT`, which waits on Identify Service and Shared Accounts.
    */
   adminAccountGroupIds?: readonly string[]
+  /**
+   * The one emergency account the operator named to sign in with its security
+   * key (mapping/emergencyChoice.ts emergencyStrongAccountOf). Absent or null: not
+   * answered, and a policy naming the author's emergency account names the slot
+   * `EMERGENCY_STRONG_SLOT`, which waits on Decide How and Where People Sign In.
+   */
+  emergencyStrongAccountId?: string | null
+  /**
+   * Decide How and Where People Sign In answered Everyone works remotely: there
+   * is no office network to carve out. Read only by the emergency account's
+   * policy, which then asks for the security key everywhere (owner, 2026-10-05).
+   */
+  noOfficeNetwork?: boolean
   /** The named locations the tenant marked as its trusted network; empty until it names one. */
   trustedLocationIds?: readonly string[]
   /**
@@ -561,6 +577,17 @@ export const ADMIN_ACCOUNTS_SLOT = '{adminAccountGroups}'
 const ADMIN_ACCOUNTS = 'adminAccountsGroup'
 
 /**
+ * The author's emergency accounts by id (src/baseline/interpretation.ts
+ * `emergencyStrongAccount`, `emergencyOtherAccount`; Jon's BreakGlass -
+ * TrustedLocations). The one it includes becomes the operator's chosen account,
+ * or the slot until it is named; the one it excludes becomes nothing at all:
+ * the plan never excludes an emergency account by name, and the policy reaches
+ * only the account it includes.
+ */
+const EMERGENCY_STRONG = 'emergencyStrongAccount'
+const EMERGENCY_OTHER = 'emergencyOtherAccount'
+
+/**
  * The pin's token for a source reference this baseline's interpretation settles
  * as the author's own environment: something identified by evidence as theirs,
  * which this tenant does not have and does not need
@@ -745,6 +772,24 @@ function substitutionsFor(
     if (token === ADMIN_ACCOUNTS && r.kind === 'group') {
       const groups = [...new Set(tenant.adminAccountGroupIds ?? [])]
       ids.set(r.id, groups.length > 0 ? groups : [ADMIN_ACCOUNTS_SLOT])
+      continue
+    }
+    // The emergency account that must use its security key: the operator's, or the slot Decide How and Where People Sign In fills.
+    if (token === EMERGENCY_STRONG && r.kind === 'user') {
+      ids.set(r.id, [tenant.emergencyStrongAccountId ?? EMERGENCY_STRONG_SLOT])
+      continue
+    }
+    // The other emergency account: never named in a body (exclusions go through the exclusions group).
+    if (token === EMERGENCY_OTHER && r.kind === 'user') {
+      ids.set(r.id, [])
+      continue
+    }
+    // Everyone works remotely: the emergency account's policy has no office to
+    // carve out and asks for the security key everywhere (owner, 2026-10-05).
+    // Only that policy: a block outside the trusted network without its
+    // carve-out would block everywhere.
+    if (token === 'trustedLocation' && r.kind === 'namedLocation' && goalId === EMERGENCY_STRONG_GOAL && tenant.noOfficeNetwork === true) {
+      ids.set(r.id, [])
       continue
     }
     if (token !== null && MAPPED_TOKENS.has(token)) {
@@ -942,7 +987,14 @@ export function resolveTenantPolicy(source: RawPolicy, tenant: TenantObjects, go
   const sps = ((conditions.clientApplications ?? {}) as RawPolicy).includeServicePrincipals
   const agents = ((conditions.clientApplications ?? {}) as RawPolicy).includeAgentIdServicePrincipals
   const workload = (Array.isArray(sps) && sps.length > 0) || (Array.isArray(agents) && agents.length > 0)
-  if (!workload) {
+  // The one policy that includes an emergency account on purpose
+  // (emergencyStrongAccount.ts): the chosen account is in the exclusions group,
+  // and an exclusion wins, so excluding the group would exclude the account the
+  // policy is for. Only that goal's body, and only while it reaches that one
+  // account (or its slot) and nobody else with a strength and no block; any
+  // other shape gets the exclusions group like every other policy.
+  const emergencyOnly = goalId === EMERGENCY_STRONG_GOAL && emergencyStrongShape(body, tenant.emergencyStrongAccountId ?? EMERGENCY_STRONG_SLOT)
+  if (!workload && !emergencyOnly) {
     const users = (conditions.users ?? {}) as RawPolicy
     users.excludeGroups = [...(Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]) : []), tenant.exclusionsGroupId ?? '{exclusionsGroup}']
     conditions.users = users

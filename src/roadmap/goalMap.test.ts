@@ -84,7 +84,9 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   // And, since 2026-10-04 (owner), Jon's ADM-Users policy as Require a Strong Sign-in for Your Admin Accounts Group.
   // And, since 2026-10-04 (owner), Jon's two AGENT blocks, read with the agent targeting his export lost
   // (interpretation.json policies), as Block High-Risk AI Agents and Block AI Agents You Have Not Approved.
-  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 32, 'the mapped-goal count changed — reconcile the baseline report')
+  // And, since 2026-10-05 (owner), Jon's BreakGlass - TrustedLocations as Require a Security Key for One Emergency Account Outside the Office.
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 33, 'the mapped-goal count changed — reconcile the baseline report')
+  assert.deepEqual(PINNED_GOAL_MAP['emergency-account-strong-signin'], ['1588fdc7-f34a-468e-8023-4d788ef5d226'])
   assert.deepEqual(PINNED_GOAL_MAP['agents-block-high-risk'], ['0ab1380f-3863-40a5-ab97-24250e1cf44e'])
   assert.deepEqual(PINNED_GOAL_MAP['agents-block-untrusted'], ['1d8beea4-2ea1-4758-8e22-d6310a60220a'])
   assert.deepEqual(PINNED_GOAL_MAP['avd-allowed-users'], ['9bc2ad69-4aed-4242-807d-788446196b8b'])

@@ -61,6 +61,7 @@ import { DIRECTION_BLOCKER, DIRECTION_STEP, SERVICE_KEYS, answeredReasonOf, dire
 export { DIRECTION_BLOCKER, directionBlockerStep, directionComplete } from './directionAnswers.ts'
 import type { DirectionQuestionKey, DirectionStepId } from './directionAnswers.ts'
 import type { DirectionQuestion, Step } from './types.ts'
+import { emergencyStrongTitle } from './emergencyStrongAccount.ts'
 
 const W = directionWords
 const Q = W.questions
@@ -268,7 +269,29 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
       chosen: intune ? Q.phones.chosen : { blocked: Q.phones.chosen.blocked },
     }),
     officeNetworkQuestion(ctx),
+    ...emergencyStrongQuestion(ctx),
   ]
+}
+
+/**
+ * Which emergency account must use its security key (owner, 2026-10-05): the one
+ * account Jon's BreakGlass - TrustedLocations policy includes, asked beside the
+ * office network that policy carves out. Only the emergency accounts Establish
+ * Emergency Access saved are offered, exactly one is picked, and nothing is
+ * suggested: the scan cannot tell which one carries the security key. Asked only
+ * while two or more are saved — with one, the step does not apply (the other
+ * account has to stay excluded from everything). Optional: left empty, only that
+ * policy's step waits (GOAL_DEPENDS).
+ */
+function emergencyStrongQuestion(ctx: Context): DirectionQuestion[] {
+  if (ctx.mapping.breakGlassUserIds.length < 2) return []
+  const words = Q.emergencyStrong
+  const remote = everyoneRemote(ctx.mapping)
+  return [question('emergencyStrong', ctx, {
+    label: words.label, control: 'accounts', options: [], pickedWith: 'some', pickOne: true,
+    suggested: answer('some'), evidence: '', chosen: { some: remote ? words.chosenRemote : words.chosen },
+    optional: true, note: fillText(words.optional, { step: emergencyStrongTitle(remote) }),
+  })]
 }
 
 /**
@@ -427,6 +450,8 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   'avd-allowed-users': ['avdUsers'],
   // Jon's ADM-Users policy (owner, 2026-10-04): the groups that hold the admin accounts.
   'admin-accounts-group-strength': ['adminAccounts'],
+  // Jon's BreakGlass - TrustedLocations policy (owner, 2026-10-05): the one emergency account it includes.
+  'emergency-account-strong-signin': ['emergencyStrong'],
   // Phones Blocked from company data widens Jon's block to iOS and Android (deviations.ts BLOCK_PLATFORMS_GOAL).
   'block-unsupported-platforms': ['phones'],
   // Define the Trusted Network holds until the office question is answered, as

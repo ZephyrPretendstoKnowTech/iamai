@@ -214,7 +214,8 @@ const OUTLINE: readonly [key: string, title: string, members: readonly string[]]
   ['extend-mfa', 'Extend MFA Coverage', ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-directory-baseline-scopes-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-risky-users-register-block', 's-goal-user-risk-medium', 's-goal-azure-management-mfa']],
   ['remaining-doors', 'Close the Doors Nobody Should Use', ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-avd-allowed-users', 's-goal-workload-identity-block', 's-goal-agents-block-high-risk', 's-goal-agents-block-untrusted', 's-goal-admin-portals-protected']],
   ['devices-sessions', 'Limit Sessions and Require Healthy Devices', ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls']],
-  ['ongoing', 'Ongoing Checks and Cleanup', ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming']],
+  // Require a Security Key for One Emergency Account after Harden Emergency Access (owner, 2026-10-05; placement the owner's to confirm).
+  ['ongoing', 'Ongoing Checks and Cleanup', ['cleanup-alerting', 'cleanup-hardening', 's-goal-emergency-account-strong-signin', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming']],
 ]
 
 test('the Plan has eight sections, in the roadmap flow’s order, with its names and members', () => {

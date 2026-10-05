@@ -89,6 +89,25 @@ export type SourceMeaning =
    * the policy waits on that answer.
    */
   | 'adminAccountsGroup'
+  /**
+   * The one emergency access account the author asks for a strong sign-in
+   * outside the office (Jon's cec6164b, the only include of IAC - GLOBAL - GRANT -
+   * BreakGlass - TrustedLocations; owner 2026-10-05). IAMAI cannot tell which of
+   * the tenant's emergency accounts carries the security key, so the counterpart
+   * is the one the operator names in Decide How and Where People Sign In
+   * (MappingState.emergencyStrongAccountId, always one of breakGlassUserIds;
+   * roadmap/resolvePolicy.ts). Unanswered, the policy waits on that answer.
+   */
+  | 'emergencyStrongAccount'
+  /**
+   * The author's other emergency access account, which the same policy excludes
+   * by name (Jon's ebb6b745). The plan never excludes an emergency account by
+   * name (CLAUDE.md: exclusions go through the exclusions group), and the policy
+   * reaches only the one account it includes, so the other is out of its scope
+   * without an exclusion. It has no counterpart: it resolves to nothing and is
+   * left out of the body (roadmap/resolvePolicy.ts).
+   */
+  | 'emergencyOtherAccount'
   | 'trustedLocation'
   | 'authorEnvironment'
   | 'unknown'
@@ -300,7 +319,7 @@ export type ReferenceUsage = {
   context: Record<string, string>
 }
 
-const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'avdUsersGroup', 'adminAccountsGroup', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
+const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'avdUsersGroup', 'adminAccountsGroup', 'emergencyStrongAccount', 'emergencyOtherAccount', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
 const CLASSIFICATIONS: ReferenceClassification[] = ['knownSemantic', 'sourceOnly', 'decisionRequired', 'invalidSource']
 
 /** The one classification each meaning allows: a record whose two fields disagree cannot be checked by a reviewer. */
@@ -394,9 +413,12 @@ function hash(text: string): string {
 }
 
 /**
- * How every group and named location in a package is used. Only the two kinds a
- * record can settle are collected; an authentication strength is not here
- * because its meaning is the field it sits in, not a reading of it.
+ * How every group, named location and user in a package is used. Only the kinds
+ * a record can settle are collected; an authentication strength is not here
+ * because its meaning is the field it sits in, not a reading of it. A user is
+ * collected since the author's emergency accounts are named by id in one policy
+ * (Jon's BreakGlass - TrustedLocations; owner 2026-10-05), so the reading of
+ * each is checked against a later package like any other.
  */
 export function referenceUsage(policies: CaPolicy[]): ReferenceUsage[] {
   const map = new Map<string, ReferenceUsage>()
@@ -431,6 +453,8 @@ export function referenceUsage(policies: CaPolicy[]): ReferenceUsage[] {
     for (const g of s(p.conditions?.users?.excludeGroups)) exclude(g, 'group')
     for (const l of s(p.conditions?.locations?.includeLocations)) include(l, 'namedLocation')
     for (const l of s(p.conditions?.locations?.excludeLocations)) exclude(l, 'namedLocation')
+    for (const u of s(p.conditions?.users?.includeUsers)) include(u, 'user')
+    for (const u of s(p.conditions?.users?.excludeUsers)) exclude(u, 'user')
   }
   for (const u of map.values()) {
     u.includedIn.sort()

@@ -14,6 +14,7 @@ import type { GroupMembers } from '../coverage/population.ts'
 import { operatorExclusionsDecision } from '../mapping/safetyChoice.ts'
 import { nameKey } from '../baseline/discover.ts'
 import { exclusionsGroupPolicies, groupLookup } from '../validation/exclusionsGroupPolicies.ts'
+import { acceptedEmergencyStrongPolicy } from './emergencyStrongAccount.ts'
 import { requiredModels } from './passkeySettings.ts'
 import { passkeyReadingOf } from './passkeySettings.ts'
 import { recoveryPasskeyCandidateSet } from './passkeyCompatibility.ts'
@@ -335,7 +336,7 @@ export function automaticRecoveryPreparationStates(snapshot: TenantSnapshot, map
   // The one rule (validation/exclusionsGroupPolicies.ts): every applicable policy,
   // Report-only included, excludes the group, as Step 2's completion reads it.
   const needing = decision && snapshot.config.caPolicies?.status === 'ok'
-    ? exclusionsGroupPolicies({ policies: snapshot.config.caPolicies.rows, groupId: decision.id, accountIds: ids, activeRoles: snapshot.roles.active, membersOf: groupLookup(groups) })
+    ? exclusionsGroupPolicies({ policies: snapshot.config.caPolicies.rows, groupId: decision.id, accountIds: ids, activeRoles: snapshot.roles.active, membersOf: groupLookup(groups), accepted: acceptedEmergencyStrongPolicy(snapshot.tenantId, mapping) })
     : []
   const sharedUnread = !decision || !selected || typeof selected.securityEnabled !== 'boolean' || typeof selected.mailEnabled !== 'boolean' || selected.directMembers !== 'complete' || !Array.isArray(selected.directMemberIds) || !Array.isArray(selected.groupTypes) || !Array.isArray(selected.assignedLicenseSkuIds) || snapshot.config.caPolicies?.status !== 'ok' || needing.some(policy => policy.outcome === 'unknown') || passkey.state === 'unread' || passkey.state === 'review'
   const exclusionsCorrect = !!decision && needing.every(policy => policy.outcome === 'pass')

@@ -82,7 +82,8 @@ function bodiesOf(name: FixtureName, mapping?: MappingState, shape: (f: Fixture)
 
 test('the spec’s eight steps sit where the roadmap flow places them, and Ongoing takes every unclaimed step', () => {
   assert.deepEqual(ONGOING.map((id) => groupOf(id)?.key), ['remaining-doors', 'extend-mfa', 'prepare', 'prepare', 'ongoing', 'ongoing', 'ongoing', 'ongoing'])
-  assert.deepEqual([...membersOf('ongoing')], ['cleanup-alerting', 'cleanup-hardening', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming'])
+  // Require a Security Key for One Emergency Account after Harden Emergency Access (owner, 2026-10-05).
+  assert.deepEqual([...membersOf('ongoing')], ['cleanup-alerting', 'cleanup-hardening', 's-goal-emergency-account-strong-signin', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming'])
   assert.equal(groupOf('s-something-nobody-placed')?.key, 'ongoing')
 })
 
