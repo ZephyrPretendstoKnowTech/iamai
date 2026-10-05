@@ -6401,7 +6401,7 @@
       "title": "Block Sign-ins From Countries Not Allowed",
       "changeLine": null,
       "$commentWhy": "Owner, 2026-09-26: two sentences. The generic travel, VPN and partner warning named nobody; the people signed in from outside the countries are the step's own evidence. The countries location's own sentence (s-prereq-allowed-countries) is folded in here.",
-      "why": "It keeps out sign-ins from countries the business does not work in. Entra decides a sign-in's country by its IP address, and blocks one whose country it cannot work out.",
+      "why": "This policy keeps out sign-ins from countries the business does not work in. Entra decides a sign-in's country by its IP address, and blocks one whose country it cannot work out.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },

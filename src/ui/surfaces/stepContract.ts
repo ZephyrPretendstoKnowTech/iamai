@@ -2663,7 +2663,9 @@ function stateTile(step: Step, c: StepContract, setupAfterEnforcement = false): 
     const d = (contentStepFor(step)?.decision ?? (step.objectTask ? contentStepFor(step.objectTask)?.decision : null)) as { label?: unknown; help?: unknown } | null | undefined
     const label = typeof d?.label === 'string' && d.label.trim() !== '' ? d.label : t.decisionValue
     const help = typeof d?.help === 'string' && d.help.trim() !== '' && !d.help.includes('{') ? d.help : c.decisionNote
-    return { key: 'decision', label: t.decision, tone: 'warn', value: label, note: help }
+    // A decision's own help is drawn beside its picker in the side panel (stepBody.ts): said there,
+    // not again on the card (owner, 2026-10-05: 6.3 read the same two sentences side by side).
+    return { key: 'decision', label: t.decision, tone: 'warn', value: label, note: help === c.decisionNote ? help : null }
   }
   // A finished step draws no "Existing coverage" card (walk list item 11, owner
   // 2026-09-23): "In place · IAMAI found an existing control that meets the
