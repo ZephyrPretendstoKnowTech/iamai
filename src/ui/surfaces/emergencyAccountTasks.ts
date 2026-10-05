@@ -104,6 +104,8 @@ export type EmergencyTaskProjection = {
   exclusionsFirst?: string
   /** A policy step's correction to a policy that is already On, in one line (policyTasks.ts, owner 2026-09-28): the PowerShell script says it first. */
   policyOn?: string
+  /** A step that builds the baseline's policy beside the tenant's own (Action.besidePolicies), in one line on its policy card (policyTasks.ts besideLineOf). */
+  beside?: string
 }
 
 /** What a procedure says about whether a selected account needs it (pages.app.plan.emergencyTasks). */

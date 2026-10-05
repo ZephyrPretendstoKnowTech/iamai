@@ -49,7 +49,8 @@ import type { ContractReadiness, ContractStage, StepContract } from './stepContr
 import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
-import { app, engine, shared, stepById } from '../../content/content.ts'
+import { app, cleanup, engine, shared, stepById } from '../../content/content.ts'
+import { INVENTORY } from '../../copy/inventory.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { OwnCard } from './prepareSteps.ts'
 import { factSentence } from './policyFact.ts'
@@ -658,10 +659,32 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   // turn-on and its completion wait on (walk list 4.x items 4 and 5), so that task
   // is the one recommended; before it, the report-only create comes first.
   const mailFirst = mail !== null && step.state.lifecycle !== null && step.state.lifecycle !== 'not-deployed'
+  const beside = besideLineOf(step)
   // In doing order: the accounts move before the turn-on that waits for them.
   const at = tasks.findIndex((t) => t.id === 'turn-on')
   const ordered = mail === null ? tasks : at < 0 ? [...tasks, mail] : [...tasks.slice(0, at), mail, ...tasks.slice(at)]
-  return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}), ...(correct.some(exclusionsFirst) ? { exclusionsFirst: firstLine } : {}), ...(correct.some(warns) ? { policyOn: onLine } : {}) }
+  return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}), ...(correct.some(exclusionsFirst) ? { exclusionsFirst: firstLine } : {}), ...(correct.some(warns) ? { policyOn: onLine } : {}), ...(beside !== null ? { beside } : {}) }
+}
+
+/**
+ * A step that builds the baseline's policy beside the tenant's own doing the same
+ * job (generate.ts BUILDS_BESIDE, Action.besidePolicies) says so on its policy
+ * card, in one line (option B, audit 2026-10-05): the step screen read only
+ * "Create the policy in Report-only", and a reader took it that they had no
+ * policy, or that theirs would be replaced at once. The export and print say the
+ * same in Who it affects (shared.existingCoverageBeside). Each tenant policy is
+ * named with its state until this step's policy is On, then what Retire Replaced
+ * Policies turns off; one whose grant asks more than the baseline's is flagged.
+ */
+export function besideLineOf(step: Step): string | null {
+  const beside = step.action.besidePolicies ?? []
+  if (beside.length === 0) return null
+  const retire = (cleanup as Record<string, { title: string }>).retire.title
+  const stateOf = (state: string): string => (INVENTORY.policies.state as Record<string, string>)[state] ?? state
+  const head = step.state.lifecycle === 'enforced'
+    ? fillText(PW.card.besideOn, { retire, names: list(beside.map((p) => p.name)) })
+    : fillText(beside.length === 1 ? PW.card.besideOne : PW.card.besideMany, { retire, names: list(beside.map((p) => `${p.name} (${stateOf(p.state)})`)) })
+  return [head, ...beside.filter((p) => p.stricter === true).map((p) => fillText(PW.card.besideStricter, { retire, name: p.name }))].join(' ')
 }
 
 /**
@@ -1113,5 +1136,10 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   // A decision still open comes first (owner, 2026-09-26: 6.3's countries): the
   // policy's create waits on it.
   const decision = rest.filter((c) => c.key === 'decision' && !c.satisfied)
-  return [...decision, ...corrected, ...cards, ...rest.filter((c) => !decision.includes(c))]
+  // A step that builds beside the tenant's own policies says so on its own
+  // policy's card, in one line under what the card says now (besideLineOf).
+  const policyCard = [...corrected, ...cards].find((c) => c.key.startsWith('correct:') || c.key.startsWith('policy'))
+  const beside = projected?.beside ?? null
+  const withBeside = (c: EmergencySubjectTile): EmergencySubjectTile => (beside !== null && c === policyCard ? { ...c, detail: [c.detail ?? '', beside].filter((s) => s !== '').join('\n') } : c)
+  return [...decision, ...corrected.map(withBeside), ...cards.map(withBeside), ...rest.filter((c) => !decision.includes(c))]
 }

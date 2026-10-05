@@ -223,7 +223,12 @@
         "$commentExclusionsEdit": "The card of a policy whose only change left is the exclusions group, which Configure Emergency Exclusions adds itself (walk list 4.x item 7): it read Correct the policy, beside that step's own task for the same edit.",
         "exclusionsEdit": "{step} adds {group} to it.",
         "$commentAfterExclusions": "F-001: a correction that removes an exclusion from a policy Configure Emergency Exclusions has not reached yet. Done first, it takes the emergency accounts' old exclusion off before the group is there.",
-        "afterExclusions": "After {step} adds {group} to it."
+        "afterExclusions": "After {step} adds {group} to it.",
+        "$commentBeside": "A step that builds the baseline's policy beside the tenant's own doing the same job (roadmap/generate.ts BUILDS_BESIDE, Action.besidePolicies; option B, audit 2026-10-05): one line on the policy's card, so the step screen says what shared.existingCoverageBeside says in the export and print. {names} is each tenant policy with its state, {retire} the Cleanup row's title. besideOn once this step's policy is On, with the names alone. besideStricter follows for each one whose grant asks more than the baseline's.",
+        "besideOne": "Your {names} keeps doing this job until this policy is On; {retire} turns it off after that.",
+        "besideMany": "Your {names} keep doing this job until this policy is On; {retire} turns them off after that.",
+        "besideOn": "This policy is On; {retire} turns off {names}.",
+        "besideStricter": "{name} is stricter than the baseline's: keep it with a reason in {retire} unless you mean to loosen sign-in."
       },
       "$commentAfterExclusions": "F-001: the Correct task's first line (and the PowerShell script's first comment) while Configure Emergency Exclusions still has to add the exclusions group to the policy whose exclusion the correction removes.",
       "afterExclusions": "Do this after {step} adds {group} to this policy.",
