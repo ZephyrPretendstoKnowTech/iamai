@@ -42,7 +42,7 @@ export const EMERGENCY_STRONG_STEP = stepIdForGoal(EMERGENCY_STRONG_GOAL)
  */
 export const EMERGENCY_STRONG_SLOT = '{emergencyStrongAccount}'
 
-type Row = { displayName?: unknown; description?: unknown; conditions?: unknown; grantControls?: unknown }
+type Row = { displayName?: unknown; description?: unknown; conditions?: unknown; grantControls?: unknown; sessionControls?: unknown }
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 const object = (v: unknown): Record<string, unknown> | null => (v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase()
@@ -51,7 +51,8 @@ const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCas
  * The policy's shape: it includes exactly `accountId` (the chosen account, or
  * the slot while it is unnamed) and nobody else — no group, no role, no guest
  * type, not All — and its grant is an authentication strength alone: no
- * built-in control, so never a block. Exclusions are not read: excluding more
+ * built-in control, so never a block, and no terms of use, custom control or
+ * session control that is on. Exclusions are not read: excluding more
  * people never makes it reach another emergency account.
  */
 export function emergencyStrongShape(policy: unknown, accountId: string): boolean {
@@ -65,6 +66,13 @@ export function emergencyStrongShape(policy: unknown, accountId: string): boolea
   const grant = object(p?.grantControls)
   if (grant === null) return false
   if (strings(grant.builtInControls).length > 0) return false
+  // Nothing else the account must satisfy or accept (audit, 2026-10-05): terms of use or a
+  // custom control could stop the one emergency account it reaches at sign-in.
+  if (strings(grant.termsOfUse).length > 0 || strings(grant.customAuthenticationFactors).length > 0) return false
+  // And no session control that is on: a sign-in frequency or a session restriction is
+  // not what this policy is for, and an unknown control is read as one (conservative).
+  const session = object(p?.sessionControls)
+  if (session !== null && Object.values(session).some((v) => v !== null && v !== undefined && v !== false && object(v)?.isEnabled !== false)) return false
   const strength = object(grant.authenticationStrength)
   return strength !== null && typeof strength.id === 'string' && strength.id.trim() !== ''
 }

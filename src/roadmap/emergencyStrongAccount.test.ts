@@ -352,6 +352,15 @@ test('BreakGlass: every emergency reading accepts exactly this policy reaching e
   assert.deepEqual(acceptedOwnExposure({ reached: [chosen], unproven: [] }, [{ conditions: { users: { includeUsers: [chosen] } }, grantControls: { builtInControls: ['block'] } }], chosen), { reached: [chosen], unproven: [] }, 'a block is never accepted')
   assert.deepEqual(acceptedOwnExposure({ reached: [chosen], unproven: [] }, [{ conditions: { users: { includeUsers: [chosen] } }, grantControls: { builtInControls: [], authenticationStrength: { id: 's' } } }], null), { reached: [chosen], unproven: [] }, 'no chosen account accepts nothing')
   assert.equal(emergencyStrongShape({ conditions: { users: { includeUsers: [chosen], includeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest' } } }, grantControls: { builtInControls: [], authenticationStrength: { id: 's' } } }, chosen), false, 'nobody else, guests included')
+  // Nothing else the account must satisfy (audit, 2026-10-05): terms of use, a custom control, or a session control that is on.
+  const only = { conditions: { users: { includeUsers: [chosen] } }, grantControls: { builtInControls: [], authenticationStrength: { id: 's' } } }
+  assert.equal(emergencyStrongShape(only, chosen), true, 'the premise: the strength alone is accepted')
+  assert.equal(emergencyStrongShape({ ...only, sessionControls: null }, chosen), true, 'no session controls')
+  assert.equal(emergencyStrongShape({ ...only, sessionControls: { signInFrequency: { isEnabled: false }, disableResilienceDefaults: false } }, chosen), true, 'session controls that are off')
+  assert.equal(emergencyStrongShape({ ...only, grantControls: { ...only.grantControls, termsOfUse: ['tou-1'] } }, chosen), false, 'terms of use')
+  assert.equal(emergencyStrongShape({ ...only, grantControls: { ...only.grantControls, customAuthenticationFactors: ['x'] } }, chosen), false, 'a custom control')
+  assert.equal(emergencyStrongShape({ ...only, sessionControls: { signInFrequency: { isEnabled: true, type: 'hours', value: 1 } } }, chosen), false, 'a sign-in frequency that is on')
+  assert.equal(emergencyStrongShape({ ...only, sessionControls: { continuousAccessEvaluation: { mode: 'strictLocation' } } }, chosen), false, 'an unknown session control reads as on')
 })
 
 test('BreakGlass: the other emergency account stays excluded from every policy — this one included, which never reaches it — on every fixture and answer', () => {
