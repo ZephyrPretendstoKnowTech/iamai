@@ -1,11 +1,11 @@
 {
   "lane": "Ready",
   "substatus": "Correct",
-  "reason": "when MFA readiness reaches 90% (now 73%)",
+  "reason": null,
   "fact": "Enforced",
   "badge": "Ready · Correct",
   "bar": "Needs correction",
-  "rail": "Not yet: when MFA readiness reaches 90% (now 73%)",
+  "rail": "Rename the policy",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -22,5 +22,5 @@
     "Entra",
     "AI Info"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Sep 9, 2026"
 }

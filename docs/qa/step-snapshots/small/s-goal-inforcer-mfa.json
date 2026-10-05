@@ -1,11 +1,11 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": "after: Configure Passkey Authentication",
-  "fact": "Enforced",
-  "badge": "Up Next",
-  "bar": "After Configure Passkey Authentication",
-  "rail": "After Configure Passkey Authentication",
+  "fact": null,
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -13,6 +13,10 @@
     "Completion Criteria"
   ],
   "tiles": [
+    {
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
+    },
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"

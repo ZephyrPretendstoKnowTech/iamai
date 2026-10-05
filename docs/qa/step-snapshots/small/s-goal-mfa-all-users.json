@@ -1,11 +1,11 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now 77%)",
+  "reason": "after: Configure Passkey Authentication",
   "fact": "Enforced",
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
-  "rail": "Not yet: when MFA readiness reaches 90% (now 77%)",
+  "rail": "Not yet: after Configure Passkey Authentication",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -20,10 +20,6 @@
     {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Your account",
-      "state": "No method this policy accepts"
     }
   ],
   "channels": [

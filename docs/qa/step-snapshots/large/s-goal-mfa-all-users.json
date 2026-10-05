@@ -1,11 +1,11 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now 73%)",
+  "reason": "after: Configure Passkey Authentication",
   "fact": "Enforced",
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
-  "rail": "Not yet: when MFA readiness reaches 90% (now 73%)",
+  "rail": "Not yet: after Configure Passkey Authentication",
   "headings": [
     "About this Step",
     "Tasks Remaining",

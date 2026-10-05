@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "when 1 named cause exists (now 0)",
-  "fact": "Enforced",
+  "reason": "after: Confirm What You Use",
+  "fact": null,
   "badge": "On Hold",
-  "bar": "On Hold",
-  "rail": "“Inforcer (baseline name)” (708861da-226e-4d65-a57a-24128df64524) first: this policy names an object Contoso Pty Ltd does not have yet.",
+  "bar": "Waiting on your answers",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "Implementation",
-      "state": "Unavailable"
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
     }
   ],
   "channels": [
@@ -23,5 +23,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "Aug 31, 2026"
+  "when": "Sep 7, 2026"
 }

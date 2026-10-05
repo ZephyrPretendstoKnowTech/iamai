@@ -1,11 +1,11 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "when device readiness reaches 80% (now 29%)",
+  "reason": "after: Configure Passkey Authentication",
   "fact": "Enforced",
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
-  "rail": "Not yet: when device readiness reaches 80% (now 29%)",
+  "rail": "Not yet: after Configure Passkey Authentication",
   "headings": [
     "About this Step",
     "Tasks Remaining",

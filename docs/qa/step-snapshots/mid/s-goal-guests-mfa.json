@@ -14,10 +14,6 @@
   ],
   "tiles": [
     {
-      "label": "New evidence",
-      "state": "Review required"
-    },
-    {
       "label": "Configure Passkey Authentication",
       "state": "Prerequisite · To do"
     },

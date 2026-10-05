@@ -1,11 +1,11 @@
 {
   "lane": "Up Next",
   "substatus": null,
-  "reason": "when MFA readiness reaches 90% (now not measured)",
+  "reason": "after: Prepare Emergency Access Accounts",
   "fact": "Enforced",
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
-  "rail": "Not yet: when MFA readiness reaches 90% (now not measured)",
+  "rail": "Not yet: after Prepare Emergency Access Accounts",
   "headings": [
     "About this Step",
     "Tasks Remaining",
