@@ -4,7 +4,8 @@ import { REGISTER_DEVICE, createdOn } from './evidenceStrategy.ts'
 import { blockedCountriesCompanion, externalAuthTargetsOf, goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
-import { countDirectionImpact, directionSteps } from './direction.ts'
+import { countDirectionImpact, directionSteps, directionTitleOf } from './direction.ts'
+import type { DirectionStepId } from './directionAnswers.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
 import { SERVICE_KEYS, answeredReasonOf, isDirectionStep, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
@@ -3503,8 +3504,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // Nor where the step has no policy yet to count against: a policy that
       // names who it reaches by the operator's answer (Require a Strong Sign-in
       // for Your Admin Accounts Group, unanswered) reaches nobody the campaign
-      // could prepare until that answer is given, and the answer is what moves it.
-      if (methodTargets.has(s.goalId) && (methodTargets.get(s.goalId) ?? []).length === 0) continue
+      // could prepare until that answer is given. The answer is what moves the
+      // number, so the Direction step that asks it is the route.
+      if (methodTargets.has(s.goalId) && (methodTargets.get(s.goalId) ?? []).length === 0) {
+        const asks = (s.action.missing ?? []).map((m) => m.stepId).find((id): id is DirectionStepId => id !== null && isDirectionStep(id))
+        if (asks !== undefined) s.action = { ...s.action, readinessGate: { ...gate, route: directionTitleOf(asks), routeId: asks } }
+        continue
+      }
       // The gate's own family: its measure may name a strength rather than the family (R4-26).
       const family = readinessFamilyOf(gate)
       if (family === undefined || !movedByCampaign.has(family)) continue

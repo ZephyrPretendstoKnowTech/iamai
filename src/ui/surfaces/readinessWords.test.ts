@@ -446,7 +446,9 @@ test('a readiness gate that names the step moving its number links to that step'
       assert.ok(tile, `${name}/${step.id}: no Threshold card`)
       assert.ok(tile.note!.includes(gate.route), `${name}/${step.id}: the card does not name the route`)
       assert.ok(tile.link && 'href' in tile.link, `${name}/${step.id}: the card names "${gate.route}" and does not link to it`)
-      assert.equal(tile.link.href, '#/plan/s-verify-mfa')
+      // The campaign, or the Direction step that asks who a policy reaches where it names no one yet (generate.ts).
+      assert.equal(tile.link.href, `#/plan/${route.id}`)
+      assert.ok(['s-verify-mfa', 's-direction-accounts'].includes(route.id), `${name}/${step.id}: routed to ${route.id}`)
     }
   }
   // One fewer since Protect Sign-in Method Registration requires Jon's strength (2026-09-25).
