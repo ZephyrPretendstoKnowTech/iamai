@@ -653,7 +653,7 @@ test('Implementation is the pack’s pill channels over a fixed preview, or one 
 
 test('a task\'s instructions scroll only past 39rem, so a one-line overflow shows whole (F-100)', () => {
   const box = rule(".step:is([data-task-anatomy], [data-step-id='cleanup-drill']) .impl-preview")
-  // 37rem cut 4.1 Require Phishing-Resistant MFA for Admins by 22px (Round 4 walk, 1280px).
+  // 37rem cut 4.1 Require a Strong Sign-in for Admins by 22px (Round 4 walk, 1280px).
   assert.match(box, /max-height: 39rem;/)
   assert.match(box, /overflow: auto;/, 'a long task no longer scrolls inside its box')
 })

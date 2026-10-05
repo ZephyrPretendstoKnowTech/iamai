@@ -39,7 +39,7 @@ const stepIn = (steps: readonly Step[], id: string): Step => {
 test('a held step names no day in its milestone, keeps its report-only preparation, and dated every milestone is what it was', () => {
   // A held create keeps its report-only preparation, its gate and its kind, without the day.
   {
-    // small, settled: Require Phishing-Resistant MFA for Admins. It was the registration
+    // small, settled: Require a Strong Sign-in for Admins. It was the registration
     // policy on week two, which is created On since Phase 2e, so its create waits with its turn-on.
     const step = stepIn(stepsOf(withFoundationSettled(fixture('small'))), 's-goal-admins-phishing-resistant')
     const gate = step.action.readinessGate

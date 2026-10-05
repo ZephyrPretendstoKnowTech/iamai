@@ -1,4 +1,4 @@
-// Require Phishing-Resistant MFA for Admins, on the pin (walk list 4.x item 1).
+// Require a Strong Sign-in for Admins, on the pin (walk list 4.x item 1).
 //
 // The pinned baseline files "IAC - GLOBAL - GRANT - MFA - AllAdmins" under the
 // admins goal and grants it the "Modern MFA + TAP" strength. The pinned baseline

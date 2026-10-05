@@ -237,7 +237,7 @@ test('a change that turns a policy on has no day of its own on a waiting lane, a
 // same kind - never "Finish the steps this one waits on first." above an
 // Implementation region still offering the create.
 test('the opened step of a held create still says to create the policy in report-only, without the day', () => {
-  // small, settled: Require Phishing-Resistant MFA for Admins. It was the registration
+  // small, settled: Require a Strong Sign-in for Admins. It was the registration
   // policy on week two, which is created On since Phase 2e, so its create waits with its turn-on.
   const f = withFoundationSettled(fixture('small'))
   const r = runFixture(f, {}, null, f.snapshot.asOf)

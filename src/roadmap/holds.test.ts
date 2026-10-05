@@ -230,7 +230,7 @@ test('Step 4 E: once the exclusions group is answered the same policy is Ready t
 // ---- the calendar books the canonical event ----
 
 test('C5: the calendar books a readiness-gated create on its report-only creation day, in the Plan rail’s words, and dates no enforcement', () => {
-  // Curated small: Require Phishing-Resistant MFA for Admins waits for every
+  // Curated small: Require a Strong Sign-in for Admins waits for every
   // admin's method to turn on. It was Require MFA to Register a Device, which is
   // created On since Phase 2e, so its create waits with its turn-on (below).
   const p = planOf(curatedFixture('small'))

@@ -139,7 +139,7 @@
     },
     {
       "id": "s-goal-admins-phishing-resistant",
-      "title": "Require Phishing-Resistant MFA for Admins",
+      "title": "Require a Strong Sign-in for Admins",
       "workType": "CA policy",
       "scopeClass": "admins",
       "effortKind": "portal",

@@ -3456,7 +3456,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         guestIds: preparationIds.filter(id => popIndex.guests.has(id)),
         dormantIds: preparationIds.filter(id => dormantSet.has(id)),
         activityUnreadIds: preparationIds.filter(id => viabilityById.get(id)?.activity === 'unknown'),
-        // The people Require Phishing-Resistant MFA for Admins covers: each needs
+        // The people Require a Strong Sign-in for Admins covers: each needs
         // a passkey or security key, everyone else a method Require MFA accepts
         // (walk list section 3 items 46 and 53).
         passkeyIds: methodPreparation(methodTargets.get('admins-phishing-resistant') ?? [], preparationIds, snapshot, strandContext, methodPreparationCache).ids,

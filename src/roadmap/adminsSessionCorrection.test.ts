@@ -1,4 +1,4 @@
-// v1.1 T1-5: 4.3 Require Phishing-Resistant MFA for Admins' session and name
+// v1.1 T1-5: 4.3 Require a Strong Sign-in for Admins' session and name
 // correction lines (v1.1 list, "Package correction modules").
 //
 // Session. The review (2026-09-24) saw a tenant's own admin policy with a

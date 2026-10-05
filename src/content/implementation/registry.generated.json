@@ -1346,7 +1346,7 @@
     "s-goal-admins-phishing-resistant": {
       "meta": {
         "stepId": "s-goal-admins-phishing-resistant",
-        "title": "Require Phishing-Resistant MFA for Admins",
+        "title": "Require a Strong Sign-in for Admins",
         "relationship": "baseline-goal",
         "contentFile": "CONTENT.md",
         "requiredBindings": [
@@ -1897,7 +1897,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\n**Require Phishing-Resistant MFA for Admins** waits for {{dependencies.waits}}. [omit this line when unavailable]\n"
+          "text": "\n**Require a Strong Sign-in for Admins** waits for {{dependencies.waits}}. [omit this line when unavailable]\n"
         },
         "ai.not-licensed": {
           "meta": {
@@ -1923,7 +1923,7 @@
             "audience": "administrators-in-scope",
             "communicationTrigger": "before-report-only"
           },
-          "text": "Subject: Action needed: Require Phishing-Resistant MFA for Admins\n\nWe are preparing stronger authentication for admin access. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.\n"
+          "text": "Subject: Action needed: Require a Strong Sign-in for Admins\n\nWe are preparing stronger authentication for admin access. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.\n"
         },
         "email.enforce": {
           "meta": {
@@ -1937,7 +1937,7 @@
             "audience": "administrators-in-scope",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Action needed: Require Phishing-Resistant MFA for Admins\n\nWe are preparing stronger authentication for admin access. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.\n"
+          "text": "Subject: Action needed: Require a Strong Sign-in for Admins\n\nWe are preparing stronger authentication for admin access. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.\n"
         },
         "readiness.model": {
           "meta": {
@@ -19193,7 +19193,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "\nThis step starts with registering an approved passkey or security key for {{operator.displayName}}. Current registered methods: {{operator.current.methods}}.\n\nRegistration is an interactive action the operator completes in Security info; it cannot be done for them by script, and it does not change the tenant's passkey policy. Keep existing recovery methods while testing. A registered method still needs a successful sign-in before this step is complete.\n\nNEXT STEP: Explain which approved path the operator can register now (a passkey in Microsoft Authenticator or a FIDO2 security key) and the sign-in test that follows.\n"
+          "text": "\nThis step starts with registering a device-bound passkey or security key for {{operator.displayName}}. Current registered methods: {{operator.current.methods}}.\n\nRegistration is an interactive action the operator completes in Security info; it cannot be done for them by script, and it does not change the tenant's passkey policy. Keep existing recovery methods while testing. A registered method still needs a successful sign-in before this step is complete.\n\nNEXT STEP: Explain which approved path the operator can register now (a passkey in Microsoft Authenticator or a FIDO2 security key) and the sign-in test that follows.\n"
         },
         "ai.verify": {
           "meta": {

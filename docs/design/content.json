@@ -3606,7 +3606,7 @@
               "joinsRemote": "Everyone works remotely, so there is no office network to keep these accounts to: they get MFA like anyone."
             },
             "adminAccounts": {
-              "$comment": "Owner, 2026-10-04: Jon's MFA-Passkeys policy for admin accounts asks every account in his admin-accounts group for the baseline's strength, so it reaches admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins (directory roles) misses until they activate. A group picker, one or more groups; the answer is MappingState.adminAccountGroupIds. Optional: left empty, only Require a Strong Sign-in for Your Admin Accounts Group waits. No suggestion and no evidence line: the scan cannot tell which group holds the admin accounts.",
+              "$comment": "Owner, 2026-10-04: Jon's MFA-Passkeys policy for admin accounts asks every account in his admin-accounts group for the baseline's strength, so it reaches admins only eligible in PIM, whom Require a Strong Sign-in for Admins (directory roles) misses until they activate. A group picker, one or more groups; the answer is MappingState.adminAccountGroupIds. Optional: left empty, only Require a Strong Sign-in for Your Admin Accounts Group waits. No suggestion and no evidence line: the scan cannot tell which group holds the admin accounts.",
               "label": "Which group holds your admin accounts?",
               "chosen": "Every account in these groups signs in with a passkey, a security key or Windows Hello, including admins only eligible in PIM.",
               "optional": "Leave it empty and only Require a Strong Sign-in for Your Admin Accounts Group waits for it."
@@ -4934,7 +4934,7 @@
         "turnOn3": "IAC - GLOBAL - GRANT - MFA - AllAdmins",
         "turnOn4": "IAC - GLOBAL - GRANT - MFA - AllUsers"
       },
-      "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
+      "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require a Strong Sign-in for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
       "aiFocus": "Walk me through turning off security defaults and turning on the policies that replace them in the same change.",
       "card": {
         "subject": "Security defaults",
@@ -5169,7 +5169,7 @@
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Require Phishing-Resistant MFA for Admins, Challenge High-Risk Sign-ins, Require MFA at Every Role Activation and the partner tier of Require MFA for Guests wait on this."
+        "waits": "Require a Strong Sign-in for Admins, Challenge High-Risk Sign-ins, Require MFA at Every Role Activation and the partner tier of Require MFA for Guests wait on this."
       },
       "example": {
         "tenant": "Contoso Pty Ltd",
@@ -5232,7 +5232,7 @@
         ],
         "helpDesk": null,
         "manager": null,
-        "waits": "Require Phishing-Resistant MFA for Admins waits on this."
+        "waits": "Require a Strong Sign-in for Admins waits on this."
       },
       "example": {
         "operator": "Alex Morgan",
@@ -5243,7 +5243,7 @@
         "operatorDevices": "your computer and your phone"
       },
       "aiFocus": "Walk me through creating a passkey in Microsoft Authenticator, or registering an approved security key, and signing in with it on each device I use.",
-      "why": "Your account makes every change in this plan. A passkey you've already signed in with means Require Phishing-Resistant MFA for Admins can't lock you out when it turns on.",
+      "why": "Your account makes every change in this plan. A passkey you've already signed in with means Require a Strong Sign-in for Admins can't lock you out when it turns on.",
       "card": {
         "$comment": "The card and the Next milestone follow the operator's own readiness (walk list section 3 item 41, ui/surfaces/prepareSteps.ts): nothing registered, registered and not signed in with it yet, or signed in with it, which completes the step (items 5 and 43: a passkey or Windows Hello, on any device). The signed-in card is the Satisfied card's fact (item 14). The device words fill {devices} there and {operatorDevices} in the procedure.",
         "subject": "Your passkey",
@@ -5465,7 +5465,7 @@
         "mfaEnforceLong": "Tuesday, September 8",
         "enrolWindowDays": 14,
         "passkeyEnforceLong": "Tuesday, September 15",
-        "passkeyPolicy": "Require Phishing-Resistant MFA for Admins",
+        "passkeyPolicy": "Require a Strong Sign-in for Admins",
         "campaignNeedsPasskey": [
           "Alex Morgan"
         ],
@@ -5632,7 +5632,7 @@
         "notice": "Admins sign in with a passkey, a security key or Windows Hello."
       },
       "kind": "policy",
-      "title": "Require Phishing-Resistant MFA for Admins",
+      "title": "Require a Strong Sign-in for Admins",
       "changeLine": null,
       "why": "Admin accounts can change everything in your tenant. Requiring a passkey, security key, Windows Hello or certificate means a phishing page can't sign in as one.",
       "learn": {
@@ -5749,7 +5749,7 @@
         "notice": "Accounts in your admin accounts group sign in with a passkey, a security key or Windows Hello."
       },
       "kind": "policy",
-      "$comment": "Owner, 2026-10-04: Jon's IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users, until now listed under In the baseline, not in this plan. It includes his admin-accounts group (interpretation adminAccountsGroup), so it reaches admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins (directory roles, active assignments only) misses until they activate. The operator names the group in Identify Service and Shared Accounts (optional); unanswered, only this step waits. Created in Report-only by Create the Policies in Report-only, then turned on once every account in the group holds a method the strength accepts (the admins' readiness rule, 100%).",
+      "$comment": "Owner, 2026-10-04: Jon's IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users, until now listed under In the baseline, not in this plan. It includes his admin-accounts group (interpretation adminAccountsGroup), so it reaches admins only eligible in PIM, whom Require a Strong Sign-in for Admins (directory roles, active assignments only) misses until they activate. The operator names the group in Identify Service and Shared Accounts (optional); unanswered, only this step waits. Created in Report-only by Create the Policies in Report-only, then turned on once every account in the group holds a method the strength accepts (the admins' readiness rule, 100%).",
       "title": "Require a Strong Sign-in for Your Admin Accounts Group",
       "changeLine": null,
       "why": "A policy on admin roles reaches an admin only eligible in PIM once they activate. Asking your admin accounts group for the same strong sign-in covers every admin account from its first sign-in.",
@@ -5761,7 +5761,7 @@
         "evidenceUndated": {
           "0": "{n} accounts need a passkey, security key or Windows Hello: {list:adminsWithout}",
           "1": "{adminsWithoutCount} accounts need a passkey, security key or Windows Hello.",
-          "$comment": "As Require Phishing-Resistant MFA for Admins' evidenceUndated: the dated lines below without the turn-on day, by their place in evidence."
+          "$comment": "As Require a Strong Sign-in for Admins' evidenceUndated: the dated lines below without the turn-on day, by their place in evidence."
         },
         "evidence": [
           "{n} accounts need a passkey, security key or Windows Hello before {enforce}: {list:adminsWithout}",
@@ -7575,7 +7575,7 @@
         ],
         "helpDesk": [
           "Inspect the selected role's activation settings, authentication-context ID, matching Conditional Access policy and the sign-in result. Confirm the account has a method accepted by that policy's actual strength.",
-          "The context is checked at activation only; Require Phishing-Resistant MFA for Admins is what covers the role once it is active."
+          "The context is checked at activation only; Require a Strong Sign-in for Admins is what covers the role once it is active."
         ],
         "manager": "Every time someone switches on an admin role, they confirm it with a strong sign-in.",
         "waits": null
@@ -8597,6 +8597,8 @@
       "batch": {
         "$comment": "A policy's card (ui/surfaces/reportOnlyStep.ts): only a policy still to create, headed by its step's title and naming the policy, its instruction pointing at that policy's task (owner, 2026-09-26: no corrections, no roster). milestone is the rail's headline while any is left.",
         "createValue": "Create in Report-only",
+        "$commentFollowEach": "Said once, on the first card (owner, 2026-10-05): each card said Follow {its step} in Implementation Tasks, eleven times over.",
+        "followEach": "Each policy's steps are in Implementation Tasks.",
         "milestone": "{n} policies to create in Report-only",
         "$commentTaskTitle": "The Implementation Task of one policy a step creates beside another (T1-6d: Jon's guest pair is two policies, two cards and two tasks): the step's title and the policy's own name. A step that creates one policy keeps its title alone.",
         "taskTitle": "{title} ({name})",
@@ -8604,8 +8606,6 @@
         "leftOutBoth": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device, and on a compliant-device policy it can prompt people on Mac, iOS and Android for a certificate. Their own steps create those policies.",
         "leftOutUserAction": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device. Their own steps create those policies.",
         "leftOutDeviceCheck": "Some policies aren't listed. On a compliant-device policy, report-only can prompt people on Mac, iOS and Android for a certificate. Their own steps create those policies.",
-        "$commentFollowEach": "Said once, on the first card (owner, 2026-10-05): each card said Follow {its step} in Implementation Tasks, eleven times over.",
-        "followEach": "Each policy's steps are in Implementation Tasks.",
         "$commentLeftOutOwnStep": "Owner, 2026-10-04: the countries policies are the one exception to every created policy being listed here; their countries are chosen on their own step, which creates them. {step} is that step's title (reportOnlyStep.ts reportOnlyNoteOf, from reportOnlyBatch.ownStep).",
         "leftOutOwnStep": "{step} isn't listed: its own step creates its policies, from the countries you choose there."
       }

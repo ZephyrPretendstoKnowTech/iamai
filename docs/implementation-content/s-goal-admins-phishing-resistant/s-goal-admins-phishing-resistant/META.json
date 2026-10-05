@@ -322,7 +322,7 @@
   ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-admins-phishing-resistant",
-  "title": "Require Phishing-Resistant MFA for Admins",
+  "title": "Require a Strong Sign-in for Admins",
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-goal-admins-phishing-resistant/",
   "sourceFiles": [

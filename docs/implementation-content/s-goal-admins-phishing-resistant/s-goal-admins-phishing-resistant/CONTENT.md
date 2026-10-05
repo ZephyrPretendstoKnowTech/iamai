@@ -162,7 +162,7 @@ Its report-only period showed no sign-in it would have stopped.
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 
-**Require Phishing-Resistant MFA for Admins** waits for {{dependencies.waits}}. [omit this line when unavailable]
+**Require a Strong Sign-in for Admins** waits for {{dependencies.waits}}. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
@@ -171,13 +171,13 @@ IAMAI did not find the licensing this step needs. Conditional Access and authent
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"administrators-in-scope"}
-Subject: Action needed: Require Phishing-Resistant MFA for Admins
+Subject: Action needed: Require a Strong Sign-in for Admins
 
 We are preparing stronger authentication for admin access. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"administrators-in-scope"}
-Subject: Action needed: Require Phishing-Resistant MFA for Admins
+Subject: Action needed: Require a Strong Sign-in for Admins
 
 We are preparing stronger authentication for admin access. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.
 @@IAMAI-END

@@ -135,7 +135,7 @@ test('A8: the Cleanup row this step waits on is named, not printed as its id', (
 const STRENGTH = 's-prereq-auth-strength'
 
 // ---------------------------------------------------------------------------
-// Require Phishing-Resistant MFA for Admins (spec section 4)
+// Require a Strong Sign-in for Admins (spec section 4)
 // ---------------------------------------------------------------------------
 
 const ADMINS = 's-goal-admins-phishing-resistant'

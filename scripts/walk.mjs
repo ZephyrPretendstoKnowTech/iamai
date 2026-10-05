@@ -1393,10 +1393,10 @@ async function walkFixture(fx) {
             if (named < 2) add('P0', `${slabel}: the step lists ${named} admin(s) with mail or Teams sign-ins; the demo has two`)
             if (!/^Defer this step$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step .step-footer button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step offers no rollout exception`)
           }
-          if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !cannotWriteYet && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
+          if (/^Require a Strong Sign-in for Admins$/.test(title) && !cannotWriteYet && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
           // The lockout list (E8): the demo's admins not yet at Passkey or security
           // key, proven are named (three or fewer), and the line counts the names it lists.
-          if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !cannotWriteYet) {
+          if (/^Require a Strong Sign-in for Admins$/.test(title) && !cannotWriteYet) {
             const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet Ready for phishing-resistant MFA; get each Ready before .+:\s*$/m)
             if (!m) add('P0', `${slabel}: the step does not say how many admins are not yet Ready for phishing-resistant MFA today`)
             else {
@@ -1510,7 +1510,7 @@ async function walkFixture(fx) {
           }
           // A strength policy's row carries its lockout count in the who-column
           // when it is not zero, and the count is the step's own.
-          if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
+          if (/^Require a Strong Sign-in for Admins$/.test(title)) {
             // Who the policy would stop (the row's lockout count) are people with no
             // method it accepts, so they are never more than the admins the step
             // says are not yet Ready (Step 7: two answers, one never exceeding the other).
@@ -1741,7 +1741,7 @@ async function walkFixture(fx) {
   // The consolidation row exists whenever a step's existingCoverage line rendered, and only then (E3).
   if (fx.name.startsWith('demo') && sawExistingCoverage !== rowTitlesAfter.some((t) => /Review Overlapping Policies/.test(t))) add('P0', `${fx.name}: ${sawExistingCoverage ? 'a step found existing coverage but Cleanup has no Review Overlapping Policies row' : 'Cleanup has a Review Overlapping Policies row but no step found existing coverage'}`)
   if (campaignEmail !== null && /You already confirm sign-ins/.test(campaignEmail)) {
-    const passkeyStep = 'Require Phishing-Resistant MFA for Admins'
+    const passkeyStep = 'Require a Strong Sign-in for Admins'
     const named = new RegExp(`${passkeyStep} requires a passkey`).test(campaignEmail)
     if (escapeHeld.has(passkeyStep)) {
       if (named) add('P0', `${fx.name}: the campaign email dates a policy the plan is holding behind the way back in`)
@@ -1785,7 +1785,7 @@ async function walkFixture(fx) {
     // a claim about who rolled it out). Every chip on the board is one of those
     // two facts or nothing.
     if (fx.week2) {
-      const admins = rowTitles.indexOf('Require Phishing-Resistant MFA for Admins')
+      const admins = rowTitles.indexOf('Require a Strong Sign-in for Admins')
       if (admins >= 0 && rowLabels[admins] !== 'Completed') add('P0', `${fx.name}: the admins row reads "${rowLabels[admins]}" in week two; the tenant turned its own policy on, so it reads Completed`)
     }
     const oddChip = rowChips.map((c, i) => (c === '' || c === 'Report-only' || c === 'Enforced' ? null : `${rowTitles[i]}: "${c}"`)).filter((x) => x !== null)

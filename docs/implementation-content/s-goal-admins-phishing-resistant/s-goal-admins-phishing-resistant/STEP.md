@@ -1,4 +1,4 @@
-# Require Phishing-Resistant MFA for Admins
+# Require a Strong Sign-in for Admins
 
 ## Goal
 Require the retained baseline's strong authentication control for the exact pinned built-in administrator-role population without mixing session controls or weaker fallback grants into the policy.

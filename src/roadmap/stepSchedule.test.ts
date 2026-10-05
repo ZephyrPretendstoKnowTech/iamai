@@ -94,7 +94,7 @@ test('every dated row falls inside its phase, every phase spans its rows, a wait
 })
 
 test('readiness gates enforcement, not creation: a create only a threshold holds keeps its report-only day, and enforcement stays gated below the threshold with no day, ring or wave', () => {
-  // small: Require Phishing-Resistant MFA for Admins waits for every admin's method.
+  // small: Require a Strong Sign-in for Admins waits for every admin's method.
   // It was Require MFA to Register a Device on the demo, which is created On since
   // Phase 2e, so its create waits with its turn-on (roadmap/userActionCreatedOn.test.ts).
   const r = runFixture(fixture('small'))

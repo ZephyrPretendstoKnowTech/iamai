@@ -35,7 +35,7 @@ test('the row, the body and the communications use the one content title', () =>
 // `Step.title` — the engine's goal statement — while the same document's step
 // sections, the board and the opened step all name them by the content title.
 // A change board read "Admins use phishing-resistant auth" in the table and
-// "Require Phishing-Resistant MFA for Admins" two pages on, one step under two
+// "Require a Strong Sign-in for Admins" two pages on, one step under two
 // names. The cell is `stepListOf` (planRows.ts), and it reads the one title.
 test('the printed timeline names each phase step by the title the board and the opened step show', () => {
   // Curated: the device-registration step is written from the pinned policy
@@ -49,7 +49,7 @@ test('the printed timeline names each phase step by the title the board and the 
   // The premise: the engine's goal statement and the content title differ here.
   const admins = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   assert.notEqual(admins.title, contentTitle(admins), 'the premise: this step has a goal statement of its own')
-  assert.ok(printed.includes('Require Phishing-Resistant MFA for Admins'), `the timeline does not name the admin policy by its title: ${printed}`)
+  assert.ok(printed.includes('Require a Strong Sign-in for Admins'), `the timeline does not name the admin policy by its title: ${printed}`)
   // Require MFA to Register a Device is no longer in a phase here: created On since
   // Phase 2e, its create waits undated for everyone it covers to be ready.
   assert.equal(printed.includes('Admins use phishing-resistant auth'), false, 'the timeline prints the engine\'s goal statement')

@@ -2,7 +2,7 @@
 // listed until now under In the baseline, not in this plan, is a policy step:
 // Require a Strong Sign-in for Your Admin Accounts Group. It asks every account
 // in Jon's admin-accounts group for the baseline's strength, so it reaches the
-// admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins
+// admins only eligible in PIM, whom Require a Strong Sign-in for Admins
 // (directory roles, active assignments only) misses until they activate.
 // Identify Service and Shared Accounts asks "Which group holds your admin
 // accounts?", optional: the operator names one or more groups (IAMAI cannot

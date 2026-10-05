@@ -25,7 +25,7 @@ const tenant = 'Contoso Pty Ltd'
 const full = fixtureSnapshot()
 const twoMinutesLater = Date.parse(full.asOf) + 120_000
 // The review rows' helpers, as Connect wires them (derive/baselineDiff.ts): a file names a policy; the goal map names its steps.
-const stepsFor = (c: PolicyChange): string[] => (c.key === 'admins' ? ['Require Phishing-Resistant MFA for Admins', 'Require MFA for Everyone'] : [])
+const stepsFor = (c: PolicyChange): string[] => (c.key === 'admins' ? ['Require a Strong Sign-in for Admins', 'Require MFA for Everyone'] : [])
 const change = (over: Partial<PolicyChange>): PolicyChange => ({ key: over.key ?? 'k', identity: 'id', kind: 'changed', renamed: false, oldName: null, newName: null, deltas: [], unreviewed: [], reason: null, ...over })
 
 const NEVER = ['Security Reader', 'Reports Reader', 'Directory Readers']
@@ -118,7 +118,7 @@ test('tile 2, Baseline: the nested card carries name, size and version; the sour
           'was IAC - GLOBAL - GRANT - MFA - Admins',
           'Authentication strength: now Modern MFA + TAP',
           'Excluded groups: 1 added',
-          'changes Require Phishing-Resistant MFA for Admins',
+          'changes Require a Strong Sign-in for Admins',
           'changes Require MFA for Everyone',
         ],
         ['removed', 'IAC - OLD - BLOCK', 'no step changes'],

@@ -124,7 +124,7 @@ test('Step 5: a held step still handing over its report-only create says to crea
   assert.ok(offering >= 1 && nothing > 10, `held steps checked: ${offering} offering a create, ${nothing} offering nothing`)
   // Where a readiness threshold is what waits — and the foundation is settled,
   // so nothing bigger waits first — the line names the threshold (small, settled:
-  // Require Phishing-Resistant MFA for Admins; it was the registration policy).
+  // Require a Strong Sign-in for Admins; it was the registration policy).
   const g = plans().find((p) => p.label === SMALL_SETTLED)!
   const reg = g.r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!
   const regDay = reg.scheduled && scheduleOf(reg).class === 'scheduled' ? scheduleOf(reg).at : null
