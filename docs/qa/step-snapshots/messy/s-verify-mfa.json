@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "After Register Your Own Passkey",
-  "rail": "5 people still need a method",
+  "rail": "25 people still need a method",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -16,6 +16,10 @@
     {
       "label": "Temporary Access Pass",
       "state": "Off, and 14 people have no method to register with"
+    },
+    {
+      "label": "Text or Call Only",
+      "state": "13 people sign in with only a text or a call"
     },
     {
       "label": "Register Your Own Passkey",

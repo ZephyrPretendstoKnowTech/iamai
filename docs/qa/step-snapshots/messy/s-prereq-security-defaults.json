@@ -16,11 +16,23 @@
     {
       "label": "Require Phishing-Resistant MFA for Admins",
       "state": "Prerequisite · Waiting"
+    },
+    {
+      "label": "Block Device Code Sign-in",
+      "state": "Prerequisite · Waiting"
+    },
+    {
+      "label": "Block Legacy Authentication",
+      "state": "Prerequisite · Waiting"
+    },
+    {
+      "label": "Require MFA for Everyone",
+      "state": "Prerequisite · Waiting"
     }
   ],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Sep 15, 2026"
+  "when": "Sep 21, 2026"
 }

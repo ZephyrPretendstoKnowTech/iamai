@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "Satisfied by Core - Grant - Guests MFA — no change needed",
-  "fact": "Enforced",
+  "reason": "after: Configure Emergency Exclusions",
+  "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Require MFA for Guests",
+  "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -14,14 +14,21 @@
   ],
   "tiles": [
     {
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
+    },
+    {
       "label": "Confirm What You Use",
       "state": "Waiting on your answers"
+    },
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
     }
   ],
   "channels": [
     "Entra",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
-  "when": "Sep 22, 2026"
+  "when": "Sep 7, 2026"
 }

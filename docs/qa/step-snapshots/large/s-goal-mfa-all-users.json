@@ -1,21 +1,30 @@
 {
-  "lane": "Completed",
+  "lane": "Up Next",
   "substatus": null,
-  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
+  "reason": "when MFA readiness reaches 90% (now 73%)",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Up Next",
+  "bar": "After Configure Passkey Authentication",
+  "rail": "Not yet: when MFA readiness reaches 90% (now 73%)",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Dormant Accounts",
+      "state": "188 accounts haven't signed in for 90 days and have no method"
+    },
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Sep 7, 2026"
 }

@@ -1,21 +1,26 @@
 {
-  "lane": "Completed",
+  "lane": "Up Next",
   "substatus": null,
-  "reason": "Satisfied by Core - Extra 11 - Grant - Compliant device for Office — no change needed",
+  "reason": "when device readiness reaches 80% (now 29%)",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Up Next",
+  "bar": "After Configure Passkey Authentication",
+  "rail": "Not yet: when device readiness reaches 80% (now 29%)",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Sep 7, 2026"
 }

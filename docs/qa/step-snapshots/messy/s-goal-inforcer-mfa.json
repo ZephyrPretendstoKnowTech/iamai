@@ -1,22 +1,31 @@
 {
-  "lane": "Completed",
+  "lane": "Up Next",
   "substatus": null,
-  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
+  "reason": "after: Configure Emergency Exclusions",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Up Next",
+  "bar": "After Configure Emergency Exclusions",
+  "rail": "After Configure Emergency Exclusions",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info",
     "Email"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Sep 7, 2026"
 }

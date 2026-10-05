@@ -1,21 +1,26 @@
 {
-  "lane": "Completed",
+  "lane": "Up Next",
   "substatus": null,
-  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
+  "reason": "when MFA readiness reaches 90% (now not measured)",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Up Next",
+  "bar": "After Prepare Emergency Access Accounts",
+  "rail": "Not yet: when MFA readiness reaches 90% (now not measured)",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Sep 7, 2026"
 }

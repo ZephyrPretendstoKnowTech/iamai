@@ -1,11 +1,11 @@
 {
   "lane": "On Hold",
   "substatus": null,
-  "reason": "Satisfied by Core - Block - Legacy authentication — no change needed",
+  "reason": "after: Confirm What You Use",
   "fact": "Enforced",
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "Waiting on your answers",
+  "rail": "Not yet: after Confirm What You Use",
   "headings": [
     "About this Step",
     "Tasks Remaining",

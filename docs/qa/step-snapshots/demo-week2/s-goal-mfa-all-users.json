@@ -1,21 +1,26 @@
 {
-  "lane": "Completed",
-  "substatus": null,
-  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
+  "lane": "Ready",
+  "substatus": "Correct",
+  "reason": "when MFA readiness reaches 90% (now 73%)",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Ready · Correct",
+  "bar": "Needs correction",
+  "rail": "Not yet: when MFA readiness reaches 90% (now 73%)",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Dormant Accounts",
+      "state": "1 account hasn't signed in for 90 days and has no method"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Aug 31, 2026"
 }

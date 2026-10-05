@@ -1265,7 +1265,8 @@ export function trackExecution(
     // in their place. Until its own policy is On the step is not done, and Retire
     // Replaced Policies waits on it: nothing is retired before the baseline's
     // policy protects the same people.
-    const builtBeside = (step.action.besidePolicies?.length ?? 0) > 0
+    // Every goal step the name reads (owner, 2026-10-04: policy identity is the name) carries the list, empty or not.
+    const builtBeside = step.action.besidePolicies !== undefined
     // Every object the last scan recorded for this step, whichever member it was.
     const previousIds = carried ? (carried.members?.length ? carried.members.map((m) => m.policyId) : [carried.policyId]).filter((id): id is string => typeof id === 'string' && id.length > 0) : []
     const previousName = carried?.policyName ?? carried?.members?.find((m) => m.policyName)?.policyName ?? step.deliveredBy[0]?.replace(/ \([^)]*\)$/, '') ?? step.title

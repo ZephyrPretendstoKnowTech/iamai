@@ -1,21 +1,30 @@
 {
-  "lane": "Completed",
+  "lane": "Up Next",
   "substatus": null,
-  "reason": "Satisfied by Core - Extra 9 - Grant - Admins phishing-resistant — no change needed",
+  "reason": "when admin readiness reaches 100% (now 30%)",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Up Next",
+  "bar": "After Configure Passkey Authentication",
+  "rail": "Not yet: when admin readiness reaches 100% (now 30%)",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Your account",
+      "state": "No method this policy accepts"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Sep 7, 2026"
 }

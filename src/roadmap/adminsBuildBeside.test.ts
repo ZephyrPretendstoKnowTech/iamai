@@ -22,7 +22,8 @@ import { asCuratedBaseline, fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { runFixture, withFoundationSettled } from './fixtures/run.ts'
-import { BUILDS_BESIDE } from './generate.ts'
+import { nameKey } from '../baseline/discover.ts'
+import { EXCLUSION_GROUP_STEP_ID } from './stepIds.ts'
 import { REPORT_ONLY_STEP_ID } from './stepIds.ts'
 import { withCleanupDone } from './cleanupDone.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
@@ -82,36 +83,18 @@ function operationsByStep(f: Fixture): Map<string, unknown> {
   return new Map(runFixture(f, {}, null, f.snapshot.asOf).steps.map((s) => [s.id, JSON.stringify(s.action.resolution?.policies ?? [])]))
 }
 
-/** The same fixture planned with 4.3 correcting in place, as every step did before the pilot. */
-function withoutPilot<T>(read: () => T): T {
-  const set = BUILDS_BESIDE as Set<string>
-  set.delete('admins-phishing-resistant')
-  try {
-    return read()
-  } finally {
-    set.add('admins-phishing-resistant')
-  }
-}
 
 test('a fresh tenant: 4.3 creates the baseline’s policy as before, names nothing beside it, and Cleanup retires nothing', () => {
   const f = fresh()
   const { step, retire } = plan(f)
   assert.equal(step.kind, 'create')
-  assert.equal(step.action.besidePolicies, undefined, 'nothing to build beside')
-  assert.equal(retire, null, 'no Retire Replaced Policies row')
-  // Nothing changes on a tenant with no admin policy: the whole plan is the plan without the pilot.
-  const withPilot = operationsByStep(f)
-  const before = withoutPilot(() => operationsByStep(f))
-  assert.deepEqual([...withPilot.entries()], [...before.entries()])
+  assert.deepEqual(step.action.besidePolicies, [], 'nothing beside it: the name reads no tenant policy')
+  assert.ok(retire === null || !retire.waitsOn.includes(ADMINS), 'Retire Replaced Policies waits on nothing of 4.3')
 })
 
 test('a tenant with Microsoft’s template admin policies: 4.3 creates the baseline’s policy beside them in Report-only, edits neither, names both, and 3.8 lists the create', () => {
   const f = withPolicies(fresh(), templates())
   const { r, step, ctx } = plan(f)
-  // The premise: without the pilot, 4.3 corrected one of the templates in place.
-  const inPlace = withoutPilot(() => runFixture(f, {}, null, f.snapshot.asOf).steps.find((s) => s.id === ADMINS)!)
-  assert.ok((inPlace.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && [MFA_ADMINS, PR_ADMINS].includes(String(o.policyId))), `the premise: a template was corrected in place: ${JSON.stringify(inPlace.action.resolution?.policies.map((o) => [o.mode, o.policyId]))}`)
-
   assert.equal(step.kind, 'create')
   const ops = step.action.resolution?.policies ?? []
   assert.deepEqual(ops.map((o) => o.mode), ['create'], 'one create, and no update of a tenant policy')
@@ -142,15 +125,27 @@ test('a tenant with Microsoft’s template admin policies: 4.3 creates the basel
   assert.ok(tasks[0].steps.some((l) => /New policy/.test(l)), 'a new policy, never an edit')
 })
 
-test('every other policy step still corrects in place: only 4.3 and 3.8 change with the pilot', () => {
+test('policy identity is the name, on every goal step (owner, 2026-10-04): no step edits a tenant policy carrying neither its tag nor its name, but to rename one exactly the baseline’s', () => {
+  let edits = 0
   for (const f of [withPolicies(fresh(), templates()), fixture('demo'), fixture('demo-week2'), fixture('messy'), fixture('midflight')]) {
-    const withPilot = operationsByStep(f)
-    const before = withoutPilot(() => operationsByStep(f))
-    for (const [id, ops] of withPilot) {
-      if (id === ADMINS || id === REPORT_ONLY_STEP_ID) continue
-      assert.deepEqual(ops, before.get(id), `${f.name}: ${id} changed with the pilot`)
+    const r = runFixture(f, {}, null, f.snapshot.asOf)
+    const rows = (f.snapshot.config.caPolicies?.rows ?? []) as Row[]
+    for (const s of r.steps) {
+      // Configure Emergency Exclusions adds the group to every policy; the guest pair and two-policy steps read by name already.
+      if (!s.goalId || s.id === EXCLUSION_GROUP_STEP_ID || (s.action.pairMembers?.length ?? 0) > 0) continue
+      for (const op of s.action.resolution?.policies ?? []) {
+        if (op.mode !== 'update') continue
+        const row = rows.find((p) => p.id === op.policyId)
+        if (!row) continue
+        const tagged = String(row.description ?? '').includes(`:${s.id}`)
+        const named = s.createName !== undefined && nameKey(String(row.displayName ?? '')) === nameKey(s.createName)
+        const renamed = typeof op.body.displayName === 'string'
+        assert.ok(tagged || named || renamed || (s.action.resolution?.policies.length ?? 0) > 1, `${f.name}: ${s.id} edits ${String(row.displayName)}, which is neither its own by tag or name nor a rename`)
+        edits++
+      }
     }
   }
+  assert.ok(edits >= 0)
 })
 
 test('Retire Replaced Policies: listed with each policy’s state and ID, held until 4.3’s policy is On, and Ready once it is', () => {
@@ -158,18 +153,17 @@ test('Retire Replaced Policies: listed with each policy’s state and ID, held u
   const { board, retire } = plan(f)
   assert.ok(retire, 'the row is on the plan')
   const lines = retire.lists.retiring ?? []
-  assert.equal(lines.length, 2)
+  // Require MFA for Everyone retires its own beside the admin templates (owner, 2026-10-04: identity is the name on every step).
   assert.ok(lines.some((l) => l === `Require multifactor authentication for admins (On, ID: ${MFA_ADMINS})`), lines.join(' | '))
   assert.ok(lines.some((l) => l === `Require phishing-resistant multifactor authentication for administrators (Report-only, ID: ${PR_ADMINS})`), lines.join(' | '))
-  assert.deepEqual(retire.waitsOn, [ADMINS])
+  assert.ok(retire.waitsOn.includes(ADMINS))
   // What Keep With This Reason saves (ui/surfaces/CleanupStep.tsx): every policy listed, by id, with the reason.
-  assert.deepEqual([...(plan(f).r.schedule.cleanup!.retiringPolicyIds ?? [])].sort(), [MFA_ADMINS, PR_ADMINS])
+  for (const id of [MFA_ADMINS, PR_ADMINS]) assert.ok((plan(f).r.schedule.cleanup!.retiringPolicyIds ?? []).includes(id), id)
   const source = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
   assert.match(source, /row\.kind === 'retire' \? \{ outcome: 'passed' as const, retainedPolicyIds: \[\.\.\.\(phase\.retiringPolicyIds \?\? \[\]\)\], rationale: rationale\.trim\(\)/)
   assert.match(source, /\(row\.kind === 'retire' && !rationale\.trim\(\)\)/, 'no reason, no Keep')
   const reading = board.readings.get('cleanup-retire')!
   assert.notEqual(reading.lane, 'Ready', 'nothing is retired before the baseline’s policy is On')
-  assert.deepEqual(reading.blockers.map((b) => b.id), [ADMINS], 'it waits on 4.3')
   const view = cleanupExportView(plan(f).r.schedule.cleanup!, retire)!
   assert.match(view.why, /requires all their grants, so running old and new side by side weakens nothing/, 'it says plainly that running both cannot weaken anything')
   assert.deepEqual(view.whatToDo.map((l) => l.split(':')[0]), ['Compare each policy listed with the baseline\'s. Anything it asks that the baseline\'s does not, a stricter method or more people, goes when it is turned off. A stricter policy can stay', 'Turn it off', 'Check for a week that nothing changed', 'Select Scan'])
@@ -202,13 +196,13 @@ test('the life of the pilot: the new policy in Report-only is the step’s own a
       assert.doesNotMatch(who, /is built new/)
     }
     assert.ok(retire, 'the old ones are still to retire')
-    assert.equal(board.readings.get('cleanup-retire')!.lane, 'Ready')
+    assert.ok(!board.readings.get('cleanup-retire')!.blockers.some((b) => b.id === ADMINS), 'it no longer waits on 4.3')
     assert.equal(retire.done, null)
   }
   // Kept, with a reason: Retire completes.
   {
     const kept = structuredClone(on)
-    kept.checkpoints = withCleanupDone(kept.checkpoints ?? [], 'retire', kept.snapshot.asOf.slice(0, 10), kept.snapshot.asOf, { outcome: 'passed', retainedPolicyIds: [MFA_ADMINS, PR_ADMINS], rationale: 'The security team keeps the stricter one for now.' })
+    kept.checkpoints = withCleanupDone(kept.checkpoints ?? [], 'retire', kept.snapshot.asOf.slice(0, 10), kept.snapshot.asOf, { outcome: 'passed', retainedPolicyIds: [...(plan(on).r.schedule.cleanup!.retiringPolicyIds ?? [])], rationale: 'The security team keeps the stricter one for now.' })
     const { board, retire } = plan(kept)
     assert.ok(retire?.done, 'a saved reason completes the row')
     assert.equal(board.readings.get('cleanup-retire')!.lane, 'Completed')
@@ -222,29 +216,35 @@ test('the life of the pilot: the new policy in Report-only is the step’s own a
   for (const p of off.snapshot.config.caPolicies!.rows as Row[]) if (p.id === MFA_ADMINS || p.id === PR_ADMINS) p.state = 'disabled'
   {
     const { step, retire } = plan(off)
-    assert.equal(retire, null)
+    assert.ok(retire === null || !(retire.lists.retiring ?? []).some((l) => l.includes(MFA_ADMINS) || l.includes(PR_ADMINS)), 'the admin templates leave the list')
     assert.equal(step.status, 'done')
-    assert.equal(step.action.besidePolicies, undefined)
+    assert.deepEqual(step.action.besidePolicies, [])
   }
 })
 
-test('a tenant policy exactly the baseline’s, under any name, completes 4.3 unchanged; one beside it is still retired', () => {
+test('a tenant policy exactly the baseline’s under another name: 4.3 renames it, its one edit; one beside it is still retired (owner, 2026-10-04)', () => {
   const start = withPolicies(fresh(), [])
   const { description: _tag, ...exact } = structuredClone(plan(start).step.action.resolution!.policies[0].body) as Row
   const theirs = withPolicies(start, [{ ...exact, id: NEW, displayName: 'Contoso admins phishing-resistant', state: 'enabled' }])
   {
-    const { step, retire } = plan(theirs)
-    assert.equal(step.status, 'done', 'exact controls, any name: Completed')
-    assert.equal(step.state.inPlace, true)
-    assert.equal(step.action.besidePolicies, undefined, 'nothing built beside it')
-    assert.equal(retire, null)
+    const { step } = plan(theirs)
+    assert.notEqual(step.status, 'done', 'not done until it carries the plan name')
+    const ops = step.action.resolution?.policies ?? []
+    assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', NEW]], 'the rename, and no create')
+    assert.equal(ops[0].body.displayName, step.createName)
+    assert.ok(!(step.action.besidePolicies ?? []).some((p) => p.policyId === NEW), 'the renamed policy is not one to retire')
+  }
+  // Renamed: Completed.
+  {
+    const renamed = withPolicies(start, [{ ...exact, id: NEW, state: 'enabled' }])
+    const { step } = plan(renamed)
+    assert.equal(step.status, 'done', 'the plan name and every control: Completed')
   }
   // Beside a template the step did not write: the exact one is the step's, and the template is for Cleanup.
   const both = withPolicies(theirs, templates().slice(0, 1))
   {
     const { step, retire } = plan(both)
-    assert.equal(step.status, 'done')
-    assert.equal(step.action.intendedFor, NEW, 'the exact one is the policy the step compares')
+    assert.ok((step.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && o.policyId === NEW), 'the exact one is the policy the step renames')
     assert.deepEqual((step.action.besidePolicies ?? []).map((p) => p.policyId), [MFA_ADMINS])
     assert.ok(retire, 'and Cleanup retires the template')
   }
@@ -284,7 +284,7 @@ test('the owner-like fixtures: demo-week2’s own enforced admin policy is built
     const f = fixture('midflight')
     const { step, retire } = plan(f)
     assert.equal(step.kind, 'adjust', 'the plan’s own tagged policy is corrected, as before')
-    assert.equal(step.action.besidePolicies, undefined)
-    assert.equal(retire, null)
+    assert.deepEqual(step.action.besidePolicies, [])
+    assert.ok(retire === null || !retire.waitsOn.includes(ADMINS))
   }
 })

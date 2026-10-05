@@ -130,12 +130,12 @@ export const SERVICE_ACCOUNTS_TRUSTED_GOAL = 'service-accounts-trusted-network'
 /** The policies whose only purpose is blocking sign-ins from outside the trusted network (owner decision 5, Phase 2d). */
 export const TRUSTED_NETWORK_ONLY_GOALS: ReadonlySet<string> = new Set([SERVICE_ACCOUNTS_TRUSTED_GOAL, 'avd-trusted-network', 'sharepoint-trusted-network'])
 /**
- * The goals whose step builds the baseline's policy beside a tenant policy it did
- * not write, and leaves that policy for Cleanup to retire (owner, 2026-09-27:
- * build new, retire old; Action.besidePolicies). The pilot is 4.3 alone; every
- * other policy step corrects in place until the pilot is extended.
+ * Policy identity is the name (owner, 2026-10-04; it extends the 2026-09-27 build
+ * new, retire old to every policy step and supersedes "exact controls under any
+ * name"). A goal step's own policy is the one carrying this plan's tag, else the
+ * one carrying the plan's name for it; controls alone never claim one. See the
+ * `owned` reading in generateRoadmap.
  */
-export const BUILDS_BESIDE: ReadonlySet<string> = new Set(['admins-phishing-resistant'])
 
 /** The combinations that are a passkey or a security key and nothing weaker. */
 const PASSKEY_ONLY = new Set(['fido2', 'windowshelloforbusiness', 'x509certificatemultifactor', 'x509certificatesinglefactor', 'temporaryaccesspassonetime', 'temporaryaccesspassmultiuse'])
@@ -452,7 +452,7 @@ export type StepPolicyInput = {
 }
 
 /** The sections of a policy an update may carry, in the order a person meets them in the portal. */
-export type ChangedSection = 'users' | 'applications' | 'grantControls' | 'sessionControls' | 'state'
+export type ChangedSection = 'users' | 'applications' | 'grantControls' | 'sessionControls' | 'state' | 'displayName'
 
 // A Change step carries only the fields that change (prompt 17 §4): the request
 // body is a patch, and the portal steps open the existing policy and list those
@@ -533,6 +533,8 @@ function patchOf(body: RawPolicy, sections: ReadonlySet<ChangedSection>): RawPol
     patch.conditions = c
   }
   if (sections.has('state')) patch.state = 'enabled'
+  // A rename (owner, 2026-10-04): a tenant policy exactly the baseline's under another name takes the plan's name.
+  if (sections.has('displayName')) patch.displayName = body.displayName
   return patch
 }
 
@@ -830,6 +832,7 @@ const SECTION_VALUE: Record<Exclude<ChangedSection, 'state'>, (p: RawPolicy) => 
   sessionControls: (p) => p.sessionControls,
   users: (p) => ((p.conditions ?? {}) as RawPolicy).users,
   applications: (p) => ((p.conditions ?? {}) as RawPolicy).applications,
+  displayName: (p) => p.displayName,
 }
 
 /**
@@ -851,6 +854,7 @@ function changesFor(action: Action, sections: ReadonlySet<ChangedSection>, exist
   if (sections.has('users')) changes.push({ field: 'Users', from: show(exConditions.users), to: show(conditions.users) })
   if (sections.has('applications')) changes.push({ field: 'Target resources', from: show(exConditions.applications), to: show(conditions.applications) })
   if (sections.has('state')) changes.push({ field: 'State', from: show(ex.state), to: '"enabled"' })
+  if (sections.has('displayName')) changes.push({ field: 'Name', from: show(ex.displayName), to: show(body.displayName) })
   const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
   const roleList = cur && Array.isArray(cur.includeRoles) && cur.includeRoles.length > 0 ? roleListSummary(cur.includeRoles.map(String)) : null
   const excludeRoles = cur && Array.isArray(cur.excludeRoles) && cur.excludeRoles.length > 0 ? roleListSummary(cur.excludeRoles.map(String)) : null
@@ -2027,50 +2031,83 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     const standing = result.verdict === 'inPlace' ? (result.satisfaction?.policyIds ?? []) : result.candidates.filter((c) => c.ownScope && c.contribution !== 'disabled').map((c) => c.policyId)
     const anotherJobOnly = result.status !== 'absent' && result.status !== 'unknown' && claimedPolicy() === null && standing.length > 0 && standing.every(anotherStepsJob)
-    // Policy matching: build new, retire old (owner, 2026-09-27). The pilot is
-    // Require Phishing-Resistant MFA for Admins alone (BUILDS_BESIDE); every other
-    // policy step still corrects the tenant's policy in place. A live tenant policy
-    // of the goal's own scope that is neither the plan's (its tag, or the
-    // baseline's name: claimedPolicy) nor the baseline's policy in every setting
-    // is never edited and never this step's: the step creates the baseline's
-    // policy beside it in Report-only, names it, and Cleanup's Retire Replaced
-    // Policies row retires it once the step's policy is On (Action.besidePolicies).
-    // A tenant policy exactly the baseline's, under any name, is the step's own as
-    // before (8.2 renames it), and so is one short only of the exclusions group,
-    // which Configure Emergency Exclusions adds to every policy. Where the plan's
-    // body cannot be written yet (an object it names is missing), nothing is
-    // proved exact: the create beside waits on that object like any create.
-    const pilot = ((): { own: RawPolicy | null; beside: NonNullable<Action['besidePolicies']> } | null => {
-      if (!BUILDS_BESIDE.has(goal.id) || pair !== null || stepSources.length > 1 || result.status === 'unknown') return null
+    // Policy identity is the name (owner, 2026-10-04). A goal step with one
+    // policy of its own reads the tenant this way, and no other:
+    //   * its own policy carries this plan's tag for the step, else the plan's name
+    //     for it (the baseline's; a goal with no baseline policy, the name the
+    //     tenant's convention gives it), dashes, spacing and capitals aside, in any
+    //     state. Controls alone never claim one;
+    //   * two live policies carrying the name and no tag: the step holds and names
+    //     them (it never guesses, and never creates a third under the same name);
+    //   * none, but a tenant policy exactly the baseline's under another name: the
+    //     step renames it (its one edit) and it is the step's own from then on;
+    //   * none at all: the step creates the baseline's policy in Report-only;
+    //   * every other live policy of the goal's own scope doing the same job under
+    //     another name is listed beside it, never edited, and Cleanup's Retire
+    //     Replaced Policies retires it once the step's own policy is On.
+    // Exact means every setting the baseline's, short at most of the exclusions
+    // group, which Configure Emergency Exclusions adds to every policy (it alone
+    // still edits the tenant's policies). Where the plan's body cannot be written
+    // yet (an object it names is missing), nothing is proved exact. The guest pair
+    // and the steps with two policies read by name already (pairOf, the EAM
+    // companion), and a goal the scan could not read stays held: those keep the
+    // branches below.
+    const pilot = ((): { own: RawPolicy | null; rename: boolean; ambiguous: RawPolicy[]; beside: NonNullable<Action['besidePolicies']> } | null => {
+      if (pair !== null || stepSources.length > 1 || result.status === 'unknown') return null
       const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
       const live = (p: RawPolicy | undefined): p is RawPolicy => p !== undefined && (p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced')
-      const claimed = claimedPolicy()
+      const tagged = findTaggedPolicies(snapshot, planId, stepId).map((t) => rows.find((p) => p.id === t.policyId)).filter((p): p is RawPolicy => p !== undefined)
+      // The baseline's name, for a goal it holds (owner, 2026-09-26: Jon's names): the name the tenant's convention
+      // would give it can be a tenant policy's own, and a policy IAMAI built under it carries the tag anyway.
+      const want = new Set((stepSources.length > 0 ? [planName] : [planName, proposedPolicyName(goal, naming)]).map((n) => nameKey(n)))
+      const byName = rows.filter((p) => want.has(nameKey(String(p.displayName ?? ''))))
+      const namedLive = byName.filter(live)
+      let own: RawPolicy | null = tagged.find(live) ?? null
+      let ambiguous: RawPolicy[] = []
+      if (own === null) {
+        if (namedLive.length > 1) ambiguous = namedLive
+        // A policy of the plan's that is switched off is still its own: it goes back to Report-only, never a second one beside it.
+        else own = namedLive[0] ?? tagged[0] ?? byName[0] ?? null
+      }
+      const ours = new Set([...tagged, ...byName].map((p) => String(p.id)))
       const theirs = result.candidates
-        .filter((c) => c.ownScope)
+        .filter((c) => c.ownScope && c.contribution !== 'disabled')
         .map((c) => rows.find((p) => String(p.id) === c.policyId))
         .filter(live)
-        .filter((p) => String(p.id) !== String(claimed?.id ?? '') && !matchedPolicyIds.includes(String(p.id)))
-      if (theirs.length === 0) return null
-      const built = buildCreateAction(named(stepSources.length > 0 ? stepPolicies() : templatePolicy(), planName), mapping, planId, stepId, goal.id)
-      const body = (built.missing ?? []).length === 0 ? (built.resolution?.policies[0]?.body as RawPolicy | undefined) : undefined
-      const accepted = mapping.acceptedDeviations?.[stepId]?.fields ?? {}
-      const group = tenantObjects.exclusionsGroupId
-      // The tenant's policy as Configure Emergency Exclusions leaves it: the exclusions group excluded.
-      const withGroup = (p: RawPolicy): RawPolicy => {
-        if (!group) return p
-        const users = (((p.conditions ?? {}) as RawPolicy).users ?? {}) as RawPolicy
-        const groups = Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]).map(String) : []
-        if (groups.some((g) => g.toLowerCase() === group.toLowerCase())) return p
-        return { ...p, conditions: { ...((p.conditions ?? {}) as RawPolicy), users: { ...users, excludeGroups: [...groups, group] } } }
+        .filter((p) => !ours.has(String(p.id)) && !matchedPolicyIds.includes(String(p.id)) && !anotherStepsJob(String(p.id)))
+      let rename = false
+      if (own === null && ambiguous.length === 0 && theirs.length > 0) {
+        const built = buildCreateAction(named(stepSources.length > 0 ? stepPolicies() : templatePolicy(), planName), mapping, planId, stepId, goal.id)
+        const body = (built.missing ?? []).length === 0 ? (built.resolution?.policies[0]?.body as RawPolicy | undefined) : undefined
+        const accepted = mapping.acceptedDeviations?.[stepId]?.fields ?? {}
+        const group = tenantObjects.exclusionsGroupId
+        // The tenant's policy as Configure Emergency Exclusions leaves it: the exclusions group excluded.
+        const withGroup = (p: RawPolicy): RawPolicy => {
+          if (!group) return p
+          const users = (((p.conditions ?? {}) as RawPolicy).users ?? {}) as RawPolicy
+          const groups = Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]).map(String) : []
+          if (groups.some((g) => g.toLowerCase() === group.toLowerCase())) return p
+          return { ...p, conditions: { ...((p.conditions ?? {}) as RawPolicy), users: { ...users, excludeGroups: [...groups, group] } } }
+        }
+        const exact = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, withGroup(p)).every((d) => accepted[d] !== undefined)
+        // The one renamed: On first, then by id, so the reading is the same scan to scan.
+        const exactOnes = theirs.filter(exact).sort((a, b) => Number(b.state === 'enabled') - Number(a.state === 'enabled') || String(a.id).localeCompare(String(b.id)))
+        if (exactOnes.length > 0) {
+          own = exactOnes[0]
+          rename = true
+        }
       }
-      const exact = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, withGroup(p)).every((d) => accepted[d] !== undefined)
-      const beside = theirs.filter((p) => !exact(p))
-      if (beside.length === 0) return null
-      // The step's own policy: the plan's, else the one of the tenant's exactly the baseline's (On first).
-      const exactOnes = theirs.filter(exact).sort((a, b) => Number(b.state === 'enabled') - Number(a.state === 'enabled') || String(a.id).localeCompare(String(b.id)))
-      return { own: claimed ?? exactOnes[0] ?? null, beside: beside.map((p) => ({ policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state) })) }
+      const ownId = String(own?.id ?? '')
+      const beside = theirs.filter((p) => String(p.id) !== ownId).map((p) => ({ policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state) }))
+      return { own, rename, ambiguous, beside }
     })()
-    if (pilot !== null && pilot.own === null) {
+    if (pilot !== null && pilot.ambiguous.length > 0) {
+      // Two live policies carry the plan's name and neither its tag: the step will
+      // not guess which is its own, and never creates a third under the same name.
+      kind = 'adjust'
+      ambiguousTarget = true
+      action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [], unmatchedPair: true, ambiguousTarget: true }
+    } else     if (pilot !== null && pilot.own === null) {
       // No policy of the plan's yet: the baseline's, created new in Report-only
       // under the baseline's name, beside the tenant's own. 3.8 lists it like
       // every create.
@@ -2097,7 +2134,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // and must not hold the step whose own policy is On and whole.
       const ownReading = result.candidates.find((c) => c.policyId === ownId)
       const deliversAlone = ownReading !== undefined && ownReading.contribution === 'strong' && ownReading.meetsFloor !== false && ownReading.reachesWhole === true && ownReading.caveats.length === 0
-      if (own.state === 'enabled' && ((result.satisfaction?.policyIds ?? []).includes(ownId) || deliversAlone)) {
+      if (!pilot.rename && own.state === 'enabled' && ((result.satisfaction?.policyIds ?? []).includes(ownId) || deliversAlone)) {
         kind = 'create'
         state = { ...state, satisfied: true, inPlace: !matchedPolicyIds.includes(ownId) }
         const would = buildCreateAction(named(mine, planName), mapping, planId, stepId, goal.id)
@@ -2121,7 +2158,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           sections.delete('sessionControls')
         }
         if (existing && existing.meetsFloor === false && existing.contribution !== 'disabled') sections.add(goal.implementations[0].floor.grant !== undefined ? 'grantControls' : 'sessionControls')
-        const one = named(mine, String(own.displayName ?? planName))
+        // A rename's one edit is the name; the plan's own keeps the name it has (8.2 aligns names later).
+        if (pilot.rename) sections.add('displayName')
+        const one = named(mine, pilot.rename ? planName : String(own.displayName ?? planName))
         one[0] = { ...one[0], target: { policyId: ownId, state: String(own.state ?? 'enabled'), policy: own } }
         let built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
         const belowFloor = (policyId: string): boolean => result.candidates.some((c) => c.policyId === policyId && c.meetsFloor === false)

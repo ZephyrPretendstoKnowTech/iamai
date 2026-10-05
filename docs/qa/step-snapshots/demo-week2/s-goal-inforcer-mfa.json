@@ -1,22 +1,27 @@
 {
-  "lane": "Completed",
+  "lane": "On Hold",
   "substatus": null,
-  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
+  "reason": "when 1 named cause exists (now 0)",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "On Hold",
+  "bar": "On Hold",
+  "rail": "“Inforcer (baseline name)” (708861da-226e-4d65-a57a-24128df64524) first: this policy names an object Contoso Pty Ltd does not have yet.",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Implementation",
+      "state": "Unavailable"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info",
     "Email"
   ],
-  "when": "Aug 28, 2026"
+  "when": "Aug 31, 2026"
 }
