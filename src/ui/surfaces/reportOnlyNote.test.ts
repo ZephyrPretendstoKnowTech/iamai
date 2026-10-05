@@ -14,9 +14,9 @@ import { stepExportView } from './stepExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-const BOTH = "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device, and on a compliant-device policy it can prompt Mac, iOS and Android users for a certificate. Their own steps create those policies."
+const BOTH = "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device, and on a compliant-device policy it can prompt people on Mac, iOS and Android for a certificate. Their own steps create those policies."
 const USER = "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device. Their own steps create those policies."
-const DEVICE = "Some policies aren't listed. On a compliant-device policy, report-only can prompt Mac, iOS and Android users for a certificate. Their own steps create those policies."
+const DEVICE = "Some policies aren't listed. On a compliant-device policy, report-only can prompt people on Mac, iOS and Android for a certificate. Their own steps create those policies."
 /** The countries policies (owner, 2026-10-04): created on their own step, which the note names. */
 const OWN = "Block Sign-ins From Countries Not Allowed isn't listed: its own step creates its policies, from the countries you choose there."
 const COUNTRIES = 'geo-restriction'
@@ -63,4 +63,13 @@ test('a user-action policy already created, or a step set aside, leaves nothing 
   const countriesMade = settled((s) => { if (s.goalId === COUNTRIES) s.state.lifecycle = 'report-only' })
   assert.equal(countriesMade.reportOnlyBatch?.ownStep, undefined)
   assert.equal(reportOnlyNoteOf(none), null)
+})
+
+test('Create the Policies in Report-only says where each policy\'s steps are once, on its first card (owner, 2026-10-05)', async () => {
+  const { oncePerBatch } = await import('./emergencyReadiness.ts')
+  const card = (key: string, instruction: string) => ({ key, accountId: null, heading: 'Policy', upn: null, title: 'Create in Report-only', instruction, completed: [], remainingCount: null, satisfied: false })
+  const out = oncePerBatch([card('batch:a', 'Follow A in Implementation Tasks.'), card('batch:b', 'Follow B in Implementation Tasks.'), card('batch:c', 'Follow C in Implementation Tasks.'), card('other', 'Keep this.')])
+  assert.deepEqual(out.map((c) => c.instruction), ["Each policy's steps are in Implementation Tasks.", '', '', 'Keep this.'])
+  // One card keeps its own pointer: nothing is said twice.
+  assert.equal(oncePerBatch([card('batch:a', 'Follow A in Implementation Tasks.')])[0].instruction, 'Follow A in Implementation Tasks.')
 })

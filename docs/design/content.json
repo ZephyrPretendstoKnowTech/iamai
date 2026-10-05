@@ -8594,9 +8594,11 @@
         "$commentTaskTitle": "The Implementation Task of one policy a step creates beside another (T1-6d: Jon's guest pair is two policies, two cards and two tasks): the step's title and the policy's own name. A step that creates one policy keeps its title alone.",
         "taskTitle": "{title} ({name})",
         "$commentLeftOut": "Under the cards, only where a policy still to create was left out for this tenant (owner, 2026-09-26): the type of policy and why, never its name. A user-action policy (Protect Sign-in Method Registration, Require MFA to Register a Device) and a device check beyond Windows (Microsoft Learn, concept-conditional-access-report-only). Whole sentences, chosen by reportOnlyStep.ts reportOnlyNoteOf.",
-        "leftOutBoth": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device, and on a compliant-device policy it can prompt Mac, iOS and Android users for a certificate. Their own steps create those policies.",
+        "leftOutBoth": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device, and on a compliant-device policy it can prompt people on Mac, iOS and Android for a certificate. Their own steps create those policies.",
         "leftOutUserAction": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device. Their own steps create those policies.",
-        "leftOutDeviceCheck": "Some policies aren't listed. On a compliant-device policy, report-only can prompt Mac, iOS and Android users for a certificate. Their own steps create those policies.",
+        "leftOutDeviceCheck": "Some policies aren't listed. On a compliant-device policy, report-only can prompt people on Mac, iOS and Android for a certificate. Their own steps create those policies.",
+        "$commentFollowEach": "Said once, on the first card (owner, 2026-10-05): each card said Follow {its step} in Implementation Tasks, eleven times over.",
+        "followEach": "Each policy's steps are in Implementation Tasks.",
         "$commentLeftOutOwnStep": "Owner, 2026-10-04: the countries policies are the one exception to every created policy being listed here; their countries are chosen on their own step, which creates them. {step} is that step's title (reportOnlyStep.ts reportOnlyNoteOf, from reportOnlyBatch.ownStep).",
         "leftOutOwnStep": "{step} isn't listed: its own step creates its policies, from the countries you choose there."
       }

@@ -48,7 +48,7 @@ import { fillText, whatToDoFor, whole } from '../../content/render.ts'
 import { list } from '../../copy/statements.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
 import type { ContractReadiness, ContractStage, StepContract } from './stepContract.ts'
-import { emergencySubjectTileOf, followTask } from './emergencyReadiness.ts'
+import { emergencySubjectTileOf, followTask, oncePerBatch } from './emergencyReadiness.ts'
 import type { EmergencySubjectTile } from './emergencyReadiness.ts'
 import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import { app, cleanup, engine, shared, stepById } from '../../content/content.ts'
@@ -1170,5 +1170,5 @@ export function policySubjectsOf(contract: StepContract, readiness: ContractRead
   const policyCard = [...corrected, ...cards].find((c) => c.key.startsWith('correct:') || c.key.startsWith('policy'))
   const beside = projected?.beside ?? null
   const withBeside = (c: EmergencySubjectTile): EmergencySubjectTile => (beside !== null && c === policyCard ? { ...c, detail: [c.detail ?? '', beside].filter((s) => s !== '').join('\n') } : c)
-  return [...decision, ...corrected.map(withBeside), ...cards.map(withBeside), ...rest.filter((c) => !decision.includes(c))]
+  return oncePerBatch([...decision, ...corrected.map(withBeside), ...cards.map(withBeside), ...rest.filter((c) => !decision.includes(c))])
 }

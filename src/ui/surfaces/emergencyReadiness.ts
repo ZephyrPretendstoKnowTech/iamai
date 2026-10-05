@@ -2,6 +2,8 @@ import type { ContractReadiness, ReadinessTile } from './stepContract.ts'
 import type { EmergencyAccountStatus, EmergencyTaskProjection } from './emergencyAccountTasks.ts'
 import type { ConfigurationFinding, ConfigurationFindingItem } from '../../roadmap/types.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
+import { stepById } from '../../content/content.ts'
+import { REPORT_ONLY_STEP_ID } from '../../roadmap/stepIds.ts'
 
 /** Interactive emergency-step presentation. Exact issue metadata allows an action
  * to replace its own evidence row without hiding another finding for the same
@@ -101,9 +103,21 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
   }
 }
 
+/**
+ * Create the Policies in Report-only: one pointer for all its cards, on the first (owner,
+ * 2026-10-05: "Follow … in Implementation Tasks" was said once per policy).
+ */
+export function oncePerBatch(tiles: EmergencySubjectTile[]): EmergencySubjectTile[] {
+  const batch = tiles.filter(t => t.key.startsWith('batch:') && t.instruction)
+  if (batch.length < 2) return tiles
+  const once = (stepById[REPORT_ONLY_STEP_ID] as unknown as { batch: { followEach: string } }).batch.followEach
+  return tiles.map(t => (t.key.startsWith('batch:') ? { ...t, instruction: t === batch[0] ? once : '' } : t))
+}
+
 /** Steps 2–3: every readiness tile, remaining then satisfied, as subject tiles. */
 export function emergencySubjectsOf(readiness: ContractReadiness, projected: EmergencyTaskProjection | null): EmergencySubjectTile[] {
-  return [...readiness.tiles, ...readiness.satisfied].map(tile => emergencySubjectTileOf(tile, projected))
+  const tiles = [...readiness.tiles, ...readiness.satisfied].map(tile => emergencySubjectTileOf(tile, projected))
+  return oncePerBatch(tiles)
 }
 
 /** Step 4: one tile per verification concern, its passed findings under Completed checks. */
