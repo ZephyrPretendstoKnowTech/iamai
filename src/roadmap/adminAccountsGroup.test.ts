@@ -140,7 +140,7 @@ test('ADM-Users: unanswered, the step waits on Identify Service and Shared Accou
   assert.deepEqual(s.action.missing, [{ token: ADMIN_ACCOUNTS_SLOT, stepId: ACCOUNTS }])
   assert.equal(s.blockedReason, 'after: Identify Service and Shared Accounts')
   assert.deepEqual(holdWaitsOn(s), [], 'read as a wait on a Direction answer, never as a step to finish first')
-  assert.equal(waitingLine(s, 'Contoso'), 'Identify Service and Shared Accounts first: this policy names the groups you choose there.')
+  assert.equal(waitingLine(s, 'Contoso'), 'Identify Service and Shared Accounts first: this policy names what you choose there.')
   assert.equal(s.action.json, null, 'no body is written while the groups are not named')
   assert.equal(JSON.stringify(s.action).toLowerCase().includes(JON_ADMINS), false, 'the author’s group is in nothing handed over')
   assert.equal(stepOf(r.steps, 's-create-report-only').reportOnlyBatch?.create.includes(ADM_STEP), false, '3.8 does not create it yet')
