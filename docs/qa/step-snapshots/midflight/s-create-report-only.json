@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Configure Passkey Authentication",
-  "rail": "6 policies to create in Report-only",
+  "rail": "7 policies to create in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -23,6 +23,10 @@
     },
     {
       "label": "Block Unsupported Device Platforms",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Block AI Agents You Have Not Approved",
       "state": "Create in Report-only"
     },
     {

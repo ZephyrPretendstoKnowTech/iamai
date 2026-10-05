@@ -1,0 +1,26 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Configure Passkey Authentication",
+  "fact": null,
+  "badge": "Up Next",
+  "bar": "After Configure Passkey Authentication",
+  "rail": "Create the policy in Report-only",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Sep 7, 2026"
+}

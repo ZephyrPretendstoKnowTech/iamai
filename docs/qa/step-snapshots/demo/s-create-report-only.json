@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
-  "rail": "11 policies to create in Report-only",
+  "rail": "12 policies to create in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -47,6 +47,10 @@
     },
     {
       "label": "Restrict Azure Virtual Desktop to the Trusted Network",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Block AI Agents You Have Not Approved",
       "state": "Create in Report-only"
     },
     {

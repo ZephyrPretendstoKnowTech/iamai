@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "7 policies to create in Report-only",
+  "rail": "8 policies to create in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -31,6 +31,10 @@
     },
     {
       "label": "Block Unsupported Device Platforms",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Block AI Agents You Have Not Approved",
       "state": "Create in Report-only"
     },
     {
