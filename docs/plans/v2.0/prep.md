@@ -70,13 +70,11 @@ options, not a choice. `docs/plans/v2.0/baseline-options.md` holds the research:
 community authors, licence, format, maintenance and philosophy.
 
 ## Owner decisions
-- [ ] **Jon's licence.** Jon's repository has no LICENSE file, so all rights are reserved
-  unless he has said otherwise. The repo records no permission. Ask Jon for written permission
-  or an MIT licence on his repository before v2.0 puts a second author beside him.
+- [x] **Jon's baseline:** used with his explicit permission; the owner holds the record (2026-09-08).
 - [x] No second baseline chosen yet; research only (2026-10-04).
 - [x] Phase A on its own branch, `v2.0-prep`, off `v1.1` (2026-10-04).
-- [ ] Switching baseline: keep one plan per tenant and baseline (owner asked "why not keep
-  both, like Inforcer?"; proposed below), with one baseline deploying at a time.
+- [x] Switching baseline: keep one plan per tenant and baseline, one baseline deploying at a
+  time (owner, 2026-10-04).
 
 ### Keeping both plans (proposal)
 - **Tenant facts stay shared.** The Direction answers, emergency accounts, service accounts

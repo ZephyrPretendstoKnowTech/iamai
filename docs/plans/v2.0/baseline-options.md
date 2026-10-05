@@ -5,19 +5,17 @@ research behind that decision. It records options and their risks, and recommend
 Facts were read from GitHub and the authors' own pages on 2026-10-04. Anything not verified
 says so.
 
-## First: the current pin's licence
-- `Jhope188/ConditionalAccessPolicies` has no LICENSE file, and its README grants nothing,
-  so all rights are reserved. IAMAI pins and redistributes Jon's JSON in a public MIT repo.
-- This repository records no permission from Jon.
-- Jon Hope is a Microsoft MVP (Security, Identity and Access) and an M365 Solutions Architect
-  at Inforcer (<https://www.m365.fm/guests/jonathan-hope/>).
-- **Owner action:** get Jon's written permission, or ask him to add a licence (MIT, for
-  example) to his repository.
+## The current baseline
+Jon Hope's baseline is used with his explicit permission; the owner holds the record. Jon
+is a Microsoft MVP (Security, Identity and Access) and an M365 Solutions Architect at Inforcer
+(<https://www.m365.fm/guests/jonathan-hope/>). His repository carries no licence file, so any
+other baseline needs the same footing: a licence that allows redistribution, or its author's
+permission.
 
 ## The options
 | Option | Author | Kind and format | Policies | Licence: can a public MIT repo pin and redistribute it? | Last push |
 |---|---|---|---|---|---|
-| [Jhope188/ConditionalAccessPolicies](https://github.com/Jhope188/ConditionalAccessPolicies) (current) | Jon Hope, MVP; Inforcer | Policy set; Graph JSON and markdown | 38 pinned | None (no, without permission) | 2026-09-19 |
+| [Jhope188/ConditionalAccessPolicies](https://github.com/Jhope188/ConditionalAccessPolicies) (current) | Jon Hope, MVP; Inforcer | Policy set; Graph JSON and markdown | 38 pinned | No licence file; used with his permission | 2026-09-19 |
 | [j0eyv/ConditionalAccessBaseline](https://github.com/j0eyv/ConditionalAccessBaseline) | Joey Verlinden, MVP (Windows & Devices; Security) | Persona-based; Graph JSON per policy, plus a MigrationTable | 35 | MIT (yes) | 2026-08-12 |
 | [kennethvs/cabaseline202510](https://github.com/kennethvs/cabaseline202510) | Kenneth van Surksum, MVP since 2010 | Category-based; Graph JSON per policy, plus a MigrationTable | 48 | None (no). The 2022 edition is GPL-3.0 | 2025-11-26 |
 | [DanielChronlund/DCToolbox](https://github.com/DanielChronlund/DCToolbox) | Daniel Chronlund (MVP status not re-checked) | Policies inside a PowerShell module | 23 | None (no) | 2024-11-26 |
