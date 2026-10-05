@@ -59,7 +59,7 @@ import { readyWhen } from '../../derive/readyWhen.ts'
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string; reportOnly: string } }).when
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
-const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; unsavedConfirm: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
+const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; unsavedAnswer: string; unsavedConfirm: string; nothingReady: string; substatus: Record<'create' | 'correct' | 'rename' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
 /** The words the All work tab brought with it (pages.app.plan.board): its label, and the line a section drawn whole reads. */
 const BOARD_WORDS = (pages.app as unknown as { plan: { board: { allWork: string; groupCompleted: string; groupRemaining: string; groupAllCompleted: string; groupFinished: string } } }).plan.board
 /** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word).
@@ -68,6 +68,7 @@ export const SUBSTATUS_WORD: Readonly<Record<Substatus, string>> = {
   Review: LANE_WORDS.substatus.review,
   Create: LANE_WORDS.substatus.create,
   Correct: LANE_WORDS.substatus.correct,
+  Rename: LANE_WORDS.substatus.rename,
   Decision: LANE_WORDS.substatus.needsDecision,
   Observing: LANE_WORDS.substatus.review,
   'Ready to enforce': LANE_WORDS.substatus.readyToEnforce,

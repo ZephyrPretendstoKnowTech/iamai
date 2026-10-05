@@ -511,6 +511,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     const savedExclusionsGroup = step.id === EXCLUSION_GROUP_STEP_ID
       && step.configurationFindings?.find(finding => finding.key === 'group-choice')?.items?.some(item => item.factLabel === 'Selection' && item.value === 'Saved')
     if (reading?.lane === 'Ready' && savedExclusionsGroup && reading.substatus === 'Create') reading.substatus = 'Correct'
+    // Its one change the policy's name (PolicyOperation.renamesOnly; owner, 2026-10-04): a rename, never a correction.
+    const ops = operationsOf(step)
+    if (reading?.lane === 'Ready' && reading.substatus === 'Correct' && ops.length > 0 && ops.every((op) => op.renamesOnly === true)) reading.substatus = 'Rename'
     // Account checks ask for a review, not creation of a policy or object.
     if (reading && workflowReviewIsCurrent(step)) Object.assign(reading, { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] })
     // Block Legacy Authentication's policy is on and a named mail account is still

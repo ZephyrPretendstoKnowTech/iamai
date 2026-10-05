@@ -113,7 +113,7 @@ import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.t
 import { SCENARIO } from '../copy/scenarios.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor, retiringOf } from './cleanupPhase.ts'
-import { withEmergencyExclusions } from './differences.ts'
+import { grantDirectionOf, withEmergencyExclusions } from './differences.ts'
 import { namedEmergencyExclusions } from './cleanup.ts'
 import { addsExclusionsOnly } from './changedFields.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
@@ -2088,6 +2088,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // Whether the plan's body could be read at all: an object it names still to
       // make (the exclusions group held) leaves nothing to compare against.
       let bodyKnown = false
+      let planBody: RawPolicy | undefined
       if (own !== null || (ambiguous.length === 0 && theirs.length > 0)) {
         const built = buildCreateAction(named(stepSources.length > 0 ? stepPolicies() : templatePolicy(), planName), mapping, planId, stepId, goal.id)
         const body = (built.missing ?? []).length === 0 ? (built.resolution?.policies[0]?.body as RawPolicy | undefined) : undefined
@@ -2104,6 +2105,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         exact = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, withGroup(p)).every((d) => accepted[d] !== undefined)
         exactAsIs = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, p).every((d) => accepted[d] !== undefined)
         bodyKnown = body !== undefined
+        planBody = body
       }
       if (own === null && ambiguous.length === 0 && theirs.length > 0) {
         // The one renamed: On first, then by id, so the reading is the same scan to scan.
@@ -2114,7 +2116,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         }
       }
       const ownId = String(own?.id ?? '')
-      const beside = theirs.filter((p) => String(p.id) !== ownId).map((p) => ({ policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state) }))
+      // A policy whose grant asks more than the baseline's (a stricter method): turning it off loosens sign-in (audit, 2026-10-05).
+      const stricter = (p: RawPolicy): boolean => planBody !== undefined && grantDirectionOf(planBody, p, strengthLookupOf(snapshot)) === 'stricter'
+      const beside = theirs.filter((p) => String(p.id) !== ownId).map((p) => ({ policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state), ...(stricter(p) ? { stricter: true as const } : {}) }))
       const ownExact = own !== null && (rename ? exact(own) : exactAsIs(own))
       // Done: its own policy On and exact. Where the plan's body cannot be read yet,
       // exactness cannot be proven either way, and the classifier's reading that the

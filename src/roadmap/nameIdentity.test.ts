@@ -102,3 +102,20 @@ test('two live policies carrying the plan name and neither its tag: the step hol
   assert.equal(step.action.ambiguousTarget, true)
   assert.deepEqual(step.action.resolution?.policies ?? [], [])
 })
+
+test('a rename reads as one on the board: Ready · Rename, never Correct (audit, 2026-10-05)', async () => {
+  const { laneReadings } = await import('../ui/surfaces/planLanes.ts')
+  const { SUBSTATUS_WORD } = await import('../ui/surfaces/planBoard.ts')
+  const f = withFoundationSettled(fixture('demo-week2'))
+  const steps = runFixture(f, {}, null, f.snapshot.asOf).steps
+  const renames = steps.filter((s) => (s.action.resolution?.policies ?? []).length > 0 && s.action.resolution!.policies.every((o) => o.renamesOnly === true))
+  assert.ok(renames.length > 0, 'the premise: week two renames a policy exactly the baseline’s under another name')
+  const readings = laneReadings(steps)
+  for (const s of renames) {
+    const r = readings.get(s.id)!
+    if (r.lane !== 'Ready') continue
+    assert.equal(r.substatus, 'Rename', `${s.id} reads ${r.lane} · ${r.substatus}`)
+    assert.equal(SUBSTATUS_WORD.Rename, 'Rename')
+  }
+  assert.ok(renames.some((s) => readings.get(s.id)!.lane === 'Ready'), 'the premise: a rename is Ready')
+})

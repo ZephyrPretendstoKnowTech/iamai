@@ -3169,7 +3169,7 @@ function barOf(c: StepContract): ContractReadiness['bar'] {
 }
 
 /** The bar's content key for each Ready substatus (pages.app.plan.stepContract.readiness.bar). */
-const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Review: 'manualReview', Create: 'create', Correct: 'correct', Decision: 'needsDecision', Observing: 'review', 'Ready to enforce': 'readyToEnforce' }
+const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Review: 'manualReview', Create: 'create', Correct: 'correct', Rename: 'rename', Decision: 'needsDecision', Observing: 'review', 'Ready to enforce': 'readyToEnforce' }
 
 /**
  * The Next milestone headline the action column leads with (owner, 2026-09-23:

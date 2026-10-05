@@ -220,6 +220,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // nobody is signed in, so the tile names the sample rather than an account.
   // The review page has one Connect, and it is the signed-in one.
   '.pages.connect.account.sampleTitle',
+  '.cleanup.retire.replacementOn',
+  '.cleanup.retire.replacementPending',
+  '.cleanup.retire.stricter',
   '.pages.connect.account.sampleNote',
   // The exclusions group's not-in-use states (Foundation C): the review's
   // example has a group in use, so none of their lines render. The suggestion

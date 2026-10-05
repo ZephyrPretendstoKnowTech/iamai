@@ -23,10 +23,11 @@ import type { OrganisationReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { proposeName, usable } from './convention.ts'
 import { nameKey } from '../baseline/discover.ts'
-import { cleanup as cleanupWords } from '../content/content.ts'
+import { cleanup as cleanupWords, stepById } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 /** Retire Replaced Policies' own words beyond its row (content.cleanup.retire). */
-const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string } }).retire
+const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string; replacementPending: string; replacementOn: string; stricter: string } }).retire
 
 export type CleanupPhase = {
   /** The first Cleanup day: the working day after the last enforcement window. */
@@ -122,7 +123,9 @@ export function retiringOf(steps: readonly Step[], stateWord: (state: string) =>
     if (s.status === 'skipped' || s.doesntApply || s.state.setAside) continue
     for (const p of s.action.besidePolicies ?? []) {
       if (out.has(p.policyId) || (p.state !== 'enabled' && p.state !== 'enabledForReportingButNotEnforced')) continue
-      out.set(p.policyId, { policyId: p.policyId, line: `${p.name} (${stateWord(p.state)}, ID: ${p.policyId})`, stepId: s.id })
+      // Which step replaces it, and whether that one is On yet: each policy goes only once its own replacement is On.
+      const replacement = fillText(s.state.lifecycle === 'enforced' || s.state.satisfied || s.status === 'done' ? RETIRE_WORDS.replacementOn : RETIRE_WORDS.replacementPending, { step: (s.goalId ? stepById[s.goalId]?.title : undefined) ?? stepById[s.id]?.title ?? s.title })
+      out.set(p.policyId, { policyId: p.policyId, line: `${p.name} (${stateWord(p.state)}, ID: ${p.policyId}; ${p.stricter ? `${RETIRE_WORDS.stricter}; ` : ''}${replacement})`, stepId: s.id })
     }
   }
   return [...out.values()]

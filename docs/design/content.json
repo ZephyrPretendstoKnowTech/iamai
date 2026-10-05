@@ -1097,6 +1097,8 @@
         "$comment": "The Ready lane's substatus words (A1b, decision 11), keyed by the engine's own literal (planBoard.ts SUBSTATUS_WORD).",
         "create": "Create",
         "correct": "Correct",
+        "$commentRename": "A step whose one change is its policy's name (owner, 2026-10-04: a policy exactly the baseline's under another name takes the plan's name): it corrects nothing.",
+        "rename": "Rename",
         "needsDecision": "Decision",
         "observing": "Observing",
         "review": "Review",
@@ -2732,6 +2734,7 @@
               "$comment": "The readiness bar's headline by the Ready lane's substatus (A1b): the other lanes read their own label, the blocker label or the tenant fact (stepContract.ts readinessOf).",
               "create": "Ready now",
               "correct": "Needs correction",
+              "rename": "Ready to rename",
               "needsDecision": "Needs a decision",
               "observing": "Continue observation",
               "review": "Review the report-only results",
@@ -4056,7 +4059,12 @@
       "keepReason": "Reason to keep them",
       "keep": "Keep With This Reason",
       "recordedHeading": "Kept With a Reason",
-      "recordStale": "The saved reason does not name every policy still listed: keep them again with a reason, or turn the others off."
+      "recordStale": "The saved reason does not name every policy still listed: keep them again with a reason, or turn the others off.",
+      "$commentReplacement": "Each policy Retire Replaced Policies lists names the step whose policy replaces it and whether that one is On yet (audit, 2026-10-05: four policies under one row read as one switch, and a literal reader could turn Require MFA for Everyone's old policy off while the new one was still in Report-only). {step} is that step's title.",
+      "replacementPending": "keep it until {step} is On",
+      "replacementOn": "{step} replaces it and is On",
+      "$commentStricter": "A listed policy whose grant asks more than the baseline's (a stricter method, read as the Accept panel reads it: roadmap/differences.ts grantDirectionOf). Turning it off loosens sign-in, which 'running old and new side by side weakens nothing' does not cover (audit, 2026-10-05: the tenant's phishing-resistant admin policy beside the baseline's Modern MFA + TAP).",
+      "stricter": "stricter than the baseline's: turning it off loosens sign-in, so keep it with a reason unless that is what you want"
     },
     "naming": {
       "brief": {
