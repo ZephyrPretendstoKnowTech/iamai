@@ -83,10 +83,26 @@ test('on the demo, Configure Emergency Exclusions lists and counts the same five
   const { rowWho } = await import('./rowWho.ts')
   const { content } = await import('../../content/content.ts')
   const snap = stepSnapshotsOf('demo')['s-prereq-exclusion-group']
-  assert.equal(snap.rail, 'Exclude Core - Exclusions from 5 policies.')
+  assert.equal(snap.rail, 'Add Core - Exclusions to the exclusions of 5 policies.')
   const step = runFixture(fixture('demo')).steps.find((s) => s.id === 's-prereq-exclusion-group')!
   assert.equal(rowWho(step), '5 policies', 'the row says the same number')
   const cleanup = JSON.stringify(content).match(/"why":"These policies leave an emergency account out by name[^"]*"/)?.[0] ?? ''
   assert.ok(cleanup.length > 0, 'the premise: the name-exclusion cleanup row')
   assert.doesNotMatch(cleanup, /as well as through the exclusions group/)
+})
+
+test('a policy still missing its exclusion is never listed under Completed checks by its mode (owner, 2026-10-05)', async () => {
+  const { emergencySubjectTileOf } = await import('./emergencyReadiness.ts')
+  const tile = {
+    key: 'group-policies', label: 'Policy exclusions', tone: 'warn' as const, value: '', note: null,
+    items: [
+      { label: 'Mode', factLabel: 'Mode', subjectId: 'p1', subjectLabel: 'Old MFA', value: 'On', outcome: 'pass' as const },
+      { label: 'Group exclusion', factLabel: 'Group exclusion', subjectId: 'p1', subjectLabel: 'Old MFA', value: 'Missing', outcome: 'fail' as const },
+      { label: 'Mode', factLabel: 'Mode', subjectId: 'p2', subjectLabel: 'Done policy', value: 'On', outcome: 'pass' as const },
+      { label: 'Group exclusion', factLabel: 'Group exclusion', subjectId: 'p2', subjectLabel: 'Done policy', value: 'Present', outcome: 'pass' as const },
+    ],
+  }
+  const t = emergencySubjectTileOf(tile as never, null)
+  assert.ok(!t.completed.some((c) => c.startsWith('Old MFA')), `a policy still to edit reads as completed: ${t.completed.join(' | ')}`)
+  assert.ok(t.completed.includes('Done policy · Mode: On') && t.completed.includes('Done policy · Group exclusion: Present'), t.completed.join(' | '))
 })

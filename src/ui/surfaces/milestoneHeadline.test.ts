@@ -166,7 +166,7 @@ test('1.1 and 1.2 read their milestone in words over their instruction line, and
   assert.equal(unchosen.instruction, T.exclusionsGroupRailSub)
   // demo: Core - Exclusions is chosen and five policies do not exclude it yet (F-002: the MFA policy leaves Break-glass 1 out by name only).
   const group = opened('demo', 's-prereq-exclusion-group').body.rail
-  assert.equal(group.headline, 'Exclude Core - Exclusions from 5 policies.')
+  assert.equal(group.headline, 'Add Core - Exclusions to the exclusions of 5 policies.')
   assert.equal(group.instruction, T.exclusionsGroupRailSub)
   // messy: the chosen group holds members that are not the emergency accounts.
   assert.equal(opened('messy', 's-prereq-exclusion-group').body.rail.headline, "Remove the members that aren't emergency access accounts from Core - Exclusions.")

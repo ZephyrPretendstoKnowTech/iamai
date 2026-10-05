@@ -2247,8 +2247,8 @@
           "createExclusionsGroup": "Create your emergency exclusions group.",
           "addToExclusionsGroup": "Add {accounts} to {group}.",
           "removeFromExclusionsGroup": "Remove the members that aren't emergency access accounts from {group}.",
-          "excludeFromPolicy": "Exclude {group} from {policy}.",
-          "excludeFromPolicies": "Exclude {group} from {count} policies."
+          "excludeFromPolicy": "Add {group} to the exclusions of {policy}.",
+          "excludeFromPolicies": "Add {group} to the exclusions of {count} policies."
         },
         "$commentRecoverySignIn": "Verify Emergency Access: what an account's Sign-in evidence card, its print and its exports say while the account waits for a passkey sign-in (src/roadmap/emergencyJourney.ts recoveryWaitingLine).",
         "recoverySignIn": {

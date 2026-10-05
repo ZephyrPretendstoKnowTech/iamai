@@ -63,7 +63,11 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
     label: fact.value, factLabel: fact.value, value: '', subjectLabel: fact.label, outcome: /^verified$/i.test(fact.value) ? 'pass' as const : 'fail' as const,
   }))
   const pending = findings.filter(item => !passed(item)).map((item, index) => ({ item, index })).sort((x, y) => rank(x.item.outcome) - rank(y.item.outcome) || x.index - y.index).map(row => row.item)
-  const completed = findings.filter(passed).map(item => [item.subjectLabel, `${item.factLabel ?? item.label}${item.value ? `: ${item.value}` : ''}`].filter(Boolean).join(' · '))
+  // A policy's mode is a fact read for its procedure, not a finished check: while the
+  // same policy still lacks its exclusion it is not listed as completed (owner, 2026-10-05:
+  // the five policies still to edit sat under "Completed checks · 5").
+  const stillOpen = new Set(pending.map(item => item.subjectId ?? item.subjectLabel))
+  const completed = findings.filter(item => passed(item) && !(item.factLabel === 'Mode' && stillOpen.has(item.subjectId ?? item.subjectLabel))).map(item => [item.subjectLabel, `${item.factLabel ?? item.label}${item.value ? `: ${item.value}` : ''}`].filter(Boolean).join(' · '))
   const direction = task ? task.readinessDirection ?? followTask(task.title) : null
   const base = { key: tile.key, accountId: null, heading: tile.label, completed, remainingCount: pending.length || null, satisfied, ...(tile.caution ? { caution: true as const } : {}) }
   const next = pending[0]
