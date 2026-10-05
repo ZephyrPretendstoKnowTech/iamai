@@ -343,7 +343,7 @@ export type Action = {
    * policy and requires all their grants, so old and new side by side never
    * weaken a sign-in.
    */
-  besidePolicies?: { policyId: string; name: string; state: string; /** Its grant asks more than the baseline's: turning it off loosens sign-in. */ stricter?: true }[]
+  besidePolicies?: { policyId: string; name: string; state: string; /** Its grant asks more than the baseline's: turning it off loosens sign-in. */ stricter?: true; /** The other goals it does a job for today: it goes only once their steps' policies are On too. */ alsoGoals?: string[] }[]
   /**
    * The tenant's own policies beside the step, under other names, enforce its goal
    * today (coverage verdict inPlace): the step still creates the baseline's policy

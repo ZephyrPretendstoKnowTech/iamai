@@ -1151,8 +1151,8 @@
             "description": "You set the work aside. It does not satisfy another step’s prerequisite."
           },
           {
-            "label": "Create, Correct, Turn on, Decision, Review",
-            "description": "The kind of action a Ready step asks for: create something new (a policy, group, location, account or alert), correct something that already exists, turn a policy on, answer a question, or review what the scan found."
+            "label": "Create, Correct, Rename, Turn on, Decision, Review",
+            "description": "The kind of action a Ready step asks for: create something new (a policy, group, location, account or alert), correct something that already exists, give a policy that is already exactly right the plan's name, turn a policy on, answer a question, or review what the scan found."
           },
           {
             "label": "Report-only, Enforced",
@@ -4063,6 +4063,11 @@
       "$commentReplacement": "Each policy Retire Replaced Policies lists names the step whose policy replaces it and whether that one is On yet (audit, 2026-10-05: four policies under one row read as one switch, and a literal reader could turn Require MFA for Everyone's old policy off while the new one was still in Report-only). {step} is that step's title.",
       "replacementPending": "keep it until {step} is On",
       "replacementOn": "{step} replaces it and is On",
+      "$commentReplacementMany": "The same where more than one step's policy replaces it (audit F2/F3, 2026-10-05: a policy blocking two flows, or asking for MFA and setting the session, goes only once every replacement is On).",
+      "replacementPendingMany": "keep it until {steps} are On",
+      "replacementOnMany": "{steps} replace it and are On",
+      "$commentAlsoKeeps": "A listed policy that also does the job of a goal the plan holds no step for (skipped, set aside, not applying): turning it off would drop that job, so it is kept. {steps} are those goals' step titles.",
+      "alsoKeeps": "it also does the job of {steps}, which this plan does not replace: keep it",
       "$commentStricter": "A listed policy whose grant asks more than the baseline's (a stricter method, read as the Accept panel reads it: roadmap/differences.ts grantDirectionOf). Turning it off loosens sign-in, which 'running old and new side by side weakens nothing' does not cover (audit, 2026-10-05: the tenant's phishing-resistant admin policy beside the baseline's Modern MFA + TAP).",
       "stricter": "stricter than the baseline's: turning it off loosens sign-in, so keep it with a reason unless that is what you want"
     },

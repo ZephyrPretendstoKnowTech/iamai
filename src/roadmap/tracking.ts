@@ -36,7 +36,7 @@ import { fillText } from '../content/render.ts'
 import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
 import { artifactIdOf, dimensionWords, historyReset, intentOf, materialFieldsOf, observe, observedStateOf, priorFor, sameDimension, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
-import { acceptanceCovers, acceptanceKeyOf, differencePieces, grantDirectionOf, withEmergencyExclusions } from './differences.ts'
+import { acceptanceKeyOf, acceptedDifferences, differencePieces, grantDirectionOf, withEmergencyExclusions } from './differences.ts'
 import { buildStrengthLookup } from '../coverage/strength.ts'
 import type { DifferencePiece } from './differences.ts'
 import type { ObservedState } from './observation.ts'
@@ -311,6 +311,10 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   // (observation.ts priorFor), and here the identity to prove is the object
   // itself, so the record is read for its members alone.
   for (const m of out) {
+    // Two live policies carry the plan's name and neither its tag (generate.ts
+    // ambiguousTarget): the step holds and never guesses, and no record of the
+    // last scan picks one for it (audit F4, 2026-10-05).
+    if (step.action.ambiguousTarget === true) break
     const artifact = (record?.members[m.key] ?? (sole ? record?.unattributed : null))?.artifact ?? null
     if (artifact === null) continue
     const policy = all.find((p) => artifactIdOf(p.id) === artifact)
@@ -1051,7 +1055,7 @@ export function trackExecution(
       // missing is never accepted.
       const now = policyRow ? materialFieldsOf(policyRow as Record<string, unknown>) : {}
       const saved = step.acceptedDeviation?.fields ?? {}
-      const accepted = found.filter((d) => saved[d] !== undefined && (acceptanceCovers(saved[d], pieces[d] ?? []) || saved[d] === now[d]) && !(pieces[d] ?? []).some((p) => p.required))
+      const accepted = compared && policyRow ? acceptedDifferences(found, compared, policyRow as Record<string, unknown>, saved, { exclusionsGroupId: tenantObjects?.exclusionsGroupId ?? null, strengths }) : []
       const unwritten = found.filter((d) => !accepted.includes(d))
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this

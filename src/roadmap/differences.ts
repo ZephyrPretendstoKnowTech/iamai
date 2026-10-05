@@ -13,6 +13,7 @@ import { policyFacts } from '../coverage/facts.ts'
 import { grantSatisfiesFloor } from '../coverage/strength.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { PolicyFacts, StrengthTier } from '../coverage/types.ts'
+import { materialFieldsOf, sameDimension } from './observation.ts'
 
 /** Which way a difference leans: the tenant's policy asks more (stricter), less (weaker), or something else. */
 export type DifferenceDirection = 'stricter' | 'weaker' | 'differs'
@@ -264,6 +265,25 @@ function gapsOf(pieces: readonly DifferencePiece[]): string[] {
  * a new gap reopens it): the fingerprint of each of its gaps (gapsOf). No
  * tenant value is carried into the plan record, only the hashes.
  */
+/**
+ * Which of the differences found between the plan's policy and the tenant's are
+ * accepted with a reason: one reading, for generation (is the step's own policy
+ * exact?) and tracking (is it still to correct?) alike (audit F5, 2026-10-05: the
+ * two read it differently, so a step was done with nothing to hand over while
+ * tracking reopened it). Accepted by the gaps' fingerprint (acceptanceKeyOf), or
+ * one saved before that by the whole setting's; the exclusions group missing is
+ * never accepted.
+ */
+export function acceptedDifferences(found: readonly string[], intended: Row, deployed: Row, saved: Readonly<Record<string, string>>, o: { exclusionsGroupId: string | null; strengths: StrengthLookup }): string[] {
+  const grant = found.includes('grantControls') ? grantDirectionOf(intended, deployed, o.strengths) : undefined
+  const now = materialFieldsOf(deployed)
+  return found.filter((d) => {
+    if (saved[d] === undefined) return false
+    const pieces = differencePieces(d, intended, deployed, { exclusionsGroupId: o.exclusionsGroupId, grant, same: sameDimension, fingerprint: now[d] })
+    return (acceptanceCovers(saved[d], pieces) || saved[d] === now[d]) && !pieces.some((p) => p.required)
+  })
+}
+
 export function acceptanceKeyOf(pieces: readonly DifferencePiece[]): string {
   return `g2-${gapsOf(pieces).join('.')}`
 }

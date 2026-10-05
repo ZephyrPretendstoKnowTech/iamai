@@ -18,7 +18,7 @@ import type { CaPolicy } from '../baseline/types.ts'
 import { docFor, nameKey } from '../baseline/index.ts'
 import { referenceUsage } from '../baseline/interpretation.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
-import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
+import { CORE_ADMIN_ROLE_IDS, matchesSignature, goalsMatching } from '../coverage/classify.ts'
 import { scopedToGoalApps } from '../coverage/goalIdentity.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, matchedStrengthIds, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
@@ -113,7 +113,7 @@ import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.t
 import { SCENARIO } from '../copy/scenarios.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor, retiringOf } from './cleanupPhase.ts'
-import { grantDirectionOf, withEmergencyExclusions } from './differences.ts'
+import { acceptedDifferences, grantDirectionOf, withEmergencyExclusions } from './differences.ts'
 import { namedEmergencyExclusions } from './cleanup.ts'
 import { addsExclusionsOnly } from './changedFields.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
@@ -1806,6 +1806,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // ---- Goal steps ----
 
+  // Which tenant policies are a step's own, plan-wide (audit F1, 2026-10-05): a
+  // policy carrying another step's plan name or tag, or one another step renames,
+  // is never this step's to rename or to retire. Without it one policy that blocks
+  // two flows was renamed back and forth by two steps, and Retire Replaced Policies
+  // listed a policy that delivered a finished step.
+  const planNameKeys = new Set(planPolicies.map((p) => nameKey(String((p as { displayName?: unknown }).displayName ?? ''))).filter((k) => k.length > 0))
+  const renameTargets = new Set<string>()
+
   for (const result of input.coverage.results) {
     if (result.status === 'not-applicable' || result.status === 'licence-limited') {
       // A goal a Direction service answer decides, answered No, reads Doesn't apply
@@ -1938,7 +1946,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // complete the step whatever else coverage reads, so a half that leaves out a
     // guest type by the owner's answer (service providers) never deadlocks it.
     const pairAccepted = mapping.acceptedDeviations?.[stepId]?.fields ?? {}
-    const pairExact = (h: PairHalf): boolean => h.policy !== null && h.intent !== null && unwrittenDifferences(h.intent, null, h.policy as Record<string, unknown>).every((d) => pairAccepted[d] !== undefined)
+    const pairExact = (h: PairHalf): boolean => {
+      if (h.policy === null || h.intent === null) return false
+      const found = unwrittenDifferences(h.intent, null, h.policy as Record<string, unknown>)
+      return acceptedDifferences(found, h.intent, h.policy as Record<string, unknown>, pairAccepted, { exclusionsGroupId: tenantObjects.exclusionsGroupId ?? null, strengths: strengthLookupOf(snapshot) }).length === found.length
+    }
     const pairDone = pair !== null && !pair.ambiguous && pair.halves.every((h) => h.policy?.state === 'enabled' && pairExact(h))
     // A tenant policy stands for a half (or for one nothing tells apart): the pair
     // is never created whole, whatever coverage reads of the goal (ENG-3). A half
@@ -2075,11 +2087,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         else own = namedLive[0] ?? tagged[0] ?? byName[0] ?? null
       }
       const ours = new Set([...tagged, ...byName].map((p) => String(p.id)))
+      // Another step's own: its plan name, its tag, or the policy it renames.
+      const othersOwn = (p: RawPolicy): boolean => {
+        const key = nameKey(String(p.displayName ?? ''))
+        const description = String(p.description ?? '')
+        const otherTag = description.includes(`[IAMAI:${planId}:`) && !description.includes(`[IAMAI:${planId}:${stepId}:`) && !description.includes(`[IAMAI:${planId}:${stepId}]`)
+        return (planNameKeys.has(key) && !want.has(key)) || otherTag || renameTargets.has(String(p.id))
+      }
       const theirs = result.candidates
         .filter((c) => c.ownScope && c.contribution !== 'disabled')
         .map((c) => rows.find((p) => String(p.id) === c.policyId))
         .filter(live)
-        .filter((p) => !ours.has(String(p.id)) && !matchedPolicyIds.includes(String(p.id)) && !anotherStepsJob(String(p.id)))
+        .filter((p) => !ours.has(String(p.id)) && !matchedPolicyIds.includes(String(p.id)) && !anotherStepsJob(String(p.id)) && !othersOwn(p))
       let rename = false
       // Exact: every setting the baseline's, short at most of the exclusions group, or accepted.
       let exact = (_p: RawPolicy): boolean => false
@@ -2102,8 +2121,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           if (groups.some((g) => g.toLowerCase() === group.toLowerCase())) return p
           return { ...p, conditions: { ...((p.conditions ?? {}) as RawPolicy), users: { ...users, excludeGroups: [...groups, group] } } }
         }
-        exact = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, withGroup(p)).every((d) => accepted[d] !== undefined)
-        exactAsIs = (p: RawPolicy): boolean => body !== undefined && unwrittenDifferences(body, null, p).every((d) => accepted[d] !== undefined)
+        // Every difference accepted, read as tracking reads it (differences.ts acceptedDifferences).
+        const allAccepted = (b: RawPolicy, p: RawPolicy): boolean => {
+          const found = unwrittenDifferences(b, null, p)
+          return acceptedDifferences(found, b, p, accepted, { exclusionsGroupId: group ?? null, strengths: strengthLookupOf(snapshot) }).length === found.length
+        }
+        exact = (p: RawPolicy): boolean => body !== undefined && allAccepted(body, withGroup(p))
+        exactAsIs = (p: RawPolicy): boolean => body !== undefined && allAccepted(body, p)
         bodyKnown = body !== undefined
         planBody = body
       }
@@ -2113,12 +2137,25 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         if (exactOnes.length > 0) {
           own = exactOnes[0]
           rename = true
+          renameTargets.add(String(own.id))
         }
       }
       const ownId = String(own?.id ?? '')
       // A policy whose grant asks more than the baseline's (a stricter method): turning it off loosens sign-in (audit, 2026-10-05).
       const stricter = (p: RawPolicy): boolean => planBody !== undefined && grantDirectionOf(planBody, p, strengthLookupOf(snapshot)) === 'stricter'
-      const beside = theirs.filter((p) => String(p.id) !== ownId).map((p) => ({ policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state), ...(stricter(p) ? { stricter: true as const } : {}) }))
+      // A second live policy carrying the plan's name beside the step's tagged own is a duplicate to retire, never ignored (audit F6).
+      const duplicates = own !== null && tagged.some((t) => t.id === own!.id) ? namedLive.filter((p) => String(p.id) !== ownId) : []
+      // The other goals the same policy enforces today (delivers, or enforces at the
+      // goal's floor for some of its people) that the baseline's policy
+      // replacing it does not (audit F3): it goes only once their steps' policies are
+      // On too. A goal the replacement also delivers (guests under an all-users MFA
+      // policy) loses nothing when the old one goes.
+      const replaces = planBody !== undefined ? new Set(goalsMatching(policyFacts(planBody, input.strengths), input.coverage.results.map((r) => r.goal)).map((g) => g.id)) : null
+      const alsoGoalsOf = (p: RawPolicy): string[] => input.coverage.results.filter((r) => r.goal.id !== goal.id && ((r.satisfaction?.policyIds ?? []).includes(String(p.id)) || r.candidates.some((c) => c.policyId === String(p.id) && c.contribution === 'strong' && c.meetsFloor !== false)) && !(replaces?.has(r.goal.id) ?? false)).map((r) => r.goal.id)
+      const beside = [...theirs.filter((p) => String(p.id) !== ownId), ...duplicates].map((p) => {
+        const alsoGoals = alsoGoalsOf(p)
+        return { policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state), ...(stricter(p) ? { stricter: true as const } : {}), ...(alsoGoals.length > 0 ? { alsoGoals } : {}) }
+      })
       const ownExact = own !== null && (rename ? exact(own) : exactAsIs(own))
       // Done: its own policy On and exact. Where the plan's body cannot be read yet,
       // exactness cannot be proven either way, and the classifier's reading that the

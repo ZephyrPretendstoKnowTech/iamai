@@ -25,9 +25,10 @@ import { proposeName, usable } from './convention.ts'
 import { nameKey } from '../baseline/discover.ts'
 import { cleanup as cleanupWords, stepById } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { list } from '../copy/statements.ts'
 
 /** Retire Replaced Policies' own words beyond its row (content.cleanup.retire). */
-const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string; replacementPending: string; replacementOn: string; stricter: string } }).retire
+const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string; replacementPending: string; replacementPendingMany: string; replacementOn: string; replacementOnMany: string; stricter: string; alsoKeeps: string } }).retire
 
 export type CleanupPhase = {
   /** The first Cleanup day: the working day after the last enforcement window. */
@@ -107,7 +108,7 @@ export type CleanupPhaseInput = {
 }
 
 /** One policy Retire Replaced Policies lists: the tenant's, the row's line for it, and the step that built the baseline's beside it. */
-export type RetiringPolicy = { policyId: string; line: string; stepId: string }
+export type RetiringPolicy = { policyId: string; line: string; stepId: string; /** Every step whose policy has to be On before it goes (audit F2, F3). */ stepIds?: string[] }
 
 /**
  * The tenant's own policies a step built the baseline's beside and still On or
@@ -118,17 +119,48 @@ export type RetiringPolicy = { policyId: string; line: string; stepId: string }
  * leaves once the last name is aligned.
  */
 export function retiringOf(steps: readonly Step[], stateWord: (state: string) => string): RetiringPolicy[] {
-  const out = new Map<string, RetiringPolicy>()
+  const active = (s: Step): boolean => !(s.status === 'skipped' || s.doesntApply || s.state.setAside)
+  const on = (s: Step): boolean => s.state.lifecycle === 'enforced' || s.state.satisfied || s.status === 'done'
+  const titleOf = (s: Step): string => (s.goalId ? stepById[s.goalId]?.title : undefined) ?? stepById[s.id]?.title ?? s.title
+  const lower = (id: unknown): string => String(id ?? '').toLowerCase()
+  // The policy each step tracks, compares or edits is that step's own, and never
+  // retired for another (audit F1, 2026-10-05).
+  const owners = new Map<string, Set<string>>()
   for (const s of steps) {
-    if (s.status === 'skipped' || s.doesntApply || s.state.setAside) continue
+    const own = [s.tracking?.policyId, ...(s.tracking?.members ?? []).map((m) => m.policyId), s.action.intendedFor, ...(s.action.resolution?.policies ?? []).filter((o) => o.mode === 'update').map((o) => o.policyId)]
+    for (const id of own) if (id) owners.set(lower(id), (owners.get(lower(id)) ?? new Set()).add(s.id))
+  }
+  const listed = new Map<string, { name: string; state: string; stricter: boolean; stepIds: string[]; alsoGoals: Set<string> }>()
+  for (const s of steps) {
+    if (!active(s)) continue
     for (const p of s.action.besidePolicies ?? []) {
-      if (out.has(p.policyId) || (p.state !== 'enabled' && p.state !== 'enabledForReportingButNotEnforced')) continue
-      // Which step replaces it, and whether that one is On yet: each policy goes only once its own replacement is On.
-      const replacement = fillText(s.state.lifecycle === 'enforced' || s.state.satisfied || s.status === 'done' ? RETIRE_WORDS.replacementOn : RETIRE_WORDS.replacementPending, { step: (s.goalId ? stepById[s.goalId]?.title : undefined) ?? stepById[s.id]?.title ?? s.title })
-      out.set(p.policyId, { policyId: p.policyId, line: `${p.name} (${stateWord(p.state)}, ID: ${p.policyId}; ${p.stricter ? `${RETIRE_WORDS.stricter}; ` : ''}${replacement})`, stepId: s.id })
+      if (p.state !== 'enabled' && p.state !== 'enabledForReportingButNotEnforced') continue
+      const hit = listed.get(p.policyId) ?? { name: p.name, state: p.state, stricter: false, stepIds: [], alsoGoals: new Set<string>() }
+      // Every step that lists it, not the first (audit F2): it goes once each of their policies is On.
+      hit.stepIds.push(s.id)
+      if (p.stricter) hit.stricter = true
+      for (const g of p.alsoGoals ?? []) hit.alsoGoals.add(g)
+      listed.set(p.policyId, hit)
     }
   }
-  return [...out.values()]
+  const out: RetiringPolicy[] = []
+  for (const [policyId, p] of listed) {
+    if ([...(owners.get(lower(policyId)) ?? [])].some((id) => !p.stepIds.includes(id))) continue
+    // And every other goal it does a job for today (audit F3): its step's policy On too, or, where
+    // the plan holds no step for that goal, the job stays with this policy and it is kept.
+    const also = [...p.alsoGoals].map((g) => ({ g, step: steps.find((s) => s.goalId === g && active(s)) }))
+    const waits = [...new Set([...p.stepIds, ...also.flatMap((x) => (x.step ? [x.step.id] : []))])]
+    const waitSteps = waits.map((id) => steps.find((s) => s.id === id)!).filter(Boolean)
+    const pending = waitSteps.filter((s) => !on(s))
+    const keeps = also.filter((x) => !x.step).map((x) => stepById[x.g]?.title ?? x.g)
+    const names = (ss: Step[]): string => list(ss.map(titleOf))
+    const replacement = pending.length > 0
+      ? fillText(pending.length === 1 ? RETIRE_WORDS.replacementPending : RETIRE_WORDS.replacementPendingMany, { step: names(pending), steps: names(pending) })
+      : fillText(waitSteps.length === 1 ? RETIRE_WORDS.replacementOn : RETIRE_WORDS.replacementOnMany, { step: names(waitSteps), steps: names(waitSteps) })
+    const notes = [...(p.stricter ? [RETIRE_WORDS.stricter] : []), ...(keeps.length > 0 ? [fillText(RETIRE_WORDS.alsoKeeps, { steps: list(keeps) })] : []), replacement]
+    out.push({ policyId, line: `${p.name} (${stateWord(p.state)}, ID: ${policyId}; ${notes.join('; ')})`, stepId: waits[0], stepIds: waits })
+  }
+  return out
 }
 
 /**
@@ -201,7 +233,7 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     retiring: (input.retiring ?? []).map((p) => p.line),
   }, input.withheld ?? WITHHELD_CLEANUP)
   const retiringIds = (input.retiring ?? []).map((p) => p.policyId)
-  const retireWaits = [...new Set((input.retiring ?? []).map((p) => p.stepId))]
+  const retireWaits = [...new Set((input.retiring ?? []).flatMap((p) => p.stepIds ?? [p.stepId]))]
   // Intended retirement removes the overlap that originally created this row;
   // keep its recorded result visible and reassess the retained replacement.
   if (!(input.withheld ?? WITHHELD_CLEANUP).has('consolidation') && !rows.some(r => r.kind === 'consolidation') && input.records?.some(r => r.cleanup === 'consolidation')) rows.push({ kind: 'consolidation', lists: { overlaps: [] } })
