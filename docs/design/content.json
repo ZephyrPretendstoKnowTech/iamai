@@ -5477,7 +5477,7 @@
         "ready": "{ready} of {total} people ready",
         "link": "Open MFA Readiness"
       },
-      "milestone": "{n} people still need a method",
+      "milestone": "Get each person not ready a method",
       "pitfalls": {
         "$comment": "The two cards the campaign draws beside its own while it is open (ui/surfaces/pitfalls.ts, round 1, owner 2026-09-24): Temporary Access Pass off while people with no method need one to register, and the people whose only method is a text or a call, named, with Microsoft's retirement dates ({smsEveryone}, {smsAdmins}: derive/smsRetirement.ts SMS_RETIREMENT_DATES, from concept-sms-voice-retirement).",
         "tapOffLabel": "Temporary Access Pass",
