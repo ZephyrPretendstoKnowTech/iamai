@@ -231,5 +231,51 @@
       }
     }
   ],
-  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted. Re-read 2026-09-29 against Jon's README at pin 8af3b118: the groups it names were settled (break-glass to the exclusions group; the author's own travellers, device, AVD and unnamed standing exclusions to authorEnvironment, their tenant side being Direction answers); the three include-only groups stay unknown because the body cannot go without its only target. Since 2026-10-04 one of them, Jon's admin-accounts group (5f96c57d), is adminAccountsGroup: its counterpart is the operator's answer to \"Which group holds your admin accounts?\" (Identify Service and Shared Accounts)."
+  "policies": [
+    {
+      "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
+      "reading": "agentReconstructed",
+      "basis": "documented",
+      "evidence": "IAC - AGENT - BLOCK - HighRiskAgent. Jon Hope's README for the policy (Updated/Documentation/IAC - AGENT - BLOCK - HighRiskAgent/README.md) at the pin 8af3b118 states its intent: \"Blocks sign-in for AI agent identities assessed as high-risk by Entra Identity Protection.\" His export reads users includeUsers None, All resources, block, which targets nothing: the exporting SDK reads Conditional Access from Graph v1.0, and the agent fields exist only in Graph beta (src/baseline/discover.ts). Microsoft documents the shape (Graph beta, preview): every agent identity included (conditions.clientApplications.includeAgentIdServicePrincipals All), All resources, Block, and Agent risk (Preview) High (conditions.agentIdRiskLevels high). The pinned body is unchanged; the step's body adds these fields (owner, 2026-10-04: Jon's two AGENT blocks are steps).",
+      "sources": [
+        "https://learn.microsoft.com/entra/agent-id/disable-agent-identities",
+        "https://learn.microsoft.com/entra/identity/conditional-access/policy-autonomous-agents"
+      ],
+      "context": "1a2d35c09b6f8b28",
+      "conditions": {
+        "clientApplications": {
+          "includeAgentIdServicePrincipals": [
+            "All"
+          ],
+          "excludeAgentIdServicePrincipals": [],
+          "agentIdServicePrincipalFilter": null
+        },
+        "agentIdRiskLevels": [
+          "high"
+        ]
+      }
+    },
+    {
+      "id": "1d8beea4-2ea1-4758-8e22-d6310a60220a",
+      "reading": "agentReconstructed",
+      "basis": "documented",
+      "evidence": "IAC - AGENT - BLOCK - NonTrustedAgents. Jon Hope's README for the policy (Updated/Documentation/IAC - AGENT - BLOCK - NonTrustedAgents/README.md) at the pin 8af3b118 states its intent: \"Blocks sign-in for AI agent identities that are not in the approved/trusted agent set. Implements a default-deny posture for agent workload identities — only explicitly approved agents can authenticate.\" His export reads users includeUsers None, All resources, block, which targets nothing: the exporting SDK reads Conditional Access from Graph v1.0, and the agent fields exist only in Graph beta (src/baseline/discover.ts). Microsoft documents the shape (Graph beta, preview): every agent identity included (conditions.clientApplications.includeAgentIdServicePrincipals All), All resources, Block, with the approved agent identities or agent blueprints excluded. Which agents a tenant approves is its own: IAMAI cannot read its agent identities, so the reconstruction excludes none and the operator excludes theirs before turning it on. The pinned body is unchanged; the step's body adds these fields (owner, 2026-10-04: Jon's two AGENT blocks are steps).",
+      "sources": [
+        "https://learn.microsoft.com/entra/agent-id/disable-agent-identities",
+        "https://learn.microsoft.com/entra/identity/conditional-access/policy-autonomous-agents"
+      ],
+      "context": "1a2d35c09b6f8b28",
+      "conditions": {
+        "clientApplications": {
+          "includeAgentIdServicePrincipals": [
+            "All"
+          ],
+          "excludeAgentIdServicePrincipals": [],
+          "agentIdServicePrincipalFilter": null
+        }
+      }
+    }
+  ],
+  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted. Re-read 2026-09-29 against Jon's README at pin 8af3b118: the groups it names were settled (break-glass to the exclusions group; the author's own travellers, device, AVD and unnamed standing exclusions to authorEnvironment, their tenant side being Direction answers); the three include-only groups stay unknown because the body cannot go without its only target. Since 2026-10-04 one of them, Jon's admin-accounts group (5f96c57d), is adminAccountsGroup: its counterpart is the operator's answer to \"Which group holds your admin accounts?\" (Identify Service and Shared Accounts).",
+  "policiesNote": "Each policy reading records what IAMAI reads a whole exported policy to be where the export itself lost part of it (src/baseline/interpretation.ts PolicyReading). agentReconstructed: the policy targets agent identities through fields only Graph beta carries, which the exporting SDK dropped; the targeting is reconstructed from the author's README intent plus Microsoft's documented beta shape (sources), applied where the step's body is built and where the pin derives its goal map, and checked against the policy's context at every pin. Settled 2026-10-04 against pin 8af3b118."
 }

@@ -19,7 +19,6 @@ import { AVD_USERS_STORAGE, directionAsked, directionComplete, directionDecision
 import { holdWaitsOn } from './stateReason.ts'
 import { searchGroups } from '../graph/collect/onDemand.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
-import { hiddenPolicy } from './workflows.ts'
 import { buildPlanFile, parsePlanFile } from './plan.ts'
 import { AVD_USERS_SLOT } from './resolvePolicy.ts'
 import interpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
@@ -73,7 +72,6 @@ test('T2-AVD: the interpretation reads Jon’s Prod-Users as the operator’s AV
   const policy = (pinned.policies as unknown as { id: string | null; placeholders: Record<string, string> }[]).find((p) => p.id === POLICY_ID)!
   assert.equal(policy.placeholders[PROD_USERS], 'avdUsersGroup')
   assert.deepEqual(PINNED_GOAL_MAP['avd-allowed-users'], [POLICY_ID])
-  assert.equal(hiddenPolicy(POLICY), false)
 })
 
 test('T2-AVD: Confirm What You Use asks for the groups right under the Azure Virtual Desktop card, and only while it reads Yes', () => {

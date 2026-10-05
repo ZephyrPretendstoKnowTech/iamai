@@ -14,6 +14,7 @@ import type { CaPolicy } from '../baseline/types.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { withCorrectedGoals } from '../baseline/authorCorrections.ts'
 import { withLockdownKit } from './lockdownKit.ts'
+import { readPolicy } from '../baseline/policyReadings.ts'
 
 export { mapGoalsToPolicies }
 export type { GoalMap, GoalMapResult }
@@ -82,6 +83,8 @@ export function pinnedSource(running: readonly CaPolicy[]): CaPolicy[] {
 /** Build the map for an uploaded baseline (no stored map), with the pin-time rule. */
 export function goalMapFor(policies: CaPolicy[], strengths: StrengthLookup): GoalMapResult {
   // A pinned policy carries the pin's tokens for the author's objects (which group is the service-accounts group); an upload carries none.
-  const forMap: PolicyForMap[] = policies.map((p) => ({ id: p.id ?? p.displayName, name: p.displayName, facts: policyFacts(p, strengths), placeholders: (p as { placeholders?: Record<string, string> }).placeholders }))
+  // A policy the interpretation reads whole (Jon's AGENT blocks, whose agent
+  // targeting the export lost) is mapped as it is read (baseline/policyReadings.ts).
+  const forMap: PolicyForMap[] = policies.map((p) => ({ id: p.id ?? p.displayName, name: p.displayName, facts: policyFacts(readPolicy(p).policy, strengths), placeholders: (p as { placeholders?: Record<string, string> }).placeholders }))
   return mapGoalsToPolicies(forMap)
 }

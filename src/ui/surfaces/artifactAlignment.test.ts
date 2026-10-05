@@ -34,7 +34,7 @@ import { buildIcs } from '../../roadmap/ics.ts'
 import { groundingBundle, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
 import { cleanupExportViews } from './cleanupExport.ts'
 import { implementationOffered, jsonOffered, policyJsonText, stepOperations } from './stepJson.ts'
-import { powershellFor } from './stepPowerShell.ts'
+import { betaRequestOf, powershellFor } from './stepPowerShell.ts'
 import { finalTargets, unavailableReason } from '../../roadmap/operations.ts'
 import { statedEnforcement } from '../../roadmap/forecast.ts'
 import { readinessTable } from './inventoryTables.ts'
@@ -298,7 +298,10 @@ test('013.C: the machine artifacts name the resolved objects they write, and a g
         for (const o of ops) {
           if (o.mode === 'create') {
             creates += 1
-            assert.match(ps, /New-MgIdentityConditionalAccessPolicy/, `${where}: a create does not create`)
+            // A policy on agent identities is created through Graph beta, which alone carries its agent fields (owner, 2026-10-04).
+            const beta = betaRequestOf(o)
+            if (beta) assert.ok(ps.includes(`Invoke-MgGraphRequest -Method POST -Uri '${beta.endpoint}'`), `${where}: a create does not create`)
+            else assert.match(ps, /New-MgIdentityConditionalAccessPolicy/, `${where}: a create does not create`)
           } else {
             updates += 1
             // The id the PowerShell patches is the operation's own, and it is real.

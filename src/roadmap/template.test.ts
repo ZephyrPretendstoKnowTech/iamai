@@ -66,7 +66,9 @@ test('item 12: every goal × implementation renders Do it in report-only with a 
       // A User Action policy is created On (Phase 2e, roadmap/evidenceStrategy.ts createdOn).
       assert.equal(parsed.state, createdOn(parsed) ? 'enabled' : 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only, or On for a User Action`)
       assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
-      assert.match(powershellFor([{ sourceName: goal.id, memberKey: goal.id, mode: 'create', policyId: null, body: parsed }]), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
+      // A policy on agent identities is created through Graph beta, the only endpoint that carries its agent fields (owner, 2026-10-04).
+      const agents = impl.expectedWho.kind === 'agents'
+      assert.match(powershellFor([{ sourceName: goal.id, memberKey: goal.id, mode: 'create', policyId: null, body: parsed }]), agents ? /Invoke-MgGraphRequest -Method POST -Uri 'https:\/\/graph\.microsoft\.com\/beta\/identity\/conditionalAccess\/policies'/ : /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
     }
   }
 

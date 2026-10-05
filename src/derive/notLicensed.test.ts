@@ -22,15 +22,15 @@ test('Not licensed rows are the goals the baseline holds and the tier cannot, na
     const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
     const ids = rows.map((x) => x.goalId).sort()
     // The workload goal joins as a licence-facet row (no Workload Identities Premium licence);
-    // Block Risky Users From Registering Sign-in Methods since Phase 2c.
-    assert.deepEqual(ids, ['pim-activation-reauth', 'risky-users-register-block', 'sign-in-risk', 'sign-in-risk-medium', 'user-risk', 'user-risk-medium', 'workload-identity-block'])
+    // Block Risky Users From Registering Sign-in Methods since Phase 2c; Block High-Risk AI Agents since 2026-10-04 (owner).
+    assert.deepEqual(ids, ['agents-block-high-risk', 'pim-activation-reauth', 'risky-users-register-block', 'sign-in-risk', 'sign-in-risk-medium', 'user-risk', 'user-risk-medium', 'workload-identity-block'])
     for (const row of rows) {
       const cs = stepById[row.goalId]
       assert.equal(row.title, cs.title, `${row.goalId}: the content step's title`)
       if (cs.licence) assert.equal(row.licence, cs.licence, `${row.goalId}: the content step names the licence`)
     }
     for (const line of notLicensedLines(rows)) assert.doesNotMatch(line.text, /unlock|upgrade|benefit/i, 'never a tier\'s benefits')
-    assert.equal(notLicensedSummary(rows), 'Not licensed (7)')
+    assert.equal(notLicensedSummary(rows), 'Not licensed (8)')
 
   }
   // a goal the baseline does not hold never appears, whatever its licence
@@ -63,13 +63,14 @@ test('the count is of goals, not lines: a shared device line counts each goal it
   const r = runFixture(fixture('small'))
   const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
   const goals = r.coverage.results.filter((x) => goalInMap(PINNED_GOAL_MAP, x.goal.id) && (x.status === 'licence-limited' || (x.status === 'not-applicable' && / licence$/.test(x.applicability?.reason ?? '')))).map((x) => x.goal.id)
-  // Seven lines and eight goals since Block Risky Users From Registering Sign-in Methods (Phase 2c).
-  assert.equal(rows.length, 7, 'the premise: seven lines')
-  assert.equal(goals.length, 8, 'the premise: eight goals, two of them on the shared device line')
+  // Seven lines and eight goals since Block Risky Users From Registering Sign-in Methods (Phase 2c);
+  // eight lines and nine goals since Block High-Risk AI Agents (owner, 2026-10-04).
+  assert.equal(rows.length, 8, 'the premise: eight lines')
+  assert.equal(goals.length, 9, 'the premise: nine goals, two of them on the shared device line')
   assert.deepEqual(rows.flatMap((x) => x.goalIds).sort(), [...goals].sort(), 'every goal is on exactly one line')
-  assert.equal(notLicensedCount(rows), 8)
-  assert.equal(notLicensedSummary(rows), 'Not licensed (8)')
-  assert.match(notLicensedPrintLine(rows), /^8 baseline controls need a licence/)
+  assert.equal(notLicensedCount(rows), 9)
+  assert.equal(notLicensedSummary(rows), 'Not licensed (9)')
+  assert.match(notLicensedPrintLine(rows), /^9 baseline controls need a licence/)
 })
 
 test('the workload goal exists only where someone holds the Directory Synchronization Accounts role: never planned or listed without a sync account (B7)', () => {

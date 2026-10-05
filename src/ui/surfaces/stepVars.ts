@@ -56,6 +56,7 @@ import { networkDraftOf } from '../../mapping/networkDraft.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import { trustedIpLocations } from '../../roadmap/directionAnswers.ts'
 import { INVENTORY } from '../../copy/inventory.ts'
+import { AGENT_RISK_STAGE } from '../../roadmap/agentBlocks.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -175,6 +176,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   const v: Record<string, unknown> = {
     tenant: tenantNameOf(ctx.snapshot),
     tenantName: tenantNameOf(ctx.snapshot),
+    // Where Microsoft stands the agent risk condition (Block High-Risk AI Agents; roadmap/agentBlocks.ts).
+    stage: AGENT_RISK_STAGE,
     // Which state the scan read security defaults in, as two facts rather than
     // one flag: on, off, or neither where the section was not read. The
     // security-defaults step has a lead per state (content who.leadWhen) and no

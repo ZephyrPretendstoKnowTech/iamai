@@ -52,6 +52,13 @@ export type ConfigSection = {
   fallback?: string | null
   /** Result of the dedicated method read, kept separate from the parent policy response. */
   fido2Read?: { status: 'ok' | 'error'; reason: string | null; httpStatus: number | null }
+  /**
+   * The Conditional Access policies' agent fields (Graph beta only, preview),
+   * read beside the v1.0 policies and merged into their rows by id
+   * (collectors.ts, registry 'CA policies agent targeting'). `error` leaves them
+   * unread; absent on a scan from before the read existed, which reads the same.
+   */
+  agentFields?: { status: 'ok' | 'error'; reason: string | null; httpStatus: number | null }
 }
 
 /**

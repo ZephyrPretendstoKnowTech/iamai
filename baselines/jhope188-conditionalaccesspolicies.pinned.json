@@ -2339,6 +2339,12 @@
     "workload-identity-block": [
       "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP"
     ],
+    "agents-block-high-risk": [
+      "0ab1380f-3863-40a5-ab97-24250e1cf44e"
+    ],
+    "agents-block-untrusted": [
+      "1d8beea4-2ea1-4758-8e22-d6310a60220a"
+    ],
     "all-users-no-persistence": [
       "ea9459a9-91b6-4d2b-b929-03781ac81d54"
     ],

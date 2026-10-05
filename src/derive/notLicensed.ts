@@ -141,6 +141,9 @@ export function conditionalAccessLicenceLine(snapshot: Pick<TenantSnapshot, 'cap
 export function partialSeatsLine(step: Step, snapshot: TenantSnapshot): string | null {
   const goal = CATALOGUE.find((g) => g.id === step.goalId)
   if (!goal || !goal.implementations.some((i) => i.tier === 'p2')) return null
+  // A policy on AI agent identities covers no person (Jon's HighRiskAgent block):
+  // people's seats say nothing about it.
+  if (goal.implementations.every((i) => i.expectedWho.kind === 'agents')) return null
   const p2 = snapshot.capabilities?.entraP2
   if (!p2?.enabled) return null
   const guests = new Set(snapshot.users.filter((u) => /^guest$/i.test(u.userType ?? '')).map((u) => u.id))

@@ -10,6 +10,18 @@
 // Pure; the engine ships no PowerShell of its own.
 import type { PolicyOperation } from '../../roadmap/types.ts'
 import { isValidOperation } from '../../roadmap/operations.ts'
+import { BETA_CA_POLICIES, targetsAgents } from '../../roadmap/agentBlocks.ts'
+
+/**
+ * The Graph request an operation sends, where it is not the v1.0 cmdlet's: a
+ * policy that targets agent identities (Jon's AGENT blocks) goes to the beta
+ * collection, the only one that carries the agent fields (Microsoft Learn,
+ * disable-agent-identities). Null for every other policy.
+ */
+export function betaRequestOf(op: PolicyOperation): { method: 'POST' | 'PATCH'; endpoint: string } | null {
+  if (!targetsAgents(op.body as Record<string, unknown>) && !(op.mode === 'update' && targetsAgents((op.intent ?? null) as Record<string, unknown> | null))) return null
+  return op.mode === 'update' ? { method: 'PATCH', endpoint: `${BETA_CA_POLICIES}/${op.policyId}` } : { method: 'POST', endpoint: BETA_CA_POLICIES }
+}
 
 export function powershellFor(operations: readonly PolicyOperation[]): string {
   const valid = operations.filter(isValidOperation)
@@ -17,6 +29,9 @@ export function powershellFor(operations: readonly PolicyOperation[]): string {
   const blocks = valid.map((op, i) => {
     const label = labels[i]
     const v = `$body${label}`
+    // An agent policy is sent as JSON to the beta endpoint: the v1.0 cmdlets drop its agent fields.
+    const beta = betaRequestOf(op)
+    if (beta) return `${label ? `# Policy ${label}\n` : ''}${v} = @'\n${JSON.stringify(op.body, null, 2)}\n'@\nInvoke-MgGraphRequest -Method ${beta.method} -Uri '${beta.endpoint}' -Body ${v} -ContentType 'application/json'`
     const cmdlet =
       op.mode === 'update'
         ? `Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId '${op.policyId}' -BodyParameter ${v}`

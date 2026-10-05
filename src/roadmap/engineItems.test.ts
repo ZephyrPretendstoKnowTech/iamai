@@ -14,6 +14,7 @@ import { PINNED, pinnedPackage } from '../baseline/pinned.ts'
 import { mapGoalsToPolicies } from '../coverage/goalIdentity.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import type { CaPolicy } from '../baseline/types.ts'
+import { readPolicy } from '../baseline/policyReadings.ts'
 
 test('the three blocks are evidence-gated with no device-readiness gate; the admin session policy has no admin-readiness gate', () => {
   // Week two: the device-code block carves out the chosen exclusions group and is delivered, so its
@@ -51,7 +52,8 @@ test('the three blocks are evidence-gated with no device-readiness gate; the adm
 test('the baseline maps its service-accounts block to the new goal, and the pin script would derive the same map', () => {
   const key = PINNED_GOAL_MAP[SERVICE_ACCOUNTS_TRUSTED_GOAL]
   assert.deepEqual(key, ['99eabebd-877c-4800-aa15-d389b8767760'])
-  const forMap = PINNED.policies.map((p) => ({ id: p.id ?? p.displayName, name: p.displayName, facts: policyFacts(p as unknown as CaPolicy, new Map()), placeholders: p.placeholders }))
+  // As the pin script reads each policy: with the interpretation's reading of a policy the export lost part of (Jon's AGENT blocks).
+  const forMap = PINNED.policies.map((p) => ({ id: p.id ?? p.displayName, name: p.displayName, facts: policyFacts(readPolicy(p as unknown as CaPolicy).policy, new Map()), placeholders: p.placeholders }))
   const derived = mapGoalsToPolicies(forMap).map
   assert.deepEqual(derived[SERVICE_ACCOUNTS_TRUSTED_GOAL], key, 'the strict identity rule picks the same policy from the pin')
   // The stored map; the runtime map adds only Jon's corrected registration policy (baseline/authorCorrections.ts).

@@ -84,6 +84,7 @@ import { pitfallTilesOf } from './pitfalls.ts'
 import { personLines } from './personNext.ts'
 import { reportOnlyNoteOf, reportOnlyTilesOf } from './reportOnlyStep.ts'
 import { lockdownKitTilesOf } from './lockdownKitStep.ts'
+import { AGENT_TARGETING_UNREAD, leftInReportOnly } from '../../roadmap/agentBlocks.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -673,6 +674,13 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
     case 'unmatched-pair':
       return fillText(step.action.ambiguousTarget ? app.plan.targetAmbiguous : app.plan.pairUnmatched, { tenant })
     case 'no-operation': {
+      // An agent block whose own policy is there and whose agent targeting this
+      // scan did not read (roadmap/agentBlocks.ts): nothing is written against it
+      // until a scan reads it, which is the reason, not a missing policy.
+      if (step.blockers.some((b) => b.label === AGENT_TARGETING_UNREAD)) {
+        const policy = step.tracking?.members?.find((m) => m.policyName)?.policyName ?? step.tracking?.policyName ?? contentTitle(step)
+        return fillText(app.plan.agentTargetingUnread, { tenant, policy })
+      }
       // "No policy for IAMAI to write. Scan again to rebuild it." — said over a
       // step whose policy EXISTS and is switched off. The step tracks it:
       // `state.members` carries the row with `latest.state === 'disabled'`, on
@@ -1276,6 +1284,12 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   if (unverified && (isPreserved(step) || step.state.satisfied)) return { kind: 'preserve', text: fillText(CONTRACT.leadUnverified, { findings: list(open.map((f) => f.label)) }) }
   // What is true of it, by name (walk list 4.x items 22 and 31): "This is in
   // place already: nothing to create. Keep the policy as it is." said neither.
+  // Block AI Agents You Have Not Approved, done with its policy in Report-only
+  // (roadmap/agentBlocks.ts): IAMAI offers no turn-on, and "is On" was false.
+  if (step.state.satisfied && leftInReportOnly(step) && step.state.lifecycle !== 'enforced') {
+    const names = (step.tracking?.members ?? []).map((m) => m.policyName).filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+    return { kind: 'preserve', text: fillText(app.plan.inPlaceReportOnly, { policy: names.length > 0 ? list(names) : contentTitle(step) }) }
+  }
   if (isPreserved(step)) {
     const names = existingOf(step)?.names ?? (step.tracking?.members ?? []).map((m) => m.policyName).filter((n): n is string => typeof n === 'string' && n.trim() !== '')
     return { kind: 'preserve', text: names.length === 0 ? app.plan.inPlaceKeep : fillText(names.length === 1 ? app.plan.inPlaceOn : app.plan.inPlaceOnMany, { policy: list(names) }) }

@@ -16,6 +16,7 @@
 import type { PolicyFacts } from '../coverage/types.ts'
 import { roleNamesOf } from '../roles.ts'
 import { UNNAMED } from '../names.ts'
+import { AGENT_RISK_STAGE } from './agentBlocks.ts'
 
 /** What the translator needs to turn a policy's ids into the tenant's names. */
 export type PortalContext = {
@@ -124,6 +125,14 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   if (f.workload) {
     const sps = f.workload.sps.size > 0 ? names(f.workload.sps, ctx) : (f.workload.filterRule ?? '')
     return `Users or workload identities → Workload identities → Select service principals → ${sps}`
+  }
+  // Agent identities, in Microsoft's own portal words (policy-autonomous-agents):
+  // they reach no person, so no exclusions group stands beside them.
+  if (f.agents) {
+    const all = [...f.agents.include].some((a) => /^all$/i.test(a))
+    const inc = all ? 'All agent identities' : `Select individual agent identities → ${names(f.agents.include, ctx)}`
+    const exc = f.agents.exclude.size > 0 ? `Select individual agent identities → ${names(f.agents.exclude, ctx)}` : f.agents.filterRule ? `Select agent identities based on attributes → ${f.agents.filterRule}` : 'None'
+    return `Users, agents or workload identities → What does this policy apply to? → Agents → Include: ${inc}; Exclude: ${exc}`
   }
   const include: string[] = []
   if (f.who.all) include.push('All users')
@@ -280,6 +289,7 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
   if (f.deviceFilter) out.push(`Conditions → Filter for devices → Configure: Yes, then ${f.deviceFilter.mode === 'exclude' ? 'Exclude' : 'Include'} devices matching: ${f.deviceFilter.rule}. Left at No the filter is not applied and the policy reaches every device.`)
   if (f.signInRisk.size > 0) out.push(`Conditions → Sign-in risk → Configure: Yes, then ${riskList(f.signInRisk)}`)
   if (f.userRisk.size > 0) out.push(`Conditions → User risk → Configure: Yes, then ${riskList(f.userRisk)}`)
+  if (f.agentRisk.size > 0) out.push(`Conditions → Agent risk (${AGENT_RISK_STAGE}) → Configure: Yes, then ${riskList(f.agentRisk)}`)
   return out
 }
 

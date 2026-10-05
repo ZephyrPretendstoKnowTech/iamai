@@ -6,7 +6,6 @@
 // and the reason.
 import { test } from 'node:test'
 import { heldBack } from './cleanup.ts'
-import { hiddenPolicy } from './workflows.ts'
 import assert from 'node:assert/strict'
 import { fixture, withReviewRow } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
@@ -318,7 +317,7 @@ test('unassessed baseline policies become individual reviews, with no catch-all 
   assert.equal(r.schedule.cleanup!.rows.some((x) => (x.kind as string) === 'notAssessed'), false)
   const reviews = r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
   assert.ok(reviews.length > 0, 'the premise: a review row is drawn')
-  assert.equal(reviews.length, r.coverage.organisation.notAssessed.filter(p => !hiddenPolicy(p.name)).length)
+  assert.equal(reviews.length, r.coverage.organisation.notAssessed.length)
   assert.ok(reviews.every((s) => s.guidance?.doneWhen && s.manualReview))
   assert.ok(r.steps.some(s => s.id === 's-goal-inforcer-mfa'), 'Inforcer uses its ordinary application-scoped goal')
   assert.ok(!reviews.some(s => /inforcer/i.test(s.id)), 'the old Inforcer review is not duplicated')

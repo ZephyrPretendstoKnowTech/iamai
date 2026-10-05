@@ -90,6 +90,12 @@ export const COLLECTOR_REGISTRY: CollectorSpec[] = [
   { name: 'Per-user MFA requirements', lane: 'on-demand', endpoint: '/users/{id}/authentication/requirements', version: 'beta', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'Read for every account as directory pages arrive, in batches of 20; failures stay unknown', purpose: 'Actual legacy per-user MFA state, independent of authentication-method migration status.' },
   // ---- Lane 0: config reads ----
   { name: 'CA policies', lane: '0', configKey: 'caPolicies', endpoint: '/identity/conditionalAccess/policies', version: 'v1.0', paged: true, scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'The tenant policy set the diff and roadmap work from; Microsoft-managed policies are flagged.' },
+  // The same policies from beta, read with them (collectors.ts collectConfigSection)
+  // for the one thing v1.0 does not return: which Microsoft Entra agent identities
+  // a policy targets and the agent risk it names (preview; Jon's two AGENT blocks,
+  // owner 2026-10-04). Only those fields are merged into the v1.0 rows, by id; a
+  // failed read leaves them unread and changes nothing else. Same permission.
+  { name: 'CA policies agent targeting', lane: '0', endpoint: '/identity/conditionalAccess/policies', version: 'beta', paged: true, scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'Read with the CA policies; a refused or failed read leaves the agent fields unread', purpose: 'Which agent identities each policy includes and excludes, its agent filter and its agent risk levels, which only beta returns; merged into the v1.0 policies by id.' },
   { name: 'Named locations', lane: '0', configKey: 'namedLocations', endpoint: '/identity/conditionalAccess/namedLocations', version: 'v1.0', paged: true, scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Trusted-location validation and location-based intents.' },
   // The combination configurations come only when they are asked for, and they
   // are what a strength restricts its combinations to — which security keys,

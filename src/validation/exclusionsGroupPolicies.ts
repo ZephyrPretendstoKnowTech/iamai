@@ -17,7 +17,7 @@ type PolicyRow = {
   id?: unknown
   displayName?: unknown
   state?: unknown
-  conditions?: { users?: { includeUsers?: unknown; includeGroups?: unknown; includeRoles?: unknown; excludeGroups?: unknown } }
+  conditions?: { users?: { includeUsers?: unknown; includeGroups?: unknown; includeRoles?: unknown; excludeGroups?: unknown; includeGuestsOrExternalUsers?: unknown } }
 }
 
 export type ExclusionsGroupPolicy = {
@@ -63,12 +63,27 @@ function appliesToAccounts(policy: PolicyRow, input: ExclusionsGroupPolicyInput)
 }
 
 /**
+ * Whether a policy includes no person at all: its users condition names nobody
+ * (`includeUsers` empty or only None, and no group, role or guest clause). Such
+ * a policy targets agent identities or service principals — Jon's AGENT blocks,
+ * his Entra Connect sync block — and an emergency account is a user, never an
+ * agent or a workload identity, so the policy cannot reach it. Microsoft's agent
+ * policies cannot even exclude a user group. It needs no exclusions group.
+ */
+export function includesNoPerson(policy: unknown): boolean {
+  const users = (policy as PolicyRow | null)?.conditions?.users
+  if (!users || typeof users !== 'object') return false
+  const included = strings(users.includeUsers)
+  return included.every((u) => u.toLowerCase() === 'none') && strings(users.includeGroups).length === 0 && strings(users.includeRoles).length === 0 && (users.includeGuestsOrExternalUsers === null || users.includeGuestsOrExternalUsers === undefined)
+}
+
+/**
  * The policies that need the exclusions group, each with whether it has it:
- * every policy but an Off one.
+ * every policy but an Off one, and one that includes no person (includesNoPerson).
  */
 export function exclusionsGroupPolicies(input: ExclusionsGroupPolicyInput): ExclusionsGroupPolicy[] {
   return (input.policies as PolicyRow[]).flatMap((policy, index) => {
-    if (!policy || typeof policy !== 'object' || policy.state === 'disabled') return []
+    if (!policy || typeof policy !== 'object' || policy.state === 'disabled' || includesNoPerson(policy)) return []
     const applies = appliesToAccounts(policy, input)
     const excludeGroups = policy.conditions?.users?.excludeGroups
     const excluded = Array.isArray(excludeGroups) ? strings(excludeGroups).some(id => same(id, input.groupId)) : null

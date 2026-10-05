@@ -39,6 +39,7 @@ import { applyDeviations } from './deviations.ts'
 import { commsFor, stepExportView } from '../ui/surfaces/stepExport.ts'
 import { stepContract } from '../ui/surfaces/stepContract.ts'
 import type { Step } from './types.ts'
+import { includesNoPerson } from '../validation/exclusionsGroupPolicies.ts'
 
 const POLICIES = pinned.policies as unknown as CaPolicy[]
 const X = '00000000-1111-2222-3333-444444444444'
@@ -539,7 +540,9 @@ test('portal, JSON, PowerShell and download carry the one resolved body, with th
     // where it does not, no channel may name a group the body never mentions.
     let scopedBodies = 0
     for (const body of bodies) {
-      const scoped = ((body.conditions ?? {}) as Record<string, unknown>).users !== undefined
+      // An agent block's users condition includes nobody (owner, 2026-10-04): it
+      // reaches no person and takes no exclusions group (validation/exclusionsGroupPolicies.ts includesNoPerson).
+      const scoped = ((body.conditions ?? {}) as Record<string, unknown>).users !== undefined && !includesNoPerson(body)
       if (scoped) scopedBodies += 1
       const groups = excludeGroupsOf(body)
       assert.equal(groups.filter((g) => g === exclusionsGroupId).length, scoped ? 1 : 0, `${step.id}: excludeGroups names the exclusions group once, and only where the body scopes users`)

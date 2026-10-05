@@ -205,6 +205,89 @@ export type BaselineInterpretation = {
   owner: string
   repo: string
   references: InterpretationRecord[]
+  /** IAMAI's readings of whole policies the export lost part of (`PolicyReading`). Absent or empty where none is recorded. */
+  policies?: PolicyReading[]
+}
+
+/**
+ * What one exported policy is read to be where the export itself lost part of
+ * it. `agentReconstructed`: the policy targets Microsoft Entra agent identities,
+ * and the exporting SDK, which reads Conditional Access from Graph v1.0, dropped
+ * the agent fields that exist only in Graph beta — Jon's two AGENT blocks read
+ * `includeUsers: ['None']`, All resources, block, which targets nothing. The
+ * targeting is reconstructed from the author's own README intent for the policy
+ * plus Microsoft's documented beta shape (`sources`), never from the policy's
+ * name.
+ *
+ * The pinned body stays exactly as it was fetched. The reading is applied where
+ * a step's body is built (roadmap/resolvePolicy.ts resolveTenantPolicy) and
+ * where the pin derives its goal map (roadmap/goalMap.ts goalMapFor,
+ * scripts/pin-baseline.ts), so each reconstructed field is traceable to this
+ * record and not to the author's export.
+ */
+export type PolicyReading = {
+  /** The policy's stable source id, lowercased. */
+  id: string
+  reading: 'agentReconstructed'
+  basis: InterpretationBasis
+  /** Why: the author's documentation of the policy, and what Microsoft documents. */
+  evidence: string
+  /** The Microsoft Learn pages the reconstructed shape is read from. */
+  sources: string[]
+  /** `policyContext` of the published policy the reading was settled against: a changed policy is read again, never carried forward. */
+  context: string
+  /** The condition keys the reading adds to the published conditions, each replacing the published key whole (clientApplications is merged field by field). */
+  conditions: Record<string, unknown>
+}
+
+/** The field paths a reading sets, as `conditions.<key>[.<field>]`, for traceability. */
+export function readingFields(r: Pick<PolicyReading, 'conditions'>): string[] {
+  const out: string[] = []
+  for (const [k, v] of Object.entries(r.conditions)) {
+    if (k === 'clientApplications' && v !== null && typeof v === 'object' && !Array.isArray(v)) for (const f of Object.keys(v as Record<string, unknown>)) out.push(`conditions.clientApplications.${f}`)
+    else out.push(`conditions.${k}`)
+  }
+  return out.sort()
+}
+
+/**
+ * The policy with its reading applied, and the fields the reading set; the policy
+ * itself, and no fields, where no reading names its id. Never mutates the input:
+ * the pinned export is never changed.
+ */
+export function withPolicyReading<T extends { id?: string | null; conditions?: unknown }>(policy: T, readings: readonly PolicyReading[]): { policy: T; fields: string[]; reading: PolicyReading | null } {
+  const id = (policy.id ?? '').toLowerCase()
+  const r = id === '' ? undefined : readings.find((x) => x.id === id)
+  if (!r) return { policy, fields: [], reading: null }
+  const conditions = structuredClone((policy.conditions ?? {}) as Record<string, unknown>)
+  for (const [k, v] of Object.entries(r.conditions)) {
+    if (k === 'clientApplications' && v !== null && typeof v === 'object' && !Array.isArray(v)) {
+      const published = (conditions.clientApplications ?? {}) as Record<string, unknown>
+      conditions.clientApplications = { ...(published !== null && typeof published === 'object' ? published : {}), ...structuredClone(v as Record<string, unknown>) }
+    } else conditions[k] = structuredClone(v)
+  }
+  return { policy: { ...policy, conditions }, fields: readingFields(r), reading: r }
+}
+
+/**
+ * Each policy reading checked against a package as published: the policy is
+ * still there under the same id, and still the policy the reading was settled
+ * against (`policyContext`). A reading whose policy changed is a question for a
+ * person, as a moved reference is (`interpretReferences`); one whose policy is
+ * gone is stale.
+ */
+export function interpretPolicies(interpretation: BaselineInterpretation, published: readonly CaPolicy[]): { reviewRequired: { id: string; why: string }[]; stale: string[] } {
+  const reviewRequired: { id: string; why: string }[] = []
+  const stale: string[] = []
+  for (const r of interpretation.policies ?? []) {
+    const p = published.find((x) => (x.id ?? '').toLowerCase() === r.id)
+    if (!p) {
+      stale.push(r.id)
+      continue
+    }
+    if (policyContext(p) !== r.context) reviewRequired.push({ id: r.id, why: `the ${r.reading} reading was settled against a policy that has materially changed since` })
+  }
+  return { reviewRequired, stale }
 }
 
 /** How one reference is used across a package, by stable policy id. */
@@ -512,10 +595,31 @@ export function readInterpretation(value: unknown): BaselineInterpretation {
       context: { ...(ctx as Record<string, string>) },
     }
   })
-  return { version: v.version, owner: v.owner, repo: v.repo, references }
+  const rawPolicies = v.policies ?? []
+  if (!Array.isArray(rawPolicies)) return bad('policies is not a list')
+  const seenPolicies = new Set<string>()
+  const policies: PolicyReading[] = rawPolicies.map((raw, i) => {
+    if (raw === null || typeof raw !== 'object') return bad(`policy reading ${i} is not an object`)
+    const r = raw as Record<string, unknown>
+    if (typeof r.id !== 'string' || r.id.trim() === '') return bad(`policy reading ${i} has no id`)
+    const id = r.id.toLowerCase()
+    if (seenPolicies.has(id)) return bad(`policy reading ${id} is recorded twice`)
+    seenPolicies.add(id)
+    if (r.reading !== 'agentReconstructed') return bad(`policy reading ${id} has an unknown reading`)
+    if (!BASES.includes(r.basis as InterpretationBasis)) return bad(`policy reading ${id} has an unknown basis`)
+    // A reconstruction rests on what the author documented and what Microsoft
+    // documents, never on the shape of the export (which is what lost it).
+    if (r.basis === 'structural') return bad(`policy reading ${id} claims a reconstruction on structure alone`)
+    if (typeof r.evidence !== 'string' || r.evidence.trim() === '') return bad(`policy reading ${id} records no evidence`)
+    if (!Array.isArray(r.sources) || r.sources.length === 0 || r.sources.some((s) => typeof s !== 'string' || !/^https:\/\/learn\.microsoft\.com\//.test(s))) return bad(`policy reading ${id} cites no Microsoft Learn source`)
+    if (typeof r.context !== 'string' || r.context.trim() === '') return bad(`policy reading ${id} records nothing about what the policy was`)
+    if (r.conditions === null || typeof r.conditions !== 'object' || Array.isArray(r.conditions) || Object.keys(r.conditions).length === 0) return bad(`policy reading ${id} reconstructs nothing`)
+    return { id, reading: 'agentReconstructed', basis: r.basis as InterpretationBasis, evidence: r.evidence, sources: [...(r.sources as string[])], context: r.context, conditions: structuredClone(r.conditions as Record<string, unknown>) }
+  })
+  return { version: v.version, owner: v.owner, repo: v.repo, references, policies }
 }
 
 /** An interpretation that settles nothing: what a baseline with no curated file gets. */
 export function noInterpretation(owner: string, repo: string): BaselineInterpretation {
-  return { version: 1, owner, repo, references: [] }
+  return { version: 1, owner, repo, references: [], policies: [] }
 }

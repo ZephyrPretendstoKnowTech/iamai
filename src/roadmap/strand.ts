@@ -241,6 +241,8 @@ function narrowingReach(n: Narrowing, accountId: string, snapshot: TenantSnapsho
       return { answer: 'unknown', reason: 'the scan does not say when this account will register security information or a device' }
     case 'authContext':
       return { answer: 'unknown', reason: 'the scan does not say when this account signs in to something that asks for this authentication context' }
+    case 'agentRisk':
+      return { answer: 'unknown', reason: 'the policy applies at an agent risk level, which is not about this account' }
     case 'workloadRisk':
       return { answer: 'unknown', reason: 'the policy applies at a workload identity risk level, which is not about this account' }
     case 'deviceFilter':

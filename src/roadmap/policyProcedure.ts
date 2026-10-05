@@ -29,6 +29,7 @@ import { GRANT_LABEL, WINDOWS_AZURE_AD, portalName } from './portalLines.ts'
 import { differencePieces } from './differences.ts'
 import { sameDimension } from './observation.ts'
 import { nameKey } from '../baseline/discover.ts'
+import { AGENT_RISK_STAGE } from './agentBlocks.ts'
 
 type Words = Record<string, string> & {
   conditions: Record<string, string>
@@ -37,6 +38,7 @@ type Words = Record<string, string> & {
 
 /** shared.procedure: every line and fragment the procedures are written in. */
 export const PROCEDURE = (shared as unknown as { procedure: Words }).procedure
+
 
 /**
  * A template with its {placeholders} filled; a value the caller did not supply is
@@ -179,6 +181,14 @@ function usersLine(f: PolicyFacts, ctx: ProcedureContext): string {
     const sps = f.workload.sps.size > 0 ? boldList(names(f.workload.sps, ctx)) : bold(f.workload.filterRule ?? '')
     return fill(PROCEDURE.workload, { include: sps })
   }
+  // Agent identities (Jon's AGENT blocks), in Microsoft's portal words: no
+  // person is included, so the exclusions group is not excluded beside them.
+  if (f.agents) {
+    const all = [...f.agents.include].some((a) => /^all$/i.test(a))
+    const include = all ? PROCEDURE.allAgents : fill(PROCEDURE.agentsSelected, { names: boldList(names([...f.agents.include], ctx)) })
+    const exclude = f.agents.exclude.size > 0 ? fill(PROCEDURE.agentsSelected, { names: boldList(names([...f.agents.exclude], ctx)) }) : f.agents.filterRule ? fill(PROCEDURE.agentsByAttribute, { rule: f.agents.filterRule }) : PROCEDURE.agentsNone
+    return fill(PROCEDURE.agents, { include, exclude })
+  }
   const include = list(includeWords(f, ctx, true))
   const exclude = excludeWords(f, ctx)
   // A long role list is listed under the step, alphabetical, to tick through in Entra (owner, 2026-09-26).
@@ -250,10 +260,11 @@ function conditionLines(f: PolicyFacts, ctx: ProcedureContext): Record<string, s
   const risks = (s: Set<string>): string => boldList(RISK_ORDER.filter((r) => s.has(r)).map((r) => portalName('risk', r) ?? r))
   if (f.signInRisk.size > 0) out.signInRisk = fill(PROCEDURE.signInRisk, { values: risks(f.signInRisk) })
   if (f.userRisk.size > 0) out.userRisk = fill(PROCEDURE.userRisk, { values: risks(f.userRisk) })
+  if (f.agentRisk.size > 0) out.agentRisk = fill(PROCEDURE.agentRisk, { values: risks(f.agentRisk), stage: AGENT_RISK_STAGE })
   return out
 }
 
-const CONDITION_ORDER = ['locations', 'clientApps', 'flows', 'platforms', 'deviceFilter', 'signInRisk', 'userRisk'] as const
+const CONDITION_ORDER = ['locations', 'clientApps', 'flows', 'platforms', 'deviceFilter', 'signInRisk', 'userRisk', 'agentRisk'] as const
 
 /** An authentication strength's object id, built-in or custom. */
 const STRENGTH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -521,7 +532,7 @@ function resourcesCorrection(was: PolicyFacts, now: PolicyFacts, ctx: ProcedureC
 
 /** A condition's Graph key → the key its line is kept under here. */
 const CONDITION_KEY: Record<string, (typeof CONDITION_ORDER)[number]> = {
-  locations: 'locations', clientAppTypes: 'clientApps', authenticationFlows: 'flows', platforms: 'platforms', devices: 'deviceFilter', signInRiskLevels: 'signInRisk', userRiskLevels: 'userRisk',
+  locations: 'locations', clientAppTypes: 'clientApps', authenticationFlows: 'flows', platforms: 'platforms', devices: 'deviceFilter', signInRiskLevels: 'signInRisk', userRiskLevels: 'userRisk', agentIdRiskLevels: 'agentRisk',
 }
 
 function conditionsCorrection(was: PolicyFacts, now: PolicyFacts, ctx: ProcedureContext, only: ReadonlySet<string> | null): string[] {
@@ -532,7 +543,7 @@ function conditionsCorrection(was: PolicyFacts, now: PolicyFacts, ctx: Procedure
   for (const key of CONDITION_ORDER) {
     if (allowed !== null && !allowed.has(key)) continue
     if (before[key] === after[key]) continue
-    out.push(after[key] ?? fill(PROCEDURE.conditionOff, { condition: PROCEDURE.conditions[key] }))
+    out.push(after[key] ?? fill(PROCEDURE.conditionOff, { condition: fill(PROCEDURE.conditions[key], { stage: AGENT_RISK_STAGE }) }))
   }
   return out
 }

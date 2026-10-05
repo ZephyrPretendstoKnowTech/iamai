@@ -35,7 +35,8 @@ import { enforcesByStateOnly, stepOperations } from './stepJson.ts'
 import { CONTRACT, FINISHED_FINDINGS, isAllClear } from './stepContract.ts'
 import { createWaitsOnReadiness, enforcementHeld, externalIdentityOf, implementationOffered, operationsOf, policyHold, switchedOffPolicies, toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
 import type { DirectoryRow, UnavailableReason } from '../../roadmap/operations.ts'
-import { PROCEDURE, besideBaseline, correctionLines, correctionSectionOf, correctionSettings, createLines, reportOnlyLines, turnOnLines } from '../../roadmap/policyProcedure.ts'
+import { PROCEDURE, besideBaseline, correctionLines, correctionSectionOf, correctionSettings, createLines, openLine, reportOnlyLines, turnOnLines } from '../../roadmap/policyProcedure.ts'
+import { UNTRUSTED_AGENTS_GOAL, leftInReportOnly } from '../../roadmap/agentBlocks.ts'
 import type { CorrectionSection, ProcedureContext } from '../../roadmap/policyProcedure.ts'
 import { shownDay } from '../../roadmap/stepSchedule.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from '../../roadmap/stepIds.ts'
@@ -92,8 +93,8 @@ function mailDevicesTaskOf(step: Step, nameOf: (id: string) => string): Emergenc
 }
 
 /** A policy step's Implementation Task ids, in doing order (walk list item 18). */
-export type PolicyTaskId = 'blocked-location' | 'create' | 'report-only' | 'correct' | 'turn-on' | 'pim-settings'
-const POLICY_TASK_IDS: readonly string[] = ['blocked-location', 'create', 'report-only', 'correct', 'turn-on', 'pim-settings'] satisfies PolicyTaskId[]
+export type PolicyTaskId = 'blocked-location' | 'create' | 'report-only' | 'correct' | 'turn-on' | 'before-turn-on' | 'pim-settings'
+const POLICY_TASK_IDS: readonly string[] = ['blocked-location', 'create', 'report-only', 'correct', 'turn-on', 'before-turn-on', 'pim-settings'] satisfies PolicyTaskId[]
 
 /** Whether a task is one of a policy step's own procedures (policyProcedureOf). */
 export const isPolicyProcedureTask = (task: Pick<EmergencyAccountTask, 'id'>): boolean => POLICY_TASK_IDS.includes(task.id)
@@ -613,7 +614,12 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
     fillText(PW.riskClearWait, { days: String(EVIDENCE_WINDOW_DAYS) }),
   ]
   const riskClear = riskLines.length > 0 ? riskLines.join(' ') : null
-  if (!createdOnStep) tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine, ...riskLines] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
+  // A policy IAMAI creates in Report-only and leaves there (Block AI Agents You
+  // Have Not Approved; roadmap/agentBlocks.ts) has no turn-on of IAMAI's: its
+  // "Before you turn it on" stands in its place, a reference and never required,
+  // as the lockdown kit leaves its switches Off with a runbook.
+  if (leftInReportOnly(step)) tasks.push(beforeTurnOnTask(members.map((m) => m.name || String(m.create?.body.displayName ?? ''))[0] ?? ''))
+  else if (!createdOnStep) tasks.push(task('turn-on', 'turnOn', turnOnHeld ? [heldLine, ...riskLines] : members.flatMap((m) => turnOnLines(m.name || String(m.create?.body.displayName ?? ''))), !step.state.satisfied && members.some((m) => !m.on)))
   // What the step's package says comes after the policy is On, in every state:
   // the PIM role settings that make role activation ask for the context.
   for (const after of input.extras?.after ?? []) if (after.steps.length > 0) tasks.push({ id: after.id, accountId: null, title: after.title, targetUpn: null, required: after.required, readinessKey: '', evidence: null, actionLabel: after.title, steps: after.steps })
@@ -662,6 +668,21 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
   const at = tasks.findIndex((t) => t.id === 'turn-on')
   const ordered = mail === null ? tasks : at < 0 ? [...tasks, mail] : [...tasks.slice(0, at), mail, ...tasks.slice(at)]
   return { tasks: ordered, recommendedTaskId: mailFirst ? mail.id : directed ? next.id : null, printAll: true, ...(waiting ? { waiting } : {}), ...(correct.some(exclusionsFirst) ? { exclusionsFirst: firstLine } : {}), ...(correct.some(warns) ? { policyOn: onLine } : {}) }
+}
+
+/** Block AI Agents You Have Not Approved's "Before you turn it on" words (content.json steps[agents-block-untrusted].beforeTurnOn). */
+type BeforeTurnOnWords = { title: string; lines: string[] }
+
+/**
+ * The untrusted-agents block's reference task (roadmap/agentBlocks.ts): exclude
+ * the agents you approve, review the report-only results for agent sign-ins,
+ * then turn it on yourself. Never required: the step is complete once the policy
+ * exists in Report-only, and IAMAI cannot read the agent identities to approve.
+ */
+export function beforeTurnOnTask(policy: string): EmergencyAccountTask {
+  const words = (stepById[UNTRUSTED_AGENTS_GOAL] as unknown as { beforeTurnOn: BeforeTurnOnWords }).beforeTurnOn
+  const steps = [words.lines[0], openLine(policy), ...words.lines.slice(1).map((l) => fillText(l, { policy }))]
+  return { id: 'before-turn-on', accountId: null, title: words.title, targetUpn: null, required: false, readinessKey: '', evidence: null, actionLabel: words.title, steps }
 }
 
 /**
