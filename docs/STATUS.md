@@ -128,6 +128,24 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   new one is On. The pilot is 4.3 in Round 5; until it ships, steps correct in place.
   Built on `v1.1` (2026-10-04): 4.3 builds beside and Retire Replaced Policies retires the
   old; every other step still corrects in place.
+- **Policy identity is the name** (owner, 2026-10-04; it supersedes the 2026-09-27 carve-out
+  that exact controls under any name count as Completed). A step's own policy carries IAMAI's
+  plan tag, or the step's policy name (the baseline's, or the name the plan proposed; dashes,
+  spacing and capitals aside). Controls alone never claim a policy.
+  - Name and controls match: in place.
+  - Name matches, controls differ: the step shows the edits.
+  - No name match: the step creates the baseline's policy in report-only.
+  - Exact controls under another name: the step suggests a rename.
+  - The same job under another name: listed to be retired, and Retire Replaced Policies
+    turns it off once the new one is On.
+  - Two policies with the plan's name: the step asks which is its own.
+  - IAMAI never creates a policy whose name already exists.
+  - Configure Emergency Exclusions still edits every policy, to add the exclusions group.
+  - v1.1 waits for this (owner, 2026-10-04).
+- Jon's ADM-Users, BreakGlass-TrustedLocations and two AGENT blocks are to be built as steps
+  (owner, 2026-10-04). ADM-Users covers admins only eligible in PIM. BreakGlass is Microsoft's
+  two-account pattern and needs a deliberate exception to "never an emergency account by
+  name". The AGENT blocks need Graph beta reads and the agent fields Jon's export lost.
 - New policies take the baseline's own names; renames live in 8.2 Align Policy Names
   (2026-09-26).
 - Implementation Tasks show the whole procedure in every state. Risk is named in Tasks
