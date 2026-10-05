@@ -87,7 +87,7 @@ test('the list is derived from what the Plan draws, never a fixed set of policie
   const userRisk = policies.find((p) => (PINNED_GOAL_MAP['user-risk'] ?? []).includes(p.id ?? p.displayName))!
   assert.ok(!rows.some((r) => r.policy === userRisk.displayName), 'a Not licensed goal\'s policy is not listed again')
   // The baseline's policy that limits one emergency account is listed with the plan's own rule beside it.
-  assert.match(rows.find((r) => r.policy === 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations')?.reason ?? '', /keeps emergency accounts out of every policy/)
+  assert.match(rows.find((r) => r.policy === 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations')?.reason ?? '', /while the other stays excluded from everything/)
 })
 
 test('each footer row names its own reason: agent blocks, the unused EAM companion; the ZTCA switches are no row (T2-LK)', () => {
@@ -147,8 +147,8 @@ test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keep
   }
   assert.ok(sawServiceAccounts && sawSync, 'the premise: a fixture lists both')
   const { rows } = planOf('demo')
-  assert.equal(rows.find((r) => /MFA-Passkeys - ADM-Users/.test(r.policy))?.reason, 'Duplicates Require Phishing-Resistant MFA for Admins for a group of admins. The plan targets the admin roles instead, which cover every admin.')
-  assert.equal(rows.find((r) => /BreakGlass - TrustedLocations/.test(r.policy))?.reason, 'Limits one emergency account outside the office network. The plan keeps emergency accounts out of every policy through the exclusions group (Establish Emergency Access).')
+  assert.equal(rows.find((r) => /MFA-Passkeys - ADM-Users/.test(r.policy))?.reason, 'Covers a group of admin accounts, including admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins misses until they activate. Not in this release.')
+  assert.equal(rows.find((r) => /BreakGlass - TrustedLocations/.test(r.policy))?.reason, 'Requires a strong sign-in from one emergency account outside the office network, while the other stays excluded from everything (Establish Emergency Access). Not in this release.')
 })
 
 test('T2-FTR: a pinned policy keeps its reason by its stable id whatever it is called; a policy of another baseline is read by its name', () => {
@@ -156,8 +156,8 @@ test('T2-FTR: a pinned policy keeps its reason by its stable id whatever it is c
   const adm = policies.find((p) => p.id === 'a53c4c2b-b577-4d88-b64d-36b92f8f3ca0')!
   const renamed = policies.map((p) => (p === adm ? { ...p, displayName: 'Admins with passkeys' } : p))
   const byId = notInPlanRows(renamed, steps, run.coverage, PINNED_GOAL_MAP).find((r) => r.policy === 'Admins with passkeys')
-  assert.match(byId?.reason ?? '', /^Duplicates Require Phishing-Resistant MFA for Admins/)
+  assert.match(byId?.reason ?? '', /^Covers a group of admin accounts, including admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins misses/)
   // An upload's own copy, under another id, still reads its words by Jon's name.
   const uploaded = [{ id: 'upload-0001', displayName: 'IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users' }]
-  assert.match(notInPlanRows(uploaded, [], run.coverage, {}).at(0)?.reason ?? '', /^Duplicates Require Phishing-Resistant MFA for Admins/)
+  assert.match(notInPlanRows(uploaded, [], run.coverage, {}).at(0)?.reason ?? '', /^Covers a group of admin accounts, including admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins misses/)
 })
