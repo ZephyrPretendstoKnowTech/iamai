@@ -122,6 +122,11 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
       case 'rolesIntersectCoreAdmins':
         if (![...f.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))) return false
         break
+      case 'includesGroups':
+        // A policy that reaches people by group, and not everyone (Jon's ADM-Users:
+        // the admin accounts by group). An All-users policy is another goal's.
+        if (f.who.all || f.who.groups.size === 0) return false
+        break
       case 'whoGuests':
         if (f.who.guests === null || (f.who.all && f.who.guests.length === 0)) {
           // must actually target guests specifically, or target All (guests included)
@@ -308,6 +313,13 @@ export function populationReach(f: PolicyFacts, kind: PopulationSpec['kind']): '
       // Which accounts a group holds is the mapping's; the assignments alone prove only All with nothing carved out.
       if (f.who.all) return f.whoNot.groups.size === 0 && f.whoNot.users.size === 0 && f.whoNot.roles.size === 0 ? 'whole' : 'part'
       return named ? 'part' : 'none'
+    case 'adminAccounts':
+      // The admin accounts by group (Jon's ADM-Users): only a policy that names a
+      // group reaches them as a group does, and which accounts it holds is the
+      // mapping's. A policy on directory roles is the admins goal's own
+      // (admins-phishing-resistant), and one for All users is Require MFA for
+      // Everyone's: neither may stand for this one.
+      return f.who.groups.size > 0 ? 'part' : 'none'
   }
 }
 

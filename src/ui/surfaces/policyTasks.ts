@@ -351,7 +351,7 @@ const SAFETY_HOLDS: ReadonlySet<string> = new Set<UnavailableReason>(['unsafe-em
 const WAITS = (PROCEDURE as unknown as { waits: Record<string, string> }).waits
 /** The steps that name the people report-only would have blocked by what they move to (walk list 4.x item 35). */
 const MOVES_OFF = new Set([stepIdForGoal('block-legacy-auth'), stepIdForGoal('block-device-code')])
-const GETS_A_METHOD = new Set([stepIdForGoal('admins-phishing-resistant'), stepIdForGoal('mfa-all-users')])
+const GETS_A_METHOD = new Set([stepIdForGoal('admins-phishing-resistant'), stepIdForGoal('admin-accounts-group-strength'), stepIdForGoal('mfa-all-users')])
 
 /**
  * What the turn-on waits for, each said after "Wait for" and after "After"

@@ -458,7 +458,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // "1 admin is not yet Ready for phishing-resistant MFA" read MFA Readiness's
   // state beside a gate at 100%. The admins judged without a method the policy
   // accepts (roadmap/methodReadiness.ts), by name when three or fewer.
-  if (step.goalId === 'admins-phishing-resistant' && step.methodPreparation) {
+  // Jon's ADM-Users policy names the accounts in the admin accounts group its own gate counts short, the same way.
+  if ((step.goalId === 'admins-phishing-resistant' || step.goalId === 'admin-accounts-group-strength') && step.methodPreparation) {
     const p = step.methodPreparation
     const judged = new Set([...p.readyIds, ...p.unknownIds])
     const short = p.ids.filter((id) => !judged.has(id))

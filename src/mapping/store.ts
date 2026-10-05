@@ -48,6 +48,8 @@ export function toCoverageMapping(state: MappingState, exclusionsGroupId: string
     exclusionsGroupId,
     // The service-accounts group's accounts, shared-device ones included (derive/sets.ts serviceAccountIdsOf).
     serviceAccountUsers: serviceAccountIdsOf(state),
+    // The groups that hold the admin accounts: the population of Jon's ADM-Users policy (coverage.ts).
+    ...((state.adminAccountGroupIds ?? []).length > 0 ? { adminAccountGroupIds: [...(state.adminAccountGroupIds ?? [])] } : {}),
     // The office network the plan picked: the trusted network its service-accounts
     // block carves out, marked trusted in the tenant or not yet (coverage.ts tenantLocationKinds).
     trustedLocationIds: [...(state.trustedLocationIds ?? [])],

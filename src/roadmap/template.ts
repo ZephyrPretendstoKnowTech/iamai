@@ -29,6 +29,8 @@ export const TEMPLATE_PLACEHOLDERS = [
   '{allowedCountriesLocation}',
   '{serviceAccountsGroup}',
   '{coreAdminRoles}',
+  // The groups that hold the admin accounts (MappingState.adminAccountGroupIds), a list.
+  '{adminAccountGroups}',
 ] as const
 export type TemplatePlaceholder = (typeof TEMPLATE_PLACEHOLDERS)[number]
 
@@ -141,4 +143,5 @@ export const SAMPLE_VALUES: TemplateValues = {
   '{allowedCountriesLocation}': '44444444-4444-4444-8444-444444444444',
   '{serviceAccountsGroup}': '55555555-5555-4555-8555-555555555555',
   '{coreAdminRoles}': [...CORE_ADMIN_ROLE_IDS],
+  '{adminAccountGroups}': ['66666666-6666-4666-8666-666666666666'],
 }

@@ -6,7 +6,7 @@ import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
 import { countDirectionImpact, directionSteps } from './direction.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
-import { SERVICE_KEYS, answeredReasonOf, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
+import { SERVICE_KEYS, answeredReasonOf, isDirectionStep, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
 import { applyManualReviews, perUserMfaReading } from './manualWork.ts'
 import { LEGACY_AUTH_STEP_ID, MAIL_ACCOUNTS_WAIT, mailAccountsToMove, mailAnswerMoot, settleBlockSignIns } from './blockSignIns.ts'
 import { COUNTRIES_LOCKOUT_WAIT, countriesLockout, countriesLockoutWait } from './countriesLockout.ts'
@@ -61,7 +61,7 @@ import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { ownCandidate } from '../coverage/coverage.ts'
-import { resolvePopulation } from '../coverage/population.ts'
+import { adminAccountsPopulation, resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { pilotExclusionsOf, proposeRings, ringContextIndexes } from './rings.ts'
 import { createMethodPreparationCache, methodPreparation, methodReadiness } from './methodReadiness.ts'
@@ -1035,7 +1035,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Whoever the tenant's own External authentication method targets: the
   // counterpart of Jon's EAM group (interpretation externalAuthGroup; v1.1 D6).
   const externalAuthTargets = externalAuthTargetsOf(snapshot)
-  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId, externalAuthTargets, avdUserGroupIds: mapping.avdUserGroupIds ?? [] }
+  const tenantObjectsBase = { ...tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot)), blockedCountriesLocationId, externalAuthTargets, avdUserGroupIds: mapping.avdUserGroupIds ?? [], adminAccountGroupIds: mapping.adminAccountGroupIds ?? [] }
   const tenantObjects = companionTargets.length === 0 ? tenantObjectsBase : { ...tenantObjectsBase, omitted: new Set([...(tenantObjectsBase.omitted ?? []), ...companionTargets]) }
   /**
    * The resolved policy with its authentication strength as the request may
@@ -1802,6 +1802,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     '{trustedLocations}': mapping.trustedLocationIds.length > 0 ? mapping.trustedLocationIds : mapping.wizardAnswered.trustedLocations === true ? [] : null,
     '{allowedCountriesLocation}': countryLocation?.id ?? null,
     '{coreAdminRoles}': [...CORE_ADMIN_ROLE_IDS],
+    // The groups that hold the admin accounts, once the operator names them (Identify Service and Shared Accounts).
+    '{adminAccountGroups}': (mapping.adminAccountGroupIds ?? []).length > 0 ? [...(mapping.adminAccountGroupIds ?? [])] : null,
   }
 
   // ---- Goal steps ----
@@ -1963,14 +1965,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const whoKey = impl.expectedWho.kind
     // The service accounts are the mapping's, and the one population every other
     // step excludes (E9): the step that restricts them names them all.
-    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : whoKey === 'serviceAccounts' ? [...serviceAccountIds] : [...resolvePopulation(impl.expectedWho, snapshot).ids].filter((id) => !excluded.has(id)))
+    // The admin accounts by group are the members of the groups the operator named (Jon's ADM-Users).
+    const whoIds = (): string[] => whoKey === 'adminAccounts' ? [...adminAccountsPopulation(mapping.adminAccountGroupIds ?? [], input.groupMembers ?? new Map()).ids] : [...resolvePopulation(impl.expectedWho, snapshot).ids]
+    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : whoKey === 'serviceAccounts' ? [...serviceAccountIds] : whoIds().filter((id) => !excluded.has(id)))
     // THIS goal's own accounts that can sign in, before the plan's exclusions
     // take anybody out. The line above subtracts them from the goal's
     // population, so a policy that excludes a group holding 116 of 122 accounts
     // leaves a goal defined as six people and reports itself delivered for all
     // of them. Who it misses is counted against these (coverageShortfall below).
     if (!goalAccountsCache.has(whoKey)) {
-      const all = whoKey === 'workload' || whoKey === 'serviceAccounts' ? [] : [...resolvePopulation(impl.expectedWho, snapshot).ids]
+      const all = whoKey === 'workload' || whoKey === 'serviceAccounts' ? [] : whoIds()
       goalAccountsCache.set(whoKey, all.filter((id) => popIndex.enabled.has(id)))
     }
     const popIds = expectedCache.get(whoKey) ?? []
@@ -2006,6 +2010,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const blockPlaceholder = (p: TemplatePlaceholder): void => {
       if (p === '{namePrefix}' || p === '{coreAdminRoles}') return
       const prereqId = PLACEHOLDER_STEP[p]
+      // A Direction answer the policy names is the decision wait the step already carries (direction.ts gateOnDirection), never a step to finish first.
+      if (isDirectionStep(prereqId)) return
       if (steps.some((s) => s.id === prereqId)) blockByStep(prereqId, 'create-object')
     }
     let action: Action

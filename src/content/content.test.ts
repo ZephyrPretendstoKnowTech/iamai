@@ -280,31 +280,31 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // two admin policies that still name them (23, 33); the examples list none. The
   // lockout lists (E8) render through their count lines, so those are no longer suppressed.
-  '.steps[22].who.evidence[2]',
-  '.steps[33].who.evidence[2]',
-  '.steps[15].who.evidence[0]',
+  '.steps[23].who.evidence[2]',
+  '.steps[34].who.evidence[2]',
+  '.steps[16].who.evidence[0]',
   // Azure sign-ins by people with no directory role (step-audit item 16); the example lists none.
-  '.steps[15].who.evidence[1]',
   '.steps[16].who.evidence[1]',
-  '.steps[18].who.evidence[0]',
+  '.steps[17].who.evidence[1]',
+  '.steps[19].who.evidence[0]',
   // The countries block's usage line and its partner line (E9): the example lists nobody outside and no partner.
-  '.steps[21].who.evidence[0]',
-  '.steps[21].who.evidence[1]',
+  '.steps[22].who.evidence[0]',
+  '.steps[22].who.evidence[1]',
   // The negation branches of the legacy-authentication and token-protection
   // blocks (R4: each was an ungated evidence line and is now the block's none).
   // Both examples name the accounts the claim is about, so the negation is
   // suppressed — which is the whole of the rule.
-  '.steps[30].who.none',
-  '.steps[35].who.none',
+  '.steps[31].who.none',
+  '.steps[36].who.none',
   // Eligible admins with no passkey or key yet (step-audit item 33); the example lists none.
-  '.steps[33].who.evidence[0]',
   '.steps[34].who.evidence[0]',
-  '.steps[35].who.evidence[1]',
-  '.steps[36].who.evidence[0]',
-  '.steps[37].who.evidence[1]',
+  '.steps[35].who.evidence[0]',
+  '.steps[36].who.evidence[1]',
+  '.steps[37].who.evidence[0]',
   '.steps[38].who.evidence[1]',
+  '.steps[39].who.evidence[1]',
   // The service-accounts block's none line (E9); the example has service accounts.
-  '.steps[40].who.none',
+  '.steps[41].who.none',
   '.pages.plan.blocked.sourceMapping',
   // The passkey settings holds (roadmap/passkeySettings.ts, owner approval 2026-09-14):
   // a profile-based policy, a block list that blocks Authenticator, a partial read.
@@ -314,8 +314,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The device-code and authentication-transfer usage lines (editorial batch C): the
   // example lists nobody. They only read as rendered before because a fragment matched
   // the old none line, which now says the records are not proof of no use.
-  '.steps[19].who.evidence[0]',
   '.steps[20].who.evidence[0]',
+  '.steps[21].who.evidence[0]',
   '.pages.plan.blocked.passkeyPartialRead',
   '.pages.plan.blocked.passkeyProfiles',
   // The workload step's hold (roadmap/workloadIdentity.ts): the example tenant plans no

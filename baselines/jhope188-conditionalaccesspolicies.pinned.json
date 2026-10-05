@@ -1051,6 +1051,7 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "5f96c57d-380f-4872-97ff-cfd74ef1ac1a": "adminAccountsGroup",
         "62d67e66-2bc9-43cd-b00c-6326dae53d18": "authorEnvironment",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
@@ -2287,6 +2288,9 @@
     ],
     "admins-phishing-resistant": [
       "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce"
+    ],
+    "admin-accounts-group-strength": [
+      "a53c4c2b-b577-4d88-b64d-36b92f8f3ca0"
     ],
     "admin-portals-protected": [
       "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e"

@@ -134,6 +134,8 @@ export function evidenceFor(
 const BLOCKED_LINE: Record<string, string> = {
   'block-device-code': W.deviceCodeBlocked,
   'admins-phishing-resistant': W.methodBlocked,
+  // Jon's ADM-Users policy asks the admin accounts group for the same strength (owner, 2026-10-04).
+  'admin-accounts-group-strength': W.methodBlocked,
   'mfa-all-users': W.methodBlocked,
   // The two user-risk policies (OWN-W5): waiting never clears a person's user
   // risk, so the line names the people and that their risk is cleared first; the

@@ -151,6 +151,74 @@
       ]
     },
     {
+      "id": "admin-accounts-group-strength",
+      "name": "Admin accounts group uses phishing-resistant auth",
+      "shortName": "Phishing-resistant MFA for the admin accounts group",
+      "description": "Every account in the admin accounts group must authenticate with phishing-resistant methods, including admins only eligible in PIM.",
+      "phase": 3,
+      "domain": "Admins",
+      "securityValue": 5,
+      "baseEffort": 2,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "includesGroups": true,
+            "grantHasAuthControl": true,
+            "appsAll": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "adminAccounts"
+          },
+          "expectedApps": "all",
+          "floor": {
+            "grant": "phishingResistant"
+          },
+          "allowedExclusions": [
+            "breakGlass"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Phishing-resistant MFA for the admin accounts group",
+            "conditions": {
+              "users": {
+                "includeGroups": [
+                  "{adminAccountGroups}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000004"
+              }
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa",
+      "tldr": "Every account in your admin accounts group signs in with a phishing-resistant method, including admins only eligible in PIM, whom a policy on directory roles misses until they activate.",
+      "cis": []
+    },
+    {
       "id": "admin-portals-protected",
       "name": "Admin portals need strong auth or are blocked for non-admins",
       "shortName": "Admin portals",

@@ -105,8 +105,12 @@ export type Floor = { grant?: GrantFloor; session?: SessionFloor }
 
 export type Signature = Record<string, unknown>
 
-/** `serviceAccounts`: the confirmed service accounts (the mapping's), which the caller supplies; the directory alone cannot name them. */
-export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' | 'serviceAccounts' }
+/**
+ * `serviceAccounts`: the confirmed service accounts (the mapping's), which the caller supplies; the directory alone cannot name them.
+ * `adminAccounts`: the members of the groups the operator named as holding the admin accounts
+ * (MappingState.adminAccountGroupIds), which the caller supplies; the directory cannot say which group that is.
+ */
+export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' | 'serviceAccounts' | 'adminAccounts' }
 
 export type Implementation = {
   tier: 'free' | 'p1' | 'p2' | 'pim' | 'intune' | 'workloadId' | 'gsa' | 'mcas'

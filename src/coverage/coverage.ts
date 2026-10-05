@@ -12,7 +12,7 @@ import { applyDeviations } from '../roadmap/deviations.ts'
 import { policyFacts } from './facts.ts'
 import type { StrengthLookup } from './strength.ts'
 import { grantExceedsFloor, grantFloorRank, satisfiesFloor } from './strength.ts'
-import { resolveFactsWho, resolvePopulation } from './population.ts'
+import { adminAccountsPopulation, resolveFactsWho, resolvePopulation } from './population.ts'
 import type { GroupMembers } from './population.ts'
 import { detectFacets } from './applicability.ts'
 import type { FacetOverrides } from './applicability.ts'
@@ -131,6 +131,12 @@ export type CoverageInput = {
     exclusionsGroupId?: string | null
     /** The confirmed service accounts: the population of a goal that targets them (E9). */
     serviceAccountUsers?: string[]
+    /**
+     * The groups the operator named as holding the admin accounts
+     * (MappingState.adminAccountGroupIds): their members are the population of the
+     * goal that targets the admin accounts by group. Absent: not answered.
+     */
+    adminAccountGroupIds?: string[]
     /**
      * The office network the plan picked (MappingState.trustedLocationIds): the
      * locations the service-accounts step carves out. They are the trusted network
@@ -431,7 +437,13 @@ function evaluateGoal(
 
   // Expected population E. The service accounts are the mapping's (E9): the
   // directory cannot name them.
-  const expected = impl.expectedWho.kind === 'serviceAccounts' ? { ids: new Set(input.mapping?.serviceAccountUsers ?? []), estimated: false, unresolvedGroups: [] } : resolvePopulation(impl.expectedWho, input.snapshot)
+  // The admin accounts by group are the members of the groups the operator named,
+  // as this scan read them; a group it did not read is unresolved, never empty.
+  const expected = impl.expectedWho.kind === 'serviceAccounts'
+    ? { ids: new Set(input.mapping?.serviceAccountUsers ?? []), estimated: false, unresolvedGroups: [] }
+    : impl.expectedWho.kind === 'adminAccounts'
+      ? adminAccountsPopulation(input.mapping?.adminAccountGroupIds ?? [], input.groupMembers)
+      : resolvePopulation(impl.expectedWho, input.snapshot)
   const E = expected.ids
   base.expectedCount = E.size
   // No service accounts confirmed: nothing for the goal to restrict, so it does not apply here.

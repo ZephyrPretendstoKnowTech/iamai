@@ -78,6 +78,8 @@ export function directionAsked(q: Pick<DirectionQuestion, 'askedWhen'>, question
 
 /** Where the Azure Virtual Desktop groups answer is stored (MappingState.avdUserGroupIds; decisions.ts applyStepDecisions): a storage id, not a step. */
 export const AVD_USERS_STORAGE = 's-direction-use-avd-users'
+/** Where the admin accounts groups answer is stored (MappingState.adminAccountGroupIds; decisions.ts applyStepDecisions): a storage id, not a step. */
+export const ADMIN_ACCOUNTS_STORAGE = 's-direction-accounts-admin-groups'
 
 /** The Direction step a blocker waits on, or null for a blocker that is not one. */
 export function directionBlockerStep(b: { kind: string; label: string }): DirectionStepId | null {
@@ -103,7 +105,7 @@ export type DirectionAnswer = { value: string; picked: string[] }
 export type DirectionQuestionKey =
   | `service:${string}`
   | 'mailDevices' | 'partner' | 'avdUsers'
-  | 'serviceAccounts' | 'sharedDevices'
+  | 'serviceAccounts' | 'sharedDevices' | 'adminAccounts'
   | 'computers' | 'phones' | 'officeNetwork'
 
 /**
@@ -118,6 +120,7 @@ export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, 
   avdUsers: { step: DIRECTION_STEP.use, storedAs: `stepDecisions['${AVD_USERS_STORAGE}'] → avdUserGroupIds` },
   serviceAccounts: { step: DIRECTION_STEP.accounts, storedAs: 'serviceAccountUserIds, wizardAnswered.serviceAccounts' },
   sharedDevices: { step: DIRECTION_STEP.accounts, storedAs: 'sharedDeviceUserIds' },
+  adminAccounts: { step: DIRECTION_STEP.accounts, storedAs: `stepDecisions['${ADMIN_ACCOUNTS_STORAGE}'] → adminAccountGroupIds` },
   computers: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.computers}']` },
   phones: { step: DIRECTION_STEP.devices, storedAs: `questionAnswers['${QUESTION_STEP.devices}:${DEVICE_ANSWER_KEYS.phoneManagement}'], [...:${DEVICE_ANSWER_KEYS.phoneAppProtection}]` },
   officeNetwork: { step: DIRECTION_STEP.devices, storedAs: `trustedLocationIds, wizardAnswered.trustedLocations, questionAnswers['${DIRECTION_LOCATIONS_STORAGE}:officeNetwork']` },
@@ -168,7 +171,7 @@ export function answeredReasonOf(key: DirectionQuestionKey, value: string): stri
  */
 const OFFICE_NETWORK = ['office', 'remote'] as const
 
-type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'avdUserGroupIds'>
+type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'avdUserGroupIds' | 'adminAccountGroupIds'>
 
 const answer = (value: string, picked: readonly string[] = []): DirectionAnswer => ({ value, picked: [...picked] })
 /** A picker's own answer was saved by a person, never by the detected pass (pickerRows.ts defaultDecisions). */
@@ -218,6 +221,9 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
     case 'avdUsers':
       // Only a list is an answer: "nobody may use it" is Azure Virtual Desktop answered No.
       return (m.avdUserGroupIds ?? []).length > 0 ? answer('groups', m.avdUserGroupIds) : null
+    case 'adminAccounts':
+      // Only a list is an answer: left empty, it is not answered and only Jon's ADM-Users policy waits.
+      return (m.adminAccountGroupIds ?? []).length > 0 ? answer('groups', m.adminAccountGroupIds) : null
     case 'serviceAccounts':
       return confirmed(m, 'serviceAccounts') ? (m.serviceAccountUserIds.length > 0 ? answer('some', m.serviceAccountUserIds) : answer('none')) : null
     case 'sharedDevices':
@@ -402,6 +408,8 @@ export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LO
   if (Object.keys(basis).length > 0) out.push([DIRECTION_STEP.use, { answers: basis, at }])
   if (answers.serviceAccounts) out.push([PREREQ_STEP_ID.serviceAccountsGroup, { picked: answers.serviceAccounts.value === 'some' ? answers.serviceAccounts.picked : [], at }])
   if (answers.sharedDevices) out.push(['s-shared-devices', { picked: answers.sharedDevices.value === 'some' ? answers.sharedDevices.picked : [], at }])
+  // The groups that hold the admin accounts, under their own storage id (decisions.ts applyStepDecisions writes adminAccountGroupIds).
+  if (answers.adminAccounts) out.push([ADMIN_ACCOUNTS_STORAGE, { picked: answers.adminAccounts.value === 'groups' ? answers.adminAccounts.picked : [], at }])
   const computers = answers.computers
   const phones = answers.phones
   if (computers || phones) {

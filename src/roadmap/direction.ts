@@ -228,6 +228,16 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
       // With everyone remote there is no office to keep them to (Phase 2d): they count as people.
       chosen: sharedIds.length > 0 || (mapping.sharedDeviceUserIds ?? []).length > 0 ? { none: Q.sharedDevices.note, some: remote ? Q.sharedDevices.joinsRemote : Q.sharedDevices.joins } : null,
     }),
+    // Which group holds the admin accounts (owner, 2026-10-04): the accounts Jon's
+    // ADM-Users policy asks for the baseline's strength, admins only eligible in
+    // PIM included. The scan cannot tell which group that is, so the card
+    // suggests nothing and says nothing it did not see. Optional: left empty,
+    // only that policy's step waits (GOAL_DEPENDS).
+    question('adminAccounts', ctx, {
+      label: Q.adminAccounts.label, control: 'groups', options: [], pickedWith: 'groups',
+      suggested: answer('groups'), evidence: '', chosen: { groups: Q.adminAccounts.chosen },
+      optional: true, note: Q.adminAccounts.optional,
+    }),
   ]
 }
 
@@ -415,6 +425,8 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   'sharepoint-trusted-network': ['officeNetwork'],
   // Jon's AVD allow-list block (T2-AVD): the groups allowed to use Azure Virtual Desktop; the service question comes from the goal's applicability.
   'avd-allowed-users': ['avdUsers'],
+  // Jon's ADM-Users policy (owner, 2026-10-04): the groups that hold the admin accounts.
+  'admin-accounts-group-strength': ['adminAccounts'],
   // Phones Blocked from company data widens Jon's block to iOS and Android (deviations.ts BLOCK_PLATFORMS_GOAL).
   'block-unsupported-platforms': ['phones'],
   // Define the Trusted Network holds until the office question is answered, as

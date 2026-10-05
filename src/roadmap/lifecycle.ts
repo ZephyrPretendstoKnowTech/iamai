@@ -347,7 +347,7 @@ export function workflowReviewIsCurrent(step: Step): boolean {
  */
 export function blockedMilestoneOf(stepId: string): string | null {
   if (stepId === LEGACY_AUTH_STEP_ID || stepId === 's-goal-block-device-code') return MILESTONE.moveBlocked
-  if (stepId === 's-goal-admins-phishing-resistant' || stepId === 's-goal-mfa-all-users') return MILESTONE.readyBlocked
+  if (stepId === 's-goal-admins-phishing-resistant' || stepId === 's-goal-admin-accounts-group-strength' || stepId === 's-goal-mfa-all-users') return MILESTONE.readyBlocked
   return null
 }
 

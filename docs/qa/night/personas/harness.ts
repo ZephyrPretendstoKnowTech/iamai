@@ -635,7 +635,8 @@ export function acceptDirection(t: Tenant, r: FixtureRun): Tenant {
     // Only the questions the screen asks (directionAsked), as Approve answers saves them (T2-AVD).
     const questions = all.filter((q) => directionAsked(q, all, (x) => drafts[x.key]))
     const values = Object.fromEntries(questions.map((q) => [q.key, drafts[q.key]]))
-    if (!questions.every((q) => directionAnswerComplete(q, values[q.key]))) continue
+    // An optional question left empty disables nothing (DirectionQuestions.tsx ApproveAnswers): the admin accounts groups.
+    if (!questions.every((q) => q.optional === true || directionAnswerComplete(q, values[q.key]))) continue
     const basis = Object.fromEntries(questions.filter((q) => q.basis !== null).map((q) => [q.key, q.basis as string]))
     next = decide(next, step.id, answers(values, basis))
   }

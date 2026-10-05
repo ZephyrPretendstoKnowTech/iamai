@@ -78,6 +78,17 @@ export type SourceMeaning =
    * roadmap/resolvePolicy.ts). Unanswered, the policy waits on that answer.
    */
   | 'avdUsersGroup'
+  /**
+   * The author's admin accounts, by group (Jon's SG-Entra-DUG-Admins-AllAdminUsers,
+   * the only include of IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users; owner
+   * 2026-10-04). A group reaches admins only eligible in PIM, whom a
+   * directory-roles condition reaches only once they activate. IAMAI cannot tell
+   * which of the tenant's groups holds its admin accounts, so the counterpart is
+   * the groups the operator names in Identify Service and Shared Accounts
+   * (MappingState.adminAccountGroupIds; roadmap/resolvePolicy.ts). Unanswered,
+   * the policy waits on that answer.
+   */
+  | 'adminAccountsGroup'
   | 'trustedLocation'
   | 'authorEnvironment'
   | 'unknown'
@@ -206,7 +217,7 @@ export type ReferenceUsage = {
   context: Record<string, string>
 }
 
-const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'avdUsersGroup', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
+const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'avdUsersGroup', 'adminAccountsGroup', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
 const CLASSIFICATIONS: ReferenceClassification[] = ['knownSemantic', 'sourceOnly', 'decisionRequired', 'invalidSource']
 
 /** The one classification each meaning allows: a record whose two fields disagree cannot be checked by a reviewer. */

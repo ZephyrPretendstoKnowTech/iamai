@@ -41,6 +41,8 @@ export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}
   // The countries policy makes its own location, as its first task (Stage 3).
   '{allowedCountriesLocation}': stepIdForGoal('geo-restriction'),
   '{serviceAccountsGroup}': PREREQ_STEP_ID.serviceAccountsGroup,
+  // The groups that hold the admin accounts: Identify Service and Shared Accounts asks for them (`ADMIN_ACCOUNTS_SLOT`).
+  '{adminAccountGroups}': DIRECTION_STEP_IDS[1],
 }
 
 /**
@@ -79,6 +81,13 @@ export type TenantObjects = {
    * waits on Confirm What You Use.
    */
   avdUserGroupIds?: readonly string[]
+  /**
+   * The groups the operator named as holding the admin accounts
+   * (MappingState.adminAccountGroupIds). Absent or empty: not answered, and a
+   * policy naming the author's admin-accounts group names the slot
+   * `ADMIN_ACCOUNTS_SLOT`, which waits on Identify Service and Shared Accounts.
+   */
+  adminAccountGroupIds?: readonly string[]
   /** The named locations the tenant marked as its trusted network; empty until it names one. */
   trustedLocationIds?: readonly string[]
   /**
@@ -533,6 +542,17 @@ const AVD_USERS = 'avdUsersGroup'
 const DIRECTION_USE_STEP = DIRECTION_STEP_IDS[0]
 
 /**
+ * The author's admin accounts, by group (src/baseline/interpretation.ts
+ * `adminAccountsGroup`; Jon's ADM-Users): the groups the operator names in
+ * Identify Service and Shared Accounts. Until they are named the policy names
+ * this slot instead, so no channel hands over a policy whose only include is
+ * missing: it waits on the Direction step that asks (PLACEHOLDER_STEP). The
+ * same token a goal's template names the groups by (template.ts).
+ */
+export const ADMIN_ACCOUNTS_SLOT = '{adminAccountGroups}'
+const ADMIN_ACCOUNTS = 'adminAccountsGroup'
+
+/**
  * The pin's token for a source reference this baseline's interpretation settles
  * as the author's own environment: something identified by evidence as theirs,
  * which this tenant does not have and does not need
@@ -710,6 +730,13 @@ function substitutionsFor(
     if (token === AVD_USERS && r.kind === 'group') {
       const groups = [...new Set(tenant.avdUserGroupIds ?? [])]
       ids.set(r.id, groups.length > 0 ? groups : [AVD_USERS_SLOT])
+      continue
+    }
+    // The groups that hold the admin accounts: the operator's, all of them where
+    // the author's one stood, or the slot Identify Service and Shared Accounts fills.
+    if (token === ADMIN_ACCOUNTS && r.kind === 'group') {
+      const groups = [...new Set(tenant.adminAccountGroupIds ?? [])]
+      ids.set(r.id, groups.length > 0 ? groups : [ADMIN_ACCOUNTS_SLOT])
       continue
     }
     if (token !== null && MAPPED_TOKENS.has(token)) {
