@@ -1,0 +1,30 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Decide How and Where People Sign In",
+  "fact": null,
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "Require a Security Key for One Emergency Account Everywhere",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Decide How and Where People Sign In",
+      "state": "Waiting on your answers"
+    },
+    {
+      "label": "Configure Passkey Authentication",
+      "state": "Prerequisite · To do"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Sep 7, 2026"
+}
