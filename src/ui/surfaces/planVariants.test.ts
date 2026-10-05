@@ -453,7 +453,8 @@ const INVENTORY: string[] = [
   // operator names in Identify Service and Shared Accounts, so while none is named it reaches
   // nobody the plan can count and draws no who line, waiting on that answer. The one policy whose
   // population is an answer rather than the directory's; named, it reads who-known like any other.
-  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-none', // small/s-goal-admin-accounts-group-strength
+  // Since its procedure stands whole while the answer waits (audit, 2026-10-05) it draws a shape
+  // already listed, so it adds none of its own.
   // Jon's two AGENT blocks (owner, 2026-10-04): a policy on AI agent identities reaches no person,
   // so it draws no who line, waiting on the foundation and then ready to create in Report-only.
   // The only policies whose population is never people (roadmap/agentBlocks.ts).

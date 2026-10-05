@@ -144,10 +144,10 @@ test('ADM-Users: unanswered, the step waits on Identify Service and Shared Accou
   assert.equal(s.action.json, null, 'no body is written while the groups are not named')
   assert.equal(JSON.stringify(s.action).toLowerCase().includes(JON_ADMINS), false, 'the author’s group is in nothing handed over')
   assert.equal(stepOf(r.steps, 's-create-report-only').reportOnlyBatch?.create.includes(ADM_STEP), false, '3.8 does not create it yet')
-  // Its threshold names no campaign: Prepare Your Team for MFA prepares nobody this policy reaches until
-  // the groups are named. What moves the number is the answer, so the route is the step that asks it.
-  assert.equal(s.action.readinessGate?.routeId, ACCOUNTS, JSON.stringify(s.action.readinessGate))
-  assert.equal(s.action.readinessGate?.route, 'Identify Service and Shared Accounts')
+  // No threshold yet (audit, 2026-10-05): nobody is in the policy to count until the groups are
+  // named, so the answer is the one wait, and no "not measured" (owner ban, 2026-09-23) stands beside it.
+  assert.equal(s.action.readinessGate, undefined, JSON.stringify(s.action.readinessGate))
+  assert.equal(s.blockers.some((b) => b.kind === 'readiness'), false)
   // Named, the campaign that gets the group's accounts ready is named again.
   const f = answered([GROUP_A])
   const named = stepOf(runFixture(withGroup(f, GROUP_A, f.snapshot.users.slice(0, 3).map((u) => u.id))).steps, ADM_STEP)

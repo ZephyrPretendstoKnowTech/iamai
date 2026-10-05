@@ -59,6 +59,7 @@ import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { ReviewedSource } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
+import { DIRECTION_STEP_IDS } from './stepGroups.ts'
 import { PINNED_GOAL_MAP, goalInMap, goalMapFor, pinnedSource, policiesForGoal, policyKey } from './goalMap.ts'
 import { COVERAGE_JUDGED, memberKeyOf, sameDimension, unwrittenDifferences } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
@@ -2925,7 +2926,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // enforcementHeld). The step read "Blocked · when device readiness reaches
       // 80% (now 29%)" with four dated rings, an enforcement event, a calendar
       // entry and every implementation channel beside it.
-      if (unmet && !renameOnlyOn) {
+      // While the policy waits on a Direction answer that names who it reaches (the admin
+      // accounts group), nobody is in it to count: the answer is the wait, and a threshold
+      // beside it could only read "not measured" (owner ban, 2026-09-23). It is measured once
+      // the answer names them (audit, 2026-10-05).
+      const awaitsWho = (action.missing ?? []).some((m) => m.stepId !== null && (DIRECTION_STEP_IDS as readonly string[]).includes(m.stepId))
+      if (unmet && !renameOnlyOn && !awaitsWho) {
         readinessGate = thresholdReading()
         blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(readinessGate.measure, readinessGate.threshold, readinessGate.value) })
         state = { ...state, condition: conditionFor(blockers) }

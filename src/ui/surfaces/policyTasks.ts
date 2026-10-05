@@ -40,6 +40,7 @@ import { UNTRUSTED_AGENTS_GOAL, leftInReportOnly } from '../../roadmap/agentBloc
 import type { CorrectionSection, ProcedureContext } from '../../roadmap/policyProcedure.ts'
 import { shownDay } from '../../roadmap/stepSchedule.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from '../../roadmap/stepIds.ts'
+import { DIRECTION_STEP_IDS } from '../../roadmap/stepGroups.ts'
 import { blockedLocationTaskOf } from './blockedLocationTask.ts'
 import { BLOCKED_COUNTRIES_SLOT } from '../../roadmap/resolvePolicy.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
@@ -513,9 +514,16 @@ export function policyProcedureOf(step: Step, input: PolicyProcedureInput): Emer
     return apps.filter((a): a is string => typeof a === 'string').map((a) => a.toLowerCase())
   }))
   const unmadeApp = (m: { token: string; stepId: string | null }): boolean => m.stepId === null && includedApps.has(m.token.toLowerCase())
-  if (missing.some((m) => m.decision === true || m.unreadable === true || (m.stepId === null ? !unmadeApp(m) : !OBJECT_OF_STEP[m.stepId]))) return null
+  // An answer a Direction step has still to give (the admin accounts group, the AVD
+  // groups, the emergency account) is named for what it will be, so the procedure
+  // stands whole while the question waits (owner, 2026-09-25).
+  const answerNames = (PROCEDURE as unknown as { answerNames?: Record<string, string> }).answerNames ?? {}
+  const answerOf = (m: { token: string; stepId: string | null }): string | null => (m.stepId !== null && (DIRECTION_STEP_IDS as readonly string[]).includes(m.stepId) ? answerNames[m.token] ?? null : null)
+  if (missing.some((m) => m.decision === true || m.unreadable === true || (m.stepId === null ? !unmadeApp(m) : !OBJECT_OF_STEP[m.stepId] && answerOf(m) === null))) return null
   const pendingName = new Map(missing.flatMap((m) => {
     // The countries blocked outright are the countries step's second location (v1.1 D4), never its allowed one.
+    const answer = answerOf(m)
+    if (answer !== null) return [[m.token.toLowerCase(), answer] as const]
     const key = m.token === BLOCKED_COUNTRIES_SLOT ? 'blockedCountries' : m.stepId ? OBJECT_OF_STEP[m.stepId] : undefined
     return key ? [[m.token.toLowerCase(), input.proposed[key]] as const] : []
   }))
