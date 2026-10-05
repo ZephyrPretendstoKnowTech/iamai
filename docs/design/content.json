@@ -3728,6 +3728,13 @@
           "meta": "Prepared {date} by {by} · Scanned {scanned} · Measured against {baseline}",
           "status": "{done} of {total} steps are done.",
           "finishOn": "The rest are planned to finish around {date}.",
+          "$commentFront": "The briefing's first page (owner, 2026-10-05, wording audit item 9): what the plan is in one sentence, the finish, what people will notice and how the risk is managed, so a manager can stop after one page (ui/surfaces/printPlan.ts briefNoticesOf). The journey starts on the next page.",
+          "front": {
+            "what": "This plan brings {tenant}'s Microsoft sign-in rules up to the baseline named above, one step at a time, so a stolen password alone can't get into the business's accounts.",
+            "notice": "What people will notice",
+            "more": "And {n} more, under The changes ahead.",
+            "none": "No one notices a change from the steps still to do."
+          },
           "cards": {
             "done": "Done",
             "ahead": "Still to do",

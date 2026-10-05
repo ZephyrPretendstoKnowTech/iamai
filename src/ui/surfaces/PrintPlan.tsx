@@ -20,7 +20,7 @@ import { fillText, fillTextVerbatim } from '../../content/render.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
 import { boardOf } from './planBoard.ts'
-import { BRIEF, briefDaysOf, briefOf, doesntApplyLinesOf, noPlanLine, recoveryOf } from './printPlan.ts'
+import { BRIEF, briefDaysOf, briefNoticesOf, briefOf, doesntApplyLinesOf, noPlanLine, recoveryOf } from './printPlan.ts'
 import { list } from '../../copy/statements.ts'
 import type { BriefEntry } from './printPlan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -145,6 +145,7 @@ export function PrintPlan({
   const open = brief.chapters.filter((c) => c.entries.length > 0)
   // The plan by day (owner, 2026-10-04), from the forecast the Estimated finish reads.
   const days = briefDaysOf(board)
+  const notices = briefNoticesOf(brief)
   const mfaToday = mfaTodayLine(tenant)
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
@@ -152,7 +153,7 @@ export function PrintPlan({
   return createPortal(
     <div className="print-plan brief">
       <section className="brief-cover">
-        <BrandMark size={40} />
+        <BrandMark size={32} />
         <h1>{fillText(BRIEF.title, { tenant: tenantName })}</h1>
         {/* The scan it was made from, and, over a week old, the screen's own warning: a
             briefing printed weeks later read as current (F-184). */}
@@ -163,6 +164,7 @@ export function PrintPlan({
           {/* The finish only while work is left: statedEstimate is always a date, and a finished plan has no rest to finish. */}
           {brief.counts.ahead > 0 && <> {fillText(BRIEF.finishOn, { date: absoluteDate(estimate) })}</>}
         </p>
+        <p className="brief-what">{fillText(BRIEF.front.what, { tenant: tenantName })}</p>
         {/* Who is asked for MFA today, where the scan read that it is nobody or only per-user MFA's accounts (F-180), as the Plan says above its tiles. */}
         {mfaToday && <p className="brief-mfa-today">{mfaToday}</p>}
         <div className="brief-cards">
@@ -196,22 +198,54 @@ export function PrintPlan({
             </ul>
           </section>
         )}
-        <section className="brief-journey">
-          <h2>{BRIEF.headings.journey}</h2>
-          <ol>
-            {brief.chapters.map((c) => (
-              <li key={c.key ?? c.title}>
-                <p>
-                  <strong>
-                    <span className="print-number">{c.number}</span> {c.title}
-                  </strong>{' '}
-                  <span className="brief-progress">· {c.progress}</span>
-                </p>
-                {c.purpose && <p className="brief-purpose">{c.purpose}</p>}
-              </li>
+        {/* The first page stands alone (owner, 2026-10-05, wording audit item 9): what people
+            will feel, from each open step's own Impact line, and how the risk is managed. */}
+        {brief.counts.ahead > 0 && (
+          <section className="brief-notice">
+            <h2>{BRIEF.front.notice}</h2>
+            {notices.shown.length > 0 ? (
+              <ul>
+                {notices.shown.map((n) => (
+                  <li key={n.id}>
+                    <strong>
+                      <span className="print-number">{n.number}</span> {n.title}
+                    </strong>
+                    {n.when && <span className="brief-progress"> · {n.when}</span>}
+                    <span className="brief-why">{n.notice}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{BRIEF.front.none}</p>
+            )}
+            {notices.more > 0 && <p className="brief-purpose">{fillText(BRIEF.front.more, { n: notices.more })}</p>}
+          </section>
+        )}
+        <section className="brief-risk">
+          <h2>{BRIEF.headings.risk}</h2>
+          <ul>
+            {BRIEF.risk.map((r) => (
+              <li key={r}>{r}</li>
             ))}
-          </ol>
+          </ul>
         </section>
+      </section>
+
+      <section className="brief-journey">
+        <h2>{BRIEF.headings.journey}</h2>
+        <ol>
+          {brief.chapters.map((c) => (
+            <li key={c.key ?? c.title}>
+              <p>
+                <strong>
+                  <span className="print-number">{c.number}</span> {c.title}
+                </strong>{' '}
+                <span className="brief-progress">· {c.progress}</span>
+              </p>
+              {c.purpose && <p className="brief-purpose">{c.purpose}</p>}
+            </li>
+          ))}
+        </ol>
       </section>
 
       {days.length > 0 && (
@@ -245,15 +279,6 @@ export function PrintPlan({
           ))}
         </section>
       )}
-
-      <section className="brief-risk">
-        <h2>{BRIEF.headings.risk}</h2>
-        <ul>
-          {BRIEF.risk.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
-      </section>
 
       {brief.done.length > 0 && (
         <section className="brief-done">

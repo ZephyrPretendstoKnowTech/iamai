@@ -3493,10 +3493,26 @@ footer.app a {
   .brief-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin: 0 0 2mm; }
   .brief-cards p { margin: 0; border: 1px solid var(--line); padding: 3mm 4mm; }
   .brief-cards strong { display: block; font-size: var(--t-6); }
-  .brief-needs ul, .brief-risk ul, .brief-not ul { margin: 0; padding-left: 5mm; }
-  .brief-needs li, .brief-risk li, .brief-not li { margin: 0 0 1.5mm; }
+  .brief-needs ul, .brief-notice ul, .brief-risk ul, .brief-not ul { margin: 0; padding-left: 5mm; }
+  .brief-needs li, .brief-notice li, .brief-risk li, .brief-not li { margin: 0 0 1.5mm; }
+  .brief-notice li { break-inside: avoid-page; }
+  /* One page for the cover (owner, 2026-10-05): tighter headings and cards, a decision's questions in two columns. */
+  .brief-cover h2 { margin: 4mm 0 2mm; }
+  .brief-cover .brief-meta { margin-bottom: 4mm; }
+  .brief-cover .brief-status { margin-bottom: 3mm; }
+  .brief-cover .brief-cards p { padding: 2mm 4mm; }
+  .brief-cover .brief-cards strong { font-size: var(--t-5); }
+  .brief-cover li { margin-bottom: 1mm; }
+  .brief-cover ul, .brief-cover .brief-purpose { font-size: var(--t-1); line-height: 1.35; }
+  .brief-cover h1 { margin-top: 2mm; }
+  .brief-asks { columns: 2; column-gap: 8mm; }
+  .brief-asks li { break-inside: avoid; }
+  .brief-what { margin: 0 0 4mm; }
   .brief-needs li { break-inside: avoid-page; }
   .brief-why { display: block; color: var(--secondary-text); }
+  /* The first page stands alone (owner, 2026-10-05, wording audit item 9): the journey opens the second. */
+  .brief-journey { break-before: page; }
+  .brief-journey > h2 { margin-top: 0; }
   .brief-journey ol { list-style: none; margin: 0; padding: 0; }
   .brief-journey li { margin: 0 0 2mm; break-inside: avoid-page; }
   .brief-journey p { margin: 0; }

@@ -130,6 +130,7 @@ type BriefWords = {
   meta: string
   status: string
   finishOn: string
+  front: { what: string; notice: string; more: string; none: string }
   cards: { done: string; ahead: string; needs: string }
   headings: { needs: string; journey: string; days: string; ahead: string; risk: string; done: string; notInPlan: string; aside: string }
   days: { lead: string; turnOn: string }
@@ -281,6 +282,20 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
   })
   const ahead = chapters.reduce((n, c) => n + c.entries.length, 0)
   return { chapters, needs, done, aside, counts: { done: done.length, ahead, needs: needs.length } }
+}
+
+/** One change people will feel, as the first page lists it. */
+export type BriefNotice = { id: string; number: string | null; title: string; when: string | null; notice: string }
+
+/**
+ * What people will notice (owner, 2026-10-05, wording audit item 9): the open steps
+ * whose Impact line names a change someone feels, in the journey's order, the first
+ * `cap` of them and how many more The changes ahead holds. A step no one notices
+ * ("No one notices a change", "No one notices, unless …") is left to its own entry.
+ */
+export function briefNoticesOf(brief: Pick<Brief, 'chapters'>, cap = 4): { shown: BriefNotice[]; more: number } {
+  const felt = brief.chapters.flatMap((c) => c.entries).flatMap((e): BriefNotice[] => (e.notice && !/^No one notices\b/i.test(e.notice) ? [{ id: e.id, number: e.number, title: e.title, when: e.when, notice: e.notice }] : []))
+  return { shown: felt.slice(0, cap), more: Math.max(0, felt.length - cap) }
 }
 
 /** One day of the plan by day: the rows whose next action falls on it, and the policies turned on that day. */

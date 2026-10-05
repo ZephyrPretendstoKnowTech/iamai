@@ -15,7 +15,7 @@ import { fillText } from '../../content/render.ts'
 import { applySkips } from '../../roadmap/progress.ts'
 import { boardOf } from './planBoard.ts'
 import { list } from '../../copy/statements.ts'
-import { BRIEF, briefDaysOf, briefOf, decisionAsksOf, printSectionsOf, readinessNeed, recoveryOf } from './printPlan.ts'
+import { BRIEF, briefDaysOf, briefNoticesOf, briefOf, decisionAsksOf, printSectionsOf, readinessNeed, recoveryOf } from './printPlan.ts'
 import type { Brief } from './printPlan.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -314,4 +314,20 @@ test('the plan by day (owner, 2026-10-04): every open row on its forecast day, e
   assert.equal(BRIEF.headings.days, 'The plan by day')
   assert.equal(fillText(BRIEF.days.turnOn, { steps: list(['A', 'B']) }), 'Turn on: A and B')
   assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /const days = briefDaysOf\(board\)/)
+})
+
+test('the first page stands alone: what the plan is, what people will notice from each open step\'s own Impact line, and how the risk is managed (owner, 2026-10-05)', () => {
+  const { brief } = briefFor(curatedFixture('demo'))
+  const { shown, more } = briefNoticesOf(brief)
+  const felt = brief.chapters.flatMap((c) => c.entries).filter((e) => e.notice && !/^No one notices\b/.test(e.notice))
+  assert.ok(felt.length > 4, `the demo has ${felt.length} changes people feel`)
+  assert.deepEqual(shown.map((n) => n.id), felt.slice(0, 4).map((e) => e.id), 'the first four, in the journey\'s order')
+  assert.equal(more, felt.length - 4, 'the rest are counted, not dropped')
+  for (const n of shown) assert.doesNotMatch(n.notice, /^No one notices/, 'a step no one notices is not a change people feel')
+  assert.deepEqual(briefNoticesOf({ chapters: [] }), { shown: [], more: 0 })
+  const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
+  const cover = print.slice(print.indexOf('<section className="brief-cover">'), print.indexOf('<section className="brief-journey">'))
+  for (const part of ['BRIEF.front.what', 'BRIEF.front.notice', 'BRIEF.headings.risk', 'BRIEF.finishOn']) assert.ok(cover.includes(part), `${part} is not on the first page`)
+  assert.equal(print.split('BRIEF.headings.risk').length, 2, 'the risk list is printed once')
+  assert.match(readFileSync('src/ui/app.css', 'utf8'), /\.brief-journey \{ break-before: page; \}/, 'the journey opens the second page')
 })
