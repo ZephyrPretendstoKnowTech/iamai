@@ -12,40 +12,18 @@
 //
 // Pure: no DOM, no network.
 
-type Policy = { id: string | null; displayName: string; conditions: unknown; [key: string]: unknown }
+import { DEFAULT_BASELINE } from './registry.ts'
+import type { AuthorCorrection, CorrectablePolicy } from './annotations.ts'
 
-export type AuthorCorrection = {
-  /** The exported policy, by its display name in the pin. */
-  policy: string
-  /** The goal it delivers once corrected. */
-  goal: string
-  /** What the author confirmed, and where it is recorded. */
-  evidence: string
-  /** The corrected policy; the export itself is never changed. */
-  apply: (policy: Policy) => Policy
-}
+export type { AuthorCorrection }
+type Policy = CorrectablePolicy
 
-type Conditions = { users?: Record<string, unknown>; applications?: Record<string, unknown>; platforms?: unknown; [key: string]: unknown }
+/** The default baseline's corrections (its annotations; v2.0 prep, item 5): Jon's, recorded in baseline/annotations/jhope188.ts. */
+export const AUTHOR_CORRECTIONS: readonly AuthorCorrection[] = DEFAULT_BASELINE.annotations.corrections
 
-export const AUTHOR_CORRECTIONS: readonly AuthorCorrection[] = [
-  {
-    policy: 'IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration',
-    goal: 'register-info-protected',
-    evidence: "Jon confirmed his export targets device registration on iPhones only by mistake: it protects security-information registration (docs/plans/roadmap-flow/v1-plan.md, Phase 2a: \"5.1 stays: it is what Jon said his export meant\"). Its include is his own registration pilot group, which no tenant holds (interpretation.json: decisionRequired), so the plan reads it as the people the plan rolls out to, All users, as his other policies include them.",
-    apply: (p) => {
-      const c = (p.conditions ?? {}) as Conditions
-      const users = { ...(c.users ?? {}), includeUsers: ['All'], includeGroups: [] }
-      const applications = { ...(c.applications ?? {}), includeUserActions: ['urn:user:registersecurityinfo'] }
-      return { ...p, conditions: { ...c, users, applications, platforms: null } }
-    },
-  },
-]
-
-const byName = new Map(AUTHOR_CORRECTIONS.map((c) => [c.policy, c]))
-
-/** The policy as its author confirmed it, or the policy itself where nothing corrects it. */
-export function corrected<T extends { displayName: string }>(policy: T): T {
-  const c = byName.get(policy.displayName)
+/** The policy as its author confirmed it, or the policy itself where nothing corrects it; `corrections` are the baseline's own. */
+export function corrected<T extends { displayName: string }>(policy: T, corrections: readonly AuthorCorrection[] = AUTHOR_CORRECTIONS): T {
+  const c = corrections.find((x) => x.policy === policy.displayName)
   return c ? (c.apply(policy as unknown as Policy) as unknown as T) : policy
 }
 
@@ -53,9 +31,9 @@ export function corrected<T extends { displayName: string }>(policy: T): T {
  * The goal map with each corrected policy on the goal it delivers, where the map
  * holds no policy for that goal already (`keyOf` a policy's key in the map).
  */
-export function withCorrectedGoals(map: Record<string, string[]>, policies: readonly Policy[], keyOf: (p: Policy) => string): Record<string, string[]> {
+export function withCorrectedGoals(map: Record<string, string[]>, policies: readonly Policy[], keyOf: (p: Policy) => string, corrections: readonly AuthorCorrection[] = AUTHOR_CORRECTIONS): Record<string, string[]> {
   const out = { ...map }
-  for (const c of AUTHOR_CORRECTIONS) {
+  for (const c of corrections) {
     if ((out[c.goal] ?? []).length > 0) continue
     const p = policies.find((x) => x.displayName === c.policy)
     if (p) out[c.goal] = [keyOf(p)]

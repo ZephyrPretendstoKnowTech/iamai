@@ -24,6 +24,8 @@
 // down. A switch in Report-only is set Off.
 //
 // Pure: no DOM, no network.
+import { DEFAULT_BASELINE } from '../baseline/registry.ts'
+import type { BaselineAnnotations, LockdownSwitch } from '../baseline/annotations.ts'
 import { nameKey } from '../baseline/discover.ts'
 import { unwrittenDifferences } from './observation.ts'
 import type { PolicyOperation, Step } from './types.ts'
@@ -31,23 +33,18 @@ import type { PolicyOperation, Step } from './types.ts'
 /** The goal-map key the three switches sit under, and the step's goal id. */
 export const LOCKDOWN_KIT_GOAL = 'lockdown-kit'
 
-/** What each switch shuts, which is what its runbook line says it is for. */
-export type LockdownSwitch = 'adminPortals' | 'unmanagedDevices' | 'everything'
+export type { LockdownSwitch }
 
 /**
- * The switches, in the order an incident escalates through them: the admin
- * portals, then unmanaged devices outside the trusted network, then everything.
- * `key` is the pinned policy's stable id; `reviewedName` is provenance only.
+ * The default baseline's switches (its annotations; v2.0 prep, item 5), in the
+ * order an incident escalates through them: Jon's, recorded in
+ * baseline/annotations/jhope188.ts. `key` is the pinned policy's stable id.
  */
-export const LOCKDOWN_SWITCHES: readonly { key: string; reviewedName: string; switch: LockdownSwitch }[] = [
-  { key: 'fafaa50c-0b61-4ac6-a589-f9a1120b2f9e', reviewedName: 'IAC - ZTCA - GLOBAL – BLOCK – Admin Portal', switch: 'adminPortals' },
-  { key: '2dd84b12-7900-40f0-b192-027c20aaa83f', reviewedName: 'IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation', switch: 'unmanagedDevices' },
-  { key: '8417ec17-17f5-44c1-b937-85b1917f5d9e', reviewedName: 'IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global', switch: 'everything' },
-]
+export const LOCKDOWN_SWITCHES: BaselineAnnotations['lockdownSwitches'] = DEFAULT_BASELINE.annotations.lockdownSwitches
 
 /** The switch a goal-map key is, or null. */
-export function switchOf(key: string): LockdownSwitch | null {
-  return LOCKDOWN_SWITCHES.find((s) => s.key === key.toLowerCase())?.switch ?? null
+export function switchOf(key: string, switches: BaselineAnnotations['lockdownSwitches'] = LOCKDOWN_SWITCHES): LockdownSwitch | null {
+  return switches.find((s) => s.key === key.toLowerCase())?.switch ?? null
 }
 
 /**
@@ -55,9 +52,9 @@ export function switchOf(key: string): LockdownSwitch | null {
  * under no other goal: a goal left with no policy leaves the map (the pinned
  * map handed the Admin Portal block to admin-portals-protected).
  */
-export function withLockdownKit<P>(map: Record<string, string[]>, policies: readonly P[], keyOf: (p: P) => string): Record<string, string[]> {
+export function withLockdownKit<P>(map: Record<string, string[]>, policies: readonly P[], keyOf: (p: P) => string, switches: BaselineAnnotations['lockdownSwitches'] = LOCKDOWN_SWITCHES): Record<string, string[]> {
   const present = new Set(policies.map((p) => keyOf(p).toLowerCase()))
-  const kit = LOCKDOWN_SWITCHES.map((s) => s.key).filter((k) => present.has(k))
+  const kit = switches.map((s) => s.key).filter((k) => present.has(k))
   if (kit.length === 0) return map
   const out: Record<string, string[]> = {}
   for (const [goal, keys] of Object.entries(map)) {

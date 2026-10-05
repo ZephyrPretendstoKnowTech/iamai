@@ -24,7 +24,7 @@ export const PINNED = DEFAULT_BASELINE.pinned as unknown as PinnedBaseline
  * interpretation.json reads the source's references against.
  */
 export function pinnedFiles(read: 'corrected' | 'published' = 'corrected', def: BaselineDefinition = DEFAULT_BASELINE): BaselineFile[] {
-  return (def.pinned as unknown as PinnedBaseline).policies.map((p) => (read === 'corrected' ? corrected(p) : p)).map((p, i) => ({ path: `Policies/${(p.displayName || p.id || `policy-${i}`).replace(/[^\w-]+/g, '-')}.json`, text: JSON.stringify(p) }))
+  return (def.pinned as unknown as PinnedBaseline).policies.map((p) => (read === 'corrected' ? corrected(p, def.annotations.corrections) : p)).map((p, i) => ({ path: `Policies/${(p.displayName || p.id || `policy-${i}`).replace(/[^\w-]+/g, '-')}.json`, text: JSON.stringify(p) }))
 }
 
 const cached = new Map<string, BaselinePackage>()

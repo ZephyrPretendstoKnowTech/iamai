@@ -34,7 +34,7 @@ export function goalMapOf(def: BaselineDefinition): GoalMap {
   const hit = goalMaps.get(def.id)
   if (hit) return hit
   const pinned = def.pinned as { policies: { id: string | null; displayName: string; conditions: unknown }[]; goalMap?: GoalMap }
-  const map = withLockdownKit(withCorrectedGoals((pinned.goalMap ?? {}) as GoalMap, pinned.policies, (p) => policyKey(p)), pinned.policies, (p) => policyKey(p)) as GoalMap
+  const map = withLockdownKit(withCorrectedGoals((pinned.goalMap ?? {}) as GoalMap, pinned.policies, (p) => policyKey(p), def.annotations.corrections), pinned.policies, (p) => policyKey(p), def.annotations.lockdownSwitches) as GoalMap
   goalMaps.set(def.id, map)
   return map
 }

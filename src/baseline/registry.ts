@@ -11,6 +11,8 @@
 import jhopePinned from '../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
 import jhopeIndex from '../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import jhopeInterpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
+import { JHOPE188_ANNOTATIONS } from './annotations/jhope188.ts'
+import type { BaselineAnnotations } from './annotations.ts'
 
 /** A curated baseline's id: the key its files are named by. */
 export type BaselineId = 'jhope188'
@@ -23,10 +25,12 @@ export type BaselineDefinition = {
   pinned: typeof jhopePinned
   index: typeof jhopeIndex
   interpretation: typeof jhopeInterpretation
+  /** What it says about its own policies beyond their JSON (annotations.ts; v2.0 prep, item 5). */
+  annotations: BaselineAnnotations
 }
 
 export const BASELINES: Readonly<Record<BaselineId, BaselineDefinition>> = {
-  jhope188: { id: 'jhope188', label: 'Defense in Depth — Maintained by Jon Hope', pinned: jhopePinned, index: jhopeIndex, interpretation: jhopeInterpretation },
+  jhope188: { id: 'jhope188', label: 'Defense in Depth — Maintained by Jon Hope', pinned: jhopePinned, index: jhopeIndex, interpretation: jhopeInterpretation, annotations: JHOPE188_ANNOTATIONS },
 }
 
 /** The baseline a plan uses when none is chosen: Jon Hope's. */

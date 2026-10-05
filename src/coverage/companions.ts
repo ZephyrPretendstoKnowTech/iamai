@@ -9,14 +9,15 @@
 //
 // Pure: no DOM, no network.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { DEFAULT_BASELINE } from '../baseline/registry.ts'
 
 type GoalMap = Record<string, string[]>
 
-/** The countries goal, whose second policy is Jon's NoExclusions block where countries are listed to block outright (v1.1 D4). */
-const GEO_GOAL = 'geo-restriction'
+/** The countries goal, whose second policy is Jon's NoExclusions block where countries are listed to block outright (v1.1 D4): the default baseline's (its annotations; v2.0 prep, item 5). */
+const GEO_GOAL = DEFAULT_BASELINE.annotations.blockedCountriesGoal ?? ''
 
-/** The goals whose second mapped policy is a companion, not a pair half. */
-export const COMPANION_GOALS: ReadonlySet<string> = new Set(['user-risk'])
+/** The goals whose second mapped policy is a companion, not a pair half: the default baseline's. */
+export const COMPANION_GOALS: ReadonlySet<string> = new Set(DEFAULT_BASELINE.annotations.companionGoals)
 
 /**
  * Whether the authentication methods policy the scan read has an external

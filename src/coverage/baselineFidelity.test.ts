@@ -496,11 +496,11 @@ test('every pinned member, switched on in the tenant as it stands, is never read
   const narrower: string[] = []
   // The lockdown kit is no catalogue goal: its switches are created Off and never read as coverage (roadmap/lockdownKit.ts).
   for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP).filter(([g]) => g !== LOCKDOWN_KIT_GOAL)) {
-    const tenantPolicies = PINNED_POLICIES.map(corrected).filter((p) => keys.includes(policyKey(p))).map((p) => ({ ...structuredClone(p), id: `tenant-${policyKey(p)}`, state: 'enabled' }) as unknown as Raw)
+    const tenantPolicies = PINNED_POLICIES.map((p) => corrected(p)).filter((p) => keys.includes(policyKey(p))).map((p) => ({ ...structuredClone(p), id: `tenant-${policyKey(p)}`, state: 'enabled' }) as unknown as Raw)
     const r = computeCoverage({
       snapshot,
       tenantPolicies,
-      baselinePolicies: PINNED_POLICIES.map(corrected),
+      baselinePolicies: PINNED_POLICIES.map((p) => corrected(p)),
       baselineUnusable: [],
       strengths: buildStrengthLookup([]),
       groupMembers: new Map() as GroupMembers,

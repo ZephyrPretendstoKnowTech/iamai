@@ -13,16 +13,17 @@ import { setState, stateFields } from './lifecycle.ts'
 import type { Step } from './types.ts'
 import { MANUAL_REVIEW_ID } from './manualWork.ts'
 import { SERVICE_KEYS, answeredReasonOf } from './directionAnswers.ts'
+import { DEFAULT_BASELINE } from '../baseline/registry.ts'
 
-/** Incomplete pinned definitions retained in source, hidden for the V1 journey. */
-export const HIDDEN_AGENT_POLICY = /IAC\s*-\s*AGENT\s*-\s*BLOCK\s*-\s*(HighRiskAgent|NonTrustedAgents)/i
+/** Incomplete pinned definitions retained in source, hidden for the V1 journey: the default baseline's (its annotations; v2.0 prep, item 5). */
+export const HIDDEN_AGENT_POLICY: RegExp | null = DEFAULT_BASELINE.annotations.hiddenPolicies
 /**
  * A pinned policy no review row draws. Jon's AVD allow-list block was one for
  * v1.0 (its allowed users were unidentified); since T2-AVD it is a policy step,
  * Limit Azure Virtual Desktop to Its Allowed Groups, whose groups the operator
  * names in Confirm What You Use (v1.1 D4/D6).
  */
-export const hiddenPolicy = (name: string): boolean => HIDDEN_AGENT_POLICY.test(name)
+export const hiddenPolicy = (name: string): boolean => HIDDEN_AGENT_POLICY?.test(name) ?? false
 const W = workflowWords
 /**
  * The one Microsoft page every generated review row cites, and the day the
