@@ -59,12 +59,12 @@ test("the emergency exports print the screen's task text, never the content's ol
       for (const label of LABELS) assert.ok(text.includes(label), `${where}: ${label} is missing`)
       // The YubiKey steps appear only inside their labelled alternative.
       for (const chunk of text.split(lead)) {
-        const at = chunk.indexOf('Connect the approved YubiKey')
+        const at = chunk.indexOf('Connect the YubiKey')
         if (at < 0) continue
         const labelAt = chunk.indexOf(LABELS[0])
         assert.ok(labelAt >= 0 && labelAt < at && chunk.indexOf(LABELS[1]) > at, `${where}: a YubiKey step outside its label`)
       }
-      assert.ok(!text.split(lead)[0].includes('Connect the approved YubiKey'), `${where}: a YubiKey step before the alternatives`)
+      assert.ok(!text.split(lead)[0].includes('Connect the YubiKey'), `${where}: a YubiKey step before the alternatives`)
     }
   }
 })

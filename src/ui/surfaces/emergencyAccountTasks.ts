@@ -134,7 +134,7 @@ function createSteps(domain: string, replacement: boolean): string[] {
   ]
 }
 
-export function yubiKeySteps(upn: string, device = 'approved YubiKey'): string[] {
+export function yubiKeySteps(upn: string, device = 'YubiKey'): string[] {
   const account = upn === 'the emergency account' ? upn : `**${upn}**`
   return [
     `In a separate browser session, open [Security info](https://mysignins.microsoft.com/security-info) and sign in as ${account}.`,
