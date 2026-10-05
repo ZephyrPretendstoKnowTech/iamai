@@ -1,26 +1,21 @@
 {
-  "lane": "Up Next",
+  "lane": "Completed",
   "substatus": null,
-  "reason": "after: Prepare Emergency Access Accounts",
+  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
   "fact": "Enforced",
-  "badge": "Up Next",
-  "bar": "After Prepare Emergency Access Accounts",
-  "rail": "Not yet: after Prepare Emergency Access Accounts",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Prepare Emergency Access Accounts",
-      "state": "Prerequisite · To do"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Sep 7, 2026"
+  "when": "Aug 28, 2026"
 }

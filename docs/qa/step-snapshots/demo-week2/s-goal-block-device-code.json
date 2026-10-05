@@ -1,11 +1,11 @@
 {
-  "lane": "Ready",
-  "substatus": "Rename",
-  "reason": null,
+  "lane": "Completed",
+  "substatus": null,
+  "reason": "Satisfied by Core - Block - Device code flow — no change needed",
   "fact": "Enforced",
-  "badge": "Ready · Rename",
-  "bar": "Ready to rename",
-  "rail": "Rename the policy",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -17,5 +17,5 @@
     "Entra",
     "AI Info"
   ],
-  "when": "Sep 8, 2026"
+  "when": "Aug 28, 2026"
 }

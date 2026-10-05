@@ -1,26 +1,21 @@
 {
-  "lane": "Ready",
-  "substatus": "Rename",
-  "reason": null,
+  "lane": "Completed",
+  "substatus": null,
+  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
   "fact": "Enforced",
-  "badge": "Ready · Rename",
-  "bar": "Ready to rename",
-  "rail": "Rename the policy",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
   "headings": [
     "About this Step",
     "Tasks Remaining",
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Dormant Accounts",
-      "state": "1 account hasn't signed in for 90 days and has no method"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Sep 9, 2026"
+  "when": "Aug 28, 2026"
 }
