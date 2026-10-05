@@ -17,6 +17,7 @@ import { fillText, missingVars } from '../../content/render.ts'
 import { Button, Picker } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { AuthoredText, DoneWhen, ReadinessSection, StepActionColumn, StepFooter, StepHead, StepSection } from './StepSections.tsx'
+import { listedReason } from './reasonList.ts'
 import type { ReadinessTile } from './stepContract.ts'
 import { HEAD, TASK_HEAD } from './stepHeadings.ts'
 import { CONTRACT, milestoneHeadlineOf } from './stepContract.ts'
@@ -120,16 +121,27 @@ export function CleanupBody({ phase, row, status, onScan, onDone }: {
   const doneWhen = entry.doneWhen.filter(whole)
   const copyArtifact = (id: string, value: string): void => { void copyImplementationArtifact(value).then(ok => { setCopied(ok ? id : 'copy-failed'); setTimeout(() => setCopied(null), ok ? 1500 : 6000) }) }
   const head = <StepHead eyebrow={drill || naming ? CONTRACT.kind.check : alerting ? CONTRACT.kind.object : null} title={entry.title} badge={status.word} tone={status.tone} sub={status.waitingFor ? <p className="reason">{status.waitingFor}</p> : null} />
+  // A list the reason names, one line each on screen (reasonList.ts).
+  const listed = listedReason(entry.why, ex as Record<string, unknown>)
+  const learn = entry.learn?.url && (
+    <a href={entry.learn.url} target="_blank" rel="noopener noreferrer">
+      Learn →
+    </a>
+  )
   const why = (
     <StepSection heading={taskHead?.why ?? HEAD.why}>
-      <p>
-        {fillText(entry.why, ex)}{' '}
-        {entry.learn?.url && (
-          <a href={entry.learn.url} target="_blank" rel="noopener noreferrer">
-            Learn →
-          </a>
-        )}
-      </p>
+      {listed ? (
+        <>
+          <p>{listed.lead}</p>
+          <ul>{listed.items.map((item) => <li key={item}>{item}</li>)}</ul>
+          <p>{listed.rest}{' '}{learn}</p>
+        </>
+      ) : (
+        <p>
+          {fillText(entry.why, ex)}{' '}
+          {learn}
+        </p>
+      )}
     </StepSection>
   )
   const done = <DoneWhen heading={taskHead?.doneWhen ?? HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />

@@ -235,10 +235,10 @@
         "$commentAfterExclusions": "F-001: a correction that removes an exclusion from a policy Configure Emergency Exclusions has not reached yet. Done first, it takes the emergency accounts' old exclusion off before the group is there.",
         "afterExclusions": "After {step} adds {group} to it.",
         "$commentBeside": "A step that builds the baseline's policy beside the tenant's own doing the same job (roadmap/generate.ts BUILDS_BESIDE, Action.besidePolicies; option B, audit 2026-10-05): one line on the policy's card, so the step screen says what shared.existingCoverageBeside says in the export and print. {names} is each tenant policy with its state, {retire} the Cleanup row's title. besideOn once this step's policy is On, with the names alone. besideStricter follows for each one whose grant asks more than the baseline's.",
-        "besideOne": "Your {names} keeps doing this job until this policy is On; {retire} turns it off after that.",
-        "besideMany": "Your {names} keep doing this job until this policy is On; {retire} turns them off after that.",
-        "besideOn": "This policy is On; {retire} turns off {names}.",
-        "besideStricter": "{name} is stricter than the baseline's: keep it with a reason in {retire} unless you mean to loosen sign-in."
+        "besideOne": "Your {names} keeps doing this job until this policy is On. Then {retire} turns it off.",
+        "besideMany": "Your {names} keep doing this job until this policy is On. Then {retire} turns them off.",
+        "besideOn": "This policy is On. {retire} now turns off {names}.",
+        "besideStricter": "{name} asks more than the baseline's. Keep it, with a reason, in {retire} unless you mean to loosen sign-in."
       },
       "$commentAfterExclusions": "F-001: the Correct task's first line (and the PowerShell script's first comment) while Configure Emergency Exclusions still has to add the exclusions group to the policy whose exclusion the correction removes.",
       "afterExclusions": "Do this after {step} adds {group} to this policy.",
@@ -246,9 +246,9 @@
       "policyOn": "This policy is On: a saved change applies at the next sign-in.",
       "$commentAnswerNames": "What a policy's procedure calls an answer a Direction step has still to give (owner rule, 2026-09-25: Implementation Tasks whole in every state; audit, 2026-10-05): the procedure fell back to \"Review the policies that affect …\" while the question was unanswered. Keyed by the slot the policy names.",
       "answerNames": {
-        "{adminAccountGroups}": "your admin accounts group",
+        "{adminAccountGroups}": "that holds your admin accounts",
         "{avdUserGroups}": "the groups allowed to use Azure Virtual Desktop",
-        "{emergencyStrongAccount}": "the emergency account you choose"
+        "{emergencyStrongAccount}": "that must use its security key"
       },
       "$commentRiskClear": "Remediate High-Risk Users and Reset Passwords for Medium-Risk Users while report-only names someone it would have stopped (owner, 2026-09-28; pre-launch list item 2c): that person's user risk holds the turn-on, and nothing said how to clear it, so the step could never finish. Microsoft Learn (howto-identity-protection-remediate-unblock, concept-risky-user-report): Reset password remediates the risk; Confirm user safe is for a false positive, a verdict on the risk detections. Not on whose sign-ins they were: a user-risk policy applies to every sign-in while the account is at risk, so the sign-ins report-only would have stopped are nearly always the person's own (review, 2026-09-28: \"if the sign-ins were theirs\" could clear a real compromise). On the turn-on task, after the wait, and on its card. How long the wait lasts after it is riskClearWait.",
       "riskClear": "To clear a person's risk, open ID Protection → Risky users in the Microsoft Entra admin center, select them and review their risk detections. Choose Reset password; choose Confirm user safe only if the detections are false positives.",
@@ -3918,7 +3918,7 @@
         "limitsFeedback": "Something wrong or unclear? feedback@getiamai.com — I would rather hear about it than not.",
         "hosting": "Where it runs",
         "$commentHostingBody": "Phase 2 audit (How): Connect asks GitHub whether the baseline's author has published changes since the pinned version (src/ui/baseline.ts checkAuthorHead, then baselineReview when the author's head has moved). This named Cloudflare's beacon and never the one other third party the app contacts. src/ui/surfaces/publicTrust.test.ts holds it to every non-Microsoft host in scripts/csp.ts REQUEST_HOSTS.",
-        "hostingBody": "IAMAI runs in your browser. It reads tenant data directly from Microsoft Graph and keeps the scan in this browser. What it keeps here stays after Sign out; Account → Forget this tenant deletes it. Each tenant opened in this browser keeps its own stored scan and plan here until it is forgotten; opening another tenant deletes nothing, and a tenant that is not open can be forgotten from the Account menu without signing in to it. On Connect it also asks GitHub (api.github.com, raw.githubusercontent.com) whether the baseline's author has published changes since the pinned version, and, when there are changes, reads the changed files; no tenant data is sent. The public source and site files are on GitHub Pages, served through Cloudflare. Hosting includes a Cloudflare page-load beacon, which is not in IAMAI's application bundle. IAMAI does not send the tenant snapshot to that beacon. Review exports before sharing them.",
+        "hostingBody": "IAMAI runs in your browser. It reads tenant data directly from Microsoft Graph and keeps the scan in this browser. What it keeps here stays after Sign out; Account → Forget this tenant deletes it. Each tenant you open keeps its own scan and plan in this browser until you forget it. Opening another tenant deletes nothing, and you can forget a tenant that is not open from the Account menu without signing in to it. On Connect it also asks GitHub (api.github.com, raw.githubusercontent.com) whether the baseline's author has published changes since the pinned version, and, when there are changes, reads the changed files; no tenant data is sent. The public source and site files are on GitHub Pages, served through Cloudflare. Hosting includes a Cloudflare page-load beacon, which is not in IAMAI's application bundle. IAMAI does not send the tenant snapshot to that beacon. Review exports before sharing them.",
         "credits": "Credits",
         "creditBaseline": "The baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech.",
         "creditAnalyzer": "CA Policy Analyzer by Jon Hope",
@@ -4101,10 +4101,8 @@
       "$commentReplacementMany": "The same where more than one step's policy replaces it (audit F2/F3, 2026-10-05: a policy blocking two flows, or asking for MFA and setting the session, goes only once every replacement is On).",
       "replacementPendingMany": "keep it until {steps} are On",
       "replacementOnMany": "{steps} replace it and are On",
-      "$commentAlsoKeeps": "A listed policy that also does the job of a goal the plan holds no step for (skipped, set aside, not applying): turning it off would drop that job, so it is kept. {steps} are those goals' step titles.",
-      "alsoKeeps": "it also does the job of {steps}, which this plan does not replace: keep it",
       "$commentStricter": "A listed policy whose grant asks more than the baseline's (a stricter method, read as the Accept panel reads it: roadmap/differences.ts grantDirectionOf). Turning it off loosens sign-in, which 'running old and new side by side weakens nothing' does not cover (audit, 2026-10-05: the tenant's phishing-resistant admin policy beside the baseline's Modern MFA + TAP).",
-      "stricter": "stricter than the baseline's: turning it off loosens sign-in, so keep it with a reason unless that is what you want"
+      "stricter": "it asks more than the baseline's, so keep it with a reason unless you mean to loosen sign-in"
     },
     "naming": {
       "brief": {
@@ -9046,7 +9044,7 @@
       "$comment": "Owner, 2026-10-05: Jon's IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations, until now listed under In the baseline, not in this plan. Microsoft's two-account pattern: it includes the one emergency account the operator names in Decide How and Where People Sign In (interpretation emergencyStrongAccount) and nobody else, so the other emergency account is out of its scope; it excludes no account by name and does not exclude the exclusions group, which holds the account it is for (roadmap/emergencyStrongAccount.ts). Created in Report-only by Create the Policies in Report-only; turned on only once the scan reads that the account holds a method the strength accepts, Verify Emergency Access has a recorded sign-in for it, and the other account is still excluded from every other policy through the exclusions group. With Everyone works remotely there is no office to carve out, and the words of `everywhere` replace these.",
       "title": "Require a Security Key for One Emergency Account Outside the Office",
       "changeLine": null,
-      "why": "Microsoft's pattern for emergency accounts: one signs in with a phishing-resistant method away from the office, so a stolen password alone can't use it, and the other stays out of every policy, so no policy can lock out both.",
+      "why": "This is Microsoft's pattern for emergency accounts. One signs in with a phishing-resistant method away from the office, so a stolen password alone can't use it. The other stays out of every policy, so no policy can lock out both.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },

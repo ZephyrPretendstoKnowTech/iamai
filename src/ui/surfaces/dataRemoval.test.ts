@@ -18,7 +18,7 @@ test('Connect\'s removal line and How\'s Where it runs say Sign out keeps the da
 // in, and that Sign out signs out the open account only.
 test('How and SECURITY.md say each tenant opened here keeps its own stored scan and plan until it is forgotten', () => {
   const content = JSON.parse(readFileSync('docs/design/content.json', 'utf8'))
-  assert.ok(content.pages.app.how.hostingBody.includes(`${SENTENCE} Each tenant opened in this browser keeps its own stored scan and plan here until it is forgotten; opening another tenant deletes nothing, and a tenant that is not open can be forgotten from the Account menu without signing in to it.`))
+  assert.ok(content.pages.app.how.hostingBody.includes(`${SENTENCE} Each tenant you open keeps its own scan and plan in this browser until you forget it. Opening another tenant deletes nothing, and you can forget a tenant that is not open from the Account menu without signing in to it.`))
   const security = readFileSync('SECURITY.md', 'utf8').replace(/\r\n/g, '\n').replace(/\s+/g, ' ')
   assert.ok(security.includes('Each tenant opened in this browser keeps its own records here until it is forgotten; opening another tenant from the Account menu deletes nothing.'))
   assert.ok(security.includes('A tenant that is not open is forgotten the same way from its own row in the Account menu, without signing in to it.'))

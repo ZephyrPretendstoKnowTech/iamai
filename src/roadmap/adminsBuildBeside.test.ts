@@ -155,8 +155,8 @@ test('Retire Replaced Policies: listed with each policy’s state and ID, held u
   const lines = retire.lists.retiring ?? []
   // Require MFA for Everyone retires its own beside the admin templates (owner, 2026-10-04: identity is the name on every step).
   // Each line names its replacement; the phishing-resistant template asks more than the baseline's grant and says so (audit, 2026-10-05).
-  assert.ok(lines.some((l) => l === `Require multifactor authentication for admins (On, ID: ${MFA_ADMINS}; keep it until Require Phishing-Resistant MFA for Admins is On)`), lines.join(' | '))
-  assert.ok(lines.some((l) => l === `Require phishing-resistant multifactor authentication for administrators (Report-only, ID: ${PR_ADMINS}; stricter than the baseline's: turning it off loosens sign-in, so keep it with a reason unless that is what you want; keep it until Require Phishing-Resistant MFA for Admins is On)`), lines.join(' | '))
+  assert.ok(lines.some((l) => l === `Require multifactor authentication for admins (On): keep it until Require Phishing-Resistant MFA for Admins is On. ID: ${MFA_ADMINS}`), lines.join(' | '))
+  assert.ok(lines.some((l) => l === `Require phishing-resistant multifactor authentication for administrators (Report-only): it asks more than the baseline's, so keep it with a reason unless you mean to loosen sign-in; keep it until Require Phishing-Resistant MFA for Admins is On. ID: ${PR_ADMINS}`), lines.join(' | '))
   assert.ok((retire.waitsOn ?? []).includes(ADMINS))
   // What Keep With This Reason saves (ui/surfaces/CleanupStep.tsx): every policy listed, by id, with the reason.
   for (const id of [MFA_ADMINS, PR_ADMINS]) assert.ok((plan(f).r.schedule.cleanup!.retiringPolicyIds ?? []).includes(id), id)
@@ -200,7 +200,7 @@ test('the life of the pilot: the new policy in Report-only is the step’s own a
     assert.ok(!board.readings.get('cleanup-retire')!.blockers.some((b) => b.id === ADMINS), 'it no longer waits on 4.3')
     // Each policy says whether its own replacement is On (audit, 2026-10-05): the admin templates may go now.
     const lines = retire.lists.retiring ?? []
-    assert.ok(lines.some((l) => l.startsWith('Require multifactor authentication for admins (') && l.endsWith('; Require Phishing-Resistant MFA for Admins replaces it and is On)')), lines.join(' | '))
+    assert.ok(lines.some((l) => l.startsWith('Require multifactor authentication for admins (On): Require Phishing-Resistant MFA for Admins replaces it and is On. ID: ')), lines.join(' | '))
     assert.equal(retire.done, null)
   }
   // Kept, with a reason: Retire completes.
@@ -262,7 +262,7 @@ test('the owner-like fixtures: demo-week2’s own enforced admin policy is built
     assert.deepEqual((step.action.besidePolicies ?? []).map((p) => [p.name, p.state]), [['Core - Grant - Admins phishing-resistant', 'enabled']])
     assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'update'), 'its stricter admin policy is never weakened in place (OWN-W4)')
     assert.ok(r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!.reportOnlyBatch!.create.includes(ADMINS))
-    assert.ok(retire?.lists.retiring?.[0]?.startsWith('Core - Grant - Admins phishing-resistant (On, ID: '), JSON.stringify(retire?.lists))
+    assert.ok(retire?.lists.retiring?.[0]?.startsWith('Core - Grant - Admins phishing-resistant (On): '), JSON.stringify(retire?.lists))
   }
   {
     // Its own stricter policy On delivers the goal today: the baseline's policy,

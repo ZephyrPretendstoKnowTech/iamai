@@ -26,7 +26,7 @@ const BESIDE: Record<string, { name: string; state: string }> = {
   [ADMINS]: { name: 'Core - Grant - Admins phishing-resistant', state: 'Report-only' },
 }
 
-const STRICTER = "Core - Grant - Admins phishing-resistant is stricter than the baseline's: keep it with a reason in Retire Replaced Policies unless you mean to loosen sign-in."
+const STRICTER = "Core - Grant - Admins phishing-resistant asks more than the baseline's. Keep it, with a reason, in Retire Replaced Policies unless you mean to loosen sign-in."
 
 function screen(f: Fixture) {
   const run = runFixture(f)
@@ -60,7 +60,7 @@ test("on the demo, each step that builds beside a policy of the tenant's names i
     assert.ok(policy, `${stepId} draws its policy card`)
     assert.equal(policy.title, 'Create the policy in Report-only', `the premise: ${stepId}'s card is its create`)
     assert.equal(policy.upn, step.createName, `${stepId}'s card names the baseline's policy`)
-    const line = `Your ${own.name} (${own.state}) keeps doing this job until this policy is On; Retire Replaced Policies turns it off after that.`
+    const line = `Your ${own.name} (${own.state}) keeps doing this job until this policy is On. Then Retire Replaced Policies turns it off.`
     assert.ok(String(policy.detail) === line || String(policy.detail).startsWith(`${line} `), `${stepId}: ${policy.detail}`)
     // The tenant's own policy names are theirs to word; the line's own words never say "users".
     assert.doesNotMatch(String(policy.detail).split(own.name).join(''), /\busers?\b/i, 'people or accounts, never users')
@@ -83,7 +83,7 @@ test("once the step's own policy is On, its card says so and names what Retire R
     assert.ok(policy, `${stepId} draws its policy card`)
     assert.equal(policy.title, 'On', stepId)
     const detail = String(policy.detail)
-    assert.ok(detail.split('\n').some((l) => l.startsWith(`This policy is On; Retire Replaced Policies turns off ${own.name}.`)), `${stepId}: ${detail}`)
+    assert.ok(detail.split('\n').some((l) => l.startsWith(`This policy is On. Retire Replaced Policies now turns off ${own.name}.`)), `${stepId}: ${detail}`)
     assert.doesNotMatch(detail, /keeps doing this job/, `${stepId}: the line no longer says it is being built`)
     if (stepId === ADMINS) assert.ok(detail.endsWith(` ${STRICTER}`), detail)
   }
@@ -106,7 +106,7 @@ test('a step that builds beside nothing gets no such line', () => {
 test('several policies beside one step are listed together with their states', () => {
   const step = runFixture(fixture('demo')).steps.find((s) => s.id === LEGACY)!
   const two = { ...step, action: { ...step.action, besidePolicies: [{ policyId: 'a', name: 'Old A', state: 'enabled' }, { policyId: 'b', name: 'Old B', state: 'enabledForReportingButNotEnforced' }] } }
-  assert.equal(besideLineOf(two), 'Your Old A (On) and Old B (Report-only) keep doing this job until this policy is On; Retire Replaced Policies turns them off after that.')
+  assert.equal(besideLineOf(two), 'Your Old A (On) and Old B (Report-only) keep doing this job until this policy is On. Then Retire Replaced Policies turns them off.')
   const on = { ...two, state: { ...two.state, lifecycle: 'enforced' as const } }
-  assert.equal(besideLineOf(on), 'This policy is On; Retire Replaced Policies turns off Old A and Old B.')
+  assert.equal(besideLineOf(on), 'This policy is On. Retire Replaced Policies now turns off Old A and Old B.')
 })

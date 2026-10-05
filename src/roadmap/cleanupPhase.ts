@@ -28,7 +28,7 @@ import { fillText } from '../content/render.ts'
 import { list } from '../copy/statements.ts'
 
 /** Retire Replaced Policies' own words beyond its row (content.cleanup.retire). */
-const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string; replacementPending: string; replacementPendingMany: string; replacementOn: string; replacementOnMany: string; stricter: string; alsoKeeps: string } }).retire
+const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string; replacementPending: string; replacementPendingMany: string; replacementOn: string; replacementOnMany: string; stricter: string } }).retire
 
 export type CleanupPhase = {
   /** The first Cleanup day: the working day after the last enforcement window. */
@@ -146,19 +146,20 @@ export function retiringOf(steps: readonly Step[], stateWord: (state: string) =>
   const out: RetiringPolicy[] = []
   for (const [policyId, p] of listed) {
     if ([...(owners.get(lower(policyId)) ?? [])].some((id) => !p.stepIds.includes(id))) continue
-    // And every other goal it does a job for today (audit F3): its step's policy On too, or, where
-    // the plan holds no step for that goal, the job stays with this policy and it is kept.
+    // And every other goal it does a job for today that the plan holds a step for (audit F3): that
+    // step's policy On too. A goal with no step on the plan asks nothing of it (audit, 2026-10-05:
+    // "keep it" for a goal the replacement also covers was a false claim).
     const also = [...p.alsoGoals].map((g) => ({ g, step: steps.find((s) => s.goalId === g && active(s)) }))
     const waits = [...new Set([...p.stepIds, ...also.flatMap((x) => (x.step ? [x.step.id] : []))])]
     const waitSteps = waits.map((id) => steps.find((s) => s.id === id)!).filter(Boolean)
     const pending = waitSteps.filter((s) => !on(s))
-    const keeps = also.filter((x) => !x.step).map((x) => stepById[x.g]?.title ?? x.g)
     const names = (ss: Step[]): string => list(ss.map(titleOf))
     const replacement = pending.length > 0
       ? fillText(pending.length === 1 ? RETIRE_WORDS.replacementPending : RETIRE_WORDS.replacementPendingMany, { step: names(pending), steps: names(pending) })
       : fillText(waitSteps.length === 1 ? RETIRE_WORDS.replacementOn : RETIRE_WORDS.replacementOnMany, { step: names(waitSteps), steps: names(waitSteps) })
-    const notes = [...(p.stricter ? [RETIRE_WORDS.stricter] : []), ...(keeps.length > 0 ? [fillText(RETIRE_WORDS.alsoKeeps, { steps: list(keeps) })] : []), replacement]
-    out.push({ policyId, line: `${p.name} (${stateWord(p.state)}, ID: ${policyId}; ${notes.join('; ')})`, stepId: waits[0], stepIds: waits })
+    // What to do with it first, then its ID last (audit, 2026-10-05: the ID led a dense parenthesis).
+    const notes = [...(p.stricter ? [RETIRE_WORDS.stricter] : []), replacement]
+    out.push({ policyId, line: `${p.name} (${stateWord(p.state)}): ${notes.join('; ')}. ID: ${policyId}`, stepId: waits[0], stepIds: waits })
   }
   return out
 }
