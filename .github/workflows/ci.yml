@@ -26,7 +26,9 @@ jobs:
     # close again the suite has grown enough to be worth splitting.
     # It was: on 2026-10-03 the job ran 24 minutes and one run hit 25 with every
     # test passing. 35 until the suite is split across two jobs.
-    timeout-minutes: 35
+    # On 2026-10-05 a run was cut off at 35 still running (the name-identity
+    # engine and its tests grew the suite): 50 until the split.
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

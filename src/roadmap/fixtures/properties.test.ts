@@ -311,7 +311,12 @@ test('the roadmap engine finishes inside its bound', () => eachFixture((f, run) 
   // clean process against the 350 ms bound: the bound had no headroom left over
   // the hosted runner, which runs about 1.9x slower. The large budget moves to
   // 480 ms, about 15% over the projected hosted time.
-  const bound = f.name === 'huge' ? 500 : f.name === 'large' ? 480 : 200
+  // The name-identity engine and the audit fixes (2026-10-05: plan-wide policy
+  // ownership, one reading of an accepted difference, what a retired policy
+  // still does) took isolated best on large from ~245 to ~260 ms locally;
+  // hosted CI failed the 480 ms bound. 260 x 1.9 is ~495 ms, so the large
+  // budget moves to 560 ms, the same ~15% over the projected hosted time.
+  const bound = f.name === 'huge' ? 500 : f.name === 'large' ? 560 : 200
   // Functional tests share one process and retain many generated tenants.
   // Recheck a slow result in a clean process, rather than measuring unrelated
   // retained-heap/GC pressure. All three replans remain uncached; no bound moves.
