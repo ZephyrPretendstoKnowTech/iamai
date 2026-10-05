@@ -116,7 +116,7 @@ test('T2-AVD: Azure Virtual Desktop answered Yes and no group named: the step wa
   // Read as the wait on a Direction answer every such step reads, never as a step to finish first.
   assert.equal(s.blockedReason, 'after: Confirm What You Use')
   assert.deepEqual(holdWaitsOn(s), [])
-  assert.equal(waitingLine(s, 'Contoso'), 'Confirm What You Use first: this policy names the groups you choose there.')
+  assert.equal(waitingLine(s, 'Contoso'), 'Confirm What You Use first: this policy names what you choose there.')
   assert.equal(JSON.stringify(s.action).toLowerCase().includes(PROD_USERS), false, 'the author’s group is in nothing handed over')
   assert.equal(s.action.json, null, 'no body is written while the groups are not named')
   const ro = stepOf(r.steps, 's-create-report-only')
