@@ -285,7 +285,7 @@ test('the recovery basis changes with what the emergency account\'s recovery dep
     const lists = [fido.keyRestrictions, ...(fido.passkeyProfiles ?? []).map((p: Record<string, any>) => p.keyRestrictions)].filter((kr: any) => Array.isArray(kr?.aaGuids))
     assert.ok(lists.length > 0)
     for (const kr of lists) kr.aaGuids.push('2fc0579f-8113-47ea-b116-bb5a8db9202a')
-    assert.equal(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], before, 'the account keeps the same usable approved passkeys')
+    assert.equal(recoveryAccountBasis(f.snapshot, [id], f.mapping, f.groups)[id], before, 'the account keeps the same usable device-bound passkeys')
   }
 })
 

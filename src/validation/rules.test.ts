@@ -121,7 +121,7 @@ function base(): Base {
   const snapshot = structuredClone(f.snapshot)
   const groups = new Map([...f.groups.entries()].map(([id, g]) => [id, structuredClone(g)]))
   const ids = f.mapping.breakGlassUserIds
-  // The healthy tenant's emergency accounts hold approved passkeys and signed in
+  // The healthy tenant's emergency accounts hold device-bound passkeys and signed in
   // with them ten days ago, after the prepared baseline: Step 4's proof, as the scan records it.
   withPreparedPasskeys(snapshot, ids, (i) => `test-passkey-${i}`)
   const events = Object.fromEntries(ids.map((id, index) => [id, recoveryCandidate(id, snapshot.users.find(user => user.id === id)!.lastSuccessfulSignIn!, snapshot.tenantId, `test-event-${index}`)]))

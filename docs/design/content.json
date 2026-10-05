@@ -2204,7 +2204,7 @@
           "titles": {
             "createAccount": "Create an emergency account",
             "configureAccount": "Configure an existing account",
-            "setUpPasskey": "Set up an approved passkey",
+            "setUpPasskey": "Set up a device-bound passkey",
             "createGroup": "Create an emergency exclusions group",
             "chooseGroup": "Choose an existing exclusions group",
             "manageMembership": "Manage emergency account membership",
@@ -2215,10 +2215,10 @@
           },
           "$comment": "What the Emergency Access procedures (src/ui/surfaces/emergencyAccountTasks.ts) say about whether a selected account needs them. Each procedure stays available as a reference when none does, and says so only where there is something to say it of: accounts selected, and the checks this procedure makes read for each. With nobody selected, \"No selected account needs a change\" was vacuously true, sat under a tile asking for accounts to be selected, and was printed and exported as step 3 of the work (R4-44).",
           "$commentPasskey": "The passkey procedure's line when no selected account is known to need a passkey (R4-51). An unread check and a passed one used to share one branch, which chose between \"currently needs\" and \"is confirmed to need\" - two words apart, and the unread one a double negative that read as \"not needed\" over a tile saying Could not verify. Every account read and passing: the all-clear, worded as the configuration procedure's. Any account unread: that account named, and the procedure is for it if it has none.",
-          "$commentPasskeyNeeded": "The passkey procedure's line when more than one selected account is known to need an approved passkey - a new tenant's usual case. It read \"Keep your working administrator session open. Accounts: a, b.\" and \"Repeat this procedure separately for each account listed above.\": the session reminder merged into the account list, where every other emergency task gives it a line of its own, and a pointer \"above\" that the opening rule for these tasks bans (emergencyInstructions.test.ts).",
-          "passkeyNeededMany": "{accounts} need an approved passkey. Follow these steps separately for each one.",
-          "$commentPasskeyNeededOne": "Leads the passkey procedure when one selected account is known to need an approved passkey, naming it; with more than one, passkeyNeededMany names them all.",
-          "passkeyNeededOne": "{account} needs an approved passkey. Follow these steps for it.",
+          "$commentPasskeyNeeded": "The passkey procedure's line when more than one selected account is known to need a device-bound passkey - a new tenant's usual case. It read \"Keep your working administrator session open. Accounts: a, b.\" and \"Repeat this procedure separately for each account listed above.\": the session reminder merged into the account list, where every other emergency task gives it a line of its own, and a pointer \"above\" that the opening rule for these tasks bans (emergencyInstructions.test.ts).",
+          "passkeyNeededMany": "{accounts} need a device-bound passkey. Follow these steps separately for each one.",
+          "$commentPasskeyNeededOne": "Leads the passkey procedure when one selected account is known to need a device-bound passkey, naming it; with more than one, passkeyNeededMany names them all.",
+          "passkeyNeededOne": "{account} needs a device-bound passkey. Follow these steps for it.",
           "$commentCreate": "The create procedure's line when the selection needs no new account (NEW-Nadia-D12): two or more selected, every one read as cloud-only, and none carrying the dedicated-account signal (bg.notPersonal: signed in to IAMAI now, or a job title, department or office) - that check's fix is a new account, so the line would steer the reader to keep a daily account. The configuration procedure said it was not needed and this one never did, so with two verified accounts selected a printed plan and the task list offered \"Create an emergency account\" as work at the same weight as the one task that remained.",
           "$commentVariants": "The line that introduces a task's alternatives where they are written out together - the export, AI Info and the Entra artifact, which cannot offer the screen's picker (emergencyAccountTasks.ts emergencyTaskAlternativesText). They used to carry the default alternative alone, unlabelled and numbered as mandatory, so a reader was told to register a YubiKey on every affected account and the Authenticator procedures were gone (R4-32).",
           "variantsLead": "Use the steps for the authenticator being registered:",
@@ -4180,7 +4180,7 @@
       "kind": "blocker",
       "title": "Prepare Emergency Access Accounts",
       "changeLine": null,
-      "why": "Prepare at least two dedicated emergency access accounts with approved passkeys. These provide administrative access when your normal sign-in is unavailable. Two accounts give you another recovery option if one account or its passkey cannot be used.",
+      "why": "Prepare at least two dedicated emergency access accounts with device-bound passkeys. These provide administrative access when your normal sign-in is unavailable. Two accounts give you another recovery option if one account or its passkey cannot be used.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
@@ -4203,7 +4203,7 @@
           "Enter a unique username, such as emergency-access-primary or emergency-access-secondary, or choose another account name. Select the observed initial domain from the domain list.",
           "Keep the account cloud-only and enabled, then assign Global Administrator through the applicable direct-assignment or PIM route.",
           "Store the initial password securely where authorized staff can retrieve it without signing in to this tenant.",
-          "Register an approved passkey, scan again, select the new account, then select Done."
+          "Register a device-bound passkey, scan again, select the new account, then select Done."
         ],
         "checkFixes": {
           "second-account": "Create a second account: one account is a single point of failure.",
@@ -4214,12 +4214,12 @@
           "enabled": "{name}: enable the account.",
           "excluded-everywhere": "{name} is inside {list:policies}: add the exclusions group to each policy's Users → Exclude → Groups in Configure Emergency Exclusions. Do not exclude the account itself.",
           "no-dynamic-group": "{name} is a member of the dynamic group {group}, which a policy targets; remove it or change the rule.",
-          "mfa-method": "{name}: register a passkey from the approved model list.",
+          "mfa-method": "{name}: register a device-bound passkey.",
           "shared-authenticator": "{name} shares the Authenticator device {device} with {otherAccount}; register a separate approved recovery method.",
           "not-a-person": "{name} looks like a person's account (it has {attribute}); use a dedicated account instead.",
           "report-only-excluded": "The report-only policies {list:policies} do not exclude the exclusions group either; same fix, in Configure Emergency Exclusions.",
           "managed-policies-excluded": "The Microsoft-managed policies {list:policies} do not exclude the exclusions group; Microsoft turns these on itself. Same fix, in Configure Emergency Exclusions.",
-          "phishing-resistant": "{name}: register an approved passkey.",
+          "phishing-resistant": "{name}: register a device-bound passkey.",
           "method-diversity": "Both accounts depend on {method} alone; prepare a separate approved recovery method.",
           "auth-methods-migration": "Finish migrating to the authentication methods policy (the per-user MFA setting can block a recovery sign-in): Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration complete.",
           "no-licence-no-mailbox": "{name} holds {licence}; remove it. An emergency account needs no mailbox.",
@@ -4232,7 +4232,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey."
+        "Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has a device-bound passkey."
       ],
       "ifWrong": null,
       "lockedOut": {
@@ -4309,7 +4309,7 @@
           "Breakglass · breakglass@contoso.onmicrosoft.com · named like an emergency account, signs in with the onmicrosoft.com address, Global Administrator, no licence"
         ]
       },
-      "aiFocus": "Explain the selected accounts' identity, permanent role and approved passkey evidence. Lead with the next account-specific preparation action and keep unknown scan evidence explicit."
+      "aiFocus": "Explain the selected accounts' identity, permanent role and device-bound passkey evidence. Lead with the next account-specific preparation action and keep unknown scan evidence explicit."
     },
     {
       "id": "s-prereq-exclusion-group",

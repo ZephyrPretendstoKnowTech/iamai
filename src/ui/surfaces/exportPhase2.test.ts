@@ -409,7 +409,7 @@ test('the plan-file card says the file holds names, sign-in addresses and object
 // Finding 10 (severity 2), the part that is not the owner's to decide. The
 // masked calendar was masked after RFC 5545 folding, so an address split across
 // a fold left whole ("bg1@messy-fixture.onmicrosoft.com") or half masked
-// ("upn-1@redactedsoft.com"); and every GUID was masked, the approved passkey
+// ("upn-1@redactedsoft.com"); and every GUID was masked, the device-bound passkey
 // models' AAGUIDs with them, so the passkey runbook named "YubiKey 5 Series
 // (guid-0002)". The file says what it masks on its card.
 test('a masked calendar masks every address, however it folds, and keeps the passkey model AAGUIDs', () => {

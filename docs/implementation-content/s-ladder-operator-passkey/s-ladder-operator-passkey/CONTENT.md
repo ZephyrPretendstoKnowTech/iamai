@@ -7,7 +7,7 @@
 
 @@IAMAI-BEGIN {"id":"ai.register","channel":"aiInfo","states":["register"],"format":"markdown","kind":"template"}
 
-This step starts with registering an approved passkey or security key for {{operator.displayName}}. Current registered methods: {{operator.current.methods}}.
+This step starts with registering a device-bound passkey or security key for {{operator.displayName}}. Current registered methods: {{operator.current.methods}}.
 
 Registration is an interactive action the operator completes in Security info; it cannot be done for them by script, and it does not change the tenant's passkey policy. Keep existing recovery methods while testing. A registered method still needs a successful sign-in before this step is complete.
 

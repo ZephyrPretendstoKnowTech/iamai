@@ -336,7 +336,7 @@ export function ContentStep({
   // person here for it ("Use Troubleshooting → Temporary Access Pass").
   const displayedScenarios: TroubleshootingScenario[] = isEmergencyAccounts ? [{
     id: 'emergency-temporary-access-pass', title: 'Temporary Access Pass',
-    symptom: 'The emergency account cannot complete the sign-in needed to register its approved passkey.', likelyCauses: [],
+    symptom: 'The emergency account cannot complete the sign-in needed to register its device-bound passkey.', likelyCauses: [],
     check: ['Confirm which one emergency account needs bootstrap access and keep another authorized administrator session open.'],
     fix: [
       'As an Authentication Policy Administrator, open Entra ID → Authentication methods → Policies → Temporary Access Pass. Enable and scope it to the intended account only when needed; preserve unrelated targeting.',
@@ -345,7 +345,7 @@ export function ContentStep({
       'Complete passkey registration and the private-window sign-in. Remove any still-valid temporary pass afterward.',
     ],
     doNot: ['Do not assume Temporary Access Pass bypasses Conditional Access or authentication-strength requirements. Do not weaken a blocking policy automatically.'],
-    then: ['Return to Set up an approved passkey and finish the selected method procedure.'],
+    then: ['Return to Set up a device-bound passkey and finish the selected method procedure.'],
     sources: [{ id: 'microsoft-temporary-access-pass', title: 'Temporary Access Pass roles and use', url: 'https://learn.microsoft.com/entra/identity/authentication/howto-authentication-temporary-access-pass', checkedOn: '2026-09-12' }],
   }, ...scenarios] : scenarios
   const hasPasskeyFindings = isPasskeySettings && !!step.configurationFindings?.length

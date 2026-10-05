@@ -490,7 +490,7 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   ]
   authentication.detail = authentication.outcome !== 'pass' && openHardening.length > 0
     ? openHardening.join(' ')
-    : 'Each selected account needs a registered approved passkey compatible with the current and planned settings.'
+    : 'Each selected account needs a registered device-bound passkey compatible with the current and planned settings.'
   return [identity, authentication]
 }
 

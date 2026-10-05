@@ -25,7 +25,7 @@ test('no Establish Emergency Access card or account says it could not read, on a
   }
 })
 
-test('hostile: registered methods unread, 1.1 says each account needs its approved passkey and names the task', () => {
+test('hostile: registered methods unread, 1.1 says each account needs its device-bound passkey and names the task', () => {
   const f = curatedFixture('hostile')
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === 's-prereq-break-glass')!
@@ -35,7 +35,7 @@ test('hostile: registered methods unread, 1.1 says each account needs its approv
   assert.ok(card, 'the premise: the passkey card is open')
   assert.equal(card.value, EMERGENCY_TASK.setUpPasskey)
   const accounts = (body.emergencyAccountTasks?.accounts ?? []).filter((a) => a.accountId !== null)
-  assert.ok(accounts.length > 0 && accounts.every((a) => a.title === 'Approved passkey needed'))
+  assert.ok(accounts.length > 0 && accounts.every((a) => a.title === 'Device-bound passkey needed'))
   assert.equal(body.emergencyAccountTasks?.recommendedTaskId, 'set-up-passkey')
 })
 

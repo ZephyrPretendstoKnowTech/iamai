@@ -93,8 +93,8 @@ test('a confirmed missing passkey remains the next action when policy evidence i
     value.snapshot.config.authMethodsPolicy = { status: 'error', reason: 'denied', rows: [] }
   })
   const row = projected.accounts.find(account => account.accountId === value.mapping.breakGlassUserIds[0])!
-  assert.equal(row.title, 'Approved passkey needed')
-  assert.match(row.instruction, /Set up an approved passkey/)
+  assert.equal(row.title, 'Device-bound passkey needed')
+  assert.match(row.instruction, /Set up a device-bound passkey/)
 })
 
 test('a passkey check the scan did not settle reads as the passkey not set up, with the task that sets it up (net-new 1)', () => {
@@ -103,12 +103,12 @@ test('a passkey check the scan did not settle reads as the passkey not set up, w
   })
   const row = projected.accounts.find(account => account.accountId === value.mapping.breakGlassUserIds[0])!
   // Unread is not done (owner, 2026-09-24): never "Passkey check incomplete".
-  assert.equal(row.title, 'Approved passkey needed')
-  assert.equal(row.instruction, 'Follow Set up an approved passkey in Implementation Tasks.')
+  assert.equal(row.title, 'Device-bound passkey needed')
+  assert.equal(row.instruction, 'Follow Set up a device-bound passkey in Implementation Tasks.')
   assert.equal(projected.recommendedTaskId, 'set-up-passkey')
 })
 
-test('approved passkey setup keeps the three understandable methods in one task', () => {
+test('device-bound passkey setup keeps the three understandable methods in one task', () => {
   const setup = project().projected.tasks.find(task => task.id === 'set-up-passkey')!
   assert.deepEqual(setup.variants?.map(variant => variant.label), [
     'YubiKey security key',
@@ -141,7 +141,7 @@ test('Step 1 preparation does not depend on sign-in-log evidence', () => {
 
 test('the standalone Entra text includes the whole persistent catalog', () => {
   const text = emergencyAccountTasksText(project().projected)
-  for (const title of ['Create an emergency account', 'Configure an existing account', 'Set up an approved passkey']) assert.match(text, new RegExp(title))
+  for (const title of ['Create an emergency account', 'Configure an existing account', 'Set up a device-bound passkey']) assert.match(text, new RegExp(title))
   assert.doesNotMatch(text, /\*\*Sign in with the prepared passkey\*\*/)
 })
 
@@ -179,14 +179,14 @@ function passkeyTaskOf(name: 'demo' | 'demo-week2') {
 
 test('the passkey procedure names only the selected accounts whose passkey check fails', () => {
   const { projected, text } = passkeyTaskOf('demo')
-  const failing = projected.accounts.filter(account => /Approved passkey needed|Passkey does not meet planned settings/.test(account.title))
+  const failing = projected.accounts.filter(account => /Device-bound passkey needed|Passkey does not meet planned settings/.test(account.title))
   const others = projected.accounts.filter(account => account.upn && !failing.includes(account))
   assert.ok(failing.length === 1 && others.length === 1, 'the demo has one account needing a passkey and one not')
   assert.ok(text.includes(failing[0].upn!))
   assert.ok(!text.includes(others[0].upn!), `${others[0].upn} is not named`)
   // One account: no "for each" line. (It was "Repeat this procedure separately
   // for each account listed above."; the several-account line now reads
-  // "... need an approved passkey. Follow these steps separately for each one.")
+  // "... need a device-bound passkey. Follow these steps separately for each one.")
   assert.doesNotMatch(text, /separately for each/)
 })
 
@@ -206,7 +206,7 @@ test('two accounts needing a passkey are named on the first line of the procedur
   const upn = (id: string) => value.snapshot.users.find(user => user.id === id)!.userPrincipalName!
   for (const variant of task.variants ?? []) {
     const steps = emergencyTaskSteps(task, variant.id)
-    assert.equal(steps[0], `**${upn(a)}** and **${upn(b)}** need an approved passkey. Follow these steps separately for each one.`, variant.id)
+    assert.equal(steps[0], `**${upn(a)}** and **${upn(b)}** need a device-bound passkey. Follow these steps separately for each one.`, variant.id)
     assert.doesNotMatch(steps.join('\n'), /listed above/, variant.id)
   }
 })

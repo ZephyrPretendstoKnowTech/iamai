@@ -232,7 +232,7 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
       rightDomain && 'Signs in with the tenant’s onmicrosoft.com address',
       enabled && 'Account enabled',
       permanentGa && 'Permanent, active Global Administrator',
-      compatible && 'Approved passkey registered',
+      compatible && 'Device-bound passkey registered',
     ].filter((value): value is string => Boolean(value))
     let title = 'Account prepared'
     let instruction = 'No account changes remain.'
@@ -252,8 +252,8 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
       instruction = active ? 'Follow Configure an existing account in Implementation Tasks to make it permanent.' : eligible ? 'Follow Configure an existing account in Implementation Tasks to make it permanent and active.' : 'Follow Configure an existing account in Implementation Tasks.'
     } else if (compatible === false) {
       const missing = preparation.passkeyCount === 0
-      title = missing ? 'Approved passkey needed' : 'Passkey does not meet planned settings'
-      instruction = 'Follow Set up an approved passkey in Implementation Tasks.'
+      title = missing ? 'Device-bound passkey needed' : 'Passkey does not meet planned settings'
+      instruction = 'Follow Set up a device-bound passkey in Implementation Tasks.'
     // A check this scan did not settle has no title of its own: it said only
     // that the check could not be verified (owner, 2026-09-23).
     } else if (cloudOnly === null) {
@@ -270,9 +270,9 @@ function accountStatuses(ctx: StepVarContext, preparations: Preparations, notes:
       instruction = 'Scan again so IAMAI can confirm the account has permanent, active Global Administrator access.'
     } else if (compatible === null) {
       // Unread reads as not done (owner, 2026-09-24; net-new 1): the account
-      // needs its approved passkey until a scan reads one, and the task says how.
-      title = 'Approved passkey needed'
-      instruction = 'Follow Set up an approved passkey in Implementation Tasks.'
+      // needs its device-bound passkey until a scan reads one, and the task says how.
+      title = 'Device-bound passkey needed'
+      instruction = 'Follow Set up a device-bound passkey in Implementation Tasks.'
     }
     const remainingCount = checks.every(value => value !== null) ? checks.filter(value => value === false).length : null
     // The account signed in to IAMAI says so in one line, in place of the check's note about it.
@@ -403,14 +403,14 @@ export function emergencyAccountTasksOf(step: Step, ctx: StepVarContext): Emerge
         : row.title === 'Account disabled' ? 3
           // The unsettled Global Administrator check has no title; its instruction names the role.
           : /Global Administrator/.test(row.title) || (row.title === '' && /Global Administrator/.test(row.instruction)) ? 4
-            : row.title === 'Approved passkey needed' || row.title === 'Passkey does not meet planned settings' ? 5
+            : row.title === 'Device-bound passkey needed' || row.title === 'Passkey does not meet planned settings' ? 5
               : Number.POSITIVE_INFINITY
   const next = accounts.map((row, index) => ({ row, index, priority: confirmedPriority(row) })).filter(value => Number.isFinite(value.priority)).sort((a, b) => a.priority - b.priority || a.index - b.index)[0]?.row
   const recommendedTaskId = next?.accountId === null
     ? 'create-account'
     : next?.title === 'Use a cloud-only account'
       ? 'create-account'
-    : next?.title === 'Approved passkey needed' || next?.title === 'Passkey does not meet planned settings'
+    : next?.title === 'Device-bound passkey needed' || next?.title === 'Passkey does not meet planned settings'
       ? 'set-up-passkey'
       : next && next.title !== ''
         ? 'configure-account'

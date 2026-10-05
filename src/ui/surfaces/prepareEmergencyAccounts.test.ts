@@ -142,7 +142,7 @@ test('#15 no instruction sends the person to a Save beside the picker: 1.1 ends 
   const one = opened('small', (f) => { f.mapping.breakGlassUserIds = f.mapping.breakGlassUserIds.slice(0, 1) })
   const lines = stepLines(one.step, one.ctx)
   assert.ok(lines.includes('Entra admin center → Entra ID → Users → New user → Create new user.'), 'the premise: the create steps are exported')
-  assert.ok(lines.includes('Register an approved passkey, scan again, select the new account, then select Done.'), JSON.stringify(lines))
+  assert.ok(lines.includes('Register a device-bound passkey, scan again, select the new account, then select Done.'), JSON.stringify(lines))
   assert.equal(lines.some((l) => /\bSave\b/.test(l)), false, 'no exported 1.1 line says Save')
   // 1.2's exclusions group is a single-choice list: choosing the group saves it
   // and closes the list (Picker.tsx pick), so its lines end on the choice.
@@ -214,7 +214,7 @@ test('#19 Configure an existing account is always there, whole where no account 
 })
 
 test('#20 Completion Criteria is the one line the owner approved', () => {
-  const LINE = 'Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has an approved passkey.'
+  const LINE = 'Each account you chose is cloud-only, enabled, signs in with the onmicrosoft.com address, holds Global Administrator permanently, and has a device-bound passkey.'
   for (const [name, edit] of [['demo', () => {}], ['demo-week2', () => {}], ['small', noAccounts]] as const) {
     assert.deepEqual(opened(name, edit).body.contract.doneWhen, [LINE], name)
   }
