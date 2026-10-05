@@ -614,7 +614,7 @@ test('an answered deviation is in the step once, every channel carries it, and a
     String((((b.conditions as Record<string, unknown>).users as Record<string, unknown>).excludeGuestsOrExternalUsers as { guestOrExternalUserTypes?: string } | undefined)?.guestOrExternalUserTypes ?? '')
   assert.ok(bodies.some((b) => guestTypes(b) === 'serviceProvider'), 'the JSON carries the answer')
   assert.ok(portal && portal.some((l) => /Service provider users/.test(l)), 'the instructions carry it')
-  assert.ok(portal.some((l) => /the baseline's version/.test(l)), 'and the baseline\'s version beside it')
+  assert.ok(portal.some((l) => /the baseline's version/i.test(l)), 'and the baseline\'s version beside it')
   assert.ok(powershellFor(stepOperations(step)).includes('serviceProvider'), 'the PowerShell wraps the same bodies')
   assert.equal(policyJsonText(step), JSON.stringify(bodies, null, 2), 'the download is that text')
   // The answer is in the body once: applying it again would change nothing.

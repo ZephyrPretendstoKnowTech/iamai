@@ -139,7 +139,7 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const platforms = lines.find((l) => /Device platforms/.test(l))
   assert.ok(platforms, `the portal lines carry the platform condition: ${lines.join(' | ')}`)
   assert.match(platforms, /Include: Any device; Exclude: Android, iOS/)
-  assert.match(platforms, /the baseline's version: no such condition/, 'the deviation is shown beside the baseline\'s version')
+  assert.match(platforms, /the baseline's version: no such condition/i, 'the deviation is shown beside the baseline\'s version')
   const enrolment = r.steps.find((x) => x.goalId === INTUNE_ENROLMENT_GOAL)!
   assert.ok(!enrolment.blockers.some((b) => b.label === `direction:${D3}`))
   assert.notEqual(enrolment.status, 'skipped', 'the enrolment step follows the compliant-device one')

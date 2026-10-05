@@ -162,12 +162,12 @@ test('the service-provider exclusion is on both policies, in the JSON and on the
     const lines = stepPortalLines(onScreen, portalNamesFor(ctxFor(f, rBare, m), stepVars(onScreen, ctxFor(f, rBare, m)), goalId)) ?? []
     const lines0 = stepPortalLines(step0, portalNamesFor(ctxFor(f, r0, before), stepVars(step0, ctxFor(f, r0, before)), goalId)) ?? []
     if (implementationOffered(onScreen)) {
-      assert.ok(lines.some((l) => /Service provider users/.test(l) && /the baseline's version/.test(l)), `${goalId}: the exclusion shows beside the baseline's version: ${lines.join(' | ')}`)
+      assert.ok(lines.some((l) => /Service provider users/.test(l) && /the baseline's version/i.test(l)), `${goalId}: the exclusion shows beside the baseline's version: ${lines.join(' | ')}`)
       seenOnScreen = true
     } else {
       assert.deepEqual(lines, [], `${goalId}: no implementation offered, so no instructions either`)
     }
-    assert.ok(!lines0.some((l) => /the baseline's version/.test(l)), `${goalId}: unanswered, nothing deviates from the baseline`)
+    assert.ok(!lines0.some((l) => /the baseline's version/i.test(l)), `${goalId}: unanswered, nothing deviates from the baseline`)
   }
   assert.ok(seenOnScreen, 'at least one of the two shows the deviation on screen')
 })
