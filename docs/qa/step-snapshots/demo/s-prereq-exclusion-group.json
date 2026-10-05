@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Ready · Correct",
   "bar": "Needs correction",
-  "rail": "Exclude Core - Exclusions from 5 policies.",
+  "rail": "Add Core - Exclusions to the exclusions of 5 policies.",
   "headings": [
     "About this Step",
     "Tasks Remaining",

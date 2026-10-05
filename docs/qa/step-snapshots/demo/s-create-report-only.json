@@ -22,7 +22,7 @@
       "state": "Create in Report-only"
     },
     {
-      "label": "Require Phishing-Resistant MFA for Admins",
+      "label": "Require a Strong Sign-in for Admins",
       "state": "Create in Report-only"
     },
     {

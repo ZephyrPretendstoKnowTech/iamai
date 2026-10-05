@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Prepared passkeys",
-      "state": "Set up an approved passkey"
+      "state": "Set up a device-bound passkey"
     }
   ],
   "channels": [
