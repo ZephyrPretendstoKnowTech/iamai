@@ -57,27 +57,27 @@ function split(name = INTERNAL): Fixture {
 }
 
 // Policy identity is the name (owner, 2026-10-04): a tenant policy exactly the
-// baseline's under another name is the step's own through a rename, the step's one
-// edit; it is not Completed under the tenant's name. Once renamed it is Completed.
+// baseline's under another name is the step's own, Completed as it stands, and Align
+// Policy Names suggests the baseline's name (owner option, 2026-10-05: "Suggest a
+// rename"). The step itself writes no name.
 const renameOf = (step: Step) => (step.action.resolution?.policies ?? []).filter((o) => o.mode === 'update' && 'displayName' in ((o.body ?? {}) as Row))
 const createOf = (step: Step) => (step.action.resolution?.policies ?? []).find((o) => o.mode === 'create')
 
-test('week two follows the baseline: its own MFA policy, exact under the tenant’s name, is renamed by the step; after the rename it is Completed and nothing else moves', () => {
+test('week two follows the baseline: its own MFA policy, exact under the tenant’s name, is the step’s own and Completed, and Align Policy Names suggests the name; after the rename nothing moves', () => {
   const run = runFixture(WEEK2)
   const step = stepOf(run, MFA)
   const own = named((WEEK2.snapshot.config.caPolicies?.rows ?? []) as Row[], OWN)
+  assert.equal(step.action.intendedFor, own.id)
   assert.equal(step.tracking?.members?.[0]?.policyId, own.id)
-  const rename = renameOf(step)
-  assert.deepEqual(rename.map((o) => [o.policyId, o.body]), [[own.id, { displayName: ALL_USERS }]], 'the step’s one edit is the rename')
+  assert.deepEqual(renameOf(step), [], 'the step writes no name')
   assert.equal(createOf(step), undefined, 'no second MFA policy beside it')
-  assert.notEqual(step.status, 'done', 'the plan’s name is still to be given')
+  assert.equal(step.status, 'done')
+  assert.ok(renames(run).includes(`${OWN} → ${ALL_USERS}`), JSON.stringify(renames(run)))
   const after = runFixture(edited(WEEK2, (rows) => { named(rows, OWN).displayName = ALL_USERS }))
+  assert.deepEqual(reading(after), reading(run), 'a rename changes no step')
   const renamed = stepOf(after, MFA)
-  assert.equal(renamed.status, 'done')
   assert.equal(renamed.action.intendedFor, own.id)
   assert.equal(renamed.tracking?.members?.[0]?.policyId, own.id)
-  const others = (r: Run) => reading(r).filter((x) => !x.startsWith(`${MFA}|`))
-  assert.deepEqual(others(after), others(run), 'a rename changes no other step')
   assert.ok(!renames(after).some((r) => r.startsWith(`${ALL_USERS} →`)))
 })
 
@@ -108,7 +108,7 @@ test('the owner-like split tenant: 4.4 creates AllUsers with Intune Enrollment a
   assert.ok(!stepOf(run, REAUTH).blockers.some((b) => b.label === 'session-loop'))
 })
 
-test('correcting the split tenant’s policy exactly to AllUsers makes it the step’s own by a rename, and named it completes; Inforcer and Azure management stay delivered', () => {
+test('correcting the split tenant’s policy exactly to AllUsers makes it the step’s own and completes it, Align Policy Names suggests the name, and Inforcer and Azure management stay delivered', () => {
   const before = runFixture(split())
   const intended = createOf(stepOf(before, MFA))?.body as Row
   assert.ok(intended, 'the premise: the step creates AllUsers')
@@ -118,10 +118,14 @@ test('correcting the split tenant’s policy exactly to AllUsers makes it the st
     p.grantControls = structuredClone(intended.grantControls)
     p.sessionControls = structuredClone(intended.sessionControls ?? null)
   })
-  // Policy identity is the name (owner, 2026-10-04): exact under another name, the
-  // step's one edit is the rename; under the baseline's name it is Completed.
+  // Exact under another name: the step's own, Completed as it stands, and 8.2
+  // suggests the baseline's name; under the baseline's name it stays Completed.
   const own = named((corrected.snapshot.config.caPolicies?.rows ?? []) as Row[], INTERNAL)
-  assert.deepEqual(renameOf(stepOf(runFixture(corrected), MFA)).map((o) => [o.policyId, o.body]), [[own.id, { displayName: ALL_USERS }]])
+  const asIs = runFixture(corrected)
+  assert.deepEqual(renameOf(stepOf(asIs, MFA)), [], 'the step writes no name')
+  assert.equal(stepOf(asIs, MFA).action.intendedFor, own.id)
+  assert.equal(stepOf(asIs, MFA).status, 'done', JSON.stringify(stepOf(asIs, MFA).state.observation?.unwritten))
+  assert.ok(renames(asIs).includes(`${INTERNAL} → ${ALL_USERS}`), JSON.stringify(renames(asIs)))
   const after = runFixture(edited(corrected, (rows) => { named(rows, INTERNAL).displayName = ALL_USERS }))
   assert.equal(stepOf(after, MFA).status, 'done', JSON.stringify(stepOf(after, MFA).state.observation?.unwritten))
   assert.ok(!stepOf(after, REAUTH).blockers.some((b) => b.label === 'session-loop'))
@@ -170,9 +174,13 @@ test('a duplicate the scan lists first that does not deliver it gets no comparis
   const step = stepOf(run, MFA)
   const own = named((f.snapshot.config.caPolicies?.rows ?? []) as Row[], OWN)
   assert.equal(step.tracking?.members?.[0]?.policyName, OWN)
-  // Policy identity is the name (owner, 2026-10-04): the exact one is renamed by the
-  // step; the duplicate is listed beside it to retire, never renamed.
-  assert.deepEqual(renameOf(step).map((o) => o.policyId), [own.id])
+  // Policy identity is the name (owner, 2026-10-04): the exact one is the step's own
+  // and Completed, and Align Policy Names suggests its name; the duplicate is listed
+  // beside it to retire, never renamed.
+  assert.equal(step.action.intendedFor, own.id)
+  assert.deepEqual(renameOf(step), [], 'the step writes no name')
+  assert.equal(step.status, 'done')
   assert.deepEqual((step.action.besidePolicies ?? []).map((b) => b.policyId), ['dup-mfa-except-exchange'])
   assert.ok(!renames(run).some((r) => r.startsWith('Contoso - MFA except Exchange')), JSON.stringify(renames(run)))
+  assert.ok(renames(run).includes(`${OWN} → ${ALL_USERS}`), JSON.stringify(renames(run)))
 })

@@ -61,9 +61,11 @@ test("a tenant's own policy that differs from the baseline in any setting is not
   const same = opened(withOwnPolicy(base, () => {}))
   assert.equal(same.step.state.satisfied, true)
   assert.equal(same.tile, null)
-  // Exactly the baseline's under the tenant's own name is not yet the step's own:
-  // its one edit is the rename (owner, 2026-10-04: policy identity is the name).
+  // Exactly the baseline's under the tenant's own name is the step's own as well,
+  // in place with nothing to correct; Align Policy Names suggests the name (owner
+  // option, 2026-10-05: "Suggest a rename"), so the step writes none.
   const other = opened(withOwnPolicy(base, () => {}, 'Contoso token binding'))
-  assert.equal(other.step.state.satisfied, false)
-  assert.deepEqual((other.step.action.resolution?.policies ?? []).map((o) => [o.mode, o.policyId, Object.keys(o.body)]), [['update', 'c0100000-0000-4000-8000-00000000c0de', ['displayName']]])
+  assert.equal(other.step.state.satisfied, true)
+  assert.equal(other.tile, null)
+  assert.deepEqual(other.step.action.resolution?.policies ?? [], [])
 })

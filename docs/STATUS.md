@@ -135,7 +135,10 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   - Name and controls match: in place.
   - Name matches, controls differ: the step shows the edits.
   - No name match: the step creates the baseline's policy in report-only.
-  - Exact controls under another name: the step suggests a rename.
+  - Exact controls under another name: the step suggests a rename. Option A (branch
+    `v1.1-option-rename-in-cleanup`, for the owner to accept or reject): the policy is the
+    step's own and, On, the step is in place; Align Policy Names (8.2) suggests the name, the
+    one place every rename lives. The step hands over no rename.
   - The same job under another name: listed to be retired, and Retire Replaced Policies
     turns it off once the new one is On.
   - Two policies with the plan's name: the step asks which is its own.

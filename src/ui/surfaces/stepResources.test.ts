@@ -338,20 +338,9 @@ test('every email IAMAI hands over is signed with the plan signature and carries
     assert.doesNotMatch(text, /\[[a-z ]*contact\]/i, where)
     assert.equal(text.trimEnd().split('\n').at(-1), SIGNATURE, where)
   }
-  // Mid holds the baseline's guest policy exactly, under its own name: the step's
-  // one edit is the rename, and a rename has nothing to tell guests (owner,
-  // 2026-10-04: policy identity is the name). Under the baseline's name it is the
-  // step's own, in place, and its email is handed over as before.
-  const renamed = (f: ReturnType<typeof fixture>, stepId: string): ReturnType<typeof fixture> => {
-    const rename = runFixture(f).steps.find((s) => s.id === stepId)?.action.resolution?.policies.find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
-    assert.ok(rename, `the premise: ${stepId} renames the tenant's policy`)
-    const g = structuredClone(f)
-    ;(g.snapshot.config.caPolicies.rows as { id?: string; displayName?: string }[]).find((p) => p.id === rename.policyId)!.displayName = (rename.body as { displayName: string }).displayName
-    return g
-  }
   let seen = 0
   for (const name of ['demo', 'getiamai', 'mid'] as const) {
-    const f = name === 'mid' ? renamed(fixture(name), 's-goal-guests-mfa') : fixture(name)
+    const f = fixture(name)
     const r = runFixture(f, {}, null, f.snapshot.asOf)
     const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: SIGNATURE, operatorId: f.operatorId, now: f.snapshot.asOf, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
     for (const step of r.steps) {

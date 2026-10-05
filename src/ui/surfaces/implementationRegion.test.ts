@@ -50,19 +50,23 @@ const tabs = (b: StepBody | undefined): string[] => (b ? channelTabsOf(b.artifac
 const named = (name: FixtureName) => bodiesOf(fixture(name))
 
 /**
- * The fixture with each named step's policy under the baseline's name: mid holds
- * them exactly as the baseline does under the tenant's own names, so each step's
- * one edit is a rename (owner, 2026-10-04: policy identity is the name). Renamed,
- * each is the step's own policy, enforced, as these cases need.
+ * The fixture with each named step's policy under the baseline's name. mid holds
+ * them exactly as the baseline does under the tenant's own names, so each is its
+ * step's own (owner option, 2026-10-05: Align Policy Names suggests the name). With
+ * the exclusions question unanswered the plan's body cannot be read, so nothing
+ * proves a policy under another name exact: under the baseline's name each is the
+ * step's own policy, enforced, as these cases need (policy identity is the name,
+ * owner, 2026-10-04).
  */
 function withOwnNames(f: Fixture, stepIds: readonly string[]): Fixture {
   const steps = runFixture(f).steps
   const g = structuredClone(f)
   const rows = g.snapshot.config.caPolicies.rows as { id?: string; displayName?: string }[]
   for (const id of stepIds) {
-    const rename = steps.find((s) => s.id === id)?.action.resolution?.policies.find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
-    assert.ok(rename, `the premise: ${id} renames the tenant's policy`)
-    rows.find((p) => p.id === rename.policyId)!.displayName = (rename.body as { displayName: string }).displayName
+    const step = steps.find((s) => s.id === id)
+    const own = step?.action.intendedFor
+    assert.ok(step && own, `the premise: ${id} is done on a tenant policy of its own`)
+    rows.find((p) => p.id === own)!.displayName = step.createName
   }
   return g
 }

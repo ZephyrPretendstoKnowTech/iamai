@@ -197,20 +197,22 @@ test('a difference accepted with a reason completes the step and says so; changi
   assert.deepEqual([...new Set(moved.step.state.members.flatMap((m) => [...m.change.unwritten]))], ['sessionControls'], 'the accepted setting moved: the step reopens')
 })
 
-test('exactly the baseline’s policy, untagged, under another name: the step’s one edit is the rename (owner, 2026-10-04: policy identity is the name)', () => {
+test('exactly the baseline’s policy, untagged, under another name: the step’s own, read as under the baseline’s name, and Align Policy Names suggests the name (owner option, 2026-10-05: "Suggest a rename")', () => {
   // A person built the policy by hand from the step's procedure, kept no IAMAI
-  // tag and gave it the tenant's own name: its controls are the plan's, so the
-  // step renames it to the baseline's name rather than creating a second one.
-  const { step } = rescan((row) => {
+  // tag and gave it the tenant's own name: its controls are the plan's, so it is
+  // the step's own rather than a reason to create a second one. The step writes
+  // no name; the rename is suggested where every rename lives, 8.2.
+  const { step, run } = rescan((row) => {
     delete row.description
     row.displayName = 'Renamed by someone'
   })
-  const ops = step.action.resolution?.policies ?? []
-  assert.equal(ops.length, 1)
-  assert.equal(ops[0].mode, 'update')
-  assert.equal(ops[0].policyId, 'p-built-from-step')
-  assert.equal((ops[0].body as Row).displayName, step.createName, 'the rename writes the baseline’s name')
+  assert.equal(step.tracking?.policyId, 'p-built-from-step', 'its controls make it the step’s own')
+  assert.deepEqual(step.state.members.flatMap((m) => [...m.change.unwritten]), [])
+  assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), 'nothing is created beside it')
+  assert.ok(!(step.action.resolution?.policies ?? []).some((o) => typeof (o.body as Row).displayName === 'string'), 'the step writes no name')
+  assert.equal(step.state.lifecycle, 'report-only')
   assert.ok(!(step.action.besidePolicies ?? []).some((p) => p.policyId === 'p-built-from-step'), 'it is the step’s own, never one to retire')
+  assert.ok((run.schedule.cleanup?.namingProposals ?? []).some((n) => n.id === 'p-built-from-step' && n.from === 'Renamed by someone' && n.to === step.createName), JSON.stringify(run.schedule.cleanup?.namingProposals))
 })
 
 test('exactly the baseline’s policy, untagged, under the baseline’s name: the step finds it and has nothing to correct (owner, 2026-10-04: policy identity is the name)', () => {

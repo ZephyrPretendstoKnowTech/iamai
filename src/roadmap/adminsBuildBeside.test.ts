@@ -125,7 +125,7 @@ test('a tenant with Microsoft’s template admin policies: 4.3 creates the basel
   assert.ok(tasks[0].steps.some((l) => /New policy/.test(l)), 'a new policy, never an edit')
 })
 
-test('policy identity is the name, on every goal step (owner, 2026-10-04): no step edits a tenant policy carrying neither its tag nor its name, but to rename one exactly the baseline’s', () => {
+test('policy identity is the name, on every goal step (owner, 2026-10-04): no step edits a tenant policy carrying neither its tag nor its name, but one exactly the baseline’s it takes as its own', () => {
   let edits = 0
   for (const f of [withPolicies(fresh(), templates()), fixture('demo'), fixture('demo-week2'), fixture('messy'), fixture('midflight')]) {
     const r = runFixture(f, {}, null, f.snapshot.asOf)
@@ -139,8 +139,10 @@ test('policy identity is the name, on every goal step (owner, 2026-10-04): no st
         if (!row) continue
         const tagged = String(row.description ?? '').includes(`:${s.id}`)
         const named = s.createName !== undefined && nameKey(String(row.displayName ?? '')) === nameKey(s.createName)
-        const renamed = typeof op.body.displayName === 'string'
-        assert.ok(tagged || named || renamed || (s.action.resolution?.policies.length ?? 0) > 1, `${f.name}: ${s.id} edits ${String(row.displayName)}, which is neither its own by tag or name nor a rename`)
+        // Or the one tenant policy exactly the baseline's under another name it took as its own (rule 6): never by writing its name.
+        assert.notEqual(typeof op.body.displayName, 'string', `${f.name}: ${s.id} renames ${String(row.displayName)}: Align Policy Names suggests names`)
+        const taken = s.tracking?.members?.some((m) => m.policyId === op.policyId) === true
+        assert.ok(tagged || named || taken || (s.action.resolution?.policies.length ?? 0) > 1, `${f.name}: ${s.id} edits ${String(row.displayName)}, which is not its own by tag, name or exact controls`)
         edits++
       }
     }
@@ -226,29 +228,30 @@ test('the life of the pilot: the new policy in Report-only is the step’s own a
   }
 })
 
-test('a tenant policy exactly the baseline’s under another name: 4.3 renames it, its one edit; one beside it is still retired (owner, 2026-10-04)', () => {
+test('a tenant policy exactly the baseline’s under another name: 4.3’s own, Completed as it stands, Align Policy Names suggests the name; one beside it is still retired (owner option, 2026-10-05: "Suggest a rename")', () => {
   const start = withPolicies(fresh(), [])
   const { description: _tag, ...exact } = structuredClone(plan(start).step.action.resolution!.policies[0].body) as Row
   const theirs = withPolicies(start, [{ ...exact, id: NEW, displayName: 'Contoso admins phishing-resistant', state: 'enabled' }])
   {
-    const { step } = plan(theirs)
-    assert.notEqual(step.status, 'done', 'not done until it carries the plan name')
-    const ops = step.action.resolution?.policies ?? []
-    assert.deepEqual(ops.map((o) => [o.mode, o.policyId]), [['update', NEW]], 'the rename, and no create')
-    assert.equal(ops[0].body.displayName, step.createName)
-    assert.ok(!(step.action.besidePolicies ?? []).some((p) => p.policyId === NEW), 'the renamed policy is not one to retire')
+    const { r, step } = plan(theirs)
+    assert.equal(step.status, 'done', 'On and exact: done whatever its name')
+    assert.deepEqual(step.action.resolution?.policies ?? [], [], 'no rename, and no create')
+    assert.equal(step.action.intendedFor, NEW, 'the exact one is the step’s own')
+    assert.ok(!(step.action.besidePolicies ?? []).some((p) => p.policyId === NEW), 'its own policy is not one to retire')
+    assert.ok((r.schedule.cleanup?.namingProposals ?? []).some((n) => n.id === NEW && n.to === step.createName), 'Align Policy Names suggests the baseline’s name')
   }
-  // Renamed: Completed.
+  // Renamed: still Completed, and nothing left to align.
   {
     const renamed = withPolicies(start, [{ ...exact, id: NEW, state: 'enabled' }])
-    const { step } = plan(renamed)
+    const { r, step } = plan(renamed)
     assert.equal(step.status, 'done', 'the plan name and every control: Completed')
+    assert.ok(!(r.schedule.cleanup?.namingProposals ?? []).some((n) => n.id === NEW))
   }
   // Beside a template the step did not write: the exact one is the step's, and the template is for Cleanup.
   const both = withPolicies(theirs, templates().slice(0, 1))
   {
     const { step, retire } = plan(both)
-    assert.ok((step.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && o.policyId === NEW), 'the exact one is the policy the step renames')
+    assert.equal(step.action.intendedFor, NEW, 'the exact one is the step’s own')
     assert.deepEqual((step.action.besidePolicies ?? []).map((p) => p.policyId), [MFA_ADMINS])
     assert.ok(retire, 'and Cleanup retires the template')
   }

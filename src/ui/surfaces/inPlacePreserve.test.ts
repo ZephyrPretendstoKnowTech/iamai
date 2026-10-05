@@ -27,10 +27,12 @@
 //     the other is spare.
 //   * the policy preserved is the step's own, and policy identity is the name
 //     (owner, 2026-10-04): the one carrying the plan's tag or the baseline's
-//     name. A policy exactly the baseline's under a custom name is renamed by its
-//     step, its one edit, and never copied; one that is not is listed beside the
-//     baseline's policy the step creates. So the cases below that preserve a
-//     tenant policy start from it under the baseline's name (planNamed).
+//     name, or a policy exactly the baseline's under a custom name, which is
+//     preserved under that name and never copied; Align Policy Names suggests
+//     the baseline's (owner option, 2026-10-05: "Suggest a rename"). One that is
+//     not exact is listed beside the baseline's policy the step creates, so the
+//     cases below that preserve such a policy start from it under the baseline's
+//     name (planNamed).
 //   * nothing is created and nothing is changed. No operation, no portal
 //     instructions, no JSON, no PowerShell, on any channel.
 //   * a stronger tenant control stays stronger. There is no operation to rewrite
@@ -128,12 +130,11 @@ function caseOf(run: ReturnType<typeof runFixture>, f: Fixture, stepId: string):
 /**
  * The canonical case, exactly as the fixture generates it: the mid tenant's own
  * plan, whose admins already sign in with a phishing-resistant method because a
- * policy the tenant wrote before IAMAI ever ran says they must. That policy
- * carries the baseline's name, the one edit its step asks for (planNamed); nothing
- * else is edited and no scan is replayed.
+ * policy the tenant wrote before IAMAI ever ran says they must. Nothing is
+ * edited and no scan is replayed.
  */
 function canonical(): Case {
-  const f = planNamed(fixture(FIXTURE), STEP_ID)
+  const f = fixture(FIXTURE)
   return caseOf(runFixture(f), f, STEP_ID)
 }
 
@@ -177,19 +178,16 @@ function withPolicies(name: Parameters<typeof fixture>[0], edit: (rows: Record<s
 /**
  * The fixture with a step's tenant policy under the baseline's name (owner,
  * 2026-10-04: policy identity is the name). A step's own policy is the one
- * carrying the plan's tag or the baseline's name; a tenant policy exactly the
- * baseline's under another name is its own only through a rename, the step's one
- * edit, and one that is not is listed beside a create. Preserving a policy the
- * tenant already had is preserving one under the baseline's name, so the cases
- * about In place start from the rename done: the step's rename target, else the
- * one policy it lists beside its create.
+ * carrying the plan's tag or the baseline's name, or one exactly the baseline's
+ * under another name; one that is not is listed beside a create. The cases about
+ * In place on a policy that is not exact start from it under the baseline's name:
+ * the step's own policy, else the one policy it lists beside its create.
  */
 function planNamed(f: Fixture, stepId: string): Fixture {
   const step = runFixture(f).steps.find((s) => s.id === stepId)
   assert.ok(step?.createName, `${stepId} has no baseline name`)
-  const rename = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
   const beside = step.action.besidePolicies ?? []
-  const target = rename?.policyId ?? (beside.length === 1 ? beside[0].policyId : undefined)
+  const target = step.action.intendedFor ?? (beside.length === 1 ? beside[0].policyId : undefined)
   assert.ok(target, `${stepId}: no one tenant policy to give the baseline's name`)
   const snapshot = structuredClone(f.snapshot)
   const row = ((snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]).find((p) => p.id === target)
@@ -315,12 +313,13 @@ test('every rollback an implementation package gives for a policy keeps it out o
   }
 })
 
-// ---- 10: a custom tenant name exactly the baseline's is renamed, never duplicated ----
+// ---- 10: a custom tenant name exactly the baseline's satisfies the goal, and never causes a duplicate ----
 
-test('a satisfying policy exactly the baseline’s under a custom name is renamed by its step, not copied, and preserved under the baseline’s name', () => {
-  // Policy identity is the name (owner, 2026-10-04). The tenant's policy is the
-  // baseline's in every setting under a name of its own: the step's one edit is
-  // to give it the baseline's name, and nothing is created beside it.
+test('a satisfying policy exactly the baseline’s under a custom name is preserved under that name, not copied, and Align Policy Names suggests the baseline’s', () => {
+  // Policy identity is the name (owner, 2026-10-04), and the owner option of
+  // 2026-10-05 ("Suggest a rename"): the tenant's policy is the baseline's in every
+  // setting under a name of its own, so it is the step's own, in place as it
+  // stands; the step writes no name, and 8.2 suggests the baseline's.
   const custom = 'Contoso — Everyone Verifies'
   const { step, ctx, run } = variant(
     'small',
@@ -333,27 +332,22 @@ test('a satisfying policy exactly the baseline’s under a custom name is rename
   // The classifier matched it by shape, so the name changed nothing about
   // whether the goal is delivered.
   assert.equal(goalResult(run, MFA_GOAL).verdict, 'inPlace')
-  // Read off the action itself: the readiness that holds the step withholds what it hands over, not what it is.
-  const ops = step.action.resolution?.policies ?? []
-  assert.deepEqual(ops.map((o) => [o.mode, o.body]), [['update', { displayName: step.createName }]], 'the one edit is the rename')
-  assert.equal(step.tracking?.policyName, custom, 'the step follows the tenant’s policy, under the name it has')
-  assert.equal(isPreserved(step), false, 'the baseline’s name is still to give')
-  // A name that differs from the baseline's is not a reason to make a second policy.
-  for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, CREATING, `a custom name caused a create instruction: ${line}`)
-
-  // Renamed, the same policy is preserved under the baseline's name.
-  const named = caseOf(runFixture(planNamed(fixture('small'), MFA_STEP)), planNamed(fixture('small'), MFA_STEP), MFA_STEP)
-  assert.equal(named.step.status, 'done')
-  assert.equal(isPreserved(named.step), true)
-  assert.deepEqual(named.step.satisfiedBy?.policies, [step.createName])
-  assert.equal(named.step.satisfiedBy?.sufficient, step.createName)
-  assert.ok(rowReason(named.step)?.includes(step.createName!), 'the row does not name the policy')
+  assert.equal(step.status, 'done')
+  assert.equal(isPreserved(step), true)
+  // The name IAMAI keeps is the tenant's, not the baseline's.
+  assert.deepEqual(step.satisfiedBy?.policies, [custom])
+  assert.equal(step.satisfiedBy?.sufficient, custom)
+  assert.ok(rowReason(step)?.includes(custom), 'the row shows the baseline name instead of the tenant’s')
   assert.ok(
-    stepContract(named.step, named.ctx).found.some((x) => x.key === 'in-place' && x.text.includes(step.createName!)),
+    stepContract(step, ctx).found.some((x) => x.key === 'in-place' && x.text.includes(custom)),
     'What IAMAI found does not name the tenant policy',
   )
-  assert.equal(operationsOf(named.step).length, 0)
-  assert.equal(jsonOffered(named.step), false)
+  // And a name that differs from the baseline's is not a reason to make a
+  // second policy, nor to rename it from the step.
+  assert.equal(operationsOf(step).length, 0)
+  assert.equal(jsonOffered(step), false)
+  for (const line of stepLines(step, ctx)) assert.doesNotMatch(line, CREATING, `a custom name caused a create instruction: ${line}`)
+  assert.ok((run.schedule.cleanup?.namingProposals ?? []).some((n) => n.from === custom && n.to === step.createName), 'Align Policy Names does not suggest the baseline’s name')
 })
 
 // ---- 11: a stronger tenant control is corrected or accepted, never kept silently ----
@@ -436,14 +430,14 @@ test('a policy still in report-only, or switched off, does not read as delivered
 // ---- 14: preservation is a reading of this scan, not a permanent verdict ----
 
 test('a later scan that finds the satisfying policy switched off stops preserving the goal', () => {
-  const base = planNamed(fixture('small'), MFA_STEP)
+  const base = fixture('small')
   const first = runFixture(base)
   const before = first.steps.find((s) => s.id === MFA_STEP)!
   assert.equal(isPreserved(before), true, 'the goal starts in place')
   // The same tenant, one material change: somebody switched the policy off.
   const snapshot = structuredClone(base.snapshot)
   const rows = (snapshot as unknown as { config: { caPolicies: { rows: Record<string, unknown>[] } } }).config.caPolicies.rows
-  rows.find((r) => r.displayName === MFA_PLAN_NAME)!.state = 'disabled'
+  rows.find((r) => /MFA for all users/.test(String(r.displayName)))!.state = 'disabled'
   const second = runFixture({ ...base, snapshot }, {}, observationsOf(first.steps))
   const after = second.steps.find((s) => s.id === MFA_STEP)!
   assert.equal(isPreserved(after), false, 'the goal is still preserved after the policy that delivered it was switched off')

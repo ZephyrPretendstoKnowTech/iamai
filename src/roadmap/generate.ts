@@ -1807,12 +1807,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Goal steps ----
 
   // Which tenant policies are a step's own, plan-wide (audit F1, 2026-10-05): a
-  // policy carrying another step's plan name or tag, or one another step renames,
-  // is never this step's to rename or to retire. Without it one policy that blocks
+  // policy carrying another step's plan name or tag, or one another step takes as its own,
+  // is never this step's to take or to retire. Without it one policy that blocks
   // two flows was renamed back and forth by two steps, and Retire Replaced Policies
   // listed a policy that delivered a finished step.
   const planNameKeys = new Set(planPolicies.map((p) => nameKey(String((p as { displayName?: unknown }).displayName ?? ''))).filter((k) => k.length > 0))
-  const renameTargets = new Set<string>()
+  const takenPolicies = new Set<string>()
 
   for (const result of input.coverage.results) {
     if (result.status === 'not-applicable' || result.status === 'licence-limited') {
@@ -2056,8 +2056,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     //     state. Controls alone never claim one;
     //   * two live policies carrying the name and no tag: the step holds and names
     //     them (it never guesses, and never creates a third under the same name);
-    //   * none, but a tenant policy exactly the baseline's under another name: the
-    //     step renames it (its one edit) and it is the step's own from then on;
+    //   * none, but a tenant policy exactly the baseline's under another name: it
+    //     is the step's own from then on, read as the plan's own under the plan's
+    //     name would be (On and exact as it stands: done), and Align Policy Names
+    //     suggests the plan's name for it (owner option, 2026-10-05: "Suggest a
+    //     rename"). The step writes no rename;
     //   * none at all: the step creates the baseline's policy in Report-only;
     //   * every other live policy of the goal's own scope doing the same job under
     //     another name is listed beside it, never edited, and Cleanup's Retire
@@ -2069,7 +2072,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // and the steps with two policies read by name already (pairOf, the EAM
     // companion), and a goal the scan could not read stays held: those keep the
     // branches below.
-    const pilot = ((): { own: RawPolicy | null; rename: boolean; ownExact: boolean; ownDone: boolean; ambiguous: RawPolicy[]; beside: NonNullable<Action['besidePolicies']> } | null => {
+    const pilot = ((): { own: RawPolicy | null; ownDone: boolean; ambiguous: RawPolicy[]; beside: NonNullable<Action['besidePolicies']> } | null => {
       if (pair !== null || stepSources.length > 1 || result.status === 'unknown') return null
       const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
       const live = (p: RawPolicy | undefined): p is RawPolicy => p !== undefined && (p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced')
@@ -2087,19 +2090,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         else own = namedLive[0] ?? tagged[0] ?? byName[0] ?? null
       }
       const ours = new Set([...tagged, ...byName].map((p) => String(p.id)))
-      // Another step's own: its plan name, its tag, or the policy it renames.
+      // Another step's own: its plan name, its tag, or the exact policy under another name it took.
       const othersOwn = (p: RawPolicy): boolean => {
         const key = nameKey(String(p.displayName ?? ''))
         const description = String(p.description ?? '')
         const otherTag = description.includes(`[IAMAI:${planId}:`) && !description.includes(`[IAMAI:${planId}:${stepId}:`) && !description.includes(`[IAMAI:${planId}:${stepId}]`)
-        return (planNameKeys.has(key) && !want.has(key)) || otherTag || renameTargets.has(String(p.id))
+        return (planNameKeys.has(key) && !want.has(key)) || otherTag || takenPolicies.has(String(p.id))
       }
       const theirs = result.candidates
         .filter((c) => c.ownScope && c.contribution !== 'disabled')
         .map((c) => rows.find((p) => String(p.id) === c.policyId))
         .filter(live)
         .filter((p) => !ours.has(String(p.id)) && !matchedPolicyIds.includes(String(p.id)) && !anotherStepsJob(String(p.id)) && !othersOwn(p))
-      let rename = false
       // Exact: every setting the baseline's, short at most of the exclusions group, or accepted.
       let exact = (_p: RawPolicy): boolean => false
       // The plan's own, as it stands: the exclusions group gone from it is a correction its step writes back.
@@ -2132,12 +2134,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         planBody = body
       }
       if (own === null && ambiguous.length === 0 && theirs.length > 0) {
-        // The one renamed: On first, then by id, so the reading is the same scan to scan.
+        // The one taken: On first, then by id, so the reading is the same scan to scan.
         const exactOnes = theirs.filter(exact).sort((a, b) => Number(b.state === 'enabled') - Number(a.state === 'enabled') || String(a.id).localeCompare(String(b.id)))
         if (exactOnes.length > 0) {
           own = exactOnes[0]
-          rename = true
-          renameTargets.add(String(own.id))
+          // Another step's own from here on (othersOwn): one policy is one step's.
+          takenPolicies.add(String(own.id))
         }
       }
       const ownId = String(own?.id ?? '')
@@ -2156,13 +2158,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const alsoGoals = alsoGoalsOf(p)
         return { policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state), ...(stricter(p) ? { stricter: true as const } : {}), ...(alsoGoals.length > 0 ? { alsoGoals } : {}) }
       })
-      const ownExact = own !== null && (rename ? exact(own) : exactAsIs(own))
-      // Done: its own policy On and exact. Where the plan's body cannot be read yet,
-      // exactness cannot be proven either way, and the classifier's reading that the
-      // policy delivers the goal stands (it did before identity was the name): the
-      // plan's own policy, On, never reopens on an empty correction.
-      const ownDone = own !== null && !rename && own.state === 'enabled' && (bodyKnown ? ownExact : (result.satisfaction?.policyIds ?? []).includes(String(own.id)))
-      return { own, rename, ownExact, ownDone, ambiguous, beside }
+      // Done: its own policy On and exact as it stands, whatever its name (a name not
+      // the plan's is Align Policy Names' to suggest, never a reason to reopen the
+      // step). Exact short of the exclusions group is a correction under its own
+      // name. Where the plan's body cannot be read yet, exactness cannot be proven
+      // either way, and the classifier's reading that the policy delivers the goal
+      // stands (it did before identity was the name): the plan's own policy, On,
+      // never reopens on an empty correction.
+      const ownDone = own !== null && own.state === 'enabled' && (bodyKnown ? exactAsIs(own) : (result.satisfaction?.policyIds ?? []).includes(String(own.id)))
+      return { own, ownDone, ambiguous, beside }
     })()
     if (pilot !== null && pilot.ambiguous.length > 0) {
       // Two live policies carry the plan's name and neither its tag: the step will
@@ -2221,11 +2225,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           sections.delete('sessionControls')
         }
         if (existing && existing.meetsFloor === false && existing.contribution !== 'disabled') sections.add(goal.implementations[0].floor.grant !== undefined ? 'grantControls' : 'sessionControls')
-        // A rename's one edit is the name; the plan's own keeps the name it has (8.2 aligns names later).
-        if (pilot.rename) sections.add('displayName')
+        // Its own keeps the name it has, whoever named it: Align Policy Names (8.2) suggests the plan's.
         // Switched off, it goes back to Report-only (buildCreateAction), never On, and never a second one beside it.
         if (own.state === 'disabled') sections.add('state')
-        const one = named(mine, pilot.rename ? planName : String(own.displayName ?? planName))
+        const one = named(mine, String(own.displayName ?? planName))
         one[0] = { ...one[0], target: { policyId: ownId, state: String(own.state ?? 'enabled'), policy: own } }
         let built = buildCreateAction(one, mapping, planId, stepId, goal.id, { sections })
         const belowFloor = (policyId: string): boolean => result.candidates.some((c) => c.policyId === policyId && c.meetsFloor === false)

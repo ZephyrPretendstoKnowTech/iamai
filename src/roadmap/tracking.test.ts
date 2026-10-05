@@ -22,7 +22,6 @@ const NOW = '2026-08-28T10:00:00.000Z'
 const f = fixture('midflight')
 type Row = { id?: string; state?: string; description?: string; displayName?: string }
 const policies = (): Row[] => f.snapshot.config.caPolicies.rows as Row[]
-const policiesOf = (x: typeof f): Row[] => x.snapshot.config.caPolicies.rows as Row[]
 
 test('midflight: policies are matched by tag and carry the policy dates, the disabled one is not done, and one created outside the plan is matched by what it does', () => {
   const run = runFixture(f)
@@ -46,20 +45,15 @@ test('midflight: policies are matched by tag and carry the policy dates, the dis
     // Strip the tag from the guests policy: it still delivers the goal.
     const guests = policies().find((p) => p.description?.includes(stepIdForGoal('guests-mfa')))!
     const saved = guests.description
-    const savedName = guests.displayName
     guests.description = ''
     try {
-      // Policy identity is the name (owner, 2026-10-04): untagged and under the
-      // tenant's own name, the policy is exactly the baseline's, so the step's one
-      // edit is its rename. Carrying the baseline's name it is the step's own,
-      // matched by what it does.
-      const unnamed = runFixture(f).steps.find((s) => s.id === stepIdForGoal('guests-mfa'))!
-      const ops = unnamed.action.resolution?.policies ?? []
-      assert.deepEqual(ops.map((o) => [o.mode, o.policyId, o.body]), [['update', guests.id, { displayName: unnamed.createName }]], 'the untagged policy is not the step\'s rename')
-      guests.displayName = unnamed.createName
+      // Untagged and under the tenant's own name, exactly the baseline's: the step's
+      // own, matched by what it does, and the step writes no name (owner option,
+      // 2026-10-05: Align Policy Names suggests it).
       const again = runFixture(f)
       const step = again.steps.find((s) => s.id === stepIdForGoal('guests-mfa'))!
       assert.equal(step.state.lifecycle, 'enforced')
+      assert.ok(!(step.action.resolution?.policies ?? []).some((o) => typeof (o.body as { displayName?: unknown }).displayName === 'string'), 'the step renames the policy')
       // No step asks for a workflow record (owner, 2026-09-25): a policy matched by
       // what it does finishes the step as the tagged one would.
       assert.equal(step.manualReview, undefined)
@@ -68,7 +62,6 @@ test('midflight: policies are matched by tag and carry the policy dates, the dis
       assert.match(step.tracking?.note ?? '', /already existed and covers this step/)
     } finally {
       guests.description = saved
-      guests.displayName = savedName
     }
   }
 })
@@ -223,15 +216,6 @@ test('plan file v2: a v1 file loads as an equivalent v2 plan; nothing it had is 
 // the instructions precisely is the one it never releases.
 test('a correction that would change nothing is not a drift', () => {
   const f = structuredClone(fixture('large'))
-  // Policy identity is the name (owner, 2026-10-04): large's policies that match
-  // the plan carry the tenant's own names, so each step's one edit is a rename,
-  // which is something to correct. Renamed as the steps ask, they are the steps'
-  // own policies, matching the plan with nothing left to correct.
-  for (const s of runFixture(f).steps) {
-    const ops = s.action.resolution?.policies ?? []
-    const body = ops[0]?.body as Row | undefined
-    if (ops.length === 1 && ops[0].mode === 'update' && body && Object.keys(body).join() === 'displayName') policiesOf(f).find((p) => p.id === ops[0].policyId)!.displayName = body.displayName
-  }
   const first = runFixture(f)
   const r = runFixture(f, {}, observationsOf(first.steps))
   const matching = r.steps.filter((s) => {

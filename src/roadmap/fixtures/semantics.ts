@@ -278,13 +278,14 @@ export function setAsideCase(): Case | null {
  * curated tenant has one; a scan of a tenant with a group over the member cap
  * does.
  *
- * Since policy identity is the name (owner, 2026-10-04) mid's policies carry the
- * tenant's names, and a step delivered by one is a rename. The step is chosen by
- * state, never by name: the first whose one edit renames an enforced policy
- * exactly the baseline's. Renamed, the policy is the step's own, and the group it
- * also excludes is a difference accepted with a reason (owner, 2026-09-26), so the
- * step stays delivered. The group holds the emergency accounts, so read in full
- * it would change nothing.
+ * The step is chosen by state, never by name: the first the tenant's own policy
+ * delivers with a reach the scan settled, and the policy it compares as its own
+ * (Action.intendedFor). Since policy identity is the name (owner, 2026-10-04) that
+ * policy is read whole, so the group it also excludes is a difference accepted
+ * with a reason (owner, 2026-09-26), and the step stays delivered. mid's policies
+ * carry the tenant's names: exactly the baseline's, they are their steps' own
+ * (owner option, 2026-10-05: Align Policy Names suggests the name). The group
+ * holds the emergency accounts, so read in full it would change nothing.
  *
  * Null where no fixture offers such a step, so a change to the fixtures shows up
  * as a corpus gap rather than as a silently skipped scenario.
@@ -292,18 +293,11 @@ export function setAsideCase(): Case | null {
 export function deliveredUnsettledCase(): (Case & { stepId: string }) | null {
   const f = structuredClone(curatedFixture('mid'))
   const rows = (f.snapshot.config.caPolicies?.rows ?? []) as { id?: string; state?: string; displayName?: string; conditions?: { users?: { excludeGroups?: string[] } } }[]
-  const renameOf = (s: Step) => {
-    const ops = s.action.resolution?.policies ?? []
-    const body = ops[0]?.body as { displayName?: unknown } | undefined
-    return ops.length === 1 && ops[0].mode === 'update' && body && Object.keys(body).join() === 'displayName' && rows.find((p) => p.id === ops[0].policyId)?.state === 'enabled' ? ops[0] : null
-  }
-  const first = runFixture(f).steps.find((s) => renameOf(s) !== null)
+  const first = runFixture(f).steps.find((s) => s.state.satisfied && s.deliveredReach && typeof s.action.intendedFor === 'string' && s.tracking?.policyId === s.action.intendedFor && rows.find((p) => p.id === s.action.intendedFor)?.state === 'enabled')
   if (!first) return null
-  const rename = renameOf(first)!
-  const policy = rows.find((p) => p.id === rename.policyId)
+  const policy = rows.find((p) => p.id === first.action.intendedFor)
   const users = policy?.conditions?.users
   if (!policy || !users) return null
-  policy.displayName = (rename.body as { displayName: string }).displayName
   // A group no fixture holds, so nothing it names is an object the fixture moves.
   const group = 'corpus-sampled-exclusion-group'
   users.excludeGroups = [...(users.excludeGroups ?? []), group]

@@ -223,26 +223,10 @@ test('every step of the group shows the date its Microsoft sources were checked'
   assert.equal(bodiesOf('demo', undefined, { securityDefaultsSeenOnAt: '2026-08-01T00:00:00.000Z' }).get(SECURITY_DEFAULTS)!.sourceLine, 'Source checked Sep 25, 2026')
 })
 
-/**
- * The fixture with the step's rename made: the tenant's policy is the baseline's
- * under the tenant's own name, so the step's one edit is to give it the
- * baseline's (owner, 2026-10-04: policy identity is the name). Made, the policy
- * is the step's own and delivers it.
- */
-function renamed(f: Fixture, stepId: string): Fixture {
-  const step = runFixture(f).steps.find((s) => s.id === stepId)!
-  const op = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
-  assert.ok(op, `the premise: ${stepId} renames the tenant's policy`)
-  const g = structuredClone(f)
-  const row = (g.snapshot.config.caPolicies!.rows as Record<string, unknown>[]).find((p) => p.id === op.policyId)!
-  row.displayName = (op.body as { displayName: string }).displayName
-  return g
-}
-
 test('once 4.3 is On, 4.4 counts people against its own policy, never the admins’ phishing-resistant requirement (net-new 25)', () => {
   // The week-two admins policy under the baseline's name: the plan's own, 4.3's policy, On. Under
   // the demo's own name 4.3 builds the baseline's beside it (T4-PM, the policy-matching pilot).
-  const f = renamed(asPlansOwn(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant'), 's-goal-mfa-all-users')
+  const f = asPlansOwn(curatedFixture('demo-week2'), 's-goal-admins-phishing-resistant')
   const r = runFixture(f)
   const mfa = r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
   const admins = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant')!

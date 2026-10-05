@@ -352,7 +352,7 @@ test('042.9: nobody is Ready without a usable phishing-resistant method confirme
  */
 function deliveredUnsettled(): { c: Case; step: Step } {
   const c = deliveredUnsettledCase()
-  assert.ok(c, 'the premise: mid holds a baseline policy, enforced, under another name')
+  assert.ok(c, 'the premise: mid holds a step its own enforced policy delivers')
   return { c, step: c.steps.find((s) => s.id === c.stepId)! }
 }
 

@@ -53,29 +53,9 @@ test('prompt 50 item 10: at least twelve scenarios fire on the demo, and these a
   }
 })
 
-/**
- * The fixture as it stands once every rename its plan asks for is done: a tenant
- * policy exactly the baseline's under another name is its step's own through a
- * rename, the step's one edit (owner, 2026-10-04: policy identity is the name).
- */
-function renamedAsPlanned(f: ReturnType<typeof fixture>): ReturnType<typeof fixture> {
-  const snapshot = structuredClone(f.snapshot)
-  const rows = (snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
-  for (const s of runFixture(f).steps) {
-    for (const op of s.action.resolution?.policies ?? []) {
-      const name = (op.body as { displayName?: unknown }).displayName
-      const row = op.mode === 'update' ? rows.find((p) => p.id === op.policyId) : undefined
-      if (row && typeof name === 'string') row.displayName = name
-    }
-  }
-  return { ...f, snapshot }
-}
-
 test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracking story, and the in-place count rises', () => {
   const day1 = runFixture(fixture('demo'))
-  // By week two the technician has also given the policies exactly the baseline's
-  // their baseline names, the one edit each of their steps asks for.
-  const week2 = runFixture(renamedAsPlanned(asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant')))
+  const week2 = runFixture(asPlanned(fixture('demo-week2'), 's-goal-admins-phishing-resistant'))
   // Ready is phishing-resistant readiness (Step 7, scoring/phishingResistant.ts), over the active people.
   // Ready counts Seamless too (isReady): a person is Ready or better.
   const ready = (r: ReturnType<typeof runFixture>): number => r.viability.filter((v) => rolloutBucket(v) !== null && (v.readiness.state === 'ready' || v.readiness.state === 'seamless')).length

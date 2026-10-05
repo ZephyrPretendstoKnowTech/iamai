@@ -440,15 +440,17 @@ const INVENTORY: string[] = [
   // Prepare the Lockdown Kit (T2-LK): three switches to create Off, waiting on the foundation, then ready.
   'object · prerequisite · no-lifecycle · blocked · open · do:resolve · no-track · no-implementation · no-found · fix · members · who-none', // small/s-lockdown-kit
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · members · who-none', // demo-week2+settled/s-lockdown-kit
-  // Policy identity is the name (owner, 2026-10-04): a policy exactly the baseline's under another
-  // name is renamed (an adjust on an enforced policy), one switched off goes back to Report-only,
+  // Policy identity is the name (owner, 2026-10-04): one switched off goes back to Report-only,
   // and the baseline's policy is created beside a tenant policy that is not the plan's.
-  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // small/s-goal-block-legacy-auth
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // midflight/s-goal-block-device-code
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // midflight+unanswered/s-goal-block-device-code
-  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-legacy-auth
-  'policy · adjust · enforced · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-device-code
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+plans-own/s-goal-admins-phishing-resistant
+  // A policy exactly the baseline's under another name is its step's own and, On, in place, as in
+  // v1.0.0; Align Policy Names suggests the name (owner option, 2026-10-05: "Suggest a rename").
+  // The three rename shapes go (an adjust handing over only the name), and these two v1.0.0 shapes
+  // come back: legacy in place on small, and open on week two for its mail accounts alone.
+  'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
+  'policy · create · enforced · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+settled/s-goal-block-legacy-auth
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

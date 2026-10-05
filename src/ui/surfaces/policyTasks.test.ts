@@ -30,20 +30,6 @@ import { planProposedNames } from './proposedNames.ts'
 
 const PILOT = 's-goal-admin-session'
 
-/**
- * The fixture with the step's policy under the baseline's name: a tenant policy
- * exactly the baseline's under another name is renamed by its step, its one edit
- * (owner, 2026-10-04: policy identity is the name). Renamed, it is the step's
- * own policy, in place.
- */
-function renamed(f: Fixture, stepId: string): Fixture {
-  const rename = runFixture(f).steps.find((s) => s.id === stepId)?.action.resolution?.policies.find((o) => o.mode === 'update' && typeof (o.body as { displayName?: unknown }).displayName === 'string')
-  assert.ok(rename, `the premise: ${stepId} renames the tenant's policy`)
-  const g = structuredClone(f)
-  ;(g.snapshot.config.caPolicies.rows as { id?: string; displayName?: string }[]).find((p) => p.id === rename.policyId)!.displayName = (rename.body as { displayName: string }).displayName
-  return g
-}
-
 /** `settled` settles the plan's foundation, so nothing holds the step (roadmap/foundations.ts). */
 function bodyOf(stepId: string, name: FixtureName = 'demo', settled = false, over: Partial<RoadmapInput> = {}, shape: (f: Fixture) => Fixture = (f) => f) {
   const value = shape(settled ? withRecoveryTested(withFoundationSettled(fixture(name))) : fixture(name))
@@ -216,10 +202,9 @@ test('"No tasks remaining" is shown only where nothing is left, and never over a
 
 test('a policy in place, or at its last stage with nothing to submit, is a satisfied card; one with a task left is not', () => {
   {
-    // The tenant's all-users policy under the baseline's name: the step's own, in
-    // place (owner, 2026-10-04: policy identity is the name; under its own name the
-    // step's one edit is the rename).
-    const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2', false, {}, (x) => renamed(x, 's-goal-mfa-all-users'))
+    // The tenant's all-users policy, exactly the baseline's under its own name: the
+    // step's own, in place (owner option, 2026-10-05: Align Policy Names suggests the name).
+    const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
     assert.equal(body.contract.state.satisfied, true, 'the premise: nothing to create; keep it as it is')
     const cards = policySubjectsOf(body.contract, body.readiness, body.emergencyAccountTasks)
     // Every card: this policy is enforced over a tenant where eleven of
@@ -377,7 +362,7 @@ test('a policy card states no stage it is not at, and no check the plan never re
     }
     // A policy the very first scan found enforced: the stage is the tenant fact
     // the step's head states, and the card claims no history for it.
-    const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2', false, {}, (x) => renamed(x, 's-goal-mfa-all-users'))
+    const { body } = bodyOf('s-goal-mfa-all-users', 'demo-week2')
     assert.equal(body.contract.state.fact, 'Enforced', 'the step still states the stage, as a fact of the tenant')
   }
   {

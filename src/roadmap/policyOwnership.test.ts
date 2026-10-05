@@ -55,22 +55,29 @@ function combined(extra: (p: Row) => void = () => {}): Fixture {
   return edit(base, (rows) => [...without(/Device code|MFA for all users/i)(rows), { ...p, id: COMBINED, displayName: 'Contoso - Block - Transfer flows', state: 'enabled' }])
 }
 
-test('F1: one tenant policy is renamed by one step at most, and never retired while it is another step’s own', () => {
+test('F1: one tenant policy is one step’s own at most, Align Policy Names suggests one name for it, and it is never retired while it is another step’s own', () => {
   const f = combined()
   const first = run(f)
-  const renaming = [DC, AT].filter((id) => (stepIn(first.steps, id).action.resolution?.policies ?? []).some((o) => o.mode === 'update' && o.policyId === COMBINED))
-  assert.ok(renaming.length <= 1, `two steps rename the one policy: ${renaming.join(', ')}`)
-  // Renamed to the step that took it, it is that step's own; the other step never renames it back.
-  if (renaming.length === 1) {
-    const taker = stepIn(first.steps, renaming[0])
-    const renamed = edit(f, (rows) => rows.map((p) => (p.id === COMBINED ? { ...p, displayName: taker.createName } : p)))
-    const second = run(renamed)
-    for (const id of [DC, AT].filter((x) => x !== taker.id)) {
-      assert.ok(!(stepIn(second.steps, id).action.resolution?.policies ?? []).some((o) => o.policyId === COMBINED), `${id} edits ${taker.id}'s own policy`)
-      assert.ok(!(stepIn(second.steps, id).action.besidePolicies ?? []).some((p) => p.policyId === COMBINED), `${id} lists ${taker.id}'s own policy to retire`)
-    }
-    assert.ok(!(retireOf(second)?.lists.retiring ?? []).some((l) => l.includes(COMBINED)), 'Retire Replaced Policies lists a step’s own policy')
+  // A step's own: the policy it compares as finished (Action.intendedFor), writes to, or tracks (owner option, 2026-10-05: no step renames it).
+  const owns = (s: Step): boolean => s.action.intendedFor === COMBINED || (s.action.resolution?.policies ?? []).some((o) => o.policyId === COMBINED) || (s.tracking?.members ?? []).some((m) => m.policyId === COMBINED)
+  const owning = [DC, AT].filter((id) => owns(stepIn(first.steps, id)))
+  assert.equal(owning.length, 1, `the one policy is ${owning.length === 0 ? 'no' : 'two'} steps’ own: ${owning.join(', ')}`)
+  const taker = stepIn(first.steps, owning[0])
+  assert.ok(!(first.steps.flatMap((s) => s.action.resolution?.policies ?? [])).some((o) => o.policyId === COMBINED && typeof o.body.displayName === 'string'), 'a step renames it')
+  // Align Policy Names suggests its owner's name, once, and no other.
+  assert.deepEqual((first.schedule.cleanup?.namingProposals ?? []).filter((n) => n.id === COMBINED).map((n) => n.to), [taker.createName])
+  for (const id of [DC, AT].filter((x) => x !== taker.id)) assert.ok(!(stepIn(first.steps, id).action.besidePolicies ?? []).some((p) => p.policyId === COMBINED), `${id} lists ${taker.id}'s own policy to retire`)
+  assert.ok(!(retireOf(first)?.lists.retiring ?? []).some((l) => l.includes(COMBINED)), 'Retire Replaced Policies lists a step’s own policy')
+  // Renamed to the step that took it, it is that step's own; the other step never takes it back.
+  const renamed = edit(f, (rows) => rows.map((p) => (p.id === COMBINED ? { ...p, displayName: taker.createName } : p)))
+  const second = run(renamed)
+  assert.ok(owns(stepIn(second.steps, taker.id)), `${taker.id} loses its own policy once it carries its name`)
+  for (const id of [DC, AT].filter((x) => x !== taker.id)) {
+    assert.ok(!owns(stepIn(second.steps, id)), `${id} takes ${taker.id}'s own policy`)
+    assert.ok(!(stepIn(second.steps, id).action.besidePolicies ?? []).some((p) => p.policyId === COMBINED), `${id} lists ${taker.id}'s own policy to retire`)
   }
+  assert.ok(!(second.schedule.cleanup?.namingProposals ?? []).some((n) => n.id === COMBINED), 'a name already the plan’s is suggested again')
+  assert.ok(!(retireOf(second)?.lists.retiring ?? []).some((l) => l.includes(COMBINED)), 'Retire Replaced Policies lists a step’s own policy')
 })
 
 test('F2: a policy listed beside two steps is retired only once both their policies are On', () => {

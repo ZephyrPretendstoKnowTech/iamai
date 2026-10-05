@@ -32,6 +32,8 @@ function withPolicies(f: Fixture, rows: Row[]): Fixture {
 const gallery = (state = 'enabled'): Row => ({ id: GALLERY, displayName: 'Require multifactor authentication for all users', state, conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
 
 const stepOf = (f: Fixture): Step => runFixture(f).steps.find((s) => s.id === MFA)!
+/** What Align Policy Names (8.2) suggests for the tenant's policy. */
+const suggested = (f: Fixture): string[] => (runFixture(f, {}, null, f.snapshot.asOf).schedule.cleanup?.namingProposals ?? []).filter((n) => n.id === OTHER).map((n) => n.to)
 
 /** The step's planned create, as a whole policy: what a tenant built from the step's procedure holds. */
 function plannedBody(f: Fixture): Row {
@@ -53,18 +55,64 @@ test('no policy carries the name: the step creates the baseline policy in Report
   assert.ok(!ops.some((o) => o.policyId === GALLERY))
 })
 
-test('exactly the baseline policy under another name: the step renames it, its one edit, and creates nothing', () => {
+// Rule 6, the owner option of 2026-10-05 ("Suggest a rename"): a tenant policy
+// exactly the baseline's under another name is the step's own, read as it would be
+// under the plan's name. On and exact as it stands, the step is done; the name is
+// Align Policy Names' to suggest, in the one place every rename lives.
+test('exactly the baseline policy under another name, On: the step is done on it, writes nothing, and Align Policy Names suggests the plan name', () => {
   const body = plannedBody(withPolicies(fresh(), [gallery()]))
   const f = withPolicies(fresh(), [{ ...body, id: OTHER, displayName: 'Contoso - MFA for everyone', state: 'enabled' }])
-  const step = stepOf(f)
-  const ops = step.action.resolution?.policies ?? []
-  assert.equal(ops.length, 1)
-  assert.equal(ops[0].mode, 'update')
-  assert.equal(ops[0].policyId, OTHER)
-  assert.equal(ops[0].body.displayName, body.displayName, 'the rename writes the plan name')
-  assert.ok((step.action.changes ?? []).some((c) => c.field === 'Name'))
-  assert.ok(!(step.action.besidePolicies ?? []).some((p) => p.policyId === OTHER), 'the renamed policy is its own, not one to retire')
-  assert.equal(step.state.satisfied, false, 'not done until it carries the plan name')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const step = r.steps.find((s) => s.id === MFA)!
+  assert.deepEqual(step.action.resolution?.policies ?? [], [], 'nothing to create or edit: no rename on the step')
+  assert.equal(step.state.satisfied, true, 'done as it stands')
+  assert.equal(step.status, 'done')
+  assert.equal(step.action.intendedFor, OTHER, 'its own policy, compared as the finished step compares it')
+  assert.equal(step.tracking?.members?.[0]?.policyId, OTHER, 'tracked as its own')
+  assert.ok(!(step.action.besidePolicies ?? []).some((p) => p.policyId === OTHER), 'its own policy, not one to retire')
+  const naming = r.schedule.cleanup?.namingProposals ?? []
+  assert.deepEqual(naming.filter((n) => n.id === OTHER).map((n) => [n.from, n.to]), [['Contoso - MFA for everyone', body.displayName]], 'Align Policy Names suggests the plan name')
+  // Renamed by hand, it is the same step's own, still done, and 8.2 has nothing left for it.
+  const renamed = withPolicies(fresh(), [{ ...body, id: OTHER, state: 'enabled' }])
+  const again = runFixture(renamed, {}, null, renamed.snapshot.asOf)
+  assert.equal(again.steps.find((s) => s.id === MFA)!.status, 'done')
+  assert.ok(!(again.schedule.cleanup?.namingProposals ?? []).some((n) => n.id === OTHER))
+})
+
+test('exactly the baseline policy under another name, in Report-only: the step’s own, turned on as the plan’s own would be, never renamed or created beside', () => {
+  const body = plannedBody(withPolicies(fresh(), [gallery()]))
+  const theirsF = withPolicies(fresh(), [{ ...body, id: OTHER, displayName: 'Contoso - MFA for everyone', state: REPORT_ONLY }])
+  const theirs = stepOf(theirsF)
+  assert.deepEqual(suggested(theirsF), [body.displayName], 'Align Policy Names suggests the plan name')
+  const named = stepOf(withPolicies(fresh(), [{ ...body, id: OTHER, state: REPORT_ONLY }]))
+  assert.notEqual(theirs.status, 'done', 'Report-only is not done')
+  assert.ok(!(theirs.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), 'nothing is created beside it')
+  assert.ok(!(theirs.action.resolution?.policies ?? []).some((o) => typeof o.body.displayName === 'string'), 'the step writes no name')
+  assert.equal(theirs.tracking?.members?.[0]?.policyId, OTHER, 'tracked as its own')
+  // Read exactly as the plan's own under the plan's name: the same operations, the same lifecycle.
+  const ops = (s: Step) => JSON.stringify((s.action.resolution?.policies ?? []).map((o) => [o.mode, o.policyId, o.body]))
+  assert.equal(ops(theirs), ops(named), 'the name changes what the step writes')
+  assert.equal(theirs.state.lifecycle, named.state.lifecycle)
+  assert.equal(theirs.status, named.status)
+})
+
+test('exactly the baseline policy under another name but for the exclusions group: a correction under its own name, never a rename', () => {
+  const body = plannedBody(withPolicies(fresh(), [gallery()]))
+  const users = ((body.conditions as Row).users ?? {}) as Row
+  const short = { ...body, conditions: { ...(body.conditions as Row), users: { ...users, excludeGroups: [] } } }
+  const theirsF = withPolicies(fresh(), [{ ...short, id: OTHER, displayName: 'Contoso - MFA for everyone', state: 'enabled' }])
+  const theirs = stepOf(theirsF)
+  assert.deepEqual(suggested(theirsF), [body.displayName], 'Align Policy Names suggests the plan name')
+  const named = stepOf(withPolicies(fresh(), [{ ...short, id: OTHER, state: 'enabled' }]))
+  assert.notEqual(theirs.status, 'done', 'the exclusions group missing is not done')
+  assert.ok(!(theirs.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), 'nothing is created beside it')
+  assert.ok(!(theirs.action.resolution?.policies ?? []).some((o) => typeof o.body.displayName === 'string'), 'the step writes no name')
+  assert.equal(theirs.tracking?.members?.[0]?.policyId, OTHER)
+  assert.equal(theirs.status, named.status, 'read as the plan’s own under the plan’s name')
+  // The same correction, naming the policy by its own name.
+  const correction = (s: Step) => JSON.stringify(s.tracking?.members?.[0]?.correction ?? null).replace('Contoso - MFA for everyone', String(body.displayName))
+  assert.notEqual(theirs.tracking?.members?.[0]?.correction ?? null, null, 'the premise: a correction')
+  assert.equal(correction(theirs), correction(named))
 })
 
 test('the plan name and every control: in place, nothing to create or edit', () => {
@@ -103,19 +151,31 @@ test('two live policies carrying the plan name and neither its tag: the step hol
   assert.deepEqual(step.action.resolution?.policies ?? [], [])
 })
 
-test('a rename reads as one on the board: Ready · Rename, never Correct (audit, 2026-10-05)', async () => {
-  const { laneReadings } = await import('../ui/surfaces/planLanes.ts')
-  const { SUBSTATUS_WORD } = await import('../ui/surfaces/planBoard.ts')
+test('demo-week2: the three enforced policies exactly the baseline’s under the tenant’s names are their steps’ own, and Align Policy Names suggests their names (owner option, 2026-10-05)', async () => {
+  const { boardReadingsOf } = await import('../ui/surfaces/planBoard.ts')
   const f = withFoundationSettled(fixture('demo-week2'))
-  const steps = runFixture(f, {}, null, f.snapshot.asOf).steps
-  const renames = steps.filter((s) => (s.action.resolution?.policies ?? []).length > 0 && s.action.resolution!.policies.every((o) => o.renamesOnly === true))
-  assert.ok(renames.length > 0, 'the premise: week two renames a policy exactly the baseline’s under another name')
-  const readings = laneReadings(steps)
-  for (const s of renames) {
-    const r = readings.get(s.id)!
-    if (r.lane !== 'Ready') continue
-    assert.equal(r.substatus, 'Rename', `${s.id} reads ${r.lane} · ${r.substatus}`)
-    assert.equal(SUBSTATUS_WORD.Rename, 'Rename')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const rows = f.snapshot.config.caPolicies!.rows as Row[]
+  const naming = r.schedule.cleanup?.namingProposals ?? []
+  const exact: Record<string, string> = { [MFA]: 'Core - Grant - MFA for all users', 's-goal-block-device-code': 'Core - Block - Device code flow', 's-goal-block-legacy-auth': 'Core - Block - Legacy authentication' }
+  for (const [id, name] of Object.entries(exact)) {
+    const step = r.steps.find((s) => s.id === id)!
+    const policy = rows.find((p) => p.displayName === name)
+    assert.ok(policy, `the premise: week two holds ${name}`)
+    assert.equal(policy.state, 'enabled', `the premise: ${name} is On`)
+    assert.deepEqual(step.action.resolution?.policies ?? [], [], `${id} hands over a rename`)
+    assert.equal(step.action.intendedFor, policy.id, `${id} compares ${name} as its own`)
+    assert.ok(naming.some((n) => n.id === policy.id && n.from === name && n.to === step.createName), `${id}: Align Policy Names does not suggest ${step.createName} for ${name}: ${JSON.stringify(naming)}`)
   }
-  assert.ok(renames.some((s) => readings.get(s.id)!.lane === 'Ready'), 'the premise: a rename is Ready')
+  // Two are done; Block Legacy Authentication stays open for its own reason, the
+  // mail accounts still to move (blockSignIns.ts), never for its name.
+  assert.equal(r.steps.find((s) => s.id === MFA)!.status, 'done')
+  assert.equal(r.steps.find((s) => s.id === 's-goal-block-device-code')!.status, 'done')
+  const legacy = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+  assert.ok((legacy.mailAccountsToMove ?? []).length > 0 && legacy.state.lifecycle === 'enforced', 'the premise: legacy is open for its mail accounts alone')
+  assert.ok(!r.steps.some((s) => (s.action.resolution?.policies ?? []).some((o) => o.renamesOnly === true)), 'a step hands over a rename: 8.2 is the one place')
+  // The unchanged tenant's follow-up scan completes what v1.0.0 completed on it:
+  // ten of the board's rows (v1.1 before this option: eight).
+  const board = boardReadingsOf(r.steps, r.schedule.cleanup, null)
+  assert.equal([...board.readings.values()].filter((x) => x.lane === 'Completed').length, 10)
 })

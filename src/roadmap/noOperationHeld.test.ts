@@ -125,19 +125,18 @@ test('patch Q3: the demo\'s device policy, turned on as the step built it with p
 })
 
 // Policy identity is the name (owner, 2026-10-04): the tenant's policy, exactly
-// the plan's under its own name, delivers the goal as decided, and the step's one
-// edit is the rename. Carrying the baseline's name, it is the goal in place.
-test('patch Q3: a tenant\'s own enforced compliant-device policy that leaves phones out, as decided, delivers the goal; the step renames it, and under the baseline\'s name it is in place on its first scan', () => {
+// the plan's under its own name, is the step's own and delivers the goal as
+// decided. It is the goal in place on its first scan, whatever its name; Align
+// Policy Names suggests the baseline's (owner option, 2026-10-05: "Suggest a rename").
+test('patch Q3: a tenant’s own enforced compliant-device policy that leaves phones out, as decided, is the goal in place on its first scan, and Align Policy Names suggests the baseline’s name', () => {
   const f = withDirectionApproved(fixture('demo-week2'))
   const body = created(f)
   const own = tenantOwn(body, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] })
   const theirs = scanned(f, own)
-  const cov = theirs.r.coverage.results.find((x) => x.goal.id === theirs.step.goalId)!
-  assert.equal(cov.status, 'enforced', 'the tenant\'s policy: the recorded narrowing reads as a gap')
-  assert.match(cov.statement, CHOSEN)
-  const ops = theirs.step.action.resolution?.policies ?? []
-  assert.deepEqual(ops.map((o) => [o.mode, o.policyId, o.body]), [['update', POLICY, { displayName: body.displayName }]], 'the step\'s one edit is not the rename')
-  assertDelivered(scanned(f, { ...own, displayName: body.displayName }), 'In place', 'the tenant\'s own policy under the baseline\'s name')
+  assertDelivered(theirs, 'In place', 'the tenant’s own policy under its own name')
+  assert.equal(theirs.step.action.intendedFor, POLICY, 'the step compares the tenant’s policy as its own')
+  assert.ok((theirs.r.schedule.cleanup?.namingProposals ?? []).some((n) => n.id === POLICY && n.to === body.displayName), JSON.stringify(theirs.r.schedule.cleanup?.namingProposals))
+  assertDelivered(scanned(f, { ...own, displayName: body.displayName }), 'In place', 'the tenant’s own policy under the baseline’s name')
 })
 
 test('patch Q3: a platform narrowing nobody recorded is still a gap', () => {
