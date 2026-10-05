@@ -21,7 +21,7 @@ function questionOf(f: Fixture, stepId: string, key: string) {
 test('the partner card shows the baseline’s version beside Yes, and says what No does (F-041, F-067)', () => {
   const q = questionOf(fixture('demo'), DIRECTION_STEP.use, 'partner')
   assert.equal(q.suggested?.value, 'yes', 'the premise: the demo saw a partner sign in, so Yes is suggested')
-  assert.equal(q.chosen?.yes, 'Keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed · your choice; the baseline’s version: they sign in with Modern MFA + TAP, and only from your countries'.replace('’', "'"))
+  assert.equal(q.chosen?.yes, 'Keeps partner and MSP technicians out of Require MFA for Guests and Block Sign-ins From Countries Not Allowed (your choice). The baseline’s version: they sign in with Modern MFA + TAP, and only from your countries.'.replace('’', "'"))
   assert.equal(q.chosen?.no, 'Partner and MSP technicians sign in with Modern MFA + TAP and only from your countries, as the baseline asks.')
 })
 

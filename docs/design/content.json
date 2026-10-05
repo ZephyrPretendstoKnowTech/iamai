@@ -5,7 +5,7 @@
     "signatureDefault": "IT",
     "adaptLine": "Paste this into your own assistant to match your voice.",
     "deviation": {
-      "line": "{line} · your choice; the baseline's version: {baseline}",
+      "line": "{line} (your choice). The baseline's version: {baseline}.",
       "none": "no such condition"
     },
     "devicePlan": {

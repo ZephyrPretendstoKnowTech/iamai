@@ -116,7 +116,7 @@ test('step 35 offers the plain-MFA rung as the first enforcement while anyone ha
   const sAfter = rAfter.steps.find((x) => x.goalId === 'sign-in-risk')!
   const after = stepPortalLines(sAfter, portalNamesFor(ctxFor(f, rAfter, { mapping }), stepVars(sAfter, ctxFor(f, rAfter, { mapping })) as Record<string, unknown>, 'x'))!
   const grant = after.find((l) => l.startsWith('Grant → '))!
-  assert.match(grant, /^Grant → Require multifactor authentication · your choice; the baseline's version: Grant → Require authentication strength: /)
+  assert.match(grant, /^Grant → Require multifactor authentication \(your choice\)\. The baseline's version: Grant → Require authentication strength: /)
   const withAnswer = runFixture({ ...f, mapping }, { mapping })
   const json = JSON.parse(withAnswer.steps.find((x) => x.goalId === 'sign-in-risk')!.action.json!) as { grantControls: { builtInControls: string[]; authenticationStrength?: unknown } }
   assert.deepEqual(json.grantControls.builtInControls, ['mfa'])
@@ -125,7 +125,7 @@ test('step 35 offers the plain-MFA rung as the first enforcement while anyone ha
   const artifact = (id: string) => drawn.artifacts.find(a => a.id === id)!
   assert.equal(artifact('json').unavailable, undefined)
   assert.deepEqual(JSON.parse(artifact('json').text()).grantControls, json.grantControls, 'the opened JSON follows the saved engine choice')
-  assert.match(artifact('portal').text(), /Under \*\*Grant\*\*, select \*\*Require multifactor authentication\*\*\. · your choice; the baseline's version: Under \*\*Grant\*\*, select \*\*Require authentication strength\*\*/)
+  assert.match(artifact('portal').text(), /Under \*\*Grant\*\*, select \*\*Require multifactor authentication\*\* \(your choice\)\. The baseline's version: Under \*\*Grant\*\*, select \*\*Require authentication strength\*\*/)
   assert.match(artifact('ai').text(), /Selected grant: Require multifactor authentication/)
   assert.ok(artifact('ps').text().includes(`-GrantControlsJson '${JSON.stringify(json.grantControls)}'`))
 })

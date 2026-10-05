@@ -417,6 +417,8 @@ export function besideBaseline(lines: string[], baseline: string[]): string[] {
   return lines.map((line) => {
     if (baseline.includes(line)) return line
     const was = baseline.find((b) => sectionOf(b) === sectionOf(line))
-    return fillText(words.line, { line, baseline: was ?? words.none })
+    // The template ends the sentence itself (owner, 2026-10-05).
+    const bare = (t: string): string => t.replace(/\.\s*$/, '')
+    return fillText(words.line, { line: bare(line), baseline: bare(was ?? words.none) })
   })
 }
