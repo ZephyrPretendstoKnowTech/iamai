@@ -275,6 +275,8 @@ function gapsOf(pieces: readonly DifferencePiece[]): string[] {
  * never accepted.
  */
 export function acceptedDifferences(found: readonly string[], intended: Row, deployed: Row, saved: Readonly<Record<string, string>>, o: { exclusionsGroupId: string | null; strengths: StrengthLookup }): string[] {
+  // Nothing saved for any of them: nothing to read (the common case, and the engine's hot path).
+  if (found.every((d) => saved[d] === undefined)) return []
   const grant = found.includes('grantControls') ? grantDirectionOf(intended, deployed, o.strengths) : undefined
   const now = materialFieldsOf(deployed)
   return found.filter((d) => {

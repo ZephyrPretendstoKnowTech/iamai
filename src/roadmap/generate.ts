@@ -1949,7 +1949,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const pairExact = (h: PairHalf): boolean => {
       if (h.policy === null || h.intent === null) return false
       const found = unwrittenDifferences(h.intent, null, h.policy as Record<string, unknown>)
-      return acceptedDifferences(found, h.intent, h.policy as Record<string, unknown>, pairAccepted, { exclusionsGroupId: tenantObjects.exclusionsGroupId ?? null, strengths: strengthLookupOf(snapshot) }).length === found.length
+      return acceptedDifferences(found, h.intent, h.policy as Record<string, unknown>, pairAccepted, { exclusionsGroupId: tenantObjects.exclusionsGroupId ?? null, strengths: tenantStrengths }).length === found.length
     }
     const pairDone = pair !== null && !pair.ambiguous && pair.halves.every((h) => h.policy?.state === 'enabled' && pairExact(h))
     // A tenant policy stands for a half (or for one nothing tells apart): the pair
@@ -2124,7 +2124,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         // Every difference accepted, read as tracking reads it (differences.ts acceptedDifferences).
         const allAccepted = (b: RawPolicy, p: RawPolicy): boolean => {
           const found = unwrittenDifferences(b, null, p)
-          return acceptedDifferences(found, b, p, accepted, { exclusionsGroupId: group ?? null, strengths: strengthLookupOf(snapshot) }).length === found.length
+          return acceptedDifferences(found, b, p, accepted, { exclusionsGroupId: group ?? null, strengths: tenantStrengths }).length === found.length
         }
         exact = (p: RawPolicy): boolean => body !== undefined && allAccepted(body, withGroup(p))
         exactAsIs = (p: RawPolicy): boolean => body !== undefined && allAccepted(body, p)
@@ -2142,7 +2142,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       }
       const ownId = String(own?.id ?? '')
       // A policy whose grant asks more than the baseline's (a stricter method): turning it off loosens sign-in (audit, 2026-10-05).
-      const stricter = (p: RawPolicy): boolean => planBody !== undefined && grantDirectionOf(planBody, p, strengthLookupOf(snapshot)) === 'stricter'
+      const stricter = (p: RawPolicy): boolean => planBody !== undefined && grantDirectionOf(planBody, p, tenantStrengths) === 'stricter'
       // A second live policy carrying the plan's name beside the step's tagged own is a duplicate to retire, never ignored (audit F6).
       const duplicates = own !== null && tagged.some((t) => t.id === own!.id) ? namedLive.filter((p) => String(p.id) !== ownId) : []
       // The other goals the same policy enforces today (delivers, or enforces at the
@@ -2150,8 +2150,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // replacing it does not (audit F3): it goes only once their steps' policies are
       // On too. A goal the replacement also delivers (guests under an all-users MFA
       // policy) loses nothing when the old one goes.
-      const replaces = planBody !== undefined ? new Set(goalsMatching(policyFacts(planBody, input.strengths), input.coverage.results.map((r) => r.goal)).map((g) => g.id)) : null
-      const alsoGoalsOf = (p: RawPolicy): string[] => input.coverage.results.filter((r) => r.goal.id !== goal.id && ((r.satisfaction?.policyIds ?? []).includes(String(p.id)) || r.candidates.some((c) => c.policyId === String(p.id) && c.contribution === 'strong' && c.meetsFloor !== false)) && !(replaces?.has(r.goal.id) ?? false)).map((r) => r.goal.id)
+      let replacesMemo: Set<string> | null | undefined
+      const replaces = (): Set<string> | null => (replacesMemo ??= planBody !== undefined ? new Set(goalsMatching(policyFacts(planBody, input.strengths), input.coverage.results.map((r) => r.goal)).map((g) => g.id)) : null)
+      const alsoGoalsOf = (p: RawPolicy): string[] => input.coverage.results.filter((r) => r.goal.id !== goal.id && ((r.satisfaction?.policyIds ?? []).includes(String(p.id)) || r.candidates.some((c) => c.policyId === String(p.id) && c.contribution === 'strong' && c.meetsFloor !== false)) && !(replaces()?.has(r.goal.id) ?? false)).map((r) => r.goal.id)
       const beside = [...theirs.filter((p) => String(p.id) !== ownId), ...duplicates].map((p) => {
         const alsoGoals = alsoGoalsOf(p)
         return { policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state), ...(stricter(p) ? { stricter: true as const } : {}), ...(alsoGoals.length > 0 ? { alsoGoals } : {}) }
