@@ -1254,15 +1254,17 @@ try {
   await demoGo('readiness')
   check('Demo: MFA Readiness renders over the sample people', await waitFor(`document.querySelectorAll('main.page .readiness-row:not(.head)').length >= 4`))
 
-  // Export: print page 1 is the briefing's summary: status, the three counts and the journey.
+  // Export: print page 1 is the briefing's summary: status, the three counts, what people will
+  // notice and how the risk is managed; the journey opens page 2 (owner, 2026-10-05).
   await demoGo('export')
   await waitFor(`document.querySelectorAll('main.page .export-card').length >= 7`)
   const demoPrinted = await clickExact('Print or save as PDF')
   await sleep(300)
   const demoCover = await evaluate(`(document.querySelector('.print-plan .brief-cover') || {}).textContent || ''`)
+  const demoJourney = await evaluate(`(document.querySelector('.print-plan .brief-cover + .brief-journey') || {}).textContent || ''`)
   check(
     'Demo: print page 1 renders the briefing summary',
-    demoPrinted && /Identity security plan for/.test(demoCover) && /steps are done/.test(demoCover) && /Still to do/.test(demoCover) && /The journey/.test(demoCover),
+    demoPrinted && /Identity security plan for/.test(demoCover) && /steps are done/.test(demoCover) && /Still to do/.test(demoCover) && /What people will notice/.test(demoCover) && /How the risk is managed/.test(demoCover) && !/The journey/.test(demoCover) && /The journey/.test(demoJourney),
     demoCover.replace(/\s+/g, ' ').slice(0, 220),
   )
   await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
