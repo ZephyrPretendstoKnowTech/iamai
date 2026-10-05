@@ -1,10 +1,10 @@
 {
   "lane": "Ready",
-  "substatus": "Correct",
+  "substatus": "Rename",
   "reason": null,
   "fact": "Enforced",
-  "badge": "Ready · Correct",
-  "bar": "Needs correction",
+  "badge": "Ready · Rename",
+  "bar": "Ready to rename",
   "rail": "Rename the policy",
   "headings": [
     "About this Step",
