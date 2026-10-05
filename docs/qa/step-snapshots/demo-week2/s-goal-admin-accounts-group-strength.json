@@ -1,0 +1,30 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Identify Service and Shared Accounts",
+  "fact": null,
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "Require a Strong Sign-in for Your Admin Accounts Group",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "not measured"
+    },
+    {
+      "label": "Identify Service and Shared Accounts",
+      "state": "Waiting on your answers"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Sep 7, 2026"
+}
