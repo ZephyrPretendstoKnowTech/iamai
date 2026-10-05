@@ -494,7 +494,7 @@ export function journeyAccountFindings(report: SubjectReport, snapshot: TenantSn
   return [identity, authentication]
 }
 
-export function journeyGroupFindings(report: SubjectReport | null | undefined, name: string | null, selected: boolean, snapshot?: TenantSnapshot, groupId?: string | null, groups?: GroupMembers, accountIds: readonly string[] = []): ConfigurationFinding[] {
+export function journeyGroupFindings(report: SubjectReport | null | undefined, name: string | null, selected: boolean, snapshot?: TenantSnapshot, groupId?: string | null, groups?: GroupMembers, accountIds: readonly string[] = [], accepted?: (policy: unknown) => boolean): ConfigurationFinding[] {
   const choice: ConfigurationFinding = { key: 'group-choice', label: 'Exclusions group', value: selected ? 'Verified' : 'No group selected', detail: selected ? '' : 'To create one, follow Create an emergency exclusions group in Implementation Tasks.', outcome: selected ? 'pass' : 'unknown', items: selected && name ? [{ label: 'Selection', factLabel: 'Selection', value: 'Saved', subjectId: groupId ?? 'group-choice', subjectLabel: name, outcome: 'pass', issueKeys: ['group:choice'] }] : [], taskSafe: false }
   // With no group chosen there is no membership and no policy exclusion to
   // report on: the choice is the one finding, as the card reads it (owner,
@@ -560,7 +560,8 @@ export function journeyGroupFindings(report: SubjectReport | null | undefined, n
   if (groupId && snapshot?.config.caPolicies.status === 'ok') {
     // The one rule (validation/exclusionsGroupPolicies.ts): the policies that reach
     // the emergency accounts, On or Report-only, as Step 2's completion reads them.
-    const needing = exclusionsGroupPolicies({ policies: snapshot.config.caPolicies.rows, groupId, accountIds, activeRoles: snapshot.roles.active, membersOf: groupLookup(groups) })
+    // Not the one policy that includes the chosen emergency account on purpose (roadmap/emergencyStrongAccount.ts).
+    const needing = exclusionsGroupPolicies({ policies: snapshot.config.caPolicies.rows, groupId, accountIds, activeRoles: snapshot.roles.active, membersOf: groupLookup(groups), ...(accepted ? { accepted } : {}) })
     policies.items = needing.flatMap(p => {
       const subjectId = p.id || p.name
       return [{

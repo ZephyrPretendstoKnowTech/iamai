@@ -630,6 +630,12 @@ export type DirectionQuestion = {
    * step, goes ahead. The Azure Virtual Desktop groups.
    */
   optional?: true
+  /**
+   * The list takes exactly one item (owner, 2026-10-05: the one emergency account
+   * that must use its security key). Two picked is not an answer to approve
+   * (directionAnswers.ts directionAnswerComplete).
+   */
+  pickOne?: true
   suggested: { value: string; picked: string[] }
   /** Why suggested, in one line; or that the suggestion is a default the scan did not see. */
   evidence: string
@@ -1065,6 +1071,14 @@ export type Step = {
   plainTitle: string
   /** The conditional inputs on this step nobody has saved, by label (roadmap/answers.ts unsavedInputsOf, U28); absent where none. */
   unsavedInputs?: string[]
+  /**
+   * Require a Security Key for One Emergency Account only (owner, 2026-10-05;
+   * roadmap/emergencyStrongGates.ts): what its turn-on waits on, each true,
+   * false or null where unread. Anything not true holds the turn-on
+   * (enforceWaits.ts, `Action.enforceWaitsOn`). Absent on every other step, and
+   * on this one until the operator names the account.
+   */
+  emergencyStrongGates?: import('./emergencyStrongAccount.ts').EmergencyStrongGates
   /** True where every open input is one IAMAI filled and is waiting to have confirmed, not one it is asking (roadmap/answers.ts openInputsOf). */
   unsavedInputsPrefilled?: true
   /**

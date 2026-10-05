@@ -335,6 +335,20 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[62].beforeTurnOn.lines[1]',
   '.steps[62].beforeTurnOn.lines[2]',
   '.steps[62].beforeTurnOn.lines[3]',
+  // Require a Security Key for One Emergency Account (owner, 2026-10-05): the
+  // engine's words, not the renderer's. `everywhere` replaces title, why and the
+  // notice when everyone works remotely (emergencyStrongAccount.ts
+  // emergencyStrongContent), `oneAccount` is its Doesn't-apply reason with fewer
+  // than two emergency accounts, and `turnOnWaits` is what its turn-on waits on
+  // (enforceWaits.ts); the example is an office tenant with two accounts and none
+  // of those states.
+  '.steps[63].everywhere.notice',
+  '.steps[63].everywhere.title',
+  '.steps[63].everywhere.why',
+  '.steps[63].oneAccount',
+  '.steps[63].turnOnWaits.drilled',
+  '.steps[63].turnOnWaits.method',
+  '.steps[63].turnOnWaits.otherExcluded',
   // The line an update draws when it takes a tenant exclusion off the policy (review 3
   // queue 3, stepPortal.ts): the example corrects no policy that has one.
   '.shared.changeRemoves',

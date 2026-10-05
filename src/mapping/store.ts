@@ -6,7 +6,7 @@ import type { CoverageInput } from '../coverage/coverage.ts'
 import type { MappingState } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { emptyMappingState } from './types.ts'
-import { migrateEmergencySelection } from './emergencyChoice.ts'
+import { emergencyStrongAccountOf, migrateEmergencySelection } from './emergencyChoice.ts'
 
 export async function loadMappingState(tenantId: string): Promise<MappingState> {
   const stored = await loadMappingRecord<Partial<MappingState>>(tenantId)
@@ -50,6 +50,8 @@ export function toCoverageMapping(state: MappingState, exclusionsGroupId: string
     serviceAccountUsers: serviceAccountIdsOf(state),
     // The groups that hold the admin accounts: the population of Jon's ADM-Users policy (coverage.ts).
     ...((state.adminAccountGroupIds ?? []).length > 0 ? { adminAccountGroupIds: [...(state.adminAccountGroupIds ?? [])] } : {}),
+    // The emergency account named to sign in with its security key: the population of Jon's BreakGlass - TrustedLocations policy (coverage.ts).
+    ...(emergencyStrongAccountOf(state) !== null ? { emergencyStrongAccountId: emergencyStrongAccountOf(state)! } : {}),
     // The office network the plan picked: the trusted network its service-accounts
     // block carves out, marked trusted in the tenant or not yet (coverage.ts tenantLocationKinds).
     trustedLocationIds: [...(state.trustedLocationIds ?? [])],

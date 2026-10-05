@@ -25,14 +25,14 @@ import type { GoalMap } from '../roadmap/goalMap.ts'
 import { WORKLOAD_REASON } from '../coverage/applicability.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import type { Step } from '../roadmap/types.ts'
-import { EMERGENCY_ACCESS_GROUP, STEP_GROUPS } from '../roadmap/stepGroups.ts'
+import { STEP_GROUPS } from '../roadmap/stepGroups.ts'
 import { groupTitleOf } from '../ui/surfaces/planBoard.ts'
 import { notLicensedRows } from './notLicensed.ts'
 import { list } from '../copy/statements.ts'
 
 export type NotInPlanRow = { policy: string; reason: string; text: string }
 
-type Reason = 'externalMfaRisk' | 'emergencyAccount' | 'blockedCountries' | 'noServiceAccounts' | 'syncNoAccount' | 'generic'
+type Reason = 'externalMfaRisk' | 'blockedCountries' | 'noServiceAccounts' | 'syncNoAccount' | 'generic'
 type FooterCopy = { notInPlan: string; notInPlanRow: string; notInPlanReason: Record<Reason, string> }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
@@ -48,7 +48,6 @@ const ACCOUNTS_DIRECTION = 'direction:accounts'
  */
 const REASONS: { ids: readonly string[]; match: RegExp; reason: Reason; step?: string }[] = [
   { ids: ['bb6a814e-808a-467c-9475-06f89140ce99'], match: /\bEAM\b.*High-Risk/i, reason: 'externalMfaRisk', step: 'user-risk' },
-  { ids: ['1588fdc7-f34a-468e-8023-4d788ef5d226'], match: /BreakGlass/i, reason: 'emergencyAccount', step: EMERGENCY_ACCESS_GROUP },
   // Jon's countries block with no travel exception: optional, on the plan once countries are listed to block outright (coverage/companions.ts; v1.1 D4).
   { ids: ['1eaf943a-abad-4c77-b101-0c5342fc1044'], match: /Countries.*no[-_ ]?exclusions?/i, reason: 'blockedCountries', step: 'geo-restriction' },
 ]

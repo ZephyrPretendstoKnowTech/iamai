@@ -64,6 +64,8 @@ export function resolvePopulation(
       break // the mapping's confirmed service accounts; the caller supplies them (coverage.ts, generate.ts)
     case 'adminAccounts':
       break // the members of the operator's admin accounts groups; the caller supplies them (coverage.ts, generate.ts)
+    case 'emergencyAccount':
+      break // the one emergency account the operator named; the caller supplies it (coverage.ts, generate.ts)
     case 'agents':
       break // agent identities are no person; scored structurally (Jon's AGENT blocks)
   }

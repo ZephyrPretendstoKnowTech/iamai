@@ -301,6 +301,8 @@ function validatePlanShape(plan: PlanFile): string | null {
   if (plan.mappings.avdUserGroupIds !== undefined && (!Array.isArray(plan.mappings.avdUserGroupIds) || plan.mappings.avdUserGroupIds.some((id) => typeof id !== 'string' || id.trim() === '') || new Set(plan.mappings.avdUserGroupIds.map((id) => id.toLowerCase())).size !== plan.mappings.avdUserGroupIds.length)) return 'not a plan file (invalid Azure Virtual Desktop groups)'
   // The groups that hold the admin accounts (owner, 2026-10-04): group ids, each once.
   if (plan.mappings.adminAccountGroupIds !== undefined && (!Array.isArray(plan.mappings.adminAccountGroupIds) || plan.mappings.adminAccountGroupIds.some((id) => typeof id !== 'string' || id.trim() === '') || new Set(plan.mappings.adminAccountGroupIds.map((id) => id.toLowerCase())).size !== plan.mappings.adminAccountGroupIds.length)) return 'not a plan file (invalid admin accounts groups)'
+  // The emergency account that must use its security key (owner, 2026-10-05): one id, when present.
+  if (plan.mappings.emergencyStrongAccountId !== undefined && (typeof plan.mappings.emergencyStrongAccountId !== 'string' || plan.mappings.emergencyStrongAccountId.trim() === '')) return 'not a plan file (invalid emergency account for the security key)'
   if (plan.mappings.workflowAnswers && (!object(plan.mappings.workflowAnswers) || Object.values(plan.mappings.workflowAnswers).some((v) => !['yes', 'no', 'unsure'].includes(v)))) return 'not a plan file (invalid workflow choice)'
   const decisions = plan.decisions
   if (decisions) {
@@ -368,10 +370,23 @@ export function parsePlanFile(text: string): { plan: PlanFile | null; error: str
     }
     const upgraded = upgradePlanFile(parsed)
     const error = validatePlanShape(upgraded)
-    return error ? { plan: null, error, kind: 'damaged' } : { plan: upgraded, error: null, kind: null }
+    return error ? { plan: null, error, kind: 'damaged' } : { plan: withValidEmergencyStrongAccount(upgraded), error: null, kind: null }
   } catch (e) {
     return { plan: null, error: e instanceof Error ? e.message : String(e), kind: 'damaged' }
   }
+}
+
+/**
+ * A plan file's emergency account for the security key, kept only while it is
+ * one of the emergency accounts the same file carries (owner, 2026-10-05): an id
+ * that is not one of them is ignored, never read as an answer, and the step it
+ * answers waits for the operator's own Save again.
+ */
+function withValidEmergencyStrongAccount(plan: PlanFile): PlanFile {
+  const id = plan.mappings.emergencyStrongAccountId
+  if (id === undefined || (plan.mappings.breakGlassUserIds ?? []).some((x) => x.toLowerCase() === id.toLowerCase())) return plan
+  const { emergencyStrongAccountId: _ignored, ...mappings } = plan.mappings
+  return { ...plan, mappings }
 }
 
 /**

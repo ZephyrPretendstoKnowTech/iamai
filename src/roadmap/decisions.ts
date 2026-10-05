@@ -12,7 +12,7 @@ import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
 import { MFA_FOLLOW_UP_KEY, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
-import { ADMIN_ACCOUNTS_STORAGE, AVD_USERS_STORAGE, WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
+import { ADMIN_ACCOUNTS_STORAGE, AVD_USERS_STORAGE, EMERGENCY_STRONG_STORAGE, WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
 import { COUNTRIES_BLOCKED_ANSWER, COUNTRIES_LEFT_OUT_ANSWER, blockedAndAllowed, parseCountryCodes } from './countriesLockout.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
@@ -409,6 +409,15 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       const groups = [...new Set(picked)]
       if (groups.length > 0) next.adminAccountGroupIds = groups
       else delete next.adminAccountGroupIds
+    } else if (stepId === EMERGENCY_STRONG_STORAGE && provenance === 'confirmed') {
+      // The emergency account that must use its security key (owner, 2026-10-05):
+      // only an operator's Save names it, exactly one, and only one of the
+      // emergency accounts already saved. Anything else is no answer (Jon's
+      // BreakGlass - TrustedLocations policy waits); nothing is ever guessed.
+      const ids = [...new Set(picked.map((id) => id.toLowerCase()))]
+      const one = ids.length === 1 ? next.breakGlassUserIds.find((id) => id.toLowerCase() === ids[0]) : undefined
+      if (one !== undefined) next.emergencyStrongAccountId = one
+      else delete next.emergencyStrongAccountId
     }
   }
   // The answers that add to a picker's list (E1): the travellers' countries

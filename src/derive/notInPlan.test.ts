@@ -86,8 +86,8 @@ test('the list is derived from what the Plan draws, never a fixed set of policie
   assert.ok(licensed.length > 0, 'the premise: the demo has Not licensed rows')
   const userRisk = policies.find((p) => (PINNED_GOAL_MAP['user-risk'] ?? []).includes(p.id ?? p.displayName))!
   assert.ok(!rows.some((r) => r.policy === userRisk.displayName), 'a Not licensed goal\'s policy is not listed again')
-  // The baseline's policy that limits one emergency account is listed with the plan's own rule beside it.
-  assert.match(rows.find((r) => r.policy === 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations')?.reason ?? '', /while the other stays excluded from everything/)
+  // Jon's BreakGlass - TrustedLocations is a step since 2026-10-05 (emergencyStrongAccount.test.ts): no footer row names it.
+  assert.equal(rows.some((r) => r.policy === 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations'), false)
 })
 
 test('each footer row names its own reason; the ZTCA switches (T2-LK) and the two AGENT blocks (owner, 2026-10-04) are no row', () => {
@@ -140,7 +140,7 @@ test('on a P2 tenant with no external MFA method, Jon\'s EAM High-Risk Users is 
 })
 
 // T2-FTR: no row of the pinned baseline falls back to the generic reason.
-test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keeps them off; BreakGlass says why the plan does without it; nothing reads the generic reason', () => {
+test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keeps them off; nothing reads the generic reason', () => {
   const generic = 'No step in this plan covers it for this tenant.'
   let sawServiceAccounts = false
   let sawSync = false
@@ -162,17 +162,20 @@ test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keep
   const { rows } = planOf('demo')
   // ADM-Users is a step since 2026-10-04 (adminAccountsGroup.test.ts): no footer row names it.
   assert.equal(rows.some((r) => /MFA-Passkeys - ADM-Users/.test(r.policy)), false)
-  assert.equal(rows.find((r) => /BreakGlass - TrustedLocations/.test(r.policy))?.reason, 'Requires a strong sign-in from one emergency account outside the office network, while the other stays excluded from everything (Establish Emergency Access). Not in this release.')
+  // Nor BreakGlass - TrustedLocations, a step since 2026-10-05 (emergencyStrongAccount.test.ts), and its reason is gone.
+  assert.equal(rows.some((r) => /BreakGlass - TrustedLocations/.test(r.policy)), false)
+  assert.equal((pages.plan as unknown as { footer: { notInPlanReason: Record<string, string> } }).footer.notInPlanReason.emergencyAccount, undefined)
 })
 
 test('T2-FTR: a pinned policy keeps its reason by its stable id whatever it is called; a policy of another baseline is read by its name', () => {
   const { run, steps, policies } = planOf('demo')
-  // Jon's BreakGlass policy (ADM-Users, the example here until 2026-10-04, is a step now).
-  const emergency = policies.find((p) => p.id === '1588fdc7-f34a-468e-8023-4d788ef5d226')!
-  const renamed = policies.map((p) => (p === emergency ? { ...p, displayName: 'Emergency sign-in outside the office' } : p))
-  const byId = notInPlanRows(renamed, steps, run.coverage, PINNED_GOAL_MAP).find((r) => r.policy === 'Emergency sign-in outside the office')
-  assert.match(byId?.reason ?? '', /^Requires a strong sign-in from one emergency account outside the office network/)
+  // Jon's countries block with no travel exception (ADM-Users until 2026-10-04 and
+  // BreakGlass until 2026-10-05 were the example here; both are steps now).
+  const countries = policies.find((p) => p.id === '1eaf943a-abad-4c77-b101-0c5342fc1044')!
+  const renamed = policies.map((p) => (p === countries ? { ...p, displayName: 'Block some countries for everyone' } : p))
+  const byId = notInPlanRows(renamed, steps, run.coverage, PINNED_GOAL_MAP).find((r) => r.policy === 'Block some countries for everyone')
+  assert.match(byId?.reason ?? '', /^Blocks countries outright, travellers included/)
   // An upload's own copy, under another id, still reads its words by Jon's name.
-  const uploaded = [{ id: 'upload-0001', displayName: 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations' }]
-  assert.match(notInPlanRows(uploaded, [], run.coverage, {}).at(0)?.reason ?? '', /^Requires a strong sign-in from one emergency account outside the office network/)
+  const uploaded = [{ id: 'upload-0001', displayName: countries.displayName }]
+  assert.match(notInPlanRows(uploaded, [], run.coverage, {}).at(0)?.reason ?? '', /^Blocks countries outright, travellers included/)
 })

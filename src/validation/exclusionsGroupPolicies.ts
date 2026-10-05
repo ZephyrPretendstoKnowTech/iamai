@@ -43,6 +43,13 @@ export type ExclusionsGroupPolicyInput = {
   activeRoles: Readonly<Record<string, readonly string[]>>
   /** A group's transitive members as read; undefined when the group was not read. */
   membersOf: (groupId: string) => { memberIds: readonly string[]; sampled?: boolean } | undefined
+  /**
+   * The one policy the plan writes that includes an emergency account on purpose
+   * and must not exclude the group, because the account it is for is in it
+   * (roadmap/emergencyStrongAccount.ts acceptedEmergencyStrongPolicy: this step's
+   * own, shaped to reach the operator's chosen account alone). Absent: none.
+   */
+  accepted?: (policy: unknown) => boolean
 }
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase()
@@ -79,11 +86,12 @@ export function includesNoPerson(policy: unknown): boolean {
 
 /**
  * The policies that need the exclusions group, each with whether it has it:
- * every policy but an Off one, and one that includes no person (includesNoPerson).
+ * every policy but an Off one, one that includes no person (includesNoPerson),
+ * and the one the plan writes to include an emergency account (`accepted`).
  */
 export function exclusionsGroupPolicies(input: ExclusionsGroupPolicyInput): ExclusionsGroupPolicy[] {
   return (input.policies as PolicyRow[]).flatMap((policy, index) => {
-    if (!policy || typeof policy !== 'object' || policy.state === 'disabled' || includesNoPerson(policy)) return []
+    if (!policy || typeof policy !== 'object' || policy.state === 'disabled' || includesNoPerson(policy) || input.accepted?.(policy) === true) return []
     const applies = appliesToAccounts(policy, input)
     const excludeGroups = policy.conditions?.users?.excludeGroups
     const excluded = Array.isArray(excludeGroups) ? strings(excludeGroups).some(id => same(id, input.groupId)) : null
@@ -102,8 +110,8 @@ export function exclusionsGroupPolicies(input: ExclusionsGroupPolicyInput): Excl
  * counts the same M (roadmap/generate.ts). The picker's M had counted Off
  * policies too: messy read "Impact 12 policies" beside "of 36 policies".
  */
-export function exclusionsReach(policies: readonly unknown[], groupId: string): { excludedFrom: number; policyCount: number } {
-  const needing = exclusionsGroupPolicies({ policies, groupId, accountIds: [], activeRoles: {}, membersOf: () => undefined })
+export function exclusionsReach(policies: readonly unknown[], groupId: string, accepted?: (policy: unknown) => boolean): { excludedFrom: number; policyCount: number } {
+  const needing = exclusionsGroupPolicies({ policies, groupId, accountIds: [], activeRoles: {}, membersOf: () => undefined, ...(accepted ? { accepted } : {}) })
   return { excludedFrom: needing.filter(policy => policy.outcome === 'pass').length, policyCount: needing.length }
 }
 

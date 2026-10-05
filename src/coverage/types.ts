@@ -119,8 +119,10 @@ export type Signature = Record<string, unknown>
  * `adminAccounts`: the members of the groups the operator named as holding the admin accounts
  * (MappingState.adminAccountGroupIds), which the caller supplies; the directory cannot say which group that is.
  * `agents`: Microsoft Entra agent identities, which are no person: the population is nobody (Jon's AGENT blocks).
+ * `emergencyAccount`: the one emergency access account the operator named to sign in with its security key
+ * (MappingState.emergencyStrongAccountId), which the caller supplies; nothing in the directory says which it is.
  */
-export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' | 'serviceAccounts' | 'adminAccounts' | 'agents' }
+export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' | 'serviceAccounts' | 'adminAccounts' | 'agents' | 'emergencyAccount' }
 
 export type Implementation = {
   tier: 'free' | 'p1' | 'p2' | 'pim' | 'intune' | 'workloadId' | 'gsa' | 'mcas'

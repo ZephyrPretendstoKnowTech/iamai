@@ -39,6 +39,8 @@ const W = directionWords
 /** The universe a question picks from: accounts or the tenant's IP locations (pickerRows.ts). */
 function universeOf(q: DirectionQuestion, ctx: StepVarContext): PickerObject[] {
   const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }
+  // The emergency account for the security key: only the emergency accounts Establish Emergency Access saved (roadmap/direction.ts emergencyStrongQuestion).
+  if (q.key === 'emergencyStrong') return ctx.mapping.breakGlassUserIds.map((id) => ({ id, name: ctx.nameOf(id) }))
   if (q.control === 'accounts') {
     // Each chip says why its account was picked, where the detection picked it (pickerRows.ts accountBadges).
     const why = accountBadges(q.key, pickerCtx)

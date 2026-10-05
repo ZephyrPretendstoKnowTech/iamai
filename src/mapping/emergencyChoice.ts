@@ -65,6 +65,20 @@ export function operatorConfirmedEmergency(state: Pick<MappingState, 'assumed'>)
   return state.assumed?.[EMERGENCY_ANSWER_KEY] === 'confirmed'
 }
 
+/**
+ * The emergency account the operator named to sign in with its security key
+ * outside the office (MappingState.emergencyStrongAccountId; owner, 2026-10-05),
+ * read only where it is one of two or more confirmed emergency accounts: the
+ * other account has to stay excluded from everything, so with fewer than two
+ * there is no such account, and an id that is no longer one of them is no answer.
+ */
+export function emergencyStrongAccountOf(state: Pick<MappingState, 'emergencyStrongAccountId' | 'breakGlassUserIds'>): string | null {
+  const id = state.emergencyStrongAccountId
+  const confirmed = state.breakGlassUserIds ?? []
+  if (typeof id !== 'string' || id === '' || confirmed.length < 2) return null
+  return confirmed.find((x) => x.toLowerCase() === id.toLowerCase()) ?? null
+}
+
 /** The ids a record kept without proof anybody chose them: offered again, never used. */
 export function emergencyPriorIds(state: Pick<MappingState, 'breakGlassPriorIds'>): string[] {
   return [...(state.breakGlassPriorIds ?? [])]

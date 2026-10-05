@@ -582,6 +582,8 @@
       },
       "sessionControls": null,
       "placeholders": {
+        "cec6164b-ea04-4646-b1b0-125cb7b0c71b": "emergencyStrongAccount",
+        "ebb6b745-eb22-4e8e-8b09-95e9bb568ce2": "emergencyOtherAccount",
         "0403d368-f07f-4e4c-b75d-aa169d5b6683": "trustedLocation",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
@@ -2291,6 +2293,9 @@
     ],
     "admin-accounts-group-strength": [
       "a53c4c2b-b577-4d88-b64d-36b92f8f3ca0"
+    ],
+    "emergency-account-strong-signin": [
+      "1588fdc7-f34a-468e-8023-4d788ef5d226"
     ],
     "admin-portals-protected": [
       "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e"
