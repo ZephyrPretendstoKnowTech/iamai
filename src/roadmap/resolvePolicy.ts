@@ -27,6 +27,7 @@ import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { DIRECTION_STEP_IDS } from './stepGroups.ts'
 import type { TemplatePlaceholder } from './template.ts'
 import { assumedAbsentSourceGroups } from './sourceMappings.ts'
+import { readPolicy } from '../baseline/policyReadings.ts'
 
 export type RawPolicy = Record<string, unknown>
 
@@ -229,6 +230,13 @@ export type ResolvedPolicy = {
    * person's answer and not evidence, and never waited on.
    */
   omitted: ReadonlySet<string>
+  /**
+   * The fields IAMAI's reading of the source policy set (interpretation.json
+   * `policies`; baseline/policyReadings.ts), as `conditions.<key>[.<field>]`:
+   * Jon's AGENT blocks, whose agent targeting the export lost. Absent where no
+   * reading names the policy, so every other field is the author's.
+   */
+  reconstructed?: readonly string[]
 }
 
 // Author references are inventoried from the baseline's policies, which are a
@@ -881,7 +889,11 @@ function dedupeCollections(value: unknown): unknown {
  * built itself (a goal's own template) passes none and only gets the exclusions
  * group and the de-duplication.
  */
-export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, goalId: string, policies: readonly CaPolicy[] = []): ResolvedPolicy {
+export function resolveTenantPolicy(source: RawPolicy, tenant: TenantObjects, goalId: string, policies: readonly CaPolicy[] = []): ResolvedPolicy {
+  // The source as IAMAI reads it: a policy the export lost part of (Jon's AGENT
+  // blocks) takes its reading here, where the step's body is built, and the
+  // fields it set travel with the result (`reconstructed`).
+  const { policy, fields: reconstructed } = readPolicy(source)
   const assumptions = assumedAbsentSourceGroups(policy, policies)
   const effectiveTenant = assumptions.length ? { ...tenant, omitted: new Set([...(tenant.omitted ?? []), ...assumptions]) } : tenant
   const { ids, unresolved, authorOnly, unsettled, decisions: packageDecisions, omitted, allUsers } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), effectiveTenant, goalId)
@@ -924,16 +936,19 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
   const conditions = (body.conditions ?? {}) as RawPolicy
   // A workload-identity policy (users None, a service principal targeted, as
   // Jon's EntraConnectIDSync block) applies to no person, so it takes no
-  // exclusions group: the author's body stands as he wrote it.
+  // exclusions group: the author's body stands as he wrote it. Nor does an
+  // agent-identity policy (Jon's AGENT blocks): Microsoft's agent policies cannot
+  // exclude a user group, and an emergency account is a user, never an agent.
   const sps = ((conditions.clientApplications ?? {}) as RawPolicy).includeServicePrincipals
-  const workload = Array.isArray(sps) && sps.length > 0
+  const agents = ((conditions.clientApplications ?? {}) as RawPolicy).includeAgentIdServicePrincipals
+  const workload = (Array.isArray(sps) && sps.length > 0) || (Array.isArray(agents) && agents.length > 0)
   if (!workload) {
     const users = (conditions.users ?? {}) as RawPolicy
     users.excludeGroups = [...(Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]) : []), tenant.exclusionsGroupId ?? '{exclusionsGroup}']
     conditions.users = users
   }
   body.conditions = conditions
-  return { body: dedupeCollections(body) as RawPolicy, substitutions: ids, unresolved, authorOnly, unsettled, decisions, omitted }
+  return { body: dedupeCollections(body) as RawPolicy, substitutions: ids, unresolved, authorOnly, unsettled, decisions, omitted, ...(reconstructed.length > 0 ? { reconstructed } : {}) }
 }
 
 /**

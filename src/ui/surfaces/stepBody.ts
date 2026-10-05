@@ -40,7 +40,7 @@ import { heldLiveChange } from '../../roadmap/holds.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
 import { aiBriefingText, aiGroundingText } from './aiGrounding.ts'
 import type { TabItem } from '../components/index.ts'
-import { pinnedToTenant, powershellFor } from './stepPowerShell.ts'
+import { betaRequestOf, pinnedToTenant, powershellFor } from './stepPowerShell.ts'
 import { PROCEDURE } from '../../roadmap/policyProcedure.ts'
 import { policyJsonText, stepOperations } from './stepJson.ts'
 import { ifWrongLineFor, stepExportView } from './stepExport.ts'
@@ -518,7 +518,7 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   const produced: Artifact[] = (
     packaged
       ? (shownProjection?.channels ?? []).map((a) => packageArtifact(a.channel === 'json' && machine ? { ...a, text: jsonWithPlanTag(a.text, step) } : a, grounding)).filter((a) => a.text().trim() !== '')
-      : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
+      : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: ch === 'json' ? betaJsonNote(step) : null }))
   ).filter((a) => resourceChannelAllowed(step, a.id))
     // A policy the tenant has switched off keeps no channel that would build one.
     //
@@ -990,4 +990,15 @@ export function headingsOf(b: StepBody): string[] {
     ...(b.showImplementation ? [task?.implementation ?? CONTRACT.implementation.heading] : []),
     ...(b.contract.doneWhen.length > 0 ? [task?.doneWhen ?? HEAD.doneWhen] : []),
   ]
+}
+
+/**
+ * The JSON tab's request line where the step's policy targets agent identities
+ * (Jon's AGENT blocks): it goes to Graph beta, which alone carries the agent
+ * fields (stepPowerShell.ts betaRequestOf). Null for every other step, whose
+ * JSON is the v1.0 body.
+ */
+function betaJsonNote(step: Step): string | null {
+  const requests = stepOperations(step).map(betaRequestOf).filter((r): r is NonNullable<ReturnType<typeof betaRequestOf>> => r !== null)
+  return requests.length > 0 ? requests.map((r) => `${r.method} ${r.endpoint}`).join('; ') : null
 }

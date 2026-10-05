@@ -14,7 +14,7 @@ import { pinnedPackage } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
 import { externalMethodsEnabled, goalMapInUse } from '../coverage/companions.ts'
 import { customerPlanSteps } from '../ui/surfaces/customerPlanSteps.ts'
-import { stepById } from '../content/content.ts'
+import { pages, stepById } from '../content/content.ts'
 import { notLicensedRows } from './notLicensed.ts'
 import { notInPlanLines, notInPlanRows, notInPlanSummary } from './notInPlan.ts'
 
@@ -90,22 +90,35 @@ test('the list is derived from what the Plan draws, never a fixed set of policie
   assert.match(rows.find((r) => r.policy === 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations')?.reason ?? '', /while the other stays excluded from everything/)
 })
 
-test('each footer row names its own reason: agent blocks, the unused EAM companion; the ZTCA switches are no row (T2-LK)', () => {
-  const { rows } = planOf('demo')
-  const reasonOf = (re: RegExp): string => rows.find((r) => re.test(r.policy))?.reason ?? ''
-  assert.equal(reasonOf(/AGENT - BLOCK - HighRiskAgent/), 'Blocks AI agent identities, which need Microsoft Entra Agent ID. Not in this release.')
-  assert.equal(reasonOf(/AGENT - BLOCK - NonTrustedAgents/), 'Blocks AI agent identities, which need Microsoft Entra Agent ID. Not in this release.')
-  assert.deepEqual(rows.filter((r) => /\bZTCA\b/.test(r.policy)), [], 'Prepare the Lockdown Kit claims all three switches')
+test('each footer row names its own reason; the ZTCA switches (T2-LK) and the two AGENT blocks (owner, 2026-10-04) are no row', () => {
+  for (const name of TENANTS) {
+    const { steps, rows, run } = planOf(name)
+    assert.deepEqual(rows.filter((r) => /\bZTCA\b/.test(r.policy)), [], `${name}: Prepare the Lockdown Kit claims all three switches`)
+    // Jon's two AGENT blocks are steps: Block AI Agents You Have Not Approved is
+    // drawn, and Block High-Risk AI Agents is drawn or, without Entra ID P2, a
+    // Not licensed row. Neither is listed, and no reason names them.
+    assert.deepEqual(rows.filter((r) => /AGENT - BLOCK/.test(r.policy)), [], `${name}: the agent blocks are no footer row`)
+    assert.ok(steps.some((s) => s.goalId === 'agents-block-untrusted'), `${name}: the untrusted-agents block is a step`)
+    const highRisk = steps.some((s) => s.goalId === 'agents-block-high-risk') || notLicensedRows(run.coverage, PINNED_GOAL_MAP).some((r) => r.title.includes(titleOf('agents-block-high-risk')))
+    assert.ok(highRisk, `${name}: the high-risk agents block is a step or a Not licensed row`)
+  }
+  const reasons = (pages.plan as unknown as { footer: { notInPlanReason: Record<string, string> } }).footer.notInPlanReason
+  assert.equal(reasons.agentBlock, undefined, 'the agent-block reason is gone with its rows')
 })
 
 test('policies that read the same reason share one line on the Plan, the count still one per policy (owner, 2026-10-04)', () => {
-  const { rows } = planOf('demo')
+  // Jon's two AGENT blocks were the pin's one pair sharing a reason; they are
+  // steps since 2026-10-04, so two rows of the drawn footer are given one
+  // reason, which is how any baseline's shared reason reaches the lines.
+  const { rows: drawn } = planOf('small')
+  assert.ok(drawn.length >= 2, 'the premise: the footer lists at least two policies')
+  const shared = 'One reason both read.'
+  const rows = drawn.map((r, i) => (i < 2 ? { ...r, reason: shared, text: `${r.policy}: ${shared}` } : r))
   const lines = notInPlanLines(rows)
-  const agents = rows.filter((r) => /AGENT - BLOCK/.test(r.policy))
-  assert.equal(agents.length, 2, "the premise: Jon's two AGENT blocks are listed")
-  const agentLines = lines.filter((l) => l.text.includes('AGENT - BLOCK'))
-  assert.equal(agentLines.length, 1, 'one line names both')
-  assert.equal(agentLines[0].text, `${agents[0].policy} and ${agents[1].policy}: ${agents[0].reason}`)
+  const sharedLines = lines.filter((l) => l.text.endsWith(shared))
+  assert.equal(sharedLines.length, 1, 'one line names both')
+  assert.equal(sharedLines[0].text, `${rows[0].policy} and ${rows[1].policy}: ${shared}`)
+  assert.equal(sharedLines[0].count, 2)
   assert.equal(lines.length, new Set(rows.map((r) => r.reason)).size, 'one line per reason')
   assert.equal(notInPlanSummary(rows), `In the baseline, not in this plan (${rows.length})`, 'the heading still counts policies')
 })

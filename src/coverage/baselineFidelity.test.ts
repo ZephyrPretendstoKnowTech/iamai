@@ -26,6 +26,7 @@ import type { CaPolicy } from '../baseline/types.ts'
 import { corrected } from '../baseline/authorCorrections.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Step } from '../roadmap/types.ts'
+import { readPolicy } from '../baseline/policyReadings.ts'
 
 const PINNED_POLICIES = pinnedJson.policies as unknown as CaPolicy[]
 const GA = '62e90394-69f5-4237-9190-012177145e10'
@@ -501,7 +502,10 @@ test('every pinned member, switched on in the tenant as it stands, is never read
   const narrower: string[] = []
   // The lockdown kit is no catalogue goal: its switches are created Off and never read as coverage (roadmap/lockdownKit.ts).
   for (const [goalId, keys] of Object.entries(PINNED_GOAL_MAP).filter(([g]) => g !== LOCKDOWN_KIT_GOAL)) {
-    const tenantPolicies = PINNED_POLICIES.map(corrected).filter((p) => keys.includes(policyKey(p))).map((p) => ({ ...structuredClone(p), id: `tenant-${policyKey(p)}`, state: 'enabled' }) as unknown as Raw)
+    // As the plan creates it: a member the interpretation reads whole (Jon's AGENT
+    // blocks, owner 2026-10-04) carries the agent fields its export lost, which the
+    // scan reads back from Graph beta (baseline/policyReadings.ts).
+    const tenantPolicies = PINNED_POLICIES.map(corrected).filter((p) => keys.includes(policyKey(p))).map((p) => ({ ...structuredClone(readPolicy(p).policy), id: `tenant-${policyKey(p)}`, state: 'enabled' }) as unknown as Raw)
     const r = computeCoverage({
       snapshot,
       tenantPolicies,

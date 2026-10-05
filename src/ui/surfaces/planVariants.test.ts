@@ -454,6 +454,13 @@ const INVENTORY: string[] = [
   // nobody the plan can count and draws no who line, waiting on that answer. The one policy whose
   // population is an answer rather than the directory's; named, it reads who-known like any other.
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-none', // small/s-goal-admin-accounts-group-strength
+  // Jon's two AGENT blocks (owner, 2026-10-04): a policy on AI agent identities reaches no person,
+  // so it draws no who line, waiting on the foundation and then ready to create in Report-only.
+  // The only policies whose population is never people (roadmap/agentBlocks.ts).
+  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-none', // small/s-goal-agents-block-untrusted
+  // With no exclusions group chosen it hands over nothing, as every policy step waits for the foundation.
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-none', // small+unanswered/s-goal-agents-block-untrusted
+  'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-none', // demo-week2+settled/s-goal-agents-block-untrusted
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

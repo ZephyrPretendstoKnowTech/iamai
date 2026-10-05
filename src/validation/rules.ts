@@ -34,7 +34,7 @@ import { absoluteDate, relative } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
 import { isRecordedDrill, latestRecoveryTest, recoveryCredentialBasis, recoveryEvidenceOf } from '../roadmap/cleanupDone.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { exclusionsGroupPolicies } from './exclusionsGroupPolicies.ts'
+import { exclusionsGroupPolicies, includesNoPerson } from './exclusionsGroupPolicies.ts'
 import { adminCountriesLeftOut, countriesAcknowledged, seenCountriesLeftOut } from '../roadmap/countriesLockout.ts'
 
 // ---- the model -------------------------------------------------------------
@@ -318,12 +318,16 @@ function livePolicies(ctx: ValidationContext): PolicyShape[] {
 }
 
 /** Policies that actually deny: Microsoft says report-only ones need no exclusion. */
+// A policy that includes no person (an agent or workload-identity policy, as
+// Jon's AGENT blocks) cannot reach an emergency account, which is a user: it is
+// no policy the account has to be excluded from (exclusionsGroupPolicies.ts
+// includesNoPerson).
 function enforcingPolicies(ctx: ValidationContext): PolicyShape[] {
-  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabled')
+  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabled' && !includesNoPerson(p))
 }
 
 function reportOnlyPolicies(ctx: ValidationContext): PolicyShape[] {
-  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabledForReportingButNotEnforced')
+  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabledForReportingButNotEnforced' && !includesNoPerson(p))
 }
 
 /** Policies Microsoft created and will enable on its own after about 30 days. */

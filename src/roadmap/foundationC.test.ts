@@ -42,7 +42,8 @@ import { answersComplete, applyDetectedDefaults } from '../mapping/wizard.ts'
 import { toCoverageMapping } from '../mapping/store.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
-import { accountApplicability, stepEffects } from './operations.ts'
+import { accountApplicability, operationsOf, stepEffects } from './operations.ts'
+import { includesNoPerson } from '../validation/exclusionsGroupPolicies.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { Fixture } from './fixtures/index.ts'
 import type { MappingRecord } from '../mapping/types.ts'
@@ -648,7 +649,11 @@ test('L4. the upgraded tenant, end to end: nothing the legacy record touches rea
   assert.ok(offered.length > 0, 'and policy generation receives the group')
   const evidence = { groupMembers: Object.fromEntries([...f.groups].map(([id, g]) => [id.toLowerCase(), g.memberIds])) }
   for (const s of offered) {
-    assert.ok(stepEffects(s).some((e) => (e.scope.groups.exclude ?? []).some((g) => g.toLowerCase() === chosen.toLowerCase())), `${s.id}: the policy excludes the confirmed group`)
+    // A policy that reaches no person (an agent block, owner 2026-10-04) takes no
+    // exclusions group: Microsoft's agent policies cannot exclude a user group.
+    // Every emergency account is structurally out of it all the same (below).
+    const reachesPeople = operationsOf(s).some((o) => !includesNoPerson(o.body))
+    if (reachesPeople) assert.ok(stepEffects(s).some((e) => (e.scope.groups.exclude ?? []).some((g) => g.toLowerCase() === chosen.toLowerCase())), `${s.id}: the policy excludes the confirmed group`)
     for (const id of f.mapping.breakGlassUserIds) {
       assert.ok(stepEffects(s).every((e) => accountApplicability(e.scope, id, f.snapshot as never, evidence) === 'out'), `${s.id}: and every emergency account is structurally out of it`)
     }

@@ -11,7 +11,7 @@ import { readyEvidence } from './fixtures/readyEvidence.ts'
 import { runFixture } from './fixtures/run.ts'
 import { STEP_GROUPS, byPlanPlace } from './stepGroups.ts'
 import { REPORT_ONLY_STEP_ID } from './reportOnlyBatch.ts'
-import { hiddenPolicy } from './workflows.ts'
+import * as workflows from './workflows.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { notInPlanRows } from '../derive/notInPlan.ts'
@@ -29,9 +29,11 @@ const FIXTURES: FixtureName[] = ['demo', 'small', 'getiamai']
 
 test('the pin maps Jon’s BaselineScopes policy to its own goal, and it is not hidden', () => {
   assert.deepEqual(PINNED_GOAL_MAP['directory-baseline-scopes-mfa'], [JON])
-  assert.equal(hiddenPolicy('IAC - GLOBAL - GRANT - MFA - WindowsAzureAD-BaselineScopes'), false)
-  // The AVD allow-list block is a step since T2-AVD (avdAllowedUsers.test.ts): nothing of Jon's is hidden but the agent blocks.
-  assert.equal(hiddenPolicy('IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers'), false)
+  // The AVD allow-list block is a step since T2-AVD (avdAllowedUsers.test.ts), and
+  // the two AGENT blocks since 2026-10-04 (agentBlocks.test.ts): nothing of Jon's
+  // is hidden from the plan, so no filter that hides a pinned policy is left.
+  assert.equal((workflows as Record<string, unknown>).hiddenPolicy, undefined)
+  assert.equal((workflows as Record<string, unknown>).HIDDEN_AGENT_POLICY, undefined)
   assert.ok(READINESS_EVERYONE_GOALS.has('directory-baseline-scopes-mfa'), 'the device-registration gate: everyone it covers')
 })
 

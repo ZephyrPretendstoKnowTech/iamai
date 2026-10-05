@@ -148,14 +148,15 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   },
   // What nobody should legitimately use: a sign-in flow, a platform, a place,
   // a service account from outside the office, the sync account from another
-  // address. Jon's admin portals block is a lockdown switch since 2026-10-03
+  // address, an AI agent identity rated high risk or nobody approved (Jon's two
+  // AGENT blocks, owner 2026-10-04). Jon's admin portals block is a lockdown switch since 2026-10-03
   // (Prepare the Lockdown Kit, Ongoing); an admin-portals step only an uploaded
   // baseline builds is hidden from every screen (customerPlanSteps), and this is its place.
   {
     key: 'remaining-doors',
     titleKey: 'pages.app.plan.groups.closeDoors.title',
     completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
-    members: ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-avd-allowed-users', 's-goal-workload-identity-block', 's-goal-admin-portals-protected'],
+    members: ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-avd-allowed-users', 's-goal-workload-identity-block', 's-goal-agents-block-high-risk', 's-goal-agents-block-untrusted', 's-goal-admin-portals-protected'],
     anatomy: 'task',
   },
   // The changes to every person's day come last. The two session steps name

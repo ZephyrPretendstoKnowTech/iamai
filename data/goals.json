@@ -1665,6 +1665,141 @@
       ]
     },
     {
+      "id": "agents-block-high-risk",
+      "name": "High-risk AI agents blocked",
+      "shortName": "High-risk AI agents",
+      "description": "AI agent identities Microsoft Entra ID Protection rates high risk are blocked from every resource.",
+      "phase": 7,
+      "domain": "Risk",
+      "securityValue": 3,
+      "baseEffort": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p2",
+          "kind": "ca",
+          "signature": {
+            "agentsAll": true,
+            "agentRiskInclude": [
+              "high"
+            ],
+            "grantBlock": true,
+            "appsAll": true
+          },
+          "expectedWho": {
+            "kind": "agents"
+          },
+          "expectedApps": "all",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [],
+          "template": {
+            "displayName": "{namePrefix} - Block - High-risk AI agents",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "None"
+                ]
+              },
+              "clientApplications": {
+                "includeAgentIdServicePrincipals": [
+                  "All"
+                ],
+                "excludeAgentIdServicePrincipals": [],
+                "agentIdServicePrincipalFilter": null
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ],
+                "excludeApplications": []
+              },
+              "agentIdRiskLevels": [
+                "high"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-autonomous-agents",
+      "tldr": "When Microsoft rates an AI agent high risk, it cannot sign in to anything.",
+      "cis": []
+    },
+    {
+      "id": "agents-block-untrusted",
+      "name": "AI agents you have not approved blocked",
+      "shortName": "AI agents you have not approved",
+      "description": "Only the AI agent identities you approve can sign in; every other agent identity is blocked.",
+      "phase": 7,
+      "domain": "Legacy access",
+      "securityValue": 2,
+      "baseEffort": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "agentsAll": true,
+            "noAgentRisk": true,
+            "grantBlock": true,
+            "appsAll": true
+          },
+          "expectedWho": {
+            "kind": "agents"
+          },
+          "expectedApps": "all",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [],
+          "template": {
+            "displayName": "{namePrefix} - Block - AI agents not approved",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "None"
+                ]
+              },
+              "clientApplications": {
+                "includeAgentIdServicePrincipals": [
+                  "All"
+                ],
+                "excludeAgentIdServicePrincipals": [],
+                "agentIdServicePrincipalFilter": null
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ],
+                "excludeApplications": []
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-autonomous-agents",
+      "tldr": "Only the AI agents you approve can sign in; any other agent is blocked.",
+      "cis": []
+    },
+    {
       "id": "all-users-no-persistence",
       "name": "Browser sessions never persist for anyone",
       "shortName": "Non-persistent browser sessions",

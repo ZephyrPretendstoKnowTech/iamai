@@ -15,7 +15,7 @@ function has(v: Set<string>, token: string): boolean {
 }
 
 /** The condition keys this reading interprets; `devices` only through its filter. */
-const READ_CONDITIONS = new Set(['users', 'applications', 'clientApplications', 'clientAppTypes', 'locations', 'platforms', 'devices', 'signInRiskLevels', 'userRiskLevels', 'servicePrincipalRiskLevels', 'authenticationFlows'])
+const READ_CONDITIONS = new Set(['users', 'applications', 'clientApplications', 'clientAppTypes', 'locations', 'platforms', 'devices', 'signInRiskLevels', 'userRiskLevels', 'servicePrincipalRiskLevels', 'agentIdRiskLevels', 'authenticationFlows'])
 
 /** A value that says something: not null, empty, or an object of nothing but empties. Annotations say nothing. */
 function carries(v: unknown): boolean {
@@ -129,6 +129,10 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
       : 'unknown'
 
   const workloadSps = set(clientApplications?.includeServicePrincipals)
+  // Microsoft Entra agent identities (Graph beta only, preview): the agent
+  // fields beside the service principals. A v1.0 read never carries them.
+  const agentIds = set(clientApplications?.includeAgentIdServicePrincipals)
+  const agentFilter = ((clientApplications?.agentIdServicePrincipalFilter ?? null) as Record<string, unknown> | null)?.rule
   const spFilter = ((clientApplications?.servicePrincipalFilter ?? null) as Record<string, unknown> | null)?.rule
 
   return {
@@ -194,6 +198,11 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
       workloadSps.size > 0 || typeof spFilter === 'string'
         ? { sps: workloadSps, filterRule: typeof spFilter === 'string' ? spFilter : null }
         : null,
+    agents:
+      agentIds.size > 0
+        ? { include: agentIds, exclude: set(clientApplications?.excludeAgentIdServicePrincipals), filterRule: typeof agentFilter === 'string' ? agentFilter : null }
+        : null,
+    agentRisk: lower(set(c.agentIdRiskLevels)),
     grant: g
       ? {
           operator: g.operator === 'OR' ? 'OR' : 'AND',

@@ -24,6 +24,7 @@ import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { implementationOffered, missingObjects } from './stepJson.ts'
+import { includesNoPerson } from '../../validation/exclusionsGroupPolicies.ts'
 
 const AT = '2026-09-02T00:00:00.000Z'
 
@@ -117,7 +118,8 @@ test('saving a group names it on every policy step; before that, no policy step 
     const exclusions = lines.filter((l) => l.includes(EXCLUSIONS_PREFIX))
     // A change to an existing policy lists only the fields it changes, so it
     // carries the exclusions line only when its own body carries the users.
-    const writesUsers = (step.action.resolution?.policies ?? []).some((o) => o.mode === 'create' || ((o.body.conditions as Record<string, unknown> | undefined)?.users !== undefined))
+    // An agent block's users condition includes nobody (owner, 2026-10-04): it reaches no person and names no exclusions group.
+    const writesUsers = (step.action.resolution?.policies ?? []).some((o) => !includesNoPerson(o.body) && (o.mode === 'create' || ((o.body.conditions as Record<string, unknown> | undefined)?.users !== undefined)))
     if (writesUsers) assert.ok(exclusions.length > 0, `${step.id}: has an exclusions line`)
     for (const l of exclusions) assert.ok(l.includes(`${EXCLUSIONS_PREFIX}Core - Exclusions.`), `${step.id}: names the saved group: ${l}`)
     for (const l of lines) assert.ok(!l.includes(UNNAMED), `${step.id}: no unnamed thing: ${l}`)

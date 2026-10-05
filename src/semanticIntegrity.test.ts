@@ -34,7 +34,7 @@ import { defaultDecisions } from './ui/surfaces/pickerRows.ts'
 import { badgeLabel, existingOf, stepContract } from './ui/surfaces/stepContract.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
 import { jsonOffered, policyJson, stepOperations } from './ui/surfaces/stepJson.ts'
-import { powershellFor } from './ui/surfaces/stepPowerShell.ts'
+import { betaRequestOf, powershellFor } from './ui/surfaces/stepPowerShell.ts'
 import { portalNamesFor, stepPortalLines } from './ui/surfaces/stepPortal.ts'
 import { rowWhen } from './ui/surfaces/rowWhen.ts'
 import { boardReadingsOf, laneViewFor } from './ui/surfaces/planBoard.ts'
@@ -283,13 +283,16 @@ test('042.8: the four channels serialise the same operations, or none of them do
     assert.deepEqual(policyJson(step), bodies.length === 1 ? bodies[0] : bodies, `${c.label}/${step.id}: the JSON is not the operations' bodies`)
     const ps = powershellFor(stepOperations(step))
     for (const o of ops) {
-      const cmdlet = o.mode === 'update' ? 'Update-MgIdentityConditionalAccessPolicy' : 'New-MgIdentityConditionalAccessPolicy'
+      // A policy on agent identities goes to Graph beta, the only collection that
+      // carries its agent fields (Jon's AGENT blocks; stepPowerShell.ts betaRequestOf).
+      const beta = betaRequestOf(o)
+      const cmdlet = beta ? `Invoke-MgGraphRequest -Method ${beta.method} -Uri '${beta.endpoint}'` : o.mode === 'update' ? 'Update-MgIdentityConditionalAccessPolicy' : 'New-MgIdentityConditionalAccessPolicy'
       assert.ok(ps.includes(cmdlet), `${c.label}/${step.id}: PowerShell does not run the operation's own mode`)
     }
     // Every operation the JSON offers produces a command: a body a person can
     // download and a command they cannot run would be two answers to one
     // question.
-    assert.equal((ps.match(/-MgIdentityConditionalAccessPolicy/g) ?? []).length, ops.length, `${c.label}/${step.id}: the channels offer a different number of operations`)
+    assert.equal((ps.match(/-MgIdentityConditionalAccessPolicy|Invoke-MgGraphRequest -Method (POST|PATCH) -Uri 'https:\/\/graph\.microsoft\.com\/beta\/identity\/conditionalAccess\/policies/g) ?? []).length, ops.length, `${c.label}/${step.id}: the channels offer a different number of operations`)
     const cs = contentStepFor(step) as Record<string, unknown> | undefined
     if (cs && cs.kind === 'policy') {
       assert.ok(stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx), step.title)) !== null, `${c.label}/${step.id}: the portal offers nothing while the other three do`)

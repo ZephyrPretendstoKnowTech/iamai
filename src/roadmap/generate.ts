@@ -374,6 +374,8 @@ import { idFor, stepIdForGoal, BREAK_GLASS_STEP_ID, EXCLUSION_GROUP_STEP_ID, LOC
 import { passkeyRestrictionReading } from './passkeyRestrictions.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, PASSKEY_TARGET, operatorPasskeyOf, operatorSignInOf, passkeyReadingOf, passkeyReadinessFindingsOf } from './passkeySettings.ts'
 import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
+import { readPolicy } from '../baseline/policyReadings.ts'
+import { AGENT_GOALS, AGENT_TARGETING_UNREAD, REPORT_ONLY_GOALS, agentFieldsRead, withApprovedAgents } from './agentBlocks.ts'
 
 /**
  * The audience a step announcement is written for (prompt 41 §4).
@@ -1171,7 +1173,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const baselineFactsList: { key: string; policy: RawPolicy; facts: ReturnType<typeof policyFacts>; authors: readonly CaPolicy[]; standIn?: true }[] = input.baseline.policies.map((p) => ({
     key: policyKey(p),
     policy: p as unknown as RawPolicy,
-    facts: policyFacts(p, input.strengths),
+    // Read as the interpretation reads it (Jon's AGENT blocks; baseline/policyReadings.ts);
+    // the policy itself stays the source, which resolveTenantPolicy reads the same way.
+    facts: policyFacts(readPolicy(p).policy, input.strengths),
     authors: input.baseline.policies,
   }))
   // The package's own goal map, by the pin-time rule (goalMap.ts goalMapFor), read
@@ -1235,7 +1239,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const known = standInsByGoal.get(goal.id)
     if (known) return known
     const pinned = pinnedSource(input.baseline.policies)
-    const found = policiesForGoal(goalMap, pinned, goal.id).map((p) => ({ key: policyKey(p), policy: p as unknown as RawPolicy, facts: policyFacts(p, input.strengths), authors: pinned, standIn: true as const }))
+    const found = policiesForGoal(goalMap, pinned, goal.id).map((p) => ({ key: policyKey(p), policy: p as unknown as RawPolicy, facts: policyFacts(readPolicy(p).policy, input.strengths), authors: pinned, standIn: true as const }))
     standInsByGoal.set(goal.id, found)
     return found
   }
@@ -1967,14 +1971,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // step excludes (E9): the step that restricts them names them all.
     // The admin accounts by group are the members of the groups the operator named (Jon's ADM-Users).
     const whoIds = (): string[] => whoKey === 'adminAccounts' ? [...adminAccountsPopulation(mapping.adminAccountGroupIds ?? [], input.groupMembers ?? new Map()).ids] : [...resolvePopulation(impl.expectedWho, snapshot).ids]
-    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : whoKey === 'serviceAccounts' ? [...serviceAccountIds] : whoIds().filter((id) => !excluded.has(id)))
+    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' || whoKey === 'agents' ? [] : whoKey === 'serviceAccounts' ? [...serviceAccountIds] : whoIds().filter((id) => !excluded.has(id)))
     // THIS goal's own accounts that can sign in, before the plan's exclusions
     // take anybody out. The line above subtracts them from the goal's
     // population, so a policy that excludes a group holding 116 of 122 accounts
     // leaves a goal defined as six people and reports itself delivered for all
     // of them. Who it misses is counted against these (coverageShortfall below).
     if (!goalAccountsCache.has(whoKey)) {
-      const all = whoKey === 'workload' || whoKey === 'serviceAccounts' ? [] : whoIds()
+      const all = whoKey === 'workload' || whoKey === 'agents' || whoKey === 'serviceAccounts' ? [] : whoIds()
       goalAccountsCache.set(whoKey, all.filter((id) => popIndex.enabled.has(id)))
     }
     const popIds = expectedCache.get(whoKey) ?? []
@@ -2075,6 +2079,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // and the steps with two policies read by name already (pairOf, the EAM
     // companion), and a goal the scan could not read stays held: those keep the
     // branches below.
+    // Jon's AGENT blocks (roadmap/agentBlocks.ts): the untrusted-agents block keeps
+    // the agents the tenant approved excluded in every reading of its own policy,
+    // and an agent block whose policy's agent targeting this scan did not read is
+    // neither exact nor different.
+    const approvals = REPORT_ONLY_GOALS.has(goal.id)
+    const forTenant = (body: RawPolicy, p: RawPolicy | null): RawPolicy => (approvals ? withApprovedAgents(body, p) : body)
+    const agentUnread = AGENT_GOALS.has(goal.id) && !agentFieldsRead(snapshot)
     const pilot = ((): { own: RawPolicy | null; rename: boolean; ownExact: boolean; ownDone: boolean; ambiguous: RawPolicy[]; beside: NonNullable<Action['besidePolicies']> } | null => {
       if (pair !== null || stepSources.length > 1 || result.status === 'unknown') return null
       const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
@@ -2119,9 +2130,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const body = (built.missing ?? []).length === 0 ? (built.resolution?.policies[0]?.body as RawPolicy | undefined) : undefined
         const accepted = mapping.acceptedDeviations?.[stepId]?.fields ?? {}
         const group = tenantObjects.exclusionsGroupId
-        // The tenant's policy as Configure Emergency Exclusions leaves it: the exclusions group excluded.
+        // The tenant's policy as Configure Emergency Exclusions leaves it: the
+        // exclusions group excluded, where the plan's body excludes it (a workload
+        // or agent policy reaches no person and excludes none).
+        const bodyExcludesGroup = group !== null && (((((body?.conditions ?? {}) as RawPolicy).users ?? {}) as RawPolicy).excludeGroups as unknown[] | undefined ?? []).some((g) => String(g).toLowerCase() === group.toLowerCase())
         const withGroup = (p: RawPolicy): RawPolicy => {
-          if (!group) return p
+          if (!group || !bodyExcludesGroup) return p
           const users = (((p.conditions ?? {}) as RawPolicy).users ?? {}) as RawPolicy
           const groups = Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]).map(String) : []
           if (groups.some((g) => g.toLowerCase() === group.toLowerCase())) return p
@@ -2132,8 +2146,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           const found = unwrittenDifferences(b, null, p)
           return acceptedDifferences(found, b, p, accepted, { exclusionsGroupId: group ?? null, strengths: tenantStrengths }).length === found.length
         }
-        exact = (p: RawPolicy): boolean => body !== undefined && allAccepted(body, withGroup(p))
-        exactAsIs = (p: RawPolicy): boolean => body !== undefined && allAccepted(body, p)
+        exact = (p: RawPolicy): boolean => body !== undefined && !agentUnread && allAccepted(forTenant(body, p), withGroup(p))
+        exactAsIs = (p: RawPolicy): boolean => body !== undefined && !agentUnread && allAccepted(forTenant(body, p), p)
         bodyKnown = body !== undefined
         planBody = body
       }
@@ -2168,10 +2182,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // exactness cannot be proven either way, and the classifier's reading that the
       // policy delivers the goal stands (it did before identity was the name): the
       // plan's own policy, On, never reopens on an empty correction.
-      const ownDone = own !== null && !rename && own.state === 'enabled' && (bodyKnown ? ownExact : (result.satisfaction?.policyIds ?? []).includes(String(own.id)))
+      // The untrusted-agents block is done once its own policy exists, exact, in
+      // Report-only: IAMAI offers no turn-on, and On (the operator turned it on
+      // themselves, after excluding the agents they approve) is done as well.
+      const finished = own !== null && (own.state === 'enabled' || (approvals && own.state === 'enabledForReportingButNotEnforced'))
+      const ownDone = own !== null && finished && !rename && !agentUnread && (bodyKnown ? ownExact : (result.satisfaction?.policyIds ?? []).includes(String(own.id)))
       return { own, rename, ownExact, ownDone, ambiguous, beside }
     })()
-    if (pilot !== null && pilot.ambiguous.length > 0) {
+    if (pilot !== null && agentUnread && (pilot.own !== null || pilot.ambiguous.length > 0)) {
+      // An agent block's own policy is there, and this scan did not read which
+      // agents it targets (the beta read failed; Graph v1.0 returns no agent
+      // field): its targeting is unread, never exact and never a difference. The
+      // step holds, as a goal whose group the scan could not read does, until a
+      // scan reads it; nothing is submitted against the policy meanwhile.
+      kind = 'adjust'
+      action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [] }
+      blockers.push({ kind: 'evidence', label: AGENT_TARGETING_UNREAD, binding: BLOCKED_REASON.agentTargetingUnread, unverified: true })
+      state = { ...state, condition: conditionFor(blockers) }
+    } else if (pilot !== null && pilot.ambiguous.length > 0) {
       // Two live policies carry the plan's name and neither its tag: the step will
       // not guess which is its own, and never creates a third under the same name.
       kind = 'adjust'
@@ -2198,7 +2226,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // policy the correction, or the switch On, is written to.
       const own = pilot.own
       const ownId = String(own.id)
-      const mine = source ? stepPolicies() : templatePolicy()
+      // The untrusted-agents block keeps the agents the tenant approved excluded (agentBlocks.ts withApprovedAgents).
+      const mine = (source ? stepPolicies() : templatePolicy()).map((m) => (approvals ? { ...m, resolved: { ...m.resolved, body: forTenant(m.resolved.body as RawPolicy, own) } } : m))
       // Done: its own policy On and exact, every setting the baseline's or accepted
       // (owner, 2026-10-04: name and controls). What coverage reads of the goal as a
       // whole does not decide it: the tenant's other policies beside it are Cleanup's,
@@ -2634,6 +2663,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (kind === 'adjust' && policyUsableExclusionsGroupId === null && result.candidates.some((c) => c.caveats.includes('exclusion-unresolved'))) {
       action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [{ token: '{exclusionsGroup}', stepId: PLACEHOLDER_STEP['{exclusionsGroup}'] }] }
       existingRaw = null
+      blockPlaceholder('{exclusionsGroup}')
+    }
+    // Jon's AGENT blocks name no exclusions group (an agent policy reaches no
+    // person and cannot exclude a user group), but no policy step hands over a
+    // policy before the plan's foundation, the exclusions group, is chosen and
+    // usable (owner: every policy waits for it). They wait on the step that makes
+    // it as every other policy does; nothing of theirs names it.
+    if (AGENT_GOALS.has(goal.id) && policyUsableExclusionsGroupId === null && (action.resolution?.policies ?? []).length > 0) {
+      action = { ...action, json: null, missing: [...(action.missing ?? []).filter((m) => m.token !== '{exclusionsGroup}'), { token: '{exclusionsGroup}', stepId: PLACEHOLDER_STEP['{exclusionsGroup}'] }] }
       blockPlaceholder('{exclusionsGroup}')
     }
     // Every reading of the guest pair keys its members by the halves, whatever
@@ -3205,7 +3243,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // only for a cohort where "all users" is a real widening: `members` is
     // mapped to an all-users policy by the baseline author on purpose, so
     // saying it there would be noise over a deliberate decision.
-    const WIDENING = new Set(['guests', 'coreAdmins', 'serviceAccounts', 'workload'])
+    const WIDENING = new Set(['guests', 'coreAdmins', 'serviceAccounts', 'workload', 'agents'])
     if (WIDENING.has(impl.expectedWho.kind) && validOperations(action).some((op) => op.mode === 'create' && effectOf(op.body).scope.allUsers)) {
       action = { ...action, widerThan: impl.expectedWho.kind }
     }

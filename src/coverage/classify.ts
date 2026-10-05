@@ -52,7 +52,17 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
         if (!(value as string[]).every((a) => f.apps.userActions.has(a.toLowerCase()))) return false
         break
       case 'noRisk':
-        if (f.signInRisk.size > 0 || f.userRisk.size > 0 || f.spRisk.size > 0) return false
+        if (f.signInRisk.size > 0 || f.userRisk.size > 0 || f.spRisk.size > 0 || f.agentRisk.size > 0) return false
+        break
+      case 'agentsAll':
+        // Every agent identity included (Graph beta, preview: Jon's AGENT blocks).
+        if (f.agents === null || ![...f.agents.include].some((a) => /^all$/i.test(a))) return false
+        break
+      case 'agentRiskInclude':
+        if (!(value as string[]).every((l) => f.agentRisk.has(l.toLowerCase()))) return false
+        break
+      case 'noAgentRisk':
+        if (f.agentRisk.size > 0) return false
         break
       case 'noFlows':
         if (f.flows.size > 0) return false
@@ -320,6 +330,13 @@ export function populationReach(f: PolicyFacts, kind: PopulationSpec['kind']): '
       // (admins-phishing-resistant), and one for All users is Require MFA for
       // Everyone's: neither may stand for this one.
       return f.who.groups.size > 0 ? 'part' : 'none'
+    case 'agents':
+      // Every agent identity, or some. The agents a tenant approves are carved out
+      // of the untrusted-agents block by design (Microsoft's own shape for it), so
+      // an exclusion does not make the reach partial; a policy that names only
+      // some agents does.
+      if (f.agents === null) return 'none'
+      return [...f.agents.include].some((a) => /^all$/i.test(a)) ? 'whole' : 'part'
   }
 }
 

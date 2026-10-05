@@ -35,6 +35,7 @@ import type {
   PolicyFacts,
   Reason,
 } from './types.ts'
+import { readPolicy } from '../baseline/policyReadings.ts'
 import {
   inPlaceStatement,
   licenceLimitedStatement,
@@ -197,7 +198,10 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const tenantFacts = input.tenantPolicies.map((p) =>
     policyFacts(p, input.strengths, snapshot.microsoftManagedPolicyIds.includes(String((p as { id?: string }).id ?? '')), locationKinds),
   )
-  const baselineFacts = input.baselinePolicies.map((p) => policyFacts(p, input.strengths))
+  // A baseline policy the interpretation reads whole (Jon's AGENT blocks, whose
+  // agent targeting the export lost) is assessed as it is read, as the goal map
+  // derives it (baseline/policyReadings.ts); the raw policy stays the source.
+  const baselineFacts = input.baselinePolicies.map((p) => policyFacts(readPolicy(p as { id?: string | null; conditions?: unknown }).policy, input.strengths))
 
   // The mapping's identities whenever there is a mapping. This used to wait for
   // every Setup answer, and until then called a directly-excluded account an
@@ -231,7 +235,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const mapDescribesPackage = Object.values(goalMap).flat().some((k) => factsByKey.has(k))
   const standInFacts = (goalId: string): PolicyFacts[] =>
     policiesForGoal(goalMap, pinnedSource(input.baselinePolicies as CaPolicy[]), goalId).map((p) => {
-      const facts = policyFacts(p, input.strengths)
+      const facts = policyFacts(readPolicy(p).policy, input.strengths)
       rawByFacts.set(facts, p)
       return facts
     })
@@ -273,7 +277,12 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const notAssessed: NotAssessed[] = baselineFacts
     .filter((b) => !matchedBaseline.has(b.name))
     .map((b) => ({ name: b.name, json: jsonOf(b.name), reason: b.workload !== null ? NOT_ASSESSED.agentIdentity : NOT_ASSESSED.noGoal }))
-  for (const w of input.baselineUnusable) notAssessed.push({ name: w.policyName, json: jsonOf(w.policyName), reason: w.warning })
+  // A policy the export left targeting nothing is unusable as published, unless
+  // IAMAI's reading of it supplies what the export lost (Jon's AGENT blocks;
+  // baseline/policyReadings.ts): that one is assessed, as it is read.
+  const readWhole = (name: string): boolean => rawByName.has(name) && readPolicy(rawByName.get(name) as { id?: string | null; conditions?: unknown }).fields.length > 0
+  const baselineUnusable = input.baselineUnusable.filter((w) => !readWhole(w.policyName))
+  for (const w of baselineUnusable) notAssessed.push({ name: w.policyName, json: jsonOf(w.policyName), reason: w.warning })
 
   const results: GoalResult[] = goals.map(({ goal, baselineMatches, goalPolicies, written }) =>
     evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets, goalPolicies, rawByFacts, written),
@@ -309,7 +318,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     r.statement = missingStatement(r.goal.name, proposed, match)
   }
 
-  const couldNotEvaluate = input.baselineUnusable.map((w) => ({
+  const couldNotEvaluate = baselineUnusable.map((w) => ({
     name: w.policyName,
     reason: w.warning,
   }))
@@ -328,7 +337,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   }
 
   // A policy the adapter could not read is not assessed, whatever its signature matched.
-  const unusable = new Set(input.baselineUnusable.map((w) => w.policyName))
+  const unusable = new Set(baselineUnusable.map((w) => w.policyName))
   return {
     results,
     assessed: [...matchedBaseline].filter((name) => !unusable.has(name)),
@@ -540,7 +549,8 @@ function evaluateGoal(
   const narrowsGuests = (f: PolicyFacts): boolean =>
     (f.who.all && f.whoNot.guests) || (!f.who.all && f.who.guests !== null && (f.who.guests.length > 0 || f.who.guestTenants !== 'all' || f.whoNot.guests))
   if (impl.expectedWho.kind === 'all' && !candidates.some((f) => (f.state === 'enabled' || f.state === 'enabledForReportingButNotEnforced') && narrowsGuests(f))) requiredKinds.clear()
-  if (impl.expectedWho.kind === 'workload') {
+  // Agent identities are no person either (Jon's AGENT blocks): read like a workload goal.
+  if (impl.expectedWho.kind === 'workload' || impl.expectedWho.kind === 'agents') {
     return evaluateStructural(goal, base, candidates, floor, baselineMatches)
   }
 

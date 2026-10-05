@@ -112,6 +112,8 @@ export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Pro
   try {
     if (paged) {
       const rows = await pagedWithFallback(ctx, url, fallbackUrl, onResponse)
+      // The policies' agent fields, which only beta returns (agentFieldsOf).
+      if (key === 'caPolicies') return { status: 'ok', reason: null, rows, ...how(), agentFields: await agentFieldsOf(ctx, rows) }
       return { status: 'ok', reason: null, rows, ...how() }
     }
     const body = await graphRequest(ctx.tokens, url, { signal: ctx.signal, onResponse })
@@ -160,6 +162,56 @@ async function readFido2Configuration(ctx: Ctx, body: Record<string, unknown>): 
     }
     return { status: 'ok', reason: null, httpStatus: status }
   } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error), httpStatus: status ?? (error instanceof GraphRequestError || error instanceof SectionDisabledError ? error.status : null) }
+  }
+}
+
+/** The beta read of the policies' agent fields (registry.ts 'CA policies agent targeting'). */
+const AGENT_TARGETING = COLLECTOR_REGISTRY.find((s) => s.name === 'CA policies agent targeting')!
+
+/** The agent fields of a policy's clientApplications, the only ones taken from beta. */
+const AGENT_CLIENT_FIELDS = ['includeAgentIdServicePrincipals', 'excludeAgentIdServicePrincipals', 'agentIdServicePrincipalFilter'] as const
+
+/** A value that says something: a non-empty list, or an object. Empty lists and nulls say nothing and are not merged. */
+const says = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined)
+
+/**
+ * Graph v1.0 returns no agent field on a Conditional Access policy; beta does
+ * (preview). Read the same policies from beta and merge into each v1.0 row, by
+ * id, only `conditions.clientApplications.{include,exclude}AgentIdServicePrincipals`,
+ * `conditions.clientApplications.agentIdServicePrincipalFilter` and
+ * `conditions.agentIdRiskLevels`, and only where beta says something: every
+ * other field stays v1.0's, and a policy that targets no agent is unchanged.
+ * Mutates the v1.0 rows in place. A refused or failed read merges nothing and
+ * says so: the fields are unread (roadmap/agentBlocks.ts agentFieldsRead), never
+ * absent.
+ */
+async function agentFieldsOf(ctx: Ctx, rows: unknown[]): Promise<NonNullable<ConfigSection['agentFields']>> {
+  let status: number | null = null
+  try {
+    const beta = await graphPaged(ctx.tokens, `${BETA}${AGENT_TARGETING.endpoint}`, { signal: ctx.signal, onResponse: (r) => { status = r.status } })
+    const byId = new Map(beta.map((b) => [String((b as { id?: unknown }).id ?? '').toLowerCase(), b as Record<string, unknown>]))
+    for (const raw of rows) {
+      const row = raw as Record<string, unknown>
+      const b = byId.get(String(row.id ?? '').toLowerCase())
+      if (!b) continue
+      const bc = (b.conditions ?? {}) as Record<string, unknown>
+      const bca = (bc.clientApplications ?? {}) as Record<string, unknown>
+      const fields = AGENT_CLIENT_FIELDS.filter((f) => says(bca[f]))
+      const risk = says(bc.agentIdRiskLevels)
+      if (fields.length === 0 && !risk) continue
+      const conditions = { ...((row.conditions ?? {}) as Record<string, unknown>) }
+      if (fields.length > 0) {
+        const ca = { ...((conditions.clientApplications ?? {}) as Record<string, unknown>) }
+        for (const f of fields) ca[f] = bca[f]
+        conditions.clientApplications = ca
+      }
+      if (risk) conditions.agentIdRiskLevels = bc.agentIdRiskLevels
+      row.conditions = conditions
+    }
+    return { status: 'ok', reason: null, httpStatus: status }
+  } catch (error) {
+    if (ctx.signal.aborted) throw error
     return { status: 'error', reason: error instanceof Error ? error.message : String(error), httpStatus: status ?? (error instanceof GraphRequestError || error instanceof SectionDisabledError ? error.status : null) }
   }
 }

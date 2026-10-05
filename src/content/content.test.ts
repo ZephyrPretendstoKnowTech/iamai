@@ -326,6 +326,15 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // targets (roadmap/authContext.ts, R4-18 review): no policy of the example
   // tenant targets an authentication context.
   '.pages.plan.blocked.authContextInUse',
+  // An agent block whose own policy's agent targeting the scan did not read (roadmap/agentBlocks.ts,
+  // owner 2026-10-04): the example tenant has no agent policy of its own.
+  '.pages.plan.blocked.agentTargetingUnread',
+  // Block AI Agents You Have Not Approved's Before you turn it on (ui/surfaces/policyTasks.ts
+  // beforeTurnOnTask): the Implementation Tasks draw it, the review page draws no policy tasks.
+  '.steps[62].beforeTurnOn.lines[0]',
+  '.steps[62].beforeTurnOn.lines[1]',
+  '.steps[62].beforeTurnOn.lines[2]',
+  '.steps[62].beforeTurnOn.lines[3]',
   // The line an update draws when it takes a tenant exclusion off the policy (review 3
   // queue 3, stepPortal.ts): the example corrects no policy that has one.
   '.shared.changeRemoves',

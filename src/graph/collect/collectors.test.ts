@@ -419,7 +419,7 @@ test('a person whose method read still failed gets their own registration report
 // from it, so every real scan asked Graph for "…crossTenantAccessPolicy, /policies/…"
 // and the section failed. A row a collector builds a URL from holds one path each.
 test('every registry path a collector builds a request from is one Graph path', () => {
-  const built = COLLECTOR_REGISTRY.filter((s) => (s.lane === '0' && s.configKey) || s.name === 'Passkey configuration' || s.name === 'Directory audit events')
+  const built = COLLECTOR_REGISTRY.filter((s) => (s.lane === '0' && s.configKey) || s.name === 'Passkey configuration' || s.name === 'Directory audit events' || s.name === 'CA policies agent targeting')
   assert.ok(built.length > 10)
   for (const s of built) {
     for (const path of [s.endpoint, s.fallbackEndpoint, ...(s.alsoReads ?? [])]) {

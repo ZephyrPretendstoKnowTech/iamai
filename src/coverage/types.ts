@@ -57,6 +57,15 @@ export type PolicyFacts = {
    */
   unreadConditions: string[]
   workload: { sps: Set<string>; filterRule: string | null } | null
+  /**
+   * The Microsoft Entra agent identities the policy targets (Graph beta
+   * `conditions.clientApplications.includeAgentIdServicePrincipals`, its excludes
+   * and filter); null where it targets none, which is every policy read from
+   * v1.0 alone. An agent policy reaches no person.
+   */
+  agents: { include: Set<string>; exclude: Set<string>; filterRule: string | null } | null
+  /** Agent risk levels (Graph beta `conditions.agentIdRiskLevels`, preview), lower case. */
+  agentRisk: Set<string>
   grant: {
     operator: 'AND' | 'OR'
     controls: Set<string>
@@ -109,8 +118,9 @@ export type Signature = Record<string, unknown>
  * `serviceAccounts`: the confirmed service accounts (the mapping's), which the caller supplies; the directory alone cannot name them.
  * `adminAccounts`: the members of the groups the operator named as holding the admin accounts
  * (MappingState.adminAccountGroupIds), which the caller supplies; the directory cannot say which group that is.
+ * `agents`: Microsoft Entra agent identities, which are no person: the population is nobody (Jon's AGENT blocks).
  */
-export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' | 'serviceAccounts' | 'adminAccounts' }
+export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' | 'serviceAccounts' | 'adminAccounts' | 'agents' }
 
 export type Implementation = {
   tier: 'free' | 'p1' | 'p2' | 'pim' | 'intune' | 'workloadId' | 'gsa' | 'mcas'

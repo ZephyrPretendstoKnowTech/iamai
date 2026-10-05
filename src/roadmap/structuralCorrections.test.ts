@@ -1,6 +1,5 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { hiddenPolicy } from './workflows.ts'
 import { fixture, withReviewRow } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { addWorkflowSteps } from './workflows.ts'
@@ -26,7 +25,7 @@ test('workloads: unknown stays open; no is reversible; each unassessed policy ha
   // A baseline with a policy no goal holds (Jon's pin has none drawn since Phase 2b).
   const f = withReviewRow(fixture('demo'))
   const original = runFixture(f)
-  const policies = original.coverage.organisation.notAssessed.filter((p) => !hiddenPolicy(p.name))
+  const policies = original.coverage.organisation.notAssessed
   assert.ok(policies.length > 0)
   const render = () => { const steps: Step[] = []; addWorkflowSteps(steps, policies, f.mapping); return steps }
   f.mapping.facetOverrides = {}

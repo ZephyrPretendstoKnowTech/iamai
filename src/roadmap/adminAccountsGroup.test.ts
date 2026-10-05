@@ -21,7 +21,6 @@ import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { ADMIN_ACCOUNTS_STORAGE, directionComplete, directionDecisionOf, savedAnswerOf } from './directionAnswers.ts'
 import type { DirectionAnswer } from './directionAnswers.ts'
 import { holdWaitsOn } from './stateReason.ts'
-import { hiddenPolicy } from './workflows.ts'
 import { buildPlanFile, parsePlanFile } from './plan.ts'
 import { ADMIN_ACCOUNTS_SLOT } from './resolvePolicy.ts'
 import { enforcementHeld, enforcesOnRun, operationsOf } from './operations.ts'
@@ -109,7 +108,6 @@ test('ADM-Users: the interpretation reads Jon’s admin-accounts group as the op
   assert.deepEqual(policies.filter((p) => Object.values(p.placeholders).includes('adminAccountsGroup')).map((p) => p.id), [POLICY_ID], 'no other policy carries the token')
   assert.deepEqual(PINNED_GOAL_MAP['admin-accounts-group-strength'], [POLICY_ID])
   assert.equal(Object.entries(PINNED_GOAL_MAP).filter(([, keys]) => keys.includes(POLICY_ID)).length, 1, 'its own goal’s and no other’s')
-  assert.equal(hiddenPolicy(POLICY), false)
 })
 
 test('ADM-Users: Identify Service and Shared Accounts asks which group holds the admin accounts, optional, suggesting nothing; left empty, only this step waits', () => {

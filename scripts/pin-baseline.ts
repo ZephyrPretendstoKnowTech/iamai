@@ -35,7 +35,7 @@ import type { PinnedPolicy } from '../src/baseline/pinSource.ts'
 import { pinArtifacts, pinMismatch } from '../src/baseline/pinArtifacts.ts'
 import type { PinnedFile } from '../src/baseline/pinArtifacts.ts'
 import type { BaselineIndex } from '../src/baseline/github.ts'
-import { interpretReferences, readInterpretation, referenceUsage } from '../src/baseline/interpretation.ts'
+import { interpretPolicies, interpretReferences, readInterpretation, referenceUsage, withPolicyReading } from '../src/baseline/interpretation.ts'
 import type { BaselineInterpretation, Interpreted } from '../src/baseline/interpretation.ts'
 import { groupSignatures, ROLE_LABELS } from '../src/baseline/signatures.ts'
 import { fileURLToPath } from 'node:url'
@@ -307,6 +307,16 @@ async function main(): Promise<void> {
         next.read.reviewRequired.map((r) => `  ${r.id}: ${r.why}`).join('\n'),
     )
   }
+  // The same for a reading of a whole policy (interpretation.json `policies`:
+  // Jon's AGENT blocks, whose agent targeting the export lost): a policy that
+  // changed since the reading was settled is read again, never carried forward.
+  const policyReads = interpretPolicies(interpretation, next.discovered)
+  if (policyReads.reviewRequired.length > 0) {
+    throw new Error(
+      `refusing to pin: ${policyReads.reviewRequired.length} policy reading(s) need review before this commit can be adopted:\n` +
+        policyReads.reviewRequired.map((r) => `  ${r.id}: ${r.why}`).join('\n'),
+    )
+  }
   const generatedAt = new Date().toISOString()
 
   // Stage 3 (baseline-onboarding, owner resolution): map each goal to the one
@@ -317,7 +327,9 @@ async function main(): Promise<void> {
   const forMap: PolicyForMap[] = next.policies.map((p) => ({
     id: p.id ?? p.displayName,
     name: p.displayName,
-    facts: policyFacts(p, new Map()),
+    // Read as the interpretation reads it: Jon's AGENT blocks target agent
+    // identities, which the published body lost (PolicyReading).
+    facts: policyFacts(withPolicyReading(p, interpretation.policies ?? []).policy, new Map()),
     placeholders: p.placeholders,
   }))
   const goals: GoalMapResult = mapGoalsToPolicies(forMap)

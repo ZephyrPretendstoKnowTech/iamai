@@ -13,6 +13,7 @@ import { unavailableReason } from './operations.ts'
 import { BREAK_GLASS_STEP_ID } from './stepIds.ts'
 import { isDirectionStep } from './directionAnswers.ts'
 import { contentTitle } from '../content/stepTitle.ts'
+import { AGENT_TARGETING_UNREAD } from './agentBlocks.ts'
 
 function thresholdFor(family: Step['readiness']['family']): number | null {
   if (family === 'mfa' || family === 'guest') return READINESS_THRESHOLD_MFA_PERCENT
@@ -111,6 +112,10 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
         case 'unmatched-pair':
           return step.action.ambiguousTarget ? BLOCKED_REASON.targetAmbiguous : BLOCKED_REASON.pairUnmatched
         case 'no-operation':
+          // An agent block whose own policy's agent targeting this scan did not
+          // read submits nothing until a scan reads it (roadmap/agentBlocks.ts):
+          // that is the wait, not a rebuild.
+          if (step.blockers.some((b) => b.label === AGENT_TARGETING_UNREAD)) return BLOCKED_REASON.agentTargetingUnread
           // An update the tenant's policy already holds in full is not a step a
           // scan rebuilds: every scan rebuilds the same empty update.
           return step.action.nothingOwed ? BLOCKED_REASON.noOperationHeld : BLOCKED_REASON.noOperation

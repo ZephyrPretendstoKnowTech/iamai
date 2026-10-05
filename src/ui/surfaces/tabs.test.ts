@@ -9,7 +9,7 @@ import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { deviceChips, keyStopsNote, methodsLine, nextCell, roleWord, rowCells, stateTitle } from './readinessCells.ts'
-import { powershellFor } from './stepPowerShell.ts'
+import { betaRequestOf, powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -75,7 +75,10 @@ test('for every policy step, the three Do it tabs differ and the PowerShell carr
       if (typeof body.displayName === 'string') assert.ok(ps.includes(body.displayName), `${name} ${s.id}: the PowerShell carries the JSON tab's displayName`)
       // Each operation calls the cmdlet its own mode names, against its own policy.
       for (const op of stepOperations(s)) {
-        if (op.mode === 'update') assert.ok(op.policyId && ps.includes(`-ConditionalAccessPolicyId '${op.policyId}'`), `${name} ${s.id}: an update names the policy it changes`)
+        // A policy on agent identities goes to Graph beta, which alone carries its agent fields (owner, 2026-10-04).
+        const beta = betaRequestOf(op)
+        if (beta) assert.ok(ps.includes(`Invoke-MgGraphRequest -Method ${op.mode === 'update' ? 'PATCH' : 'POST'} -Uri '${beta.endpoint}'`) && (op.mode !== 'update' || beta.endpoint.endsWith(`/${op.policyId}`)), `${name} ${s.id}: an agent policy goes to beta in its own mode`)
+        else if (op.mode === 'update') assert.ok(op.policyId && ps.includes(`-ConditionalAccessPolicyId '${op.policyId}'`), `${name} ${s.id}: an update names the policy it changes`)
         else assert.match(ps, /New-MgIdentityConditionalAccessPolicy -BodyParameter \$body/, `${name} ${s.id}: a create is New-`)
       }
       seen++

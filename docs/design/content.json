@@ -30,6 +30,8 @@
       "sentencePhones": "On your phone, {phones}."
     },
     "scanControl": "Scan to update the plan",
+    "$commentAgentRiskStage": "Where Microsoft stands the agent risk condition of Jon's HighRiskAgent block (owner, 2026-10-04): filled as {stage} into its portal label, Microsoft's own Agent risk (Preview), and into Block High-Risk AI Agents' words (roadmap/agentBlocks.ts AGENT_RISK_STAGE). One value, so the claim moves when Microsoft's does.",
+    "agentRiskStage": "Preview",
     "doesntApplyControl": "Doesn't apply here",
     "doesntApplyPrompt": "Why does this not apply to {tenant}? One line; it goes on the plan.",
     "lockedOutLine": "If you are locked out, see Prepare Emergency Access Accounts.",
@@ -79,6 +81,12 @@
       "$commentUsersRoles": "The users line where the policy includes directory roles: the baseline's admin policy lists 46, and 'include … and exclude the group' lost the exclusion at the end of the list, so the exclusion comes first.",
       "usersRoles": "Under **Users**, exclude {exclude}, and include {include}.",
       "workload": "Under **Users or workload identities**, select **Workload identities** and include {include}.",
+      "$commentAgents": "Jon's two AGENT blocks (owner, 2026-10-04): agent identities in Microsoft's own portal words (learn.microsoft.com/entra/identity/conditional-access/policy-autonomous-agents). An agent policy reaches no person, so it names no exclusions group.",
+      "agents": "Under **Users, agents or workload identities** → **What does this policy apply to?**, select **Agents**, include {include} and exclude {exclude}.",
+      "allAgents": "**All agent identities**",
+      "agentsNone": "**None**",
+      "agentsSelected": "**Select individual agent identities** → {names}",
+      "agentsByAttribute": "**Select agent identities based on attributes** → **{rule}**",
       "resources": "Under **Target resources**, include {include}.",
       "$commentResourcesDirectory": "Windows Azure Active Directory can't be picked from Select resources (Microsoft Learn, concept-conditional-access-cloud-apps); the portal reaches it only through a custom security attribute filter, which writes a different policy. The PowerShell and JSON tabs name it by its application ID, as the baseline does.",
       "resourcesDirectory": "Under **Target resources**, **Windows Azure Active Directory** can't be picked from Select resources, so create this policy from the **PowerShell** or **JSON** tab, which targets it by its application ID.",
@@ -101,6 +109,7 @@
       "deviceFilterExclude": "Exclude filtered devices from policy",
       "signInRisk": "Under **Conditions → Sign-in risk**, set **Configure** to **Yes** and select {values}.",
       "userRisk": "Under **Conditions → User risk**, set **Configure** to **Yes** and select {values}.",
+      "agentRisk": "Under **Conditions → Agent risk ({stage})**, set **Configure** to **Yes** and select {values}.",
       "conditionOff": "Under **Conditions → {condition}**, set **Configure** to **No**.",
       "conditions": {
         "locations": "Locations",
@@ -109,7 +118,8 @@
         "platforms": "Device platforms",
         "deviceFilter": "Filter for devices",
         "signInRisk": "Sign-in risk",
-        "userRisk": "User risk"
+        "userRisk": "User risk",
+        "agentRisk": "Agent risk ({stage})"
       },
       "grantBlock": "Under **Grant**, select **Block access**.",
       "grant": "Under **Grant**, select {controls}.",
@@ -1272,6 +1282,8 @@
         "passkeyPartialRead": "until every passkey setting the change needs can be read",
         "workloadIdentityUnknown": "until the sync identity is confirmed as supported",
         "workloadIdentityUnsupported": "until a supported identity performs this synchronization",
+        "$commentAgentTargetingUnread": "Jon's two AGENT blocks (owner, 2026-10-04): a scan whose beta read of the policies' agent fields failed leaves the step's own policy's agent targeting unread, so the step is neither completed nor corrected (roadmap/agentBlocks.ts). Graph v1.0 returns no agent field.",
+        "agentTargetingUnread": "until a scan can read which agents the policy targets",
         "$commentAuthContextInUse": "A policy step whose policy would target an authentication context another of the tenant's policies already targets (roadmap/authContext.ts contextsTakenElsewhere; the blocker auth-context-in-use). It follows \"Blocked · \" on the Plan row and is the note under the Readiness heading blockedSubject.auth-context-in-use. IAMAI reads no authentication contexts and chooses no other context ID, so the step holds while the scan finds the other policy (R4-18 review).",
         "authContextInUse": "while another policy targets authentication context {context}"
       },
@@ -1305,8 +1317,6 @@
         "notInPlanRow": "{policy}: {reason}",
         "notInPlanReason": {
           "$comment": "Why a baseline policy is in no step (derive/notInPlan.ts picks one by the pinned policy's stable id, else by the policy's own name for another baseline, else by the tenant fact that switched its goal off; a policy with none reads generic). {step} is a step's title from the content file, never its number, because the numbers move. Each reason is at most two short sentences, each within the sentence rule (docs/qa/page-contracts.json rules.sentenceMaxWords). Policies sharing one reason are one line (notInPlanLines).",
-          "$commentAgentBlock": "Jon's two AGENT blocks (HighRiskAgent, NonTrustedAgents): they target AI agent identities, which need Microsoft Entra Agent ID; this release does not plan them.",
-          "agentBlock": "Blocks AI agent identities, which need Microsoft Entra Agent ID. Not in this release.",
           "$commentExternalMfaRisk": "The external authentication methods companion of the high-risk remediation policy, scoped to the external MFA group. {step} is the high-risk remediation step's title.",
           "externalMfaRisk": "{step} for people who sign in with an external MFA provider such as Duo. Needs Microsoft Entra ID P2, and only matters if you use one.",
           "$commentEmergencyAccount": "The trusted-locations policy that names one emergency account: IAMAI keeps emergency accounts out of every policy through the exclusions group instead (binding emergency decision). {step} is the emergency access group's title.",
@@ -2162,6 +2172,10 @@
         "inPlaceKeep": "Nothing left to do.",
         "inPlaceOn": "Nothing left to do: {policy} is On.",
         "inPlaceOnMany": "Nothing left to do: {policy} are On.",
+        "$commentInPlaceReportOnly": "Block AI Agents You Have Not Approved, done (owner, 2026-10-04; roadmap/agentBlocks.ts): its policy exists in Report-only, exactly the baseline's, and IAMAI offers no turn-on. inPlaceOn read \"is On\" over a policy in Report-only.",
+        "inPlaceReportOnly": "Nothing left for IAMAI to do: {policy} is in Report-only. Before you turn it on says how to approve your agents and turn it on yourself.",
+        "$commentAgentTargetingUnread": "An agent block whose own policy is in the tenant while the scan did not read which agents it targets (the beta read failed; roadmap/agentBlocks.ts): nothing is submitted against it until a scan reads it, so noOperation's \"no policy for IAMAI to write\" was the wrong reason.",
+        "agentTargetingUnread": "This scan could not read which AI agents {policy} targets, so IAMAI neither completes nor corrects it. Scan {tenant} again.",
         "pairReviewExpected": "Expected policy name: {name}. Confirm its scope and authentication requirement before assigning this name to an existing policy. Rescan after making an approved correction.",
         "pairUnmatched": "IAMAI found existing guest coverage in {tenant}, but cannot match it to the two baseline policies. Compare the existing policies with the expected pair before creating or renaming anything. See Entra for the names to check.",
         "targetAmbiguous": "{tenant} has more than one policy this goal could correct, and nothing about them says which is its own. IAMAI does not guess: correcting the wrong one would change who another policy applies to. Decide which policy stands for this goal (for example, widen it to everyone, or retire the extra one), then scan again.",
@@ -3862,6 +3876,7 @@
           "PIM role settings": {"why":"Whether activating each role someone is eligible for asks for the authentication context Require MFA at Every Role Activation's policy targets.","note":"Read for each of those roles, after the roles themselves. A role whose read fails stays one to set."},
           "Per-user MFA requirements": {"why":"Each account's legacy per-user MFA state, whatever the authentication-methods migration says.","note":"Read for every account as the directory arrives. An account whose read fails stays unknown."},
           "CA policies": {"why":"The tenant's Conditional Access policies, which the plan compares with the baseline; Microsoft-managed policies are marked."},
+          "CA policies agent targeting": {"why":"The same policies from Microsoft Graph beta, for the one thing the first read leaves out: which AI agent identities each policy targets and the agent risk it names. Only those settings are added to the policies.","note":"Read with the policies, under the same permission. If it fails, which agents a policy targets stays unknown and nothing else changes."},
           "Named locations": {"why":"The named locations the trusted-location and country checks read."},
           "Authentication strengths": {"why":"The strengths policies refer to, custom ones included, and the method combinations each allows."},
           "Auth methods policy": {"why":"Which sign-in methods are on and for whom, the passkey settings, whether registration is enforced, and whether the tenant has finished moving off the legacy MFA settings (read from beta when v1.0 leaves that out).","note":"Read with Global Reader or Authentication Policy Administrator; a refused read also holds the passkey settings step."},
@@ -8894,6 +8909,121 @@
         "from": "Aug 1"
       },
       "aiFocus": "Explain the user action and the risk levels the block applies to, and how a flagged person clears their risk before they register."
+    },
+    {
+      "id": "agents-block-high-risk",
+      "brief": {
+        "matters": "An AI agent Microsoft rates high risk may be compromised, and it reaches your data with its own identity, with no person signing in.",
+        "notice": "No one notices a change: it blocks AI agents, never people."
+      },
+      "kind": "policy",
+      "$comment": "Owner, 2026-10-04: Jon's IAC - AGENT - BLOCK - HighRiskAgent, whose agent targeting his export lost (Graph v1.0 returns no agent field); its body is read back from his README intent and Microsoft's documented beta shape (interpretation.json policies; roadmap/agentBlocks.ts). Created in Report-only by Create the Policies in Report-only, then turned on like any block. Needs Entra ID P2 (agent risk, Preview); without it, a Not licensed row. Its JSON and PowerShell use the Graph beta endpoint.",
+      "licence": "Microsoft Entra ID P2",
+      "title": "Block High-Risk AI Agents",
+      "changeLine": null,
+      "why": "When Microsoft Entra ID Protection rates an AI agent identity high risk, it cannot sign in to anything. It needs Microsoft Entra ID P2, and Microsoft's agent risk condition is in {stage}.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-autonomous-agents",
+        "checkedOn": "2026-10-04"
+      },
+      "who": {
+        "lead": "AI agent identities in {tenant}, never people",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}"
+      ],
+      "ifWrong": "If an agent you rely on is blocked, set the policy back to Report-only and check the agent's risk in ID Protection before turning it on again.",
+      "comms": null,
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "Agent risk is in {stage}: what Microsoft rates high risk can change, and an agent you rely on can be blocked when it is rated.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "An AI agent stopped working: check its risk in ID Protection before changing the policy."
+        ],
+        "manager": "An AI agent Microsoft rates high risk cannot reach anything.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso",
+        "policyName": "IAC - AGENT - BLOCK - HighRiskAgent",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain that the policy blocks AI agent identities Microsoft Entra ID Protection rates high risk, from every resource, and never a person. Do not exclude an agent to let a blocked sign-in through without checking its risk."
+    },
+    {
+      "id": "agents-block-untrusted",
+      "brief": {
+        "matters": "An AI agent nobody approved reaches your data with its own identity, with no person signing in.",
+        "notice": "Nothing changes while it is in Report-only. Once you turn it on, only the agents you approve can sign in."
+      },
+      "kind": "policy",
+      "$comment": "Owner, 2026-10-04: Jon's IAC - AGENT - BLOCK - NonTrustedAgents, whose agent targeting his export lost (Graph v1.0 returns no agent field); its body is read back from his README intent and Microsoft's documented beta shape (interpretation.json policies; roadmap/agentBlocks.ts). Created in Report-only by Create the Policies in Report-only and left there: IAMAI does not offer the turn-on, because it cannot read the tenant's agent identities. Complete once the policy exists, exact, in Report-only (the agents the tenant excluded are its approvals, kept). beforeTurnOn is its reference task, never required (ui/surfaces/policyTasks.ts beforeTurnOnTask; the open line between its first and second lines is the policy's own). Its JSON and PowerShell use the Graph beta endpoint.",
+      "title": "Block AI Agents You Have Not Approved",
+      "changeLine": null,
+      "why": "Only the AI agent identities you approve can sign in; every other agent is blocked. IAMAI creates the policy in Report-only and leaves it there: you exclude the agents you approve, then turn it on yourself.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-autonomous-agents",
+        "checkedOn": "2026-10-04"
+      },
+      "who": {
+        "lead": "AI agent identities in {tenant}, never people",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesDeploy}",
+      "doneWhen": [
+        "The policy exists in Report-only, as the baseline sets it: every agent identity included, all resources, Block access.",
+        "IAMAI does not turn it on: Before you turn it on says how, once you have excluded the agents you approve."
+      ],
+      "ifWrong": "Nothing is blocked while it is in Report-only. After you turn it on, if an agent you rely on is blocked, exclude it in the policy or set the policy back to Report-only.",
+      "comms": null,
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": true,
+      "beforeTurnOn": {
+        "title": "Before you turn it on",
+        "lines": [
+          "IAMAI leaves this policy in Report-only: it cannot read your agent identities (that needs a permission IAMAI does not ask for), so only you can say which agents to approve.",
+          "Under **Users, agents or workload identities** → **Exclude**, choose **Select individual agent identities** and pick every agent identity or agent blueprint you approve, or choose **Select agent identities based on attributes** to exclude them by a custom security attribute. Select **Save**.",
+          "Review the policy's report-only results for agent sign-ins in **Sign-in logs**, and check that no agent you approve would be blocked.",
+          "Then set **Enable policy** to **On**, select **Save**, return to IAMAI and select **Scan to update the plan**."
+        ]
+      },
+      "more": {
+        "risks": [
+          {
+            "text": "Turned on before you exclude the agents you approve, it blocks every AI agent, Microsoft's own included.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "An AI agent stopped working after the policy was turned on: check whether it is excluded in the policy before changing anything else."
+        ],
+        "manager": "Only the AI agents we approve can reach our data.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso",
+        "policyName": "IAC - AGENT - BLOCK - NonTrustedAgents",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain that the policy blocks every AI agent identity not excluded from it, that IAMAI creates it in Report-only and does not turn it on, and how to exclude the agents the tenant approves. Do not turn it on before the approved agents are excluded."
     }
   ]
 }

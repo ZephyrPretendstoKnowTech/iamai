@@ -117,6 +117,8 @@ const CONDITION_SHAPES = {
   signInRiskLevels: (v) => listOk(v, RISK_LEVELS),
   userRiskLevels: (v) => listOk(v, RISK_LEVELS),
   servicePrincipalRiskLevels: (v) => listOk(v, RISK_LEVELS),
+  // Agent risk (Graph beta, preview): Jon's HighRiskAgent block (roadmap/agentBlocks.ts).
+  agentIdRiskLevels: (v) => listOk(v, RISK_LEVELS),
   authenticationFlows: (v) => isObjectOnly(v, new Set(['transferMethods'])) && tokens(v.transferMethods, TRANSFER_METHODS),
 } satisfies Record<string, (v: unknown) => boolean>
 
@@ -138,6 +140,7 @@ const CONDITION_READING: Record<keyof typeof CONDITION_SHAPES, boolean> = {
   signInRiskLevels: true,
   userRiskLevels: true,
   servicePrincipalRiskLevels: true,
+  agentIdRiskLevels: true,
   authenticationFlows: true,
 }
 const RISK_LEVELS = new Set(['low', 'medium', 'high', 'none', 'hidden', 'unknownfuturevalue'])
@@ -207,11 +210,17 @@ function isUsersScope(v: unknown): boolean {
 
 /** The workload clause: the service principals it names, or a filter that names them. */
 function isWorkloadScope(v: unknown): boolean {
-  if (!isObjectOnly(v, new Set(['includeServicePrincipals', 'excludeServicePrincipals', 'servicePrincipalFilter']))) return false
+  // The agent fields (Graph beta, preview) sit beside the service principals: an
+  // agent policy names agent identities, or a filter that names them (Jon's
+  // AGENT blocks, roadmap/agentBlocks.ts).
+  if (!isObjectOnly(v, new Set(['includeServicePrincipals', 'excludeServicePrincipals', 'servicePrincipalFilter', 'includeAgentIdServicePrincipals', 'excludeAgentIdServicePrincipals', 'agentIdServicePrincipalFilter']))) return false
   if (!listOk(v.includeServicePrincipals) || !listOk(v.excludeServicePrincipals)) return false
+  if (!listOk(v.includeAgentIdServicePrincipals) || !listOk(v.excludeAgentIdServicePrincipals)) return false
   const filter = v.servicePrincipalFilter
   if (filter !== undefined && filter !== null && !isFilter(filter)) return false
-  return nonEmpty(v.includeServicePrincipals) || (filter !== undefined && filter !== null)
+  const agentFilter = v.agentIdServicePrincipalFilter
+  if (agentFilter !== undefined && agentFilter !== null && !isFilter(agentFilter)) return false
+  return nonEmpty(v.includeServicePrincipals) || (filter !== undefined && filter !== null) || nonEmpty(v.includeAgentIdServicePrincipals)
 }
 
 /**
@@ -344,6 +353,11 @@ const READ_LEAVES = new Set([
   'conditions.clientApplications.includeServicePrincipals',
   'conditions.clientApplications.excludeServicePrincipals',
   'conditions.clientApplications.servicePrincipalFilter',
+  // An agent policy reaches agent identities and no person (Graph beta; Jon's AGENT blocks).
+  'conditions.clientApplications.includeAgentIdServicePrincipals',
+  'conditions.clientApplications.excludeAgentIdServicePrincipals',
+  'conditions.clientApplications.agentIdServicePrincipalFilter',
+  'conditions.agentIdRiskLevels',
   // When: the client kinds, the places, the platforms, the device rule, the two
   // risk questions kept apart, and the sign-in flows.
   'conditions.clientAppTypes',
@@ -417,6 +431,7 @@ export type Narrowing =
   | { kind: 'userActions'; actions: string[] }
   | { kind: 'authContext'; ids: string[] }
   | { kind: 'workloadRisk'; levels: string[] }
+  | { kind: 'agentRisk'; levels: string[] }
   | { kind: 'deviceFilter' }
 
 /** One thing a policy asks a person for. Kept apart: a device is not an app, and neither is a method. */
@@ -581,7 +596,9 @@ function scopeOf(conditions: Record<string, unknown>, unreadable: boolean): Poli
     groups: { include: strings(users?.includeGroups), exclude: strings(users?.excludeGroups) },
     roles: { include: strings(users?.includeRoles), exclude: strings(users?.excludeRoles) },
     guests: { include: guestClauseOf(users?.includeGuestsOrExternalUsers), exclude: guestClauseOf(users?.excludeGuestsOrExternalUsers) },
-    workloadOnly: users === null && workload !== null,
+    // An agent policy (Jon's AGENT blocks) names agent identities and, beside them,
+    // no person: `includeUsers` None and nothing else, as Graph returns it.
+    workloadOnly: workload !== null && (users === null || (strings(users.includeUsers).every((u) => u.toLowerCase() === 'none') && strings(users.includeGroups).length === 0 && strings(users.includeRoles).length === 0 && !isObject(users.includeGuestsOrExternalUsers) && nonEmpty(workload.includeAgentIdServicePrincipals))),
     unreadable,
     applications: {
       include: strings(apps?.includeApplications),
@@ -682,6 +699,8 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   if (scope.applications.authContexts.length > 0) narrowings.push({ kind: 'authContext', ids: scope.applications.authContexts })
   const workloadRisk = strings(conditions.servicePrincipalRiskLevels)
   if (workloadRisk.length > 0) narrowings.push({ kind: 'workloadRisk', levels: workloadRisk })
+  const agentRisk = strings(conditions.agentIdRiskLevels)
+  if (agentRisk.length > 0) narrowings.push({ kind: 'agentRisk', levels: agentRisk })
   const rawSubmitted = isObject(body.sessionControls) ? body.sessionControls : null
   const raw = rawSubmitted === null ? null : ((): Record<string, unknown> => {
     const ok: Record<string, unknown> = {}

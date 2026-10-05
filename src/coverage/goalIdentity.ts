@@ -93,11 +93,13 @@ function companionOf(first: PolicyForMap, policies: PolicyForMap[]): PolicyForMa
   return found.length === 1 ? found[0] : null
 }
 
-type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members' | 'serviceAccounts' | 'adminAccounts'
+type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members' | 'serviceAccounts' | 'adminAccounts' | 'agents'
 type CondTag = string // 'locations' | 'platforms' | 'clientAppsRestricted' | 'flows' | 'deviceFilter' | 'userActions' | 'authContext' | 'signInRisk:high' | 'userRisk:medium' | …
 
 function userClass(f: PolicyFacts, placeholders: Record<string, string> = {}): UserClass {
   if (f.workload) return 'workload'
+  // Microsoft Entra agent identities, which reach no person (Jon's AGENT blocks, as the interpretation reads them).
+  if (f.agents) return 'agents'
   if (f.who.roles.size > 0) return 'coreAdmins'
   if (f.who.all) return 'all'
   if (f.who.guests !== null) return 'guests'
@@ -133,6 +135,7 @@ function condTags(f: PolicyFacts): Set<CondTag> {
   for (const fl of f.flows) t.add(`flow:${fl.toLowerCase()}`)
   for (const l of f.signInRisk) t.add(`signInRisk:${l}`)
   for (const l of f.userRisk) t.add(`userRisk:${l}`)
+  for (const l of f.agentRisk) t.add(`agentRisk:${l}`)
   if (f.deviceFilter) t.add('deviceFilter')
   if (f.apps.userActions.size > 0) t.add('userActions')
   if (f.apps.authContexts.size > 0) t.add('authContext')
@@ -153,6 +156,7 @@ function templateTags(impl: Implementation): Set<CondTag> {
   if (Array.isArray(apps.includeAuthenticationContextClassReferences) && (apps.includeAuthenticationContextClassReferences as unknown[]).length > 0) t.add('authContext')
   for (const l of (c.signInRiskLevels as string[] | undefined) ?? []) t.add(`signInRisk:${String(l).toLowerCase()}`)
   for (const l of (c.userRiskLevels as string[] | undefined) ?? []) t.add(`userRisk:${String(l).toLowerCase()}`)
+  for (const l of (c.agentIdRiskLevels as string[] | undefined) ?? []) t.add(`agentRisk:${String(l).toLowerCase()}`)
   const flows = (c.authenticationFlows as { transferMethods?: string } | undefined)?.transferMethods
   if (flows) for (const fl of flows.split(',').map((x) => x.trim()).filter(Boolean)) t.add(`flow:${fl.toLowerCase()}`)
   if (c.devices) t.add('deviceFilter')

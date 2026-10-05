@@ -56,7 +56,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; namedLocationsUnread: string; passkeyProfiles: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; emergency: string; mailAccounts: string; operator: string; countriesLeftOutOne: string; countriesLeftOutMany: string; countriesLeftOutCount: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; workCountries: string; direction: string; unsettled: string; sourceMapping: string; pairUnmatched: string; targetAmbiguous: string; noOperation: string; noOperationHeld: string; authContextInUse: string; manualCorrection: string; unverifiedExclusion: string; methodsPolicyUnread: string; namedLocationsUnread: string; passkeyProfiles: string; passkeyPartialRead: string; workloadIdentityUnknown: string; workloadIdentityUnsupported: string; agentTargetingUnread: string; emergency: string; mailAccounts: string; operator: string; countriesLeftOutOne: string; countriesLeftOutMany: string; countriesLeftOutCount: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -116,6 +116,8 @@ export const BLOCKED_REASON = {
   /** The sync workflow's calling identity is not established as supported for workload Conditional Access (roadmap/workloadIdentity.ts), or is known not to be. */
   workloadIdentityUnknown: BLOCKED.workloadIdentityUnknown,
   workloadIdentityUnsupported: BLOCKED.workloadIdentityUnsupported,
+  /** This scan did not read the agent targeting of an agent block's own policy (roadmap/agentBlocks.ts): it is neither completed nor corrected until a scan reads it. */
+  agentTargetingUnread: BLOCKED.agentTargetingUnread,
   /** An authentication context the step's policy would target that another of the tenant's policies already targets (roadmap/authContext.ts): IAMAI chooses no other context. */
   authContextInUse: (context: string): string => fillText(BLOCKED.authContextInUse, { context }),
   emergency: BLOCKED.emergency,
