@@ -32,6 +32,6 @@ const cached = new Map<string, BaselinePackage>()
 /** A curated baseline's pinned policies as one package (Jon Hope's by default), built once and shared; never mutated by its readers. */
 export function pinnedPackage(def: BaselineDefinition = DEFAULT_BASELINE): BaselinePackage {
   let pkg = cached.get(def.id)
-  if (pkg === undefined) cached.set(def.id, (pkg = loadBaseline(pinnedFiles('corrected', def))))
+  if (pkg === undefined) cached.set(def.id, (pkg = { ...loadBaseline(pinnedFiles('corrected', def)), curatedId: def.id }))
   return pkg
 }

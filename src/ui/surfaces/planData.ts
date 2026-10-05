@@ -9,7 +9,7 @@ import { ALL_USERS_TARGET } from '../../roadmap/resolvePolicy.ts'
 // and Step.tsx stay thin. Editing an assumption or a setting bumps a version
 // and regenerates in place.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { DEFAULT_BASELINE } from '../../baseline/registry.ts'
+import { curatedOf } from '../../baseline/registry.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { MappingState } from '../../mapping/types.ts'
@@ -410,7 +410,8 @@ export function usePlanData(
       coverage,
       snapshot,
       baseline: baseline.pkg,
-      baselineAuthor: DEFAULT_BASELINE.index.author !== undefined ? { author: DEFAULT_BASELINE.index.author, url: DEFAULT_BASELINE.index.authorUrl ?? '#' } : null,
+      // The author of the curated baseline in use (v2.0 prep, item 4); an upload credits nobody.
+      baselineAuthor: baseline.pkg.curatedId !== undefined && curatedOf(baseline.pkg).index.author !== undefined ? { author: curatedOf(baseline.pkg).index.author, url: curatedOf(baseline.pkg).index.authorUrl ?? '#' } : null,
       mapping,
       viability,
       strengths,

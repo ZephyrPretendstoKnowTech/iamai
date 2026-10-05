@@ -713,6 +713,13 @@ export type Step = {
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
   /**
+   * The baseline's own policies for this step's goal, as its pin holds them
+   * (v2.0 prep, item 4; generate.ts): what the step's lines name where the step
+   * has no policy of its own (stepPortal.ts strengthForGoal and its siblings).
+   * The curated baseline the plan uses; an upload reads the default's.
+   */
+  baselinePolicies?: { displayName: string; grantControls?: unknown; sessionControls?: unknown }[]
+  /**
    * Disable or Confirm Dormant Accounts: every enabled account with no
    * successful sign-in in the last 90 days, with the last sign-in the scan
    * holds (null: none on record) and whether the person keeps it

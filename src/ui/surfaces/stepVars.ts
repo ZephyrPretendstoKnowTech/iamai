@@ -306,7 +306,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The two-policy (merged) goals carry A/B names: the proposal with its letter,
   // in the tenant's separator (coverage/naming.ts policyPairNames), for the
   // step's lines and the portal's two blocks alike; never one name on both.
-  const pairNames = pairBaselineNames(step.goalId)
+  const pairNames = pairBaselineNames(step.goalId, step.baselinePolicies)
   if (pairNames.length >= 2 && step.naming?.proposed) {
     const pair = policyPairNames(step.naming.proposed, pairNames[1], ctx.naming ?? null)
     v.policyNameA = pair.a
@@ -321,7 +321,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // place, the enforce step (roadmap/strand.ts effectsOf, analysisUnknown).
   const own = effectsOf(step)
   const held = analysisUnknown(step)
-  const strength = own === null ? strengthForGoal(step.goalId) : held ? null : ((): string | null => {
+  const strength = own === null ? strengthForGoal(step.goalId, step.baselinePolicies) : held ? null : ((): string | null => {
     const id = own.flatMap((e) => (e.strength ? [e.strength.id] : []))[0]
     return id === undefined ? null : strengthNameOf(id, ctx)
   })()
@@ -329,9 +329,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The session frequency, for the lines that name {wanted}, and as a duration
   // for the email that says "expire after {wantedLong}".
   const hours = own === null ? null : held ? null : own.map((e) => e.sessionControls?.signInFrequencyHours ?? null).find((h) => h !== null) ?? null
-  const wanted = own === null ? sessionWantedForGoal(step.goalId) : hours === null ? null : hoursInWords(hours)
+  const wanted = own === null ? sessionWantedForGoal(step.goalId, step.baselinePolicies) : hours === null ? null : hoursInWords(hours)
   if (wanted) v.wanted = wanted
-  const wantedLong = own === null ? sessionWantedLongForGoal(step.goalId) : hours === null ? null : hoursAsDuration(hours)
+  const wantedLong = own === null ? sessionWantedLongForGoal(step.goalId, step.baselinePolicies) : hours === null ? null : hoursAsDuration(hours)
   if (wantedLong) v.wantedLong = wantedLong
 
   // The step that makes the baseline's own authentication strength: it names the

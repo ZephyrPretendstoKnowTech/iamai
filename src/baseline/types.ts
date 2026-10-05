@@ -158,6 +158,8 @@ export interface LoadReport {
 }
 
 export interface BaselinePackage {
+  /** The curated baseline this package was built from (registry.ts id); absent for an upload. */
+  curatedId?: string;
   /** Deduplicated, normalized policies. `state` is the *source's* state and is not a target. */
   policies: CaPolicy[];
   /** Where each policy came from (path). */

@@ -44,6 +44,15 @@ export function baselineOfOrigin(origin: { id?: string; owner: string; repo: str
   return Object.values(BASELINES).find((d) => same(d.index.owner, origin.owner) && same(d.index.repo, origin.repo)) ?? null
 }
 
+/**
+ * The curated baseline a package was built from (BaselinePackage.curatedId):
+ * the one whose pin answers for it. An upload has none and reads the default,
+ * as the product's "the pinned baseline wins" rule has always had it.
+ */
+export function curatedOf(pkg: { curatedId?: string }): BaselineDefinition {
+  return baselineById(pkg.curatedId ?? '') ?? DEFAULT_BASELINE
+}
+
 /** A curated baseline by its id; null for an id IAMAI does not ship. */
 export function baselineById(id: string): BaselineDefinition | null {
   return Object.prototype.hasOwnProperty.call(BASELINES, id) ? BASELINES[id as BaselineId] : null

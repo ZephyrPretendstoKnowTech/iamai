@@ -55,7 +55,8 @@ import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { ReviewedSource } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
-import { PINNED_GOAL_MAP, goalInMap, goalMapFor, pinnedSource, policiesForGoal, policyKey } from './goalMap.ts'
+import { PINNED_GOAL_MAP, goalInMap, goalMapFor, goalMapOf, pinnedSource, policiesForGoal, policyKey } from './goalMap.ts'
+import { curatedOf } from '../baseline/registry.ts'
 import { COVERAGE_JUDGED, memberKeyOf, sameDimension, unwrittenDifferences } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
@@ -3677,7 +3678,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // management goal is not Jon's, and it kept 2.1 asking a question that took
     // nothing off the plan once the BaselineScopes row was hidden (Phase 2b).
     const availableGoalIds = input.coverage.results.filter((r) => r.status !== 'licence-limited' && inBaseline(r.goal)).map((r) => r.goal.id)
-    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds, nameOf }))
+    steps.unshift(...directionSteps({ snapshot, mapping, notAssessed: input.coverage.organisation.notAssessed, availableGoalIds, nameOf, baselinePolicies: curatedOf(input.baseline).pinned.policies }))
     addWorkflowSteps(steps, input.coverage.organisation.notAssessed, mapping, input.manualConfirmations)
     countDirectionImpact(steps, availableGoalIds)
   }
@@ -3925,6 +3926,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a
   // plan cannot fix by itself surface as Housekeeping.
   const violations = staticViolations(snapshot.config.caPolicies?.rows ?? [], { technicianToolsOffCompliance: (snapshot.scenarioEvidence?.technicianToolsOffCompliance.count ?? 0) > 0 })
+  // Each goal step carries its baseline's own policies for the goal (v2.0 prep,
+  // item 4): the curated baseline this plan uses, by the id its package carries;
+  // an upload reads the default's, as it always has.
+  const curated = curatedOf(input.baseline)
+  const curatedMap = goalMapOf(curated)
+  const curatedPolicies = curated.pinned.policies as unknown as NonNullable<Step['baselinePolicies']>
+  for (const s of steps) if (s.goalId) s.baselinePolicies = policiesForGoal(curatedMap, curatedPolicies as never, s.goalId) as unknown as Step['baselinePolicies']
   return { steps, schedule, housekeeping: { checksNotRun: checksNotRun(validationReports), staticViolations: violations } }
 }
 

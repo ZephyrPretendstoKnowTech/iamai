@@ -48,6 +48,13 @@ type PinnedPolicy = { id: string | null; displayName: string; conditions: unknow
 const POLICIES = DEFAULT_BASELINE.pinned.policies as unknown as PinnedPolicy[]
 
 /**
+ * The baseline's policies for a step's goal, as the step carries them
+ * (Step.baselinePolicies; v2.0 prep, item 4). Absent, the default baseline's
+ * policies for the goal answer, as a caller with no step has always read.
+ */
+type BaselinePolicies = Step['baselinePolicies']
+
+/**
  * What the lines need that is not in the policy itself: how to turn an id into
  * the name this tenant knows it by, and the strength's name. Nothing here
  * decides what the policy is — that is the step's.
@@ -163,14 +170,14 @@ function sectionsOf(body: Record<string, unknown>): Set<PortalSection> {
  * "weekly"), for the content lines that name {wanted}; null when the mapped
  * policy sets none (walk of f3d140b: the manager note read "expire after and").
  */
-export function sessionWantedForGoal(goalId: string): string | null {
-  const hours = sessionWantedHoursForGoal(goalId)
+export function sessionWantedForGoal(goalId: string, from?: BaselinePolicies): string | null {
+  const hours = sessionWantedHoursForGoal(goalId, from)
   return hours === null ? null : hoursInWords(hours)
 }
 
 /** The sign-in frequency the goal's baseline policy wants, in hours; null when the mapped policy sets none. */
-function sessionWantedHoursForGoal(goalId: string): number | null {
-  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+function sessionWantedHoursForGoal(goalId: string, from?: BaselinePolicies): number | null {
+  const mapped = (from ?? policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)) as PinnedPolicy[]
   for (const p of mapped) {
     const sc = (p.sessionControls ?? null) as { signInFrequency?: { isEnabled?: boolean; value?: number; type?: string } } | null
     const f = sc?.signInFrequency
@@ -185,8 +192,8 @@ function sessionWantedHoursForGoal(goalId: string): number | null {
  * "a day", "a week" ({wantedLong} on the admin-sessions email; "expire after
  * weekly" is not a sentence). Null when the mapped policy sets none.
  */
-export function sessionWantedLongForGoal(goalId: string): string | null {
-  const hours = sessionWantedHoursForGoal(goalId)
+export function sessionWantedLongForGoal(goalId: string, from?: BaselinePolicies): string | null {
+  const hours = sessionWantedHoursForGoal(goalId, from)
   return hours === null ? null : hoursAsDuration(hours)
 }
 
@@ -212,7 +219,7 @@ const PASSKEY_COMBINATIONS = new Set(['fido2', 'windowshelloforbusiness', 'x509c
  */
 export function needsPasskey(step: Step, ctx: Pick<StepVarContext, 'snapshot'>): boolean {
   const effects = effectsOf(step)
-  if (effects === null) return needsPasskeyForGoal(step.goalId)
+  if (effects === null) return needsPasskeyForGoal(step.goalId, step.baselinePolicies)
   if (analysisUnknown(step)) return false
   const lookup = strengthLookupOf(ctx.snapshot as never)
   for (const e of effects) {
@@ -225,8 +232,8 @@ export function needsPasskey(step: Step, ctx: Pick<StepVarContext, 'snapshot'>):
 }
 
 /** True when the goal's mapped baseline policy requires a strength only a passkey (or key) satisfies: the policy needs a passkey. */
-export function needsPasskeyForGoal(goalId: string): boolean {
-  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+export function needsPasskeyForGoal(goalId: string, from?: BaselinePolicies): boolean {
+  const mapped = (from ?? policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)) as PinnedPolicy[]
   for (const p of mapped as PinnedPolicy[]) {
     const combos = (p.grantControls as { authenticationStrength?: { allowedCombinations?: string[] } } | null)?.authenticationStrength?.allowedCombinations
     if (Array.isArray(combos) && combos.length > 0 && combos.every((c) => PASSKEY_COMBINATIONS.has(String(c).toLowerCase()))) return true
@@ -235,14 +242,14 @@ export function needsPasskeyForGoal(goalId: string): boolean {
 }
 
 /** The baseline's own names for a goal it implements with two policies (Policy A and Policy B), in the map's order; empty otherwise. */
-export function pairBaselineNames(goalId: string): string[] {
-  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+export function pairBaselineNames(goalId: string, from?: BaselinePolicies): string[] {
+  const mapped = (from ?? policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)) as PinnedPolicy[]
   return mapped.length >= 2 ? mapped.map((p) => p.displayName) : []
 }
 
 /** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
-export function strengthForGoal(goalId: string): string | null {
-  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+export function strengthForGoal(goalId: string, from?: BaselinePolicies): string | null {
+  const mapped = (from ?? policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)) as PinnedPolicy[]
   for (const p of mapped as PinnedPolicy[]) {
     const s = (p.grantControls as { authenticationStrength?: { displayName?: string } } | null)?.authenticationStrength?.displayName
     if (typeof s === 'string' && s.length > 0) return s

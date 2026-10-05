@@ -69,7 +69,9 @@ type Answer = { value: string; picked: string[] }
 const answer = (value: string, picked: readonly string[] = []): Answer => ({ value, picked: [...picked] })
 const optionsOf = (words: Record<string, string>): DirectionQuestion['options'] => Object.entries(words).map(([value, label]) => ({ value, label }))
 
-type Context = { snapshot: TenantSnapshot; mapping: MappingState }
+type Context = { snapshot: TenantSnapshot; mapping: MappingState; baselinePolicies?: readonly BaselinePolicy[] }
+/** A baseline policy as the partner question reads it (v2.0 prep, item 4). */
+type BaselinePolicy = { conditions?: unknown; grantControls?: unknown }
 
 function question(key: DirectionQuestionKey, ctx: Context, q: Omit<DirectionQuestion, 'key' | 'saved' | 'needsReview' | 'basis' | 'today' | 'note' | 'chosen' | 'pickedWith'> & Partial<Pick<DirectionQuestion, 'today' | 'note' | 'chosen' | 'pickedWith' | 'basis' | 'needsReview'>>): DirectionQuestion {
   return { key, today: null, note: null, chosen: null, pickedWith: null, basis: null, needsReview: false, ...q, saved: savedAnswerOf(key, ctx.mapping) }
@@ -169,7 +171,7 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
     evidence: partnerReview ? fillText(W.reopened, { answer: Q.partner.options.no, evidence: partnerSeen !== '' ? partnerSeen : Q.partner.seenPartial }) : partnerSeen,
     // Yes departs from the baseline, which asks partner and MSP technicians for MFA like any guest: the
     // card says so beside the choice (F-041). No is the baseline's own version, and says what it does (F-067).
-    chosen: { yes: fillText((shared.deviation as { line: string }).line, { line: Q.partner.consequence, baseline: fillText(Q.partner.baseline, { strength: partnerStrength() }) }), no: fillText(Q.partner.chosenNo, { strength: partnerStrength() }) },
+    chosen: { yes: fillText((shared.deviation as { line: string }).line, { line: Q.partner.consequence, baseline: fillText(Q.partner.baseline, { strength: partnerStrength(ctx.baselinePolicies) }) }), no: fillText(Q.partner.chosenNo, { strength: partnerStrength(ctx.baselinePolicies) }) },
     needsReview: partnerReview,
     basis: partnersUsed ? 'present' : partners !== null && signInsRead(snapshot) ? 'absent' : 'unread',
   }))
@@ -184,8 +186,8 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
  * fact the guests step states too. "MFA like any guest" was weaker than the
  * baseline asks (Round 4 review). Plain MFA where no such policy names a strength.
  */
-function partnerStrength(): string {
-  for (const p of PINNED.policies) {
+function partnerStrength(policies: readonly BaselinePolicy[] = PINNED.policies): string {
+  for (const p of policies) {
     const users = (p.conditions as { users?: { includeGuestsOrExternalUsers?: { guestOrExternalUserTypes?: string } | null } } | null)?.users
     const types = users?.includeGuestsOrExternalUsers?.guestOrExternalUserTypes ?? ''
     if (!types.split(',').map((x) => x.trim()).includes('serviceProvider')) continue
@@ -328,13 +330,15 @@ export type DirectionInput = {
   /** The goals this plan can hold (licence-limited ones are not asked about). */
   availableGoalIds: readonly string[]
   nameOf?: (id: string) => string
+  /** The curated baseline's pinned policies the questions quote (v2.0 prep, item 4); the default's where absent. */
+  baselinePolicies?: readonly BaselinePolicy[]
   /** When each Direction step was last approved (stepDecisions[id].at), where the caller knows it. */
   approvedAt?: Readonly<Partial<Record<DirectionStepId, string>>>
 }
 
 /** The three Direction steps, built from the snapshot and the saved answers. */
 export function directionSteps(input: DirectionInput): Step[] {
-  const ctx = { snapshot: input.snapshot, mapping: input.mapping }
+  const ctx = { snapshot: input.snapshot, mapping: input.mapping, baselinePolicies: input.baselinePolicies }
   const services = serviceReading(input.snapshot, input.notAssessed, input.availableGoalIds, new Set(personAccounts(input.snapshot, notPeopleIds(input.mapping)).map((u) => u.id)))
   // A caller that passes no namer gets the one rule for naming a person (names.ts personLabels).
   const nameOf = input.nameOf ?? ((labels) => (id: string) => labels.get(id) ?? id)(personLabels(input.snapshot.users))
