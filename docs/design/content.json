@@ -3597,7 +3597,7 @@
               "joinsRemote": "Everyone works remotely, so there is no office network to keep these accounts to: they get MFA like anyone."
             },
             "adminAccounts": {
-              "$comment": "Owner, 2026-10-04: Jon's IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users asks every account in his admin-accounts group for the baseline's strength, so it reaches admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins (directory roles) misses until they activate. A group picker, one or more groups; the answer is MappingState.adminAccountGroupIds. Optional: left empty, only Require a Strong Sign-in for Your Admin Accounts Group waits. No suggestion and no evidence line: the scan cannot tell which group holds the admin accounts.",
+              "$comment": "Owner, 2026-10-04: Jon's MFA-Passkeys policy for admin accounts asks every account in his admin-accounts group for the baseline's strength, so it reaches admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins (directory roles) misses until they activate. A group picker, one or more groups; the answer is MappingState.adminAccountGroupIds. Optional: left empty, only Require a Strong Sign-in for Your Admin Accounts Group waits. No suggestion and no evidence line: the scan cannot tell which group holds the admin accounts.",
               "label": "Which group holds your admin accounts?",
               "chosen": "Every account in these groups signs in with a passkey, a security key or Windows Hello, including admins only eligible in PIM.",
               "optional": "Leave it empty and only Require a Strong Sign-in for Your Admin Accounts Group waits for it."
