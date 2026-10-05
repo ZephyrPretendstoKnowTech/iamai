@@ -1,0 +1,30 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Configure Emergency Exclusions",
+  "fact": null,
+  "badge": "Up Next",
+  "bar": "After Configure Emergency Exclusions",
+  "rail": "Create the policy in Report-only",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Configure Emergency Exclusions",
+      "state": "Prerequisite · To do"
+    },
+    {
+      "label": "Prepare Emergency Access Accounts",
+      "state": "Prerequisite · To do"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Sep 7, 2026"
+}
