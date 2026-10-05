@@ -132,6 +132,17 @@ export type MappingState = {
    * (roadmap/resolvePolicy.ts `avdUsersGroup`). Absent or empty: not answered.
    */
   avdUserGroupIds?: string[]
+  /**
+   * The groups that hold the admin accounts (owner, 2026-10-04): Identify Service
+   * and Shared Accounts' "Which group holds your admin accounts?", optional. IAMAI
+   * cannot tell which of the tenant's groups holds its admin accounts, so only an
+   * operator's Save writes them. Jon's ADM-Users policy includes them, excluding
+   * the exclusions group, and asks every account in them for the baseline's
+   * strength — admins only eligible in PIM included, whom a policy on directory
+   * roles misses until they activate (roadmap/resolvePolicy.ts
+   * `adminAccountsGroup`). Absent or empty: not answered, and only that step waits.
+   */
+  adminAccountGroupIds?: string[]
   displayTimeZone: string | null
   frameworks: string[]
   /** Which answers exist, detected or confirmed (progress + auto vs human). */

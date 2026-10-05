@@ -32,7 +32,7 @@ import { list } from '../copy/statements.ts'
 
 export type NotInPlanRow = { policy: string; reason: string; text: string }
 
-type Reason = 'agentBlock' | 'externalMfaRisk' | 'adminGroupPasskeys' | 'emergencyAccount' | 'blockedCountries' | 'noServiceAccounts' | 'syncNoAccount' | 'generic'
+type Reason = 'agentBlock' | 'externalMfaRisk' | 'emergencyAccount' | 'blockedCountries' | 'noServiceAccounts' | 'syncNoAccount' | 'generic'
 type FooterCopy = { notInPlan: string; notInPlanRow: string; notInPlanReason: Record<Reason, string> }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
@@ -49,7 +49,6 @@ const ACCOUNTS_DIRECTION = 'direction:accounts'
 const REASONS: { ids: readonly string[]; match: RegExp; reason: Reason; step?: string }[] = [
   { ids: ['0ab1380f-3863-40a5-ab97-24250e1cf44e', '1d8beea4-2ea1-4758-8e22-d6310a60220a'], match: /IAC\s*-\s*AGENT\s*-\s*BLOCK/i, reason: 'agentBlock' },
   { ids: ['bb6a814e-808a-467c-9475-06f89140ce99'], match: /\bEAM\b.*High-Risk/i, reason: 'externalMfaRisk', step: 'user-risk' },
-  { ids: ['a53c4c2b-b577-4d88-b64d-36b92f8f3ca0'], match: /MFA-Passkeys\s*-\s*ADM-Users/i, reason: 'adminGroupPasskeys', step: 'admins-phishing-resistant' },
   { ids: ['1588fdc7-f34a-468e-8023-4d788ef5d226'], match: /BreakGlass/i, reason: 'emergencyAccount', step: EMERGENCY_ACCESS_GROUP },
   // Jon's countries block with no travel exception: optional, on the plan once countries are listed to block outright (coverage/companions.ts; v1.1 D4).
   { ids: ['1eaf943a-abad-4c77-b101-0c5342fc1044'], match: /Countries.*no[-_ ]?exclusions?/i, reason: 'blockedCountries', step: 'geo-restriction' },

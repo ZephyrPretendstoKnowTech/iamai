@@ -10,8 +10,7 @@ import { impactReachOf, reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { implementationPackageFor } from './stepPackage.ts'
 import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
-import { SECURITY_DEFAULTS_STEP_ID } from '../../roadmap/enforceWaits.ts'
-import { membersOf } from '../../roadmap/stepGroups.ts'
+import { SECURITY_DEFAULTS_STEP_ID, SECURITY_DEFAULTS_TURNS_ON } from '../../roadmap/enforceWaits.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 
@@ -36,10 +35,12 @@ const ACCOUNT_REVIEW_STEPS = new Set([
 const PER_USER_MFA_STEP_ID = 's-prereq-per-user-mfa'
 /**
  * Turn Off Security Defaults counts the policies that take over from security
- * defaults (walk list 4.x item 25: "4 policies"): the section's own policies,
- * the four its content names ("four policies of this plan take over all of it").
+ * defaults (walk list 4.x item 25: "4 policies"): the four its content names
+ * ("four policies of this plan take over all of it"), the ones it turns on in
+ * the same change (enforceWaits.ts). Not the section's policies: Jon's
+ * ADM-Users policy sits beside the admins' one there and takes nothing over.
  */
-const TAKE_OVER_POLICIES = membersOf('core').filter((id) => id.startsWith('s-goal-')).length
+const TAKE_OVER_POLICIES = SECURITY_DEFAULTS_TURNS_ON.length
 /** A step whose content is a Conditional Access policy (content.json steps[].kind). */
 const isPolicyStep = (step: Step): boolean => (contentStepFor(step) as { kind?: unknown } | undefined)?.kind === 'policy'
 /**

@@ -56,7 +56,7 @@ type Edge = { step: string; action: string; prerequisite: string; prerequisiteKi
  * wait on security defaults being off, so once someone saves Disabled no other
  * step says to turn them on until a scan reads it (walk list 4.x item 8).
  */
-const SECURITY_DEFAULTS_TURNS_ON: readonly string[] = [...new Set((data as { edges: Edge[] }).edges
+export const SECURITY_DEFAULTS_TURNS_ON: readonly string[] = [...new Set((data as { edges: Edge[] }).edges
   .filter((e) => e.step === SECURITY_DEFAULTS_STEP_ID && e.action === 'start' && e.prerequisiteKind === 'step')
   .map((e) => e.prerequisite))]
   .sort((a, b) => (positionInGroup(a) ?? Number.MAX_SAFE_INTEGER) - (positionInGroup(b) ?? Number.MAX_SAFE_INTEGER))

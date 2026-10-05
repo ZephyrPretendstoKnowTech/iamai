@@ -81,8 +81,10 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   // registration block; source policies are unchanged.
   // And, since 2026-09-25, Protect Sign-in Method Registration from Jon's corrected UserRegistration policy.
   // And, since T2-AVD (v1.1 D4/D6), Jon's AVD allow-list block as Limit Azure Virtual Desktop to Its Allowed Groups.
-  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 29, 'the mapped-goal count changed — reconcile the baseline report')
+  // And, since 2026-10-04 (owner), Jon's ADM-Users policy as Require a Strong Sign-in for Your Admin Accounts Group.
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 30, 'the mapped-goal count changed — reconcile the baseline report')
   assert.deepEqual(PINNED_GOAL_MAP['avd-allowed-users'], ['9bc2ad69-4aed-4242-807d-788446196b8b'])
+  assert.deepEqual(PINNED_GOAL_MAP['admin-accounts-group-strength'], ['a53c4c2b-b577-4d88-b64d-36b92f8f3ca0'])
   // Remediate High-Risk Users carries its EAM companion, paired by structure (goalIdentity.ts companionOf).
   assert.deepEqual(PINNED_GOAL_MAP['user-risk'], ['544cd9ef-5e37-4568-9ad8-b8e151be1814', 'bb6a814e-808a-467c-9475-06f89140ce99'])
   assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])

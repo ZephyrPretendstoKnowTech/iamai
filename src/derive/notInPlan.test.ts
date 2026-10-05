@@ -127,7 +127,7 @@ test('on a P2 tenant with no external MFA method, Jon\'s EAM High-Risk Users is 
 })
 
 // T2-FTR: no row of the pinned baseline falls back to the generic reason.
-test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keeps them off; ADM-Users and BreakGlass say why the plan does without them; nothing reads the generic reason', () => {
+test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keeps them off; BreakGlass says why the plan does without it; nothing reads the generic reason', () => {
   const generic = 'No step in this plan covers it for this tenant.'
   let sawServiceAccounts = false
   let sawSync = false
@@ -147,17 +147,19 @@ test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keep
   }
   assert.ok(sawServiceAccounts && sawSync, 'the premise: a fixture lists both')
   const { rows } = planOf('demo')
-  assert.equal(rows.find((r) => /MFA-Passkeys - ADM-Users/.test(r.policy))?.reason, 'Covers a group of admin accounts, including admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins misses until they activate. Not in this release.')
+  // ADM-Users is a step since 2026-10-04 (adminAccountsGroup.test.ts): no footer row names it.
+  assert.equal(rows.some((r) => /MFA-Passkeys - ADM-Users/.test(r.policy)), false)
   assert.equal(rows.find((r) => /BreakGlass - TrustedLocations/.test(r.policy))?.reason, 'Requires a strong sign-in from one emergency account outside the office network, while the other stays excluded from everything (Establish Emergency Access). Not in this release.')
 })
 
 test('T2-FTR: a pinned policy keeps its reason by its stable id whatever it is called; a policy of another baseline is read by its name', () => {
   const { run, steps, policies } = planOf('demo')
-  const adm = policies.find((p) => p.id === 'a53c4c2b-b577-4d88-b64d-36b92f8f3ca0')!
-  const renamed = policies.map((p) => (p === adm ? { ...p, displayName: 'Admins with passkeys' } : p))
-  const byId = notInPlanRows(renamed, steps, run.coverage, PINNED_GOAL_MAP).find((r) => r.policy === 'Admins with passkeys')
-  assert.match(byId?.reason ?? '', /^Covers a group of admin accounts, including admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins misses/)
+  // Jon's BreakGlass policy (ADM-Users, the example here until 2026-10-04, is a step now).
+  const emergency = policies.find((p) => p.id === '1588fdc7-f34a-468e-8023-4d788ef5d226')!
+  const renamed = policies.map((p) => (p === emergency ? { ...p, displayName: 'Emergency sign-in outside the office' } : p))
+  const byId = notInPlanRows(renamed, steps, run.coverage, PINNED_GOAL_MAP).find((r) => r.policy === 'Emergency sign-in outside the office')
+  assert.match(byId?.reason ?? '', /^Requires a strong sign-in from one emergency account outside the office network/)
   // An upload's own copy, under another id, still reads its words by Jon's name.
-  const uploaded = [{ id: 'upload-0001', displayName: 'IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users' }]
-  assert.match(notInPlanRows(uploaded, [], run.coverage, {}).at(0)?.reason ?? '', /^Covers a group of admin accounts, including admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins misses/)
+  const uploaded = [{ id: 'upload-0001', displayName: 'IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations' }]
+  assert.match(notInPlanRows(uploaded, [], run.coverage, {}).at(0)?.reason ?? '', /^Requires a strong sign-in from one emergency account outside the office network/)
 })

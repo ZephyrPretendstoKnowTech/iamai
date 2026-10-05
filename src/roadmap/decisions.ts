@@ -12,7 +12,7 @@ import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
 import { MFA_FOLLOW_UP_KEY, currentAnswerText, QUESTION_STEP, answerKey, mailDevicesOf, questionLabels, referenceAnswer } from './answers.ts'
-import { AVD_USERS_STORAGE, WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
+import { ADMIN_ACCOUNTS_STORAGE, AVD_USERS_STORAGE, WORKFLOW_DECISION_STEP, expandDirectionDecisions } from './directionAnswers.ts'
 import { COUNTRIES_BLOCKED_ANSWER, COUNTRIES_LEFT_OUT_ANSWER, blockedAndAllowed, parseCountryCodes } from './countriesLockout.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
@@ -403,6 +403,12 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       const groups = [...new Set(picked)]
       if (groups.length > 0) next.avdUserGroupIds = groups
       else delete next.avdUserGroupIds
+    } else if (stepId === ADMIN_ACCOUNTS_STORAGE && provenance === 'confirmed') {
+      // The groups that hold the admin accounts: only an operator's Save names
+      // them, and none picked is no answer (Jon's ADM-Users policy waits).
+      const groups = [...new Set(picked)]
+      if (groups.length > 0) next.adminAccountGroupIds = groups
+      else delete next.adminAccountGroupIds
     }
   }
   // The answers that add to a picker's list (E1): the travellers' countries

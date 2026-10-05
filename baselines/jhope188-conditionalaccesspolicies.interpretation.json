@@ -219,10 +219,10 @@
     {
       "id": "5f96c57d-380f-4872-97ff-cfd74ef1ac1a",
       "kind": "group",
-      "meaning": "unknown",
+      "meaning": "adminAccountsGroup",
       "basis": "documented",
-      "classification": "decisionRequired",
-      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Entra-DUG-Admins-AllAdminUsers, a dynamic group of all admins, and the refresh maps it to the admin roles. It stays unknown: it is the only include of IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users, so the body cannot go without it, and no meaning here substitutes admin roles for an included group. That policy implements no IAMAI goal, so no step waits on it.",
+      "classification": "knownSemantic",
+      "evidence": "Jon Hope's README (Updated/readme.md) at the pin 8af3b118 names it SG-Entra-DUG-Admins-AllAdminUsers, a dynamic group of all admin accounts: the only include of IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users, which asks every account in it for the baseline's authentication strength. It reaches admins by group, so it covers the admins only eligible in PIM, whom the directory-roles condition of IAC - GLOBAL - GRANT - MFA - AllAdmins reaches only once they activate. Its tenant counterpart is the groups the operator names under Identify Service and Shared Accounts' \"Which group holds your admin accounts?\" (owner, 2026-10-04): no meaning here substitutes admin roles for an included group, and IAMAI cannot tell which of the tenant's groups holds its admin accounts. Unanswered, the policy waits on that answer.",
       "includedIn": [
         "a53c4c2b-b577-4d88-b64d-36b92f8f3ca0"
       ],
@@ -231,5 +231,5 @@
       }
     }
   ],
-  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted. Re-read 2026-09-29 against Jon's README at pin 8af3b118: the groups it names were settled (break-glass to the exclusions group; the author's own travellers, device, AVD and unnamed standing exclusions to authorEnvironment, their tenant side being Direction answers); the three include-only groups stay unknown because the body cannot go without its only target."
+  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted. Re-read 2026-09-29 against Jon's README at pin 8af3b118: the groups it names were settled (break-glass to the exclusions group; the author's own travellers, device, AVD and unnamed standing exclusions to authorEnvironment, their tenant side being Direction answers); the three include-only groups stay unknown because the body cannot go without its only target. Since 2026-10-04 one of them, Jon's admin-accounts group (5f96c57d), is adminAccountsGroup: its counterpart is the operator's answer to \"Which group holds your admin accounts?\" (Identify Service and Shared Accounts)."
 }

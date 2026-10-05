@@ -122,14 +122,18 @@ export const STEP_GROUPS: readonly StepGroup[] = [
   },
   // The four policies that replace security defaults, then the switch itself:
   // with security defaults on, every other policy's turn-on waits on it, so
-  // these come first. Finish Moving Off Per-User MFA starts once MFA for
+  // these come first. Jon's ADM-Users policy (owner, 2026-10-04: the same
+  // strength for the admin accounts by group, admins only eligible in PIM
+  // included) replaces nothing of security defaults and is no part of that
+  // hand-off, so it is drawn right under the switch its turn-on waits on: no
+  // row waits on a row drawn below it but the hand-off (stepGroups.test.ts). Finish Moving Off Per-User MFA starts once MFA for
   // everyone is on, and sits at the end of the section, under the
   // security-defaults switch.
   {
     key: 'core',
     titleKey: 'pages.app.plan.groups.mfaEveryone.title',
     completedTitleKey: 'pages.app.plan.groups.mfaEveryone.completedTitle',
-    members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users', 's-prereq-security-defaults', 's-prereq-per-user-mfa'],
+    members: ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users', 's-prereq-security-defaults', 's-goal-admin-accounts-group-strength', 's-prereq-per-user-mfa'],
     anatomy: 'task',
   },
   // Where MFA does not reach yet: registering a method or a device, guests, role

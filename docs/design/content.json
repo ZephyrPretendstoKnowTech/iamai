@@ -1309,8 +1309,6 @@
           "agentBlock": "Blocks AI agent identities, which need Microsoft Entra Agent ID. Not in this release.",
           "$commentExternalMfaRisk": "The external authentication methods companion of the high-risk remediation policy, scoped to the external MFA group. {step} is the high-risk remediation step's title.",
           "externalMfaRisk": "{step} for people who sign in with an external MFA provider such as Duo. Needs Microsoft Entra ID P2, and only matters if you use one.",
-          "$commentAdminGroupPasskeys": "Jon's group-based admin policy: Modern MFA + TAP for his group of admin accounts. Owner, 2026-10-04: it is not a duplicate. The directory-roles condition targets people actively assigned a role, so admins only eligible in PIM are covered by a group, as Microsoft advises; to be built as a step. {step} is the role-based admin step's title.",
-          "adminGroupPasskeys": "Covers a group of admin accounts, including admins only eligible in PIM, whom {step} misses until they activate. Not in this release.",
           "$commentEmergencyAccount": "The trusted-locations policy that names one emergency account: IAMAI keeps emergency accounts out of every policy through the exclusions group instead (binding emergency decision). {step} is the emergency access group's title.",
           "emergencyAccount": "Requires a strong sign-in from one emergency account outside the office network, while the other stays excluded from everything ({step}). Not in this release.",
           "$commentBlockedCountries": "Jon's NoExclusions countries block, optional (v1.1 D4, owner 2026-10-03): it is on the plan, as {step}'s second policy, once countries to block outright are listed on its Work countries decision, and here until then. {step} is the geo step's title.",
@@ -3589,6 +3587,12 @@
               "$commentJoinsRemote": "Phase 2d and F-069: with everyone remote there is no office to keep these accounts to, so the service-accounts group leaves every exclusion (roadmap/deviations.ts serviceAccountsExclusionDue) and the MFA policies ask them too. The service-accounts card says it in the same words. They stay out of the people counts (derive/sets.ts notPeopleIds), so it never says they count as people.",
               "joinsRemote": "Everyone works remotely, so there is no office network to keep these accounts to: they get MFA like anyone."
             },
+            "adminAccounts": {
+              "$comment": "Owner, 2026-10-04: Jon's IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users asks every account in his admin-accounts group for the baseline's strength, so it reaches admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins (directory roles) misses until they activate. A group picker, one or more groups; the answer is MappingState.adminAccountGroupIds. Optional: left empty, only Require a Strong Sign-in for Your Admin Accounts Group waits. No suggestion and no evidence line: the scan cannot tell which group holds the admin accounts.",
+              "label": "Which group holds your admin accounts?",
+              "chosen": "Every account in these groups signs in with a passkey, a security key or Windows Hello, including admins only eligible in PIM.",
+              "optional": "Leave it empty and only Require a Strong Sign-in for Your Admin Accounts Group waits for it."
+            },
             "$commentChosen": "Each card says what the chosen answer does, in one line (roadmap/direction.ts chosen; owner, 2026-09-24). 2.3 draws no scan counts: it asks how people should sign in, not what the tenant has today.",
             "computers": {
               "label": "Company computers",
@@ -5706,6 +5710,85 @@
         ]
       },
       "aiFocus": "Walk me through creating this policy in Report-only and turning it on after its report-only period."
+    },
+    {
+      "id": "admin-accounts-group-strength",
+      "brief": {
+        "matters": "An admin account can change everything in the business's Microsoft 365, even one only eligible for its role.",
+        "notice": "Accounts in your admin accounts group sign in with a passkey, a security key or Windows Hello."
+      },
+      "kind": "policy",
+      "$comment": "Owner, 2026-10-04: Jon's IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users, until now listed under In the baseline, not in this plan. It includes his admin-accounts group (interpretation adminAccountsGroup), so it reaches admins only eligible in PIM, whom Require Phishing-Resistant MFA for Admins (directory roles, active assignments only) misses until they activate. The operator names the group in Identify Service and Shared Accounts (optional); unanswered, only this step waits. Created in Report-only by Create the Policies in Report-only, then turned on once every account in the group holds a method the strength accepts (the admins' readiness rule, 100%).",
+      "title": "Require a Strong Sign-in for Your Admin Accounts Group",
+      "changeLine": null,
+      "why": "A policy on admin roles reaches an admin only eligible in PIM once they activate. Asking your admin accounts group for the same strong sign-in covers every admin account from its first sign-in.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa"
+      },
+      "who": {
+        "lead": "{active} active people in your admin accounts group",
+        "evidenceUndated": {
+          "0": "{n} accounts need a passkey, security key or Windows Hello: {list:adminsWithout}",
+          "1": "{adminsWithoutCount} accounts need a passkey, security key or Windows Hello.",
+          "$comment": "As Require Phishing-Resistant MFA for Admins' evidenceUndated: the dated lines below without the turn-on day, by their place in evidence."
+        },
+        "evidence": [
+          "{n} accounts need a passkey, security key or Windows Hello before {enforce}: {list:adminsWithout}",
+          "{adminsWithoutCount} accounts need a passkey, security key or Windows Hello before {enforce}.",
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}",
+        "Each account in the group has signed in with an accepted method, and the groups and authentication strength match the plan."
+      ],
+      "ifWrong": "{policyIfWrong}",
+      "comms": {
+        "audience": "admins",
+        "salutation": "Admins,",
+        "body": "We are preparing stronger authentication for admin accounts, planned for {enforceLong}: every sign-in by an account in the admin accounts group at {tenant} will need a passkey or a security key, even before you activate a role. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.",
+        "signature": "{signature}"
+      },
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "An account in the group holding no method the strength accepts is locked out of admin work.",
+            "applies": "always"
+          },
+          {
+            "text": "An account added to the group later needs an accepted method before its first sign-in.",
+            "applies": "always"
+          },
+          {
+            "text": "An emergency account caught by the policy.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "An admin who cannot sign in: issue a Temporary Access Pass, which this policy accepts, and register a passkey or security key with them.",
+          "Anything the strength does not list is refused, including a code or an approval; do not add exclusions or take the account out of the group."
+        ],
+        "manager": "Admin accounts sign in with methods that are much harder to phish, even before an admin activates a role.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso Pty Ltd",
+        "active": 3,
+        "adminsWithout": [],
+        "policyName": "IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users",
+        "enforce": "Tue Sep 8",
+        "enforceLong": "Tuesday, September 8",
+        "signature": "IT",
+        "existingPolicies": [],
+        "strengthName": "Modern MFA + TAP",
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain that the policy asks every account in the admin accounts group for the authentication strength, admins only eligible in PIM included. Do not take an account out of the group or add an exclusion to let a blocked sign-in through."
     },
     {
       "id": "admin-portals-protected",

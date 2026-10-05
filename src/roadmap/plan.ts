@@ -299,6 +299,8 @@ function validatePlanShape(plan: PlanFile): string | null {
   if (plan.mappings.countriesBlockedOutright !== undefined && (!isCountryCodeList(plan.mappings.countriesBlockedOutright) || blockedAndAllowed(plan.mappings.allowedCountries, plan.mappings.countriesBlockedOutright).length > 0)) return 'not a plan file (invalid countries blocked outright)'
   // The groups allowed to use Azure Virtual Desktop (T2-AVD): group ids, each once.
   if (plan.mappings.avdUserGroupIds !== undefined && (!Array.isArray(plan.mappings.avdUserGroupIds) || plan.mappings.avdUserGroupIds.some((id) => typeof id !== 'string' || id.trim() === '') || new Set(plan.mappings.avdUserGroupIds.map((id) => id.toLowerCase())).size !== plan.mappings.avdUserGroupIds.length)) return 'not a plan file (invalid Azure Virtual Desktop groups)'
+  // The groups that hold the admin accounts (owner, 2026-10-04): group ids, each once.
+  if (plan.mappings.adminAccountGroupIds !== undefined && (!Array.isArray(plan.mappings.adminAccountGroupIds) || plan.mappings.adminAccountGroupIds.some((id) => typeof id !== 'string' || id.trim() === '') || new Set(plan.mappings.adminAccountGroupIds.map((id) => id.toLowerCase())).size !== plan.mappings.adminAccountGroupIds.length)) return 'not a plan file (invalid admin accounts groups)'
   if (plan.mappings.workflowAnswers && (!object(plan.mappings.workflowAnswers) || Object.values(plan.mappings.workflowAnswers).some((v) => !['yes', 'no', 'unsure'].includes(v)))) return 'not a plan file (invalid workflow choice)'
   const decisions = plan.decisions
   if (decisions) {

@@ -93,7 +93,7 @@ function companionOf(first: PolicyForMap, policies: PolicyForMap[]): PolicyForMa
   return found.length === 1 ? found[0] : null
 }
 
-type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members' | 'serviceAccounts'
+type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members' | 'serviceAccounts' | 'adminAccounts'
 type CondTag = string // 'locations' | 'platforms' | 'clientAppsRestricted' | 'flows' | 'deviceFilter' | 'userActions' | 'authContext' | 'signInRisk:high' | 'userRisk:medium' | …
 
 function userClass(f: PolicyFacts, placeholders: Record<string, string> = {}): UserClass {
@@ -103,6 +103,8 @@ function userClass(f: PolicyFacts, placeholders: Record<string, string> = {}): U
   if (f.who.guests !== null) return 'guests'
   // A policy that includes the author's service-accounts group (the pin's token) targets the service accounts (E9).
   if (f.who.groups.size > 0 && [...f.who.groups].some((g) => Object.entries(placeholders).some(([id, token]) => id.toLowerCase() === g.toLowerCase() && token === 'serviceAccountsGroup'))) return 'serviceAccounts'
+  // A policy that includes the author's admin-accounts group (the pin's token) targets the admin accounts by group (Jon's ADM-Users).
+  if (f.who.groups.size > 0 && [...f.who.groups].some((g) => Object.entries(placeholders).some(([id, token]) => id.toLowerCase() === g.toLowerCase() && token === 'adminAccountsGroup'))) return 'adminAccounts'
   return 'members'
 }
 

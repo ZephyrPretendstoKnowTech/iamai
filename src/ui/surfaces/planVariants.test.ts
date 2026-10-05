@@ -449,6 +449,11 @@ const INVENTORY: string[] = [
   'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-legacy-auth
   'policy · adjust · enforced · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2/s-goal-block-device-code
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-known', // demo-week2+plans-own/s-goal-admins-phishing-resistant
+  // Jon's ADM-Users policy (owner, 2026-10-04): its people are the members of the groups the
+  // operator names in Identify Service and Shared Accounts, so while none is named it reaches
+  // nobody the plan can count and draws no who line, waiting on that answer. The one policy whose
+  // population is an answer rather than the directory's; named, it reads who-known like any other.
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-none', // small/s-goal-admin-accounts-group-strength
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

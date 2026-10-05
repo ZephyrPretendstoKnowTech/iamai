@@ -303,6 +303,9 @@ export function usePlanData(
     // The groups allowed to use Azure Virtual Desktop (T2-AVD): the AVD
     // allow-list block excludes them, so who they hold is read like any carve-out.
     for (const id of decided.avdUserGroupIds ?? []) ids.add(id)
+    // The groups that hold the admin accounts: Jon's ADM-Users policy includes
+    // them, and its readiness counts who they hold, so they are read like any group.
+    for (const id of decided.adminAccountGroupIds ?? []) ids.add(id)
     void (async () => {
       const map: GroupMembers = new Map()
       const reads: GroupRead[] = []

@@ -25,7 +25,10 @@ const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-r
 const RISK_GOALS = new Set(['sign-in-risk', 'user-risk', 'sign-in-risk-medium', 'user-risk-medium'])
 // The admin session policy is not gated on admin readiness (E9): shortening a
 // session locks nobody out, whatever method they hold.
-const ADMIN_GOALS = new Set(['admins-phishing-resistant'])
+// Jon's ADM-Users policy asks the admin accounts group for the same strength,
+// so it waits as the admins' policy does: every account it covers holding a
+// method the strength accepts (generate.ts methodPreparation over its own policy).
+const ADMIN_GOALS = new Set(['admins-phishing-resistant', 'admin-accounts-group-strength'])
 const DEVICE_GOALS = new Set(['require-managed-device', 'mobile-app-protection'])
 const GUEST_GOALS = new Set(['guests-mfa'])
 // The unsupported-platforms block is a block like the others (E9): its evidence

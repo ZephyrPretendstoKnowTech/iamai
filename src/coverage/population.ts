@@ -62,8 +62,31 @@ export function resolvePopulation(
       break // not user-based; scored structurally
     case 'serviceAccounts':
       break // the mapping's confirmed service accounts; the caller supplies them (coverage.ts, generate.ts)
+    case 'adminAccounts':
+      break // the members of the operator's admin accounts groups; the caller supplies them (coverage.ts, generate.ts)
   }
   return { ids, estimated: false, unresolvedGroups: [] }
+}
+
+/**
+ * The admin accounts by group (MappingState.adminAccountGroupIds): every member
+ * of the groups the operator named, as the scan read them. A group the scan did
+ * not read is unresolved, and a sampled one makes the count an estimate.
+ */
+export function adminAccountsPopulation(groupIds: readonly string[], groups: GroupMembers): ResolvedPopulation {
+  const ids = new Set<string>()
+  const unresolvedGroups: string[] = []
+  let estimated = false
+  for (const id of new Set(groupIds)) {
+    const g = groups.get(id)
+    if (!g) {
+      unresolvedGroups.push(id)
+      continue
+    }
+    if (g.sampled) estimated = true
+    for (const m of g.memberIds) ids.add(m)
+  }
+  return { ids, estimated, unresolvedGroups }
 }
 
 export type ResolvedWho = {
