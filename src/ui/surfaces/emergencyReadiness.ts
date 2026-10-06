@@ -3,7 +3,7 @@ import type { EmergencyAccountStatus, EmergencyTaskProjection } from './emergenc
 import type { ConfigurationFinding, ConfigurationFindingItem } from '../../roadmap/types.ts'
 import { NAMES_INLINE } from './whoBlocks.ts'
 import { stepById } from '../../content/content.ts'
-import { REPORT_ONLY_STEP_ID } from '../../roadmap/stepIds.ts'
+import { LOCKDOWN_KIT_STEP_ID, REPORT_ONLY_STEP_ID } from '../../roadmap/stepIds.ts'
 
 /** Interactive emergency-step presentation. Exact issue metadata allows an action
  * to replace its own evidence row without hiding another finding for the same
@@ -45,7 +45,8 @@ export type EmergencyFact = { label: string; value: string; link?: { label: stri
  * one action (the owning step's link or the Implementation Task), then the
  * completed checks. Everything else waits behind the remaining count. */
 /** `more`: the names a card holds past the first five (whoBlocks.ts NAMES_INLINE), drawn under a fold. */
-export type EmergencySubjectTile = EmergencyAccountStatus & { detail?: string; link?: { label: string; href: string }; more?: string[]; caution?: true }
+/** `below`: the one pointer a group of cards shares, drawn once under them (oncePerBatch). */
+export type EmergencySubjectTile = EmergencyAccountStatus & { detail?: string; link?: { label: string; href: string }; more?: string[]; caution?: true; below?: string }
 
 const rank = (outcome: string | undefined): number => outcome === 'fail' ? 0 : outcome === 'unknown' ? 1 : 2
 
@@ -104,14 +105,23 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
 }
 
 /**
- * Create the Policies in Report-only: one pointer for all its cards, on the first (owner,
- * 2026-10-05: "Follow … in Implementation Tasks" was said once per policy).
+ * Cards that each point to their own task in Implementation Tasks say it once, in one
+ * line under them: Create the Policies in Report-only's policies (`batch:`) and the
+ * Lockdown Kit's switches (`kit:`) (owner, 2026-10-05: "Follow … in Implementation
+ * Tasks" was said once per card, and the one pointer read as the first card's own).
  */
 export function oncePerBatch(tiles: EmergencySubjectTile[]): EmergencySubjectTile[] {
-  const batch = tiles.filter(t => t.key.startsWith('batch:') && t.instruction)
-  if (batch.length < 2) return tiles
-  const once = (stepById[REPORT_ONLY_STEP_ID] as unknown as { batch: { followEach: string } }).batch.followEach
-  return tiles.map(t => (t.key.startsWith('batch:') ? { ...t, instruction: t === batch[0] ? once : '' } : t))
+  const groups: [string, () => string][] = [
+    ['batch:', () => (stepById[REPORT_ONLY_STEP_ID] as unknown as { batch: { followEach: string } }).batch.followEach],
+    ['kit:', () => (stepById[LOCKDOWN_KIT_STEP_ID] as unknown as { followEach: string }).followEach],
+  ]
+  let out = tiles
+  for (const [prefix, words] of groups) {
+    const pointed = out.filter(t => t.key.startsWith(prefix) && t.instruction)
+    if (pointed.length < 2) continue
+    out = out.map(t => (t.key.startsWith(prefix) ? { ...t, instruction: '', ...(t === pointed[0] ? { below: words() } : {}) } : t))
+  }
+  return out
 }
 
 /** Steps 2–3: every readiness tile, remaining then satisfied, as subject tiles. */

@@ -349,6 +349,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[25].everywhere.notice',
   '.steps[25].everywhere.why',
   '.steps[56].everywhere.why',
+  // The Lockdown Kit's one pointer under its switch cards (emergencyReadiness.ts oncePerBatch).
+  '.steps[56].followEach',
   '.steps[63].oneAccount',
   '.steps[63].turnOnWaits.drilled',
   '.steps[63].turnOnWaits.method',

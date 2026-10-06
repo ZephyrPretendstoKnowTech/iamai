@@ -8632,6 +8632,8 @@
         "$comment": "Decide How and Where People Sign In answered Everyone works remotely: no office network, so nothing is carved out by location and the words drop it (roadmap/generate.ts everywhereContent; owner, 2026-10-05 live check).",
         "why": "Three policies you turn on only during an incident: one blocks the Microsoft admin portals, one blocks devices you don't manage, and one blocks everything. Created Off, they block no one until you need them."
       },
+      "$commentFollowEach": "Said once, under the three switch cards (owner, 2026-10-05 live check): each card said Follow Create {its policy}, turned off in Implementation Tasks.",
+      "followEach": "Each switch's steps are in Implementation Tasks.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/concept-resilient-controls",
         "checkedOn": "2026-10-03"

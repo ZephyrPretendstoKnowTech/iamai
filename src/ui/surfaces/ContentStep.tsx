@@ -175,6 +175,7 @@ function EmergencyAccountStatusTile({ account, printing = false }: { account: Em
 export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, scanNote = true, note = null }: { subjects: EmergencySubjectTile[]; printing: boolean; barMain: string; onWhy: (() => void) | null; scanNote?: boolean; note?: string | null }) {
   const remaining = subjects.filter(subject => !subject.satisfied)
   const satisfied = subjects.filter(subject => subject.satisfied)
+  const below = remaining.find(subject => subject.below)?.below ?? null
   const tile = (subject: EmergencySubjectTile) => <EmergencyAccountStatusTile key={subject.key} account={subject} printing={printing} />
   // The bar carried the Why IAMAI says this link; with the link hidden its line only
   // repeated the badge and the cards (owner, 2026-09-23), so it is drawn only with the link.
@@ -188,6 +189,8 @@ export function EmergencySubjectReadiness({ subjects, printing, barMain, onWhy, 
       <summary>Satisfied · {satisfied.length}</summary>
       <div className="emergency-account-status-grid satisfied">{satisfied.map(tile)}</div>
     </details>}
+    {/* The one pointer the cards share (emergencyReadiness.ts oncePerBatch), under them, not on the first. */}
+    {below && <p className="emergency-account-scan-note readiness-note">{below}</p>}
     {/* A line under the cards that is no task: what Create the Policies in Report-only leaves out (reportOnlyStep.ts). */}
     {note && <p className="emergency-account-scan-note readiness-note">{note}</p>}
     {/* Only while a task remains: a finished step asked for changes under "No tasks remaining" (OWN-W7, owner 2026-09-28). */}
