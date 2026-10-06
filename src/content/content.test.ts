@@ -355,6 +355,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // scan/connectView.ts signInTile): app-only, the review page shows no failed sign-in.
   '.pages.connect.signIn.errors.failed.details',
   '.pages.connect.signIn.errors.failed.webRedirect',
+  // The status strip over a scan that stopped (scan/connectView.ts connectStatus; 2026-10-06).
+  '.pages.connect.status.failed',
   '.steps[63].oneAccount',
   '.steps[63].turnOnWaits.drilled',
   '.steps[63].turnOnWaits.method',

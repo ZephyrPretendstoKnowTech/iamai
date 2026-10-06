@@ -44,3 +44,12 @@ export function createTokenGate(acquireSilent: () => Promise<string>, onExpired:
     },
   }
 }
+
+/** MSAL's error codes for a silent renewal that ran out of time (BrowserAuthErrorCodes.timedOut, .monitorWindowTimeout). */
+const RENEWAL_TIMEOUTS: ReadonlySet<string> = new Set(['timed_out', 'monitor_window_timeout'])
+
+/** True for a silent token renewal that timed out: the session needs a sign-in, the scan never fails on it. */
+export function renewalTimedOut(e: unknown): boolean {
+  const code = (e as { errorCode?: unknown } | null)?.errorCode
+  return typeof code === 'string' && RENEWAL_TIMEOUTS.has(code)
+}

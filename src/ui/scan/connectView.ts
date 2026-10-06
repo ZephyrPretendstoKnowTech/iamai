@@ -35,7 +35,7 @@ type Words = {
   intro: string
   next: string
   notice: { title: string; body: string }
-  status: { ready: string; readyText: string; next: string }
+  status: { ready: string; readyText: string; next: string; failed: string }
   signIn: {
     title: string
     state: string
@@ -117,7 +117,10 @@ export function stages(done: readonly boolean[]): Stage[] {
  * says that stage's title and state line alone, the tile's own words.
  */
 export type ConnectStatus = { tone: Tone; title: string; text: string }
-export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone; caveat?: string; stale?: boolean; actions?: readonly unknown[] }[]): ConnectStatus {
+export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone; caveat?: string; stale?: boolean; actions?: readonly unknown[] }[], failure: string | null = null): ConnectStatus {
+  // A scan that stopped is said over everything else (2026-10-06): the strip read
+  // Ready to plan, from the last finished scan, over the line saying this one stopped.
+  if (failure) return { tone: 'stop', title: W.status.failed, text: failure }
   const current = done.indexOf(false)
   // A scan a week old or more is a wait, not done (F-186): every other page says to scan again.
   if (current === -1) return { tone: stagesOf.some((s) => s.stale) ? 'wait' : 'done', title: W.status.ready, text: stagesOf.find((s) => s.caveat)?.caveat ?? W.status.readyText }
@@ -676,4 +679,19 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
   if ('permissions' in tile) out.push(tile.permissions.summary, tile.permissions.lead, ...tile.permissions.rows.flatMap((r) => [r.name, r.reads]), tile.permissions.removal)
   if ('actions' in tile) out.push(...tile.actions.map((a) => a.label))
   return out
+}
+
+/** Connect's words for a scan that stopped (app.connect). */
+const SCAN = app.connect as unknown as { failed: string; failedSession: string }
+
+/**
+ * Why a scan stopped, as the person can act on it: a Microsoft session that needs a
+ * fresh sign-in (MSAL's interaction_required, login_required, consent_required,
+ * timed_out, monitor_window_timeout, or the planner's own expired-session error)
+ * says what to do; any other reason is quoted as it came (2026-10-06: MSAL's raw
+ * "timed_out: See https://aka.ms/msal.js.errors#timed_out" reached Connect).
+ */
+export function scanFailedLine(error: string | null | undefined): string {
+  const why = error ?? ''
+  return /\b(interaction_required|login_required|consent_required|timed_out|monitor_window_timeout|no_tokens_found)\b|Microsoft session expired|Not signed in/i.test(why) ? SCAN.failedSession : fillText(SCAN.failed, { why })
 }

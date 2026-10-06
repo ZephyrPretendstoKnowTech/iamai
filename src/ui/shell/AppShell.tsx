@@ -30,6 +30,7 @@ import { PausedNotice, scanLineText } from '../scan/ScanProgress.tsx'
 import { opensAtTop, PLAN_HREF, planTabsOn, READINESS_HREF, resolveHash } from './routes.ts'
 import { documentTitle } from './documentTitle.ts'
 import type { Route } from './routes.ts'
+import { scanFailedLine } from '../scan/connectView.ts'
 
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
 export type { Route } from './routes.ts'
@@ -113,7 +114,6 @@ function useTheme(): [string, () => void] {
 }
 
 const SHELL = app.shell
-const CONNECT = app.connect
 const SCAN_WORDS = (pages.connect as unknown as { scan: { scanning: { stop: string } } }).scan.scanning
 
 /**
@@ -295,7 +295,7 @@ function ScanLine({ route }: { route: Route }) {
   if (scan.state === 'failed') {
     return (
       <p className="scan-line" role="status">
-        {fillText(CONNECT.failed, { why: scan.error ?? '' })}
+        {scanFailedLine(scan.error)}
       </p>
     )
   }

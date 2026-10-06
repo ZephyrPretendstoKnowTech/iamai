@@ -823,6 +823,8 @@
         "$comment": "Task 032: the approved pack's status strip above the staged flow (docs/design/approved/connect-v3.html). It is a projection of the same progression the stages already carry — the stage with the next action, or nothing left to do — never a second reading of readiness. The quiet half is the current stage's own state line, so the strip and the step cannot disagree.",
         "ready": "Ready to plan",
         "readyText": "Tenant, baseline and scan are ready.",
+        "$commentFailed": "The strip over a scan that stopped (2026-10-06: it read Ready to plan over \"The scan stopped before it finished\"): the failure line itself, never ready.",
+        "failed": "Scan did not finish",
         "next": "Next: {stage}"
       },
       "signIn": {
@@ -2141,6 +2143,8 @@
       },
       "connect": {
         "failed": "The scan stopped before it finished: {why}",
+        "$commentFailedSession": "A scan that stopped because the Microsoft session needs a fresh sign-in (MSAL interaction_required, login_required, timed_out; 2026-10-06: MSAL's raw \"timed_out: See https://aka.ms/...\" reached Connect): what to do, not the code (ui/scan/connectView.ts scanFailedLine).",
+        "failedSession": "The scan stopped because your Microsoft session needs a fresh sign-in. Select Sign out, sign in again, then select Scan again.",
         "baselineLoading": "Baseline: loading {source}…",
         "baselineFailed": "The baseline could not be loaded: {why}",
         "restoreFailed": "The baseline saved with the scan could not be restored; choose one again.",

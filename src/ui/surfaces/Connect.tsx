@@ -61,7 +61,7 @@ import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
 import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
-import { W, accountTile, baselineTile, connectStatus, planInputOf, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
+import { W, accountTile, baselineTile, connectStatus, planInputOf, planTile, sampleTile, scanFailedLine, scanTile, signInTile, stages } from '../scan/connectView.ts'
 import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanDoes, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
 import { unreadSources } from '../../graph/collect/coreSections.ts'
@@ -572,7 +572,7 @@ function SignedIn({
   const scanActions: ReactNode = t3.actions.map((a) => <Act key={a.label} action={a} onClick={scanDoes[a.does]} />)
   return (
     <>
-      <StatusStrip status={connectStatus(done, [t1, baselineStrings(baseline, baselineBusy), t3, t4])} />
+      <StatusStrip status={connectStatus(done, [t1, baselineStrings(baseline, baselineBusy), t3, t4], !scanning && runner.state === 'failed' && runner.error ? scanFailedLine(runner.error) : null)} />
       <Flow>
         <Step
           n={1}
@@ -604,7 +604,7 @@ function SignedIn({
           bar={t3.kind === 'scanning' ? <ScanBar scan={runner} /> : null}
           note={
             <>
-              {!scanning && runner.state === 'failed' && runner.error && <p className="quiet" role="status">{fillText(C.failed, { why: runner.error })}</p>}
+              {!scanning && runner.state === 'failed' && runner.error && <p className="quiet" role="status">{scanFailedLine(runner.error)}</p>}
               {tile3.error && <p className="quiet" role="status">{tile3.error}</p>}
             </>
           }

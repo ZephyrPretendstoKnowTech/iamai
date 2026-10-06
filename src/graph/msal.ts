@@ -1,6 +1,6 @@
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser'
 import type { AccountInfo } from '@azure/msal-browser'
-import { SessionExpiredError } from './collect/tokenGate.ts'
+import { SessionExpiredError, renewalTimedOut } from './collect/tokenGate.ts'
 
 // SPEC.md §4 — the full read scope set, requested once at sign-in (no staged
 // consent). The list itself lives in scopes.ts so it can be read without a
@@ -169,7 +169,11 @@ export async function getGraphToken(mode: 'redirect' | 'popup' | 'silent' = 'red
     const result = await msal.acquireTokenSilent({ scopes: GRAPH_SCOPES, account })
     return result.accessToken
   } catch (e) {
-    if (e instanceof InteractionRequiredAuthError) {
+    // A background renewal Microsoft did not answer in time (the hidden frame's
+    // timed_out, the popup monitor's monitor_window_timeout) needs the operator as
+    // much as an expired session does (2026-10-06: a tab left overnight stopped its
+    // scan with MSAL's raw "timed_out"): it pauses the scan for a sign-in instead.
+    if (e instanceof InteractionRequiredAuthError || renewalTimedOut(e)) {
       if (mode === 'popup') return (await msal.acquireTokenPopup({ scopes: GRAPH_SCOPES, account })).accessToken
       if (mode === 'redirect') await msal.acquireTokenRedirect({ scopes: GRAPH_SCOPES, account })
       throw new SessionExpiredError()
@@ -177,3 +181,4 @@ export async function getGraphToken(mode: 'redirect' | 'popup' | 'silent' = 'red
     throw e
   }
 }
+
