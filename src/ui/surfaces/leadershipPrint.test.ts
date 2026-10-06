@@ -14,6 +14,7 @@ import { content, directionWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { applySkips } from '../../roadmap/progress.ts'
 import { boardOf } from './planBoard.ts'
+import { leftInReportOnly } from '../../roadmap/agentBlocks.ts'
 import { list } from '../../copy/statements.ts'
 import { BRIEF, briefDaysOf, briefNoticesOf, briefOf, decisionAsksOf, printSectionsOf, readinessNeed, recoveryOf } from './printPlan.ts'
 import type { Brief } from './printPlan.ts'
@@ -298,10 +299,11 @@ test('the plan by day (owner, 2026-10-04): every open row on its forecast day, e
     const open = printSectionsOf(board).flatMap((sec) => sec.rows.filter((r) => ['Ready', 'Up Next', 'On Hold'].includes(r.lane.lane) && board.forecast.spans.has(r.id)).map((r) => `${sec.number}.${r.number} ${r.title}`))
     const named = new Set(days.flatMap((d) => [...d.doing, ...d.turnOn]))
     for (const name of open) assert.ok(named.has(name), `${f.name}: ${name} is on a day`)
-    // A policy 3.8 creates is named once, on its turn-on day, never beside 3.8.
+    // A policy 3.8 creates is named once, on its turn-on day, never beside 3.8; one the plan
+    // leaves in Report-only has no turn-on, so its create day names it (agentBlocks.ts).
     const batch = steps.find((s) => s.id === 's-create-report-only')?.reportOnlyBatch?.create ?? []
     const doing = new Set(days.flatMap((d) => d.doing))
-    for (const sec of printSectionsOf(board)) for (const r of sec.rows) if (batch.includes(r.id)) assert.ok(![...doing].includes(`${sec.number}.${r.number} ${r.title}`), `${f.name}: ${r.title} is 3.8's work`)
+    for (const sec of printSectionsOf(board)) for (const r of sec.rows) if (batch.includes(r.id) && !(r.step && leftInReportOnly(r.step))) assert.ok(![...doing].includes(`${sec.number}.${r.number} ${r.title}`), `${f.name}: ${r.title} is 3.8's work`)
     // A turn-on is never before the day its row's work starts.
     for (const sec of printSectionsOf(board)) for (const r of sec.rows) {
       const span = board.forecast.spans.get(r.id)
@@ -319,7 +321,7 @@ test('the plan by day (owner, 2026-10-04): every open row on its forecast day, e
 test('the first page stands alone: what the plan is, what people will notice from each open step\'s own Impact line, and how the risk is managed (owner, 2026-10-05)', () => {
   const { brief } = briefFor(curatedFixture('demo'))
   const { shown, more } = briefNoticesOf(brief)
-  const felt = brief.chapters.flatMap((c) => c.entries).filter((e) => e.notice && !/^No one notices\b/.test(e.notice))
+  const felt = brief.chapters.flatMap((c) => c.entries).filter((e) => e.notice && !e.reachesNoOne && !/^No one notices\b/.test(e.notice))
   assert.ok(felt.length > 4, `the demo has ${felt.length} changes people feel`)
   assert.deepEqual(shown.map((n) => n.id), felt.slice(0, 4).map((e) => e.id), 'the first four, in the journey\'s order')
   assert.equal(more, felt.length - 4, 'the rest are counted, not dropped')
@@ -330,4 +332,28 @@ test('the first page stands alone: what the plan is, what people will notice fro
   for (const part of ['BRIEF.front.what', 'BRIEF.front.notice', 'BRIEF.headings.risk', 'BRIEF.finishOn']) assert.ok(cover.includes(part), `${part} is not on the first page`)
   assert.equal(print.split('BRIEF.headings.risk').length, 2, 'the risk list is printed once')
   assert.match(readFileSync('src/ui/app.css', 'utf8'), /\.brief-journey \{ break-before: page; \}/, 'the journey opens the second page')
+})
+
+test('what people will notice is dated by the day they feel it, its turn-on, and leaves out a change that reaches no one here (live check, 2026-10-05)', () => {
+  const { brief, board } = briefFor(curatedFixture('demo'))
+  const dayOf = (id: string): string | null => { const span = board.forecast.spans.get(id); return span ? span.turnOn ?? span.end : null }
+  const { shown } = briefNoticesOf(brief, dayOf, 99)
+  assert.ok(shown.some((n) => board.forecast.spans.get(n.id)?.turnOn), 'the premise: a policy among them')
+  for (const n of shown) {
+    const span = board.forecast.spans.get(n.id)
+    if (span?.turnOn) assert.equal(n.on, span.turnOn, `${n.title}: dated by its turn-on, not by its report-only create (${span.at})`)
+  }
+  // A step whose reach is nobody in this tenant ("No guests"): no one feels its change.
+  const entry = brief.chapters.flatMap((c) => c.entries).find((e) => e.notice && !/^No one notices\b/.test(e.notice))!
+  const none = { chapters: [{ ...brief.chapters[0]!, entries: [{ ...entry, reachesNoOne: true as const }] }] }
+  assert.deepEqual(briefNoticesOf(none).shown, [], 'not a change people will notice')
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /briefNoticesOf\(brief, \(id\) => \{ const span = board\.forecast\.spans\.get\(id\); return span \? span\.turnOn \?\? span\.end : null \}\)/)
+})
+
+test('the plan by day turns on no policy the plan leaves in Report-only for you, and names it on the day it is created', () => {
+  for (const f of [curatedFixture('demo'), curatedFixture('demo-week2')]) {
+    const { board } = briefFor(f)
+    const days = briefDaysOf(board)
+    assert.ok(!days.flatMap((d) => d.turnOn).some((n) => /Block AI Agents You Have Not Approved/.test(n)), `${f.name}: turned on`)
+  }
 })

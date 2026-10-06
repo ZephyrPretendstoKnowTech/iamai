@@ -9001,7 +9001,7 @@
       "$comment": "Owner, 2026-10-04: Jon's IAC - AGENT - BLOCK - NonTrustedAgents, whose agent targeting his export lost (Graph v1.0 returns no agent field); its body is read back from his README intent and Microsoft's documented beta shape (interpretation.json policies; roadmap/agentBlocks.ts). Created in Report-only by Create the Policies in Report-only and left there: IAMAI does not offer the turn-on, because it cannot read the tenant's agent identities. Complete once the policy exists, exact, in Report-only (the agents the tenant excluded are its approvals, kept). beforeTurnOn is its reference task, never required (ui/surfaces/policyTasks.ts beforeTurnOnTask; the open line between its first and second lines is the policy's own). Its JSON and PowerShell use the Graph beta endpoint.",
       "title": "Block AI Agents You Have Not Approved",
       "changeLine": null,
-      "why": "Only the AI agent identities you approve can sign in; every other agent is blocked. IAMAI creates the policy in Report-only and leaves it there: you exclude the agents you approve, then turn it on yourself.",
+      "why": "Only the AI agent identities you approve can sign in; every other agent is blocked. Create this policy in Report-only and leave it there: exclude the agents you approve, then turn it on yourself.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-autonomous-agents",
         "checkedOn": "2026-10-04"
@@ -9051,7 +9051,7 @@
         "existingPolicies": [],
         "from": "Aug 1"
       },
-      "aiFocus": "Explain that the policy blocks every AI agent identity not excluded from it, that IAMAI creates it in Report-only and does not turn it on, and how to exclude the agents the tenant approves. Do not turn it on before the approved agents are excluded."
+      "aiFocus": "Explain that the policy blocks every AI agent identity not excluded from it, that it is created in Report-only and the plan never turns it on, and how to exclude the agents the tenant approves. Do not turn it on before the approved agents are excluded."
     },
     {
       "id": "emergency-account-strong-signin",

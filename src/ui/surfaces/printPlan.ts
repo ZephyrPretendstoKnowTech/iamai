@@ -27,6 +27,7 @@ import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { LaneView } from './stepContract.ts'
 import type { Lane } from '../../actionability/lanes.ts'
 import { deferralOf } from './deferral.ts'
+import { leftInReportOnly } from '../../roadmap/agentBlocks.ts'
 
 /**
  * Whether the document is a plan at all. Without Entra ID P1 no Conditional
@@ -152,7 +153,7 @@ export const BRIEF: BriefWords = (app.print as unknown as { brief: BriefWords })
 type BriefLines = { does?: string; matters?: string; notice?: string }
 
 /** One open step as the briefing prints it. */
-export type BriefEntry = { id: string; number: string | null; title: string; status: string; when: string | null; does: string | null; matters: string | null; notice: string | null; reaches: string | null }
+export type BriefEntry = { id: string; number: string | null; title: string; status: string; when: string | null; does: string | null; matters: string | null; notice: string | null; reaches: string | null; /** The row reaches no one in this tenant ("No guests"). */ reachesNoOne?: true }
 /** Something the plan needs a decision or an action on before it can move. */
 export type BriefNeed = { id: string; number: string | null; title: string; why: string; /** A decision's questions still waiting on an answer, in the step's own words (OWN-P1). */ asks?: string[] }
 /** A row by its number and title: a finished one with the day it finished, or one the person set aside. */
@@ -264,7 +265,8 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
       // accounts ("3 policies" names no one a manager can picture), and never
       // the none form ("No guests"), which reads as a contradiction over an Impact line.
       const people = reaches !== null && /\b(person|people|admins?|guests?|accounts?)\b/i.test(reaches) && !/^(no|none|nobody|no one)\b/i.test(reaches.trim()) ? reaches : null
-      entries.push({ id: r.id, number, title: r.title, status: BRIEF.lanes[r.lane.lane], when, does, matters: briefLine(lines.matters, ex), notice: briefLine(lines.notice, ex), reaches: people })
+      const noOne = reaches !== null && /^(no|none|nobody|no one)\b/i.test(reaches.trim())
+      entries.push({ id: r.id, number, title: r.title, status: BRIEF.lanes[r.lane.lane], when, does, matters: briefLine(lines.matters, ex), notice: briefLine(lines.notice, ex), reaches: people, ...(noOne ? { reachesNoOne: true as const } : {}) })
       const reason = readings.get(r.id)?.reason ?? null
       const failures = r.step?.tracking?.failuresByUser ?? []
       if (r.lane.lane === 'Ready' && r.lane.substatus === 'Decision') {
@@ -285,16 +287,19 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
 }
 
 /** One change people will feel, as the first page lists it. */
-export type BriefNotice = { id: string; number: string | null; title: string; when: string | null; notice: string }
+export type BriefNotice = { id: string; number: string | null; title: string; /** The ISO day people first feel it: the turn-on day, else the day the step is done. */ on: string | null; notice: string }
 
 /**
  * What people will notice (owner, 2026-10-05, wording audit item 9): the open steps
  * whose Impact line names a change someone feels, in the journey's order, the first
  * `cap` of them and how many more The changes ahead holds. A step no one notices
- * ("No one notices a change", "No one notices, unless …") is left to its own entry.
+ * ("No one notices a change", "No one notices, unless …") is left to its own entry,
+ * and so is one that reaches no one here ("No guests"). Each is dated by the day people
+ * first feel it, from `dayOf` (the forecast's turn-on, else the day the step is done):
+ * a policy created in Report-only today is felt on its turn-on day (live check, 2026-10-05).
  */
-export function briefNoticesOf(brief: Pick<Brief, 'chapters'>, cap = 4): { shown: BriefNotice[]; more: number } {
-  const felt = brief.chapters.flatMap((c) => c.entries).flatMap((e): BriefNotice[] => (e.notice && !/^No one notices\b/i.test(e.notice) ? [{ id: e.id, number: e.number, title: e.title, when: e.when, notice: e.notice }] : []))
+export function briefNoticesOf(brief: Pick<Brief, 'chapters'>, dayOf: (id: string) => string | null = () => null, cap = 4): { shown: BriefNotice[]; more: number } {
+  const felt = brief.chapters.flatMap((c) => c.entries).flatMap((e): BriefNotice[] => (e.notice && !e.reachesNoOne && !/^No one notices\b/i.test(e.notice) ? [{ id: e.id, number: e.number, title: e.title, on: dayOf(e.id), notice: e.notice }] : []))
   return { shown: felt.slice(0, cap), more: Math.max(0, felt.length - cap) }
 }
 
@@ -329,8 +334,12 @@ export function briefDaysOf(board: Pick<Board, 'rows' | 'forecast'>): BriefDay[]
       const name = sec.number !== null && r.number !== null ? `${sec.number}.${r.number} ${r.title}` : r.title
       // A policy already in report-only has its turn-on next: that is its only day.
       const watching = r.step !== null && (r.step.state.lifecycle === 'report-only' || r.step.state.lifecycle === 'ready-to-enforce')
-      if (!watching && !batched.has(r.id)) dayOf(span.at).doing.push(name)
-      if (span.turnOn !== null) dayOf(span.turnOn).turnOn.push(name)
+      // A policy the plan leaves in Report-only for you to turn on (the untrusted-agents
+      // block, agentBlocks.ts) has no turn-on day to print, so it is named on the day it
+      // is created, 3.8's or not (live check, 2026-10-05).
+      const leftOpen = r.step !== null && leftInReportOnly(r.step)
+      if (!watching && (!batched.has(r.id) || leftOpen)) dayOf(span.at).doing.push(name)
+      if (span.turnOn !== null && !leftOpen) dayOf(span.turnOn).turnOn.push(name)
     }
   }
   return [...days.values()].sort((a, b) => a.day.localeCompare(b.day))

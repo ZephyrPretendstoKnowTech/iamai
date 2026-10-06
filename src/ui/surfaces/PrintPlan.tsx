@@ -145,7 +145,8 @@ export function PrintPlan({
   const open = brief.chapters.filter((c) => c.entries.length > 0)
   // The plan by day (owner, 2026-10-04), from the forecast the Estimated finish reads.
   const days = briefDaysOf(board)
-  const notices = briefNoticesOf(brief)
+  // The day people first feel each change: its turn-on, else the day the step is done (the forecast the plan by day reads).
+  const notices = briefNoticesOf(brief, (id) => { const span = board.forecast.spans.get(id); return span ? span.turnOn ?? span.end : null })
   const mfaToday = mfaTodayLine(tenant)
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
@@ -210,7 +211,7 @@ export function PrintPlan({
                     <strong>
                       <span className="print-number">{n.number}</span> {n.title}
                     </strong>
-                    {n.when && <span className="brief-progress"> · {n.when}</span>}
+                    {n.on && <span className="brief-progress"> · {absoluteDate(n.on)}</span>}
                     <span className="brief-why">{n.notice}</span>
                   </li>
                 ))}
