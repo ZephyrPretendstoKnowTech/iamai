@@ -2691,6 +2691,22 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // action (the exclusions-group withhold above included): named on the step and
     // never its own (tracking.ts matchMembers), retired in Cleanup.
     if (pilot !== null) action = { ...action, besidePolicies: pilot.beside }
+    // The guest pair builds Jon's two beside the tenant's own guest policy the same
+    // way (live check, owner 2026-10-05: "Core - Allow - MFA for Guests" On beside
+    // Require MFA for Guests read no beside line and never reached Retire): the
+    // tenant's live policies doing the guest job, neither half, nor another step's
+    // own or job, are named on the step and retired in Cleanup.
+    else if (pair !== null && !pair.ambiguous) {
+      const rows = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
+      const halves = new Set(pair.halves.flatMap((h) => (h.policy ? [String(h.policy.id)] : [])))
+      const live = (p: RawPolicy | undefined): p is RawPolicy => p !== undefined && (p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced')
+      const beside = result.candidates
+        .filter((c) => c.ownScope && c.contribution !== 'disabled')
+        .map((c) => rows.find((p) => String(p.id) === c.policyId))
+        .filter(live)
+        .filter((p) => !halves.has(String(p.id)) && !matchedPolicyIds.includes(String(p.id)) && !anotherStepsJob(String(p.id)) && !planNameKeys.has(nameKey(String(p.displayName ?? ''))) && !renameTargets.has(String(p.id)))
+      if (beside.length > 0) action = { ...action, besidePolicies: beside.map((p) => ({ policyId: String(p.id), name: String(p.displayName ?? p.id), state: String(p.state) })) }
+    }
 
     // The tenant objects the resolution used travel with the result, so an
     // instruction names the object the body actually holds rather than looking
