@@ -4089,6 +4089,8 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
       "why": "These policies of your own were written for the job the baseline's policy now does: {list:retiring}. Conditional Access applies every policy that matches a sign-in and requires all their grants, so running old and new side by side weakens nothing. Once the baseline's policy is On, the old one only makes the next change harder to reason about, and a tenant is capped at 240 policies.",
+      "$commentWhyOne": "The same with one policy listed (live check, 2026-10-05: \"These policies\" over one policy, CleanupStep.tsx/cleanupExport.ts via reasonList.ts whyFor).",
+      "whyOne": "This policy of your own was written for the job the baseline's policy now does: {list:retiring}. Conditional Access applies every policy that matches a sign-in and requires all their grants, so running old and new side by side weakens nothing. Once the baseline's policy is On, the old one only makes the next change harder to reason about, and a tenant is capped at 240 policies.",
       "whatToDo": [
         "Compare each policy listed with the baseline's. Anything it asks that the baseline's does not, a stricter method or more people, goes when it is turned off. A stricter policy can stay: keep it and record why below.",
         "Turn it off: in the Microsoft Entra admin center, open Entra ID → Conditional Access → Policies, open the policy, set Enable policy to Off, then select Save. An Off policy comes back with one switch.",
@@ -4109,7 +4111,7 @@
       "replacementPendingMany": "keep it until {steps} are On",
       "replacementOnMany": "{steps} replace it and are On",
       "$commentStricter": "A listed policy whose grant asks more than the baseline's (a stricter method, read as the Accept panel reads it: roadmap/differences.ts grantDirectionOf). Turning it off loosens sign-in, which 'running old and new side by side weakens nothing' does not cover (audit, 2026-10-05: the tenant's phishing-resistant admin policy beside the baseline's Modern MFA + TAP).",
-      "stricter": "it asks more than the baseline's, so keep it with a reason unless you mean to loosen sign-in"
+      "stricter": "It asks more than the baseline's: keep it for good, with a reason, unless you mean to loosen sign-in."
     },
     "naming": {
       "brief": {

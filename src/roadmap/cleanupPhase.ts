@@ -157,9 +157,10 @@ export function retiringOf(steps: readonly Step[], stateWord: (state: string) =>
     const replacement = pending.length > 0
       ? fillText(pending.length === 1 ? RETIRE_WORDS.replacementPending : RETIRE_WORDS.replacementPendingMany, { step: names(pending), steps: names(pending) })
       : fillText(waitSteps.length === 1 ? RETIRE_WORDS.replacementOn : RETIRE_WORDS.replacementOnMany, { step: names(waitSteps), steps: names(waitSteps) })
-    // What to do with it first, then its ID last (audit, 2026-10-05: the ID led a dense parenthesis).
-    const notes = [...(p.stricter ? [RETIRE_WORDS.stricter] : []), replacement]
-    out.push({ policyId, line: `${p.name} (${stateWord(p.state)}): ${notes.join('; ')}. ID: ${policyId}`, stepId: waits[0], stepIds: waits })
+    // What to do with it first, then, for a stricter one, what it would loosen, as its own
+    // sentence, then its ID last (audit and live check, 2026-10-05: "keep it with a reason"
+    // and "keep it until" ran together in one clause).
+    out.push({ policyId, line: `${p.name} (${stateWord(p.state)}): ${replacement}.${p.stricter ? ` ${RETIRE_WORDS.stricter}` : ''} ID: ${policyId}`, stepId: waits[0], stepIds: waits })
   }
   return out
 }

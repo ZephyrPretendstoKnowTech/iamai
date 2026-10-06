@@ -15,6 +15,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { emergencyVerificationTasksOf } from './emergencyVerificationTasks.ts'
 import { alertingSteps } from './alertingTasks.ts'
 import { namingSteps } from './namingTasks.ts'
+import { whyFor } from './reasonList.ts'
 
 export type { CleanupExport }
 export type CleanupEntry = { title: string; learn?: { url: string; checkedOn?: string } | null; why: string; whatToDo?: string[]; doneWhen: string[] }
@@ -156,7 +157,7 @@ export function cleanupExportView(phase: CleanupPhase, row: CleanupPhase['rows']
       : row.kind === 'naming'
         ? namingSteps(phase).map((line) => line.replace(/\*\*/g, ''))
         : (entry.whatToDo ?? []).filter(whole).map((l) => fillText(l, ex))
-  return { kind: row.kind, day: row.day, done: row.done, title: entry.title, when: cleanupWhenOnBoard(row, read), undated: read?.undated ?? false, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(entry.why, ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
+  return { kind: row.kind, day: row.day, done: row.done, title: entry.title, when: cleanupWhenOnBoard(row, read), undated: read?.undated ?? false, manualEvidence: cleanupEvidenceLines(phase, row), why: fillText(whyFor(entry, ex as Record<string, unknown>), ex), whatToDo, doneWhen: entry.doneWhen.filter(whole).map((l) => fillText(l, ex)) }
 }
 
 /**

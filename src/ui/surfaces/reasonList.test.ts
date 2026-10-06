@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { listedReason } from './reasonList.ts'
+import { listedReason, whyFor } from './reasonList.ts'
 import { cleanup } from '../../content/content.ts'
 
 const WHY = (cleanup as unknown as { retire: { why: string } }).retire.why
@@ -19,13 +19,18 @@ test('Retire Replaced Policies names its policies one line each: the lead, the l
   assert.equal(`${r.lead} ${r.items.join(', ')}. ${r.rest}`.length > 0, true)
 })
 
-test('a reason with one item, or no list, stays one sentence', () => {
-  assert.equal(listedReason(WHY, { retiring: ['Only one (On, ID: a)'] }), null)
+test('one item is a list too, under the singular lead; no list stays one sentence (live check, 2026-10-05)', () => {
+  const one = { retiring: ['Only one (On, ID: a)'] }
+  const entry = { why: WHY, whyOne: 'This policy of your own was written for the job the baseline\x27s policy now does: {list:retiring}. Rest.' }
+  assert.equal(whyFor(entry, one), entry.whyOne)
+  assert.equal(whyFor(entry, { retiring: ['a', 'b'] }), WHY, 'two keep the plural')
+  assert.deepEqual(listedReason(whyFor(entry, one), one)?.items, ['Only one (On, ID: a)'])
+  assert.match(String(listedReason(whyFor(entry, one), one)?.lead), /^This policy of your own was/)
   assert.equal(listedReason('No list here.', {}), null)
 })
 
 test('the Cleanup step draws the list as one line each (CleanupStep.tsx reads listedReason)', () => {
   const source = readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8')
-  assert.match(source, /listedReason\(entry\.why/)
+  assert.ok(source.includes('const reason = whyFor(entry, ex as Record<string, unknown>)\n  const listed = listedReason(reason, ex as Record<string, unknown>)'), 'the screen reads the reason whyFor picks')
   assert.match(source, /listed\.items\.map\(\(item\) => <li key=\{item\}>/)
 })

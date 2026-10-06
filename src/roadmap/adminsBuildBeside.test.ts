@@ -156,7 +156,7 @@ test('Retire Replaced Policies: listed with each policy’s state and ID, held u
   // Require MFA for Everyone retires its own beside the admin templates (owner, 2026-10-04: identity is the name on every step).
   // Each line names its replacement; the phishing-resistant template asks more than the baseline's grant and says so (audit, 2026-10-05).
   assert.ok(lines.some((l) => l === `Require multifactor authentication for admins (On): keep it until Require a Strong Sign-in for Admins is On. ID: ${MFA_ADMINS}`), lines.join(' | '))
-  assert.ok(lines.some((l) => l === `Require phishing-resistant multifactor authentication for administrators (Report-only): it asks more than the baseline's, so keep it with a reason unless you mean to loosen sign-in; keep it until Require a Strong Sign-in for Admins is On. ID: ${PR_ADMINS}`), lines.join(' | '))
+  assert.ok(lines.some((l) => l === `Require phishing-resistant multifactor authentication for administrators (Report-only): keep it until Require a Strong Sign-in for Admins is On. It asks more than the baseline's: keep it for good, with a reason, unless you mean to loosen sign-in. ID: ${PR_ADMINS}`), lines.join(' | '))
   assert.ok((retire.waitsOn ?? []).includes(ADMINS))
   // What Keep With This Reason saves (ui/surfaces/CleanupStep.tsx): every policy listed, by id, with the reason.
   for (const id of [MFA_ADMINS, PR_ADMINS]) assert.ok((plan(f).r.schedule.cleanup!.retiringPolicyIds ?? []).includes(id), id)
