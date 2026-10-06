@@ -49,7 +49,7 @@ type Words = {
       consent: { state: string; lead: string; thisTenant: string }
       personal: { state: string; lead: string; thatAccount: string }
       cancelled: { state: string }
-      failed: { state: string; lead: string }
+      failed: { state: string; lead: string; webRedirect: string; details: string }
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
@@ -143,6 +143,8 @@ export type SignInTile = {
   tone: Tone
   /** The error state's paragraph: it replaces the Global Reader line on consent and personal, and sits above it on failed (F-057). */
   lead: string | null
+  /** Microsoft's own message under a toggle, where the lead says it plainly (AADSTS9002326). */
+  detail?: { summary: string; text: string }
   note: string | null
   actions: Action[]
   permissions: { summary: string; lead: string; rows: { scope: string; name: string; reads: string }[]; removal: string }
@@ -167,6 +169,9 @@ export function signInTile({ error }: { error: SignInError | null }): SignInTile
       return { ...base, state: S.errors.cancelled.state, tone: null, lead: null, note: W.account.note, actions: [signIn, demo] }
     case 'failed':
       // "Microsoft answered:" only over something Microsoft said.
+      // A redirect registered under Web, not Single-page application (AADSTS9002326): said
+      // plainly with its fix, Microsoft's text under the toggle (live check, 2026-10-05).
+      if (error.message && /\bAADSTS9002326\b/.test(error.message)) return { ...base, state: S.errors.failed.state, tone: 'stop', lead: S.errors.failed.webRedirect, detail: { summary: S.errors.failed.details, text: error.message }, note: W.account.note, actions: [signIn, demo] }
       return { ...base, state: S.errors.failed.state, tone: 'stop', lead: error.message ? fillText(S.errors.failed.lead, { message: error.message }) : null, note: W.account.note, actions: [signIn, demo] }
   }
 }

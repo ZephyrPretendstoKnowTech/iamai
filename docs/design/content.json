@@ -851,7 +851,10 @@
           },
           "failed": {
             "state": "sign-in did not complete",
-            "lead": "Microsoft answered: {message}"
+            "lead": "Microsoft answered: {message}",
+            "$commentWebRedirect": "AADSTS9002326 (live check, owner 2026-10-05): the app registration lists this page's address under Web, where Microsoft gives a browser app no token. Said plainly with the fix; Microsoft's own text under details (scan/connectView.ts signInTile).",
+            "webRedirect": "Microsoft won't finish signing in here: this page's address is registered as a Web redirect in the IAMAI app registration. In the Microsoft Entra admin center, open App registrations, then the app, then Authentication: remove the address under Web, add it under Single-page application, and sign in again.",
+            "details": "Microsoft's message"
           }
         }
       },

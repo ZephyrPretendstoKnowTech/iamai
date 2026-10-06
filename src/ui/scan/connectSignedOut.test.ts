@@ -6,6 +6,7 @@
 // The other states' strings are absent from each.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { GRAPH_SCOPES } from '../../graph/scopes.ts'
 import { SIGN_IN_SCOPES } from '../../copy/permissions.ts'
 import { authErrorOf, classifyAuthError } from '../../graph/authError.ts'
@@ -158,4 +159,18 @@ test("tile 4 signed out: Plan after the scan, the sample tenant's four facts com
   assert.equal(planTile({ kind: 'sample', facts: null }).facts, undefined, 'the facts wait for the fixture; nothing is typed in')
   const text = tileStrings(t).join('\n')
   for (const s of ['Open the plan →', 'Open the last full plan', 'from the scan', 'Try it with sample data', 'licence']) assert.ok(!text.includes(s), `the sample tile must not render "${s}"`)
+})
+
+test('a redirect registered under Web says so plainly with its fix, Microsoft\'s message under a toggle (AADSTS9002326; live check, 2026-10-05)', () => {
+  const message = "AADSTS9002326: Cross-origin token redemption is permitted only for the 'Single-Page Application' client-type. Request origin: 'http://localhost:5173'. Trace ID: x Correlation ID: y Timestamp: z"
+  const tile = signInTile({ error: { kind: 'failed', message } as never })
+  assert.match(String(tile.lead), /registered as a Web redirect/)
+  assert.match(String(tile.lead), /add it under Single-page application/)
+  assert.doesNotMatch(String(tile.lead), /Trace ID|AADSTS/, 'the IDs and the code stay under the toggle')
+  assert.equal(tile.detail?.text, message)
+  // Any other failure still quotes Microsoft as before, with no toggle.
+  const other = signInTile({ error: { kind: 'failed', message: 'AADSTS50011: mismatch' } as never })
+  assert.equal(other.detail, undefined)
+  assert.match(String(other.lead), /^Microsoft answered: AADSTS50011/)
+  assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /\{t1\.detail && <details><summary>\{t1\.detail\.summary\}<\/summary>/)
 })

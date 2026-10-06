@@ -399,6 +399,7 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
           }
         >
           {t1.lead && <p>{lead(error?.kind === 'personal' ? (error.account ?? null) : null, t1.lead)}</p>}
+          {t1.detail && <details><summary>{t1.detail.summary}</summary><p className="quiet">{t1.detail.text}</p></details>}
           {t1.note && <p className="quiet">{t1.note}</p>}
           {actionError && <p className="quiet" role="status">{actionError}</p>}
           <details className="permissions">

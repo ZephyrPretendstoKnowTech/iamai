@@ -351,6 +351,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[56].everywhere.why',
   // The Lockdown Kit's one pointer under its switch cards (emergencyReadiness.ts oncePerBatch).
   '.steps[56].followEach',
+  // Connect's sign-in failure for a redirect registered under Web (AADSTS9002326;
+  // scan/connectView.ts signInTile): app-only, the review page shows no failed sign-in.
+  '.pages.connect.signIn.errors.failed.details',
+  '.pages.connect.signIn.errors.failed.webRedirect',
   '.steps[63].oneAccount',
   '.steps[63].turnOnWaits.drilled',
   '.steps[63].turnOnWaits.method',
