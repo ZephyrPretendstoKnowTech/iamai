@@ -81,7 +81,10 @@ test("the owner's shape: Jon's two are created beside the tenant's own guest pol
   assert.ok(step.deliveredBy.some((d) => d.startsWith('Core - Allow - MFA for Guests')), step.deliveredBy.join(' | '))
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => run.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const who = JSON.stringify(stepBodyOf(step, ctx))
-  assert.match(who, /already covers this with Core - Allow - MFA for Guests \(On\)\. This step creates the baseline's version; once it is enforced, review whether the older ones can be retired\./)
+  // Built beside it, as the single-policy steps are (live check, owner 2026-10-05): the
+  // tenant's guest policy is named and goes to Retire Replaced Policies once Jon's two are On.
+  assert.deepEqual((step.action.besidePolicies ?? []).map((p) => p.name), ['Core - Allow - MFA for Guests'])
+  assert.match(who, /Also covering these people today: .*Core - Allow - MFA for Guests.*Retire Replaced Policies in Cleanup turns the old off once the new one is On\./)
   // Both halves are listed in 3.8 Create the Policies in Report-only.
   const batch = run.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)
   assert.ok(batch?.reportOnlyBatch?.create.includes(GUESTS), 'the guest step is in the Report-only batch')
