@@ -394,7 +394,7 @@ After Configure Emergency Exclusions adds Core - Exclusions to it.
      remaining: - | check: Prerequisite step
      link: Open Prepare Emergency Access Accounts
 
-## demo / s-goal-directory-baseline-scopes-mfa — Require Phishing-Resistant MFA for Basic Sign-ins
+## demo / s-goal-directory-baseline-scopes-mfa — Require a Strong Sign-in for Basic Sign-ins
    eyebrow: Policy step | lane: On Hold · null | state: Blocked / Not deployed
    bar: Complete the next task shown for each item.
    tasks: Create the policy in Report-only | Turn the policy on
@@ -827,7 +827,7 @@ This policy is On: a saved change applies at the next sign-in.
      remaining: - | check: Waiting on your answers
      link: Open Confirm What You Use
 
-## demo-week2 / s-goal-directory-baseline-scopes-mfa — Require Phishing-Resistant MFA for Basic Sign-ins
+## demo-week2 / s-goal-directory-baseline-scopes-mfa — Require a Strong Sign-in for Basic Sign-ins
    eyebrow: Policy step | lane: On Hold · null | state: Blocked / Not deployed
    bar: Complete the next task shown for each item.
    tasks: Create the policy in Report-only | Turn the policy on
@@ -1217,7 +1217,7 @@ Riley Kim (user17@small.example.com): Set up a phone passkey, used from the comp
      remaining: - | check: Prerequisite step
      link: Open Configure Passkey Authentication
 
-## small / s-goal-directory-baseline-scopes-mfa — Require Phishing-Resistant MFA for Basic Sign-ins
+## small / s-goal-directory-baseline-scopes-mfa — Require a Strong Sign-in for Basic Sign-ins
    eyebrow: Policy step | lane: On Hold · null | state: Blocked / Not deployed
    bar: Complete the next task shown for each item.
    tasks: Create the policy in Report-only | Turn the policy on
@@ -1621,7 +1621,7 @@ Quinn Lee (user66@mid.example.com): Set up a passkey in Microsoft Authenticator
      remaining: - | check: Prerequisite step
      link: Open Configure Passkey Authentication
 
-## mid / s-goal-directory-baseline-scopes-mfa — Require Phishing-Resistant MFA for Basic Sign-ins
+## mid / s-goal-directory-baseline-scopes-mfa — Require a Strong Sign-in for Basic Sign-ins
    eyebrow: Policy step | lane: On Hold · null | state: Blocked / Not deployed
    bar: Complete the next task shown for each item.
    tasks: Create the policy in Report-only | Turn the policy on
@@ -2062,7 +2062,7 @@ Noor Okafor (user52@large.example.com): Set up a passkey in Microsoft Authentica
      remaining: - | check: Prerequisite step
      link: Open Configure Passkey Authentication
 
-## large / s-goal-directory-baseline-scopes-mfa — Require Phishing-Resistant MFA for Basic Sign-ins
+## large / s-goal-directory-baseline-scopes-mfa — Require a Strong Sign-in for Basic Sign-ins
    eyebrow: Policy step | lane: On Hold · null | state: Blocked / Not deployed
    bar: Complete the next task shown for each item.
    tasks: Create the policy in Report-only | Turn the policy on
@@ -2480,7 +2480,7 @@ Sasha Ivanova (user5@messy.example.com): Set up a phone passkey, used from the c
      remaining: - | check: Prerequisite step
      link: Open Prepare Emergency Access Accounts
 
-## messy / s-goal-directory-baseline-scopes-mfa — Require Phishing-Resistant MFA for Basic Sign-ins
+## messy / s-goal-directory-baseline-scopes-mfa — Require a Strong Sign-in for Basic Sign-ins
    eyebrow: Policy step | lane: On Hold · null | state: Blocked / Not deployed
    bar: Complete the next task shown for each item.
    tasks: Create the policy in Report-only | Turn the policy on
@@ -2862,7 +2862,7 @@ This policy is On: a saved change applies at the next sign-in.
      remaining: - | check: Prerequisite step
      link: Open Configure Passkey Authentication
 
-## midflight / s-goal-directory-baseline-scopes-mfa — Require Phishing-Resistant MFA for Basic Sign-ins
+## midflight / s-goal-directory-baseline-scopes-mfa — Require a Strong Sign-in for Basic Sign-ins
    eyebrow: Policy step | lane: On Hold · null | state: Blocked / Not deployed
    bar: Complete the next task shown for each item.
    tasks: Create the policy in Report-only | Turn the policy on
@@ -3215,7 +3215,7 @@ Alex Okafor (user10@midflight.example.com): Set up a phone passkey, used from th
      remaining: - | check: Waiting on your answers
      link: Open Decide How and Where People Sign In
 
-## hostile / s-goal-directory-baseline-scopes-mfa — Require Phishing-Resistant MFA for Basic Sign-ins
+## hostile / s-goal-directory-baseline-scopes-mfa — Require a Strong Sign-in for Basic Sign-ins
    eyebrow: Policy step | lane: On Hold · null | state: Blocked / Not deployed
    bar: Complete the next task shown for each item.
    tasks: Create the policy in Report-only | Turn the policy on

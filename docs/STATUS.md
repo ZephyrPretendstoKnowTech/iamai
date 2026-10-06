@@ -214,7 +214,7 @@ Each is binding until the owner changes it; don't re-ask. The date is when it wa
   Portal block stays hidden (2026-09-24). Both are in v1.1 (2026-10-03): AVD behind a
   Direction question, the Admin Portal block as the lockdown kit's third switch.
   WindowsAzureAD-BaselineScopes is in (2026-09-29):
-  Require Phishing-Resistant MFA for Basic Sign-ins, in Extend MFA right after Require MFA
+  Require a Strong Sign-in for Basic Sign-ins, in Extend MFA right after Require MFA
   to Register a Device, created in Report-only and turned on only when everyone has a
   method that meets the strength.
 - IAMAI is the brand; IAMAI Planner is the tool.

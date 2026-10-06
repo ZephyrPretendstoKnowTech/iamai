@@ -7195,7 +7195,7 @@
       },
       "kind": "policy",
       "$comment": "Owner, 2026-09-29: Jon's IAC - GLOBAL - GRANT - MFA - WindowsAzureAD-BaselineScopes, hidden for v1.0, is a plan step after Require MFA to Register a Device.",
-      "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+      "title": "Require a Strong Sign-in for Basic Sign-ins",
       "changeLine": null,
       "why": "Microsoft treats a sign-in whose app asks only for basic profile access (openid, profile, email, User.Read and similar) as access to Windows Azure Active Directory. This policy targets that resource, so those sign-ins need the same strong method as the rest; an app that asks for anything more is not affected by it.",
       "learn": {

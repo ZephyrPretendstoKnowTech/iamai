@@ -1455,7 +1455,7 @@
  {
   "fixture": "demo",
   "step": "s-goal-directory-baseline-scopes-mfa",
-  "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+  "title": "Require a Strong Sign-in for Basic Sign-ins",
   "eyebrow": "Policy step",
   "lane": "On Hold",
   "substatus": null,
@@ -3056,7 +3056,7 @@
  {
   "fixture": "demo-week2",
   "step": "s-goal-directory-baseline-scopes-mfa",
-  "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+  "title": "Require a Strong Sign-in for Basic Sign-ins",
   "eyebrow": "Policy step",
   "lane": "On Hold",
   "substatus": null,
@@ -4457,7 +4457,7 @@
  {
   "fixture": "small",
   "step": "s-goal-directory-baseline-scopes-mfa",
-  "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+  "title": "Require a Strong Sign-in for Basic Sign-ins",
   "eyebrow": "Policy step",
   "lane": "On Hold",
   "substatus": null,
@@ -5927,7 +5927,7 @@
  {
   "fixture": "mid",
   "step": "s-goal-directory-baseline-scopes-mfa",
-  "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+  "title": "Require a Strong Sign-in for Basic Sign-ins",
   "eyebrow": "Policy step",
   "lane": "On Hold",
   "substatus": null,
@@ -7558,7 +7558,7 @@
  {
   "fixture": "large",
   "step": "s-goal-directory-baseline-scopes-mfa",
-  "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+  "title": "Require a Strong Sign-in for Basic Sign-ins",
   "eyebrow": "Policy step",
   "lane": "On Hold",
   "substatus": null,
@@ -9078,7 +9078,7 @@
  {
   "fixture": "messy",
   "step": "s-goal-directory-baseline-scopes-mfa",
-  "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+  "title": "Require a Strong Sign-in for Basic Sign-ins",
   "eyebrow": "Policy step",
   "lane": "On Hold",
   "substatus": null,
@@ -10452,7 +10452,7 @@
  {
   "fixture": "midflight",
   "step": "s-goal-directory-baseline-scopes-mfa",
-  "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+  "title": "Require a Strong Sign-in for Basic Sign-ins",
   "eyebrow": "Policy step",
   "lane": "On Hold",
   "substatus": null,
@@ -11748,7 +11748,7 @@
  {
   "fixture": "hostile",
   "step": "s-goal-directory-baseline-scopes-mfa",
-  "title": "Require Phishing-Resistant MFA for Basic Sign-ins",
+  "title": "Require a Strong Sign-in for Basic Sign-ins",
   "eyebrow": "Policy step",
   "lane": "On Hold",
   "substatus": null,

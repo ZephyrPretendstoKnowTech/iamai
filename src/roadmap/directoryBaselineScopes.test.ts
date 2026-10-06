@@ -1,5 +1,5 @@
 // Jon Hope's IAC - GLOBAL - GRANT - MFA - WindowsAzureAD-BaselineScopes is a
-// plan step (owner, 2026-09-29): Require Phishing-Resistant MFA for Basic
+// plan step (owner, 2026-09-29): Require a Strong Sign-in for Basic
 // Sign-ins, in extend-mfa directly after Require MFA to Register a Device,
 // created in Report-only by 3.8 and turned on only when everyone it covers is
 // ready (the device-registration gate, constants.ts READINESS_EVERYONE_GOALS).
