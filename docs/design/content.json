@@ -1657,8 +1657,8 @@
           "unknown": "Settings not read"
         },
         "step3": {
-          "yes": "Allowed by Configure Passkey Authentication",
-          "no": "Not on Configure Passkey Authentication’s approved list",
+          "yes": "On your tenant's allow list",
+          "no": "Not on your tenant's allow list",
           "unknown": "Model not reported",
           "$commentSynced": "DEMO-SP: a synced passkey stops because the change makes passkeys device-bound (owner, 2026-10-03), not because of a model list. The sample's synced passkey read \"Not on Configure Passkey Authentication’s approved list\", an allow-list line the plan no longer has.",
           "synced": "Stops working once Configure Passkey Authentication is applied"
@@ -1695,8 +1695,8 @@
         "nothing": "Nothing remaining",
         "completed": "Completed checks · {n}",
         "shownAbove": "Shown above as the next check.",
-        "models": "Approved passkey models",
-        "modelsFrom": "From Configure Passkey Authentication. Keys outside this list are flagged before they stop working.",
+        "models": "Your tenant's passkey allow list",
+        "modelsFrom": "Configure Passkey Authentication keeps it as your tenant set it. Keys outside it are flagged before they stop working.",
         "counted": "Not counted",
         "evidence": "Evidence read"
       },
@@ -1745,7 +1745,7 @@
           "unknown": "Authentication methods weren’t read. Scan again."
         },
         "step3": {
-          "pass": "Passkey models checked against Configure Passkey Authentication",
+          "pass": "Passkey models checked against your tenant's allow list",
           "note": "Set your passkey settings in Configure Passkey Authentication so IAMAI can check keys against the models you intend to allow."
         },
         "attestation": {
