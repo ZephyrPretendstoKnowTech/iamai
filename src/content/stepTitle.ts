@@ -42,3 +42,16 @@ export function contentStepForPackage(stepId: string): ContentStep | undefined {
 export function contentTitle(step: StepLike & { title: string; plainTitle?: string }): string {
   return contentStepFor(step)?.title ?? step.plainTitle ?? step.title
 }
+
+/**
+ * A step's words where everyone works remotely: its `everywhere` title, why and
+ * brief notice in place of its own, each only where it gives one (owner,
+ * 2026-10-05 live check: a remote-only tenant read "outside the office"). The
+ * entry itself where it has none.
+ */
+export function everywhereContent(own: ContentStep): ContentStep {
+  const e = own.everywhere
+  if (!e) return own
+  const brief = (own as { brief?: Record<string, unknown> }).brief
+  return { ...own, ...(e.title ? { title: e.title } : {}), ...(e.why ? { why: e.why } : {}), ...(brief && e.notice ? { brief: { ...brief, notice: e.notice } } : {}) } as ContentStep
+}

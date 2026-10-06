@@ -6741,6 +6741,12 @@
       "title": "Require a Managed Device Outside the Office",
       "changeLine": null,
       "why": "Away from the trusted network, work access needs a device this business manages: one Intune has marked compliant, or a Microsoft Entra hybrid joined Windows computer. A device only registered in Entra meets neither, and a managed device whose app sends no device information is refused as if it were unmanaged.",
+      "everywhere": {
+        "$comment": "Decide How and Where People Sign In answered Everyone works remotely: no office network, so nothing is carved out by location and the words drop it (roadmap/generate.ts everywhereContent; owner, 2026-10-05 live check).",
+        "title": "Require a Managed Device",
+        "why": "Work access needs a device this business manages: one Intune has marked compliant, or a Microsoft Entra hybrid joined Windows computer. A device only registered in Entra meets neither, and a managed device whose app sends no device information is refused as if it were unmanaged.",
+        "notice": "People on personal devices can't reach work apps until their device is enrolled."
+      },
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-compliance"
       },
@@ -8622,6 +8628,10 @@
       "$comment": "T2-LK (owner, 2026-10-03; docs/plans/v1.1/plan.md D3): Jon's three ZTCA incident switches, each created Off and never turned on by the plan. Who stays online is the emergency access exclusions group only. Its switches are roadmap/lockdownKit.ts; its cards, rail and tasks ui/surfaces/lockdownKitStep.ts, each create the policy's own create procedure (roadmap/policyProcedure.ts createLines).",
       "changeLine": null,
       "why": "Three policies you turn on only during an incident: one blocks the Microsoft admin portals, one blocks devices you don't manage outside the trusted network, and one blocks everything. Created Off, they block no one until you need them.",
+      "everywhere": {
+        "$comment": "Decide How and Where People Sign In answered Everyone works remotely: no office network, so nothing is carved out by location and the words drop it (roadmap/generate.ts everywhereContent; owner, 2026-10-05 live check).",
+        "why": "Three policies you turn on only during an incident: one blocks the Microsoft admin portals, one blocks devices you don't manage, and one blocks everything. Created Off, they block no one until you need them."
+      },
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/concept-resilient-controls",
         "checkedOn": "2026-10-03"

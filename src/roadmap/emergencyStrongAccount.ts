@@ -29,6 +29,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { planIdFor, stepIdForGoal } from './stepIds.ts'
 import { stepById } from '../content/content.ts'
 import type { ContentStep } from '../content/content.ts'
+import { everywhereContent } from '../content/stepTitle.ts'
 
 /** The goal (data/goals.json) and its step. */
 export const EMERGENCY_STRONG_GOAL = 'emergency-account-strong-signin'
@@ -157,10 +158,7 @@ export function emergencyStrongWaits(g: EmergencyStrongGates): ('method' | 'dril
  */
 export function emergencyStrongContent(remote: boolean): ContentStep {
   const own = stepById[EMERGENCY_STRONG_GOAL]
-  const everywhere = own?.everywhere
-  if (!remote || !own || !everywhere) return own
-  const brief = (own as { brief?: Record<string, unknown> }).brief
-  return { ...own, title: everywhere.title, why: everywhere.why, ...(brief ? { brief: { ...brief, notice: everywhere.notice } } : {}) } as ContentStep
+  return remote && own ? everywhereContent(own) : own
 }
 
 /** The step's title, by the office answer. */

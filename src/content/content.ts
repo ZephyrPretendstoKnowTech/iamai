@@ -68,10 +68,11 @@ export type ContentStep = {
   mergesGoals?: string[]
   /**
    * The words that replace title, why and the brief's notice where Decide How and
-   * Where People Sign In answered Everyone works remotely (the emergency
-   * account's security key, asked everywhere; roadmap/emergencyStrongAccount.ts).
+   * Where People Sign In answered Everyone works remotely: the emergency account's
+   * security key, asked everywhere (roadmap/emergencyStrongAccount.ts), and the
+   * steps whose words name an office or a trusted network (stepTitle.ts everywhereContent).
    */
-  everywhere?: { title: string; why: string; notice: string } | null
+  everywhere?: { title?: string; why?: string; notice?: string } | null
   /** Why the emergency account's security-key step does not apply with fewer than two emergency accounts. */
   oneAccount?: string
   /** What turning the emergency account's security-key policy on waits on (roadmap/enforceWaits.ts). */

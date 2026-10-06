@@ -81,7 +81,7 @@ import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
-import { contentTitle } from '../content/stepTitle.ts'
+import { contentStepFor, contentTitle, everywhereContent } from '../content/stepTitle.ts'
 import { settleEnforceWaits } from './enforceWaits.ts'
 import { app, engine, shared, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
@@ -4106,6 +4106,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // The one title, from content.json, on the row, the body and the
   // communications alike (walk-51 item 1). Set before the state reasons so a
   // "waits on <step>" line names the same title the plan shows.
+  // Every other step whose words name an office or a trusted network says them
+  // without it where everyone works remotely (owner, 2026-10-05 live check).
+  if (officeNetworkRemote) {
+    for (const s of steps) {
+      if (s.goalId === EMERGENCY_STRONG_GOAL || s.guidance) continue
+      const own = contentStepFor(s)
+      if (!own?.everywhere) continue
+      s.guidance = everywhereContent(own)
+      s.title = s.guidance.title ?? s.title
+    }
+  }
   for (const s of steps) s.plainTitle = contentTitle(s)
   // A conditional input nobody saved (U28): the step names it, and the lane
   // engine keeps the step short of Completed and Ready to enforce until a Save.
