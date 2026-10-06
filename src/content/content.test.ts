@@ -344,6 +344,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[63].everywhere.notice',
   '.steps[63].everywhere.title',
   '.steps[63].everywhere.why',
+  // Require a Managed Device and Prepare the Lockdown Kit say the same without an
+  // office (stepTitle.ts everywhereContent; owner, 2026-10-05 live check).
+  '.steps[25].everywhere.notice',
+  '.steps[25].everywhere.why',
+  '.steps[56].everywhere.why',
   '.steps[63].oneAccount',
   '.steps[63].turnOnWaits.drilled',
   '.steps[63].turnOnWaits.method',
