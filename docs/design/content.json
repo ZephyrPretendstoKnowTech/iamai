@@ -3804,7 +3804,7 @@
           },
           "risk": [
             "Most new rules run in report-only first: for about a week they record what they would do without stopping anyone, and they are switched on once that shows who they would affect.",
-            "Emergency access accounts are kept out of every rule, so there is always a way back in.",
+            "One emergency account is kept out of every rule, so there is always a way back in.",
             "Any rule can be switched back to report-only straight away, and nothing else in the tenant changes when it is.",
             "Every step says who it affects before it is switched on, and most that reach people come with a message to send them first.",
             "IAMAI only reads the tenant. Your administrator makes every change, one step at a time."
