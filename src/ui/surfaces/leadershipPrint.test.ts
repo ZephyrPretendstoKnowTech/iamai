@@ -94,7 +94,8 @@ test('what we need from you is a decision or a wait on people, in the briefing\'
       assert.ok([...NEED].some((w) => n.why.startsWith(w)), `${f.name}/${n.id}: "${n.why}" is not the briefing's own wording`)
       if (n.why === BRIEF.needDecision || n.why === BRIEF.needAnswers) {
         decisions++
-        assert.equal(row.lane.substatus, 'Decision', `${f.name}/${n.id}: a decision the board does not read as one`)
+        // Or a Direction step finished on its required answers whose optional one a live step waits on (live check, 2026-10-05).
+        assert.ok(row.lane.substatus === 'Decision' || (row.lane.lane === 'Completed' && (n.asks ?? []).length > 0), `${f.name}/${n.id}: a decision the board does not read as one`)
         continue
       }
       waits++
@@ -356,4 +357,13 @@ test('the plan by day turns on no policy the plan leaves in Report-only for you,
     const days = briefDaysOf(board)
     assert.ok(!days.flatMap((d) => d.turnOn).some((n) => /Block AI Agents You Have Not Approved/.test(n)), `${f.name}: turned on`)
   }
+})
+
+test('What we need from you lists a finished Direction step whose optional question a live step waits on, once, with the question (live check, 2026-10-05)', () => {
+  const { brief } = briefFor(withFoundationSettled(curatedFixture('demo')))
+  const accounts = brief.needs.filter((n) => n.id === 's-direction-accounts')
+  assert.equal(accounts.length, 1, brief.needs.map((n) => n.id).join(', '))
+  assert.equal(accounts[0]!.why, BRIEF.needAnswers)
+  assert.ok(accounts[0]!.asks?.some((a) => /admin accounts/i.test(a)), JSON.stringify(accounts[0]!.asks))
+  assert.equal(brief.counts.needs, brief.needs.length)
 })

@@ -6,7 +6,7 @@
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
 import { REPORT_ONLY_STEP_ID } from '../../roadmap/stepIds.ts'
-import { directionAsked } from '../../roadmap/directionAnswers.ts'
+import { DIRECTION_BLOCKER, directionAsked } from '../../roadmap/directionAnswers.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
@@ -282,6 +282,24 @@ export function briefOf(input: { board: Pick<Board, 'rows'>; stepCtx: (s: Step) 
     }
     return { key: sec.key, number: sec.number, title: sec.title, purpose: sec.key ? BRIEF.journey[sec.key] ?? null : null, progress: sec.summary, entries }
   })
+  // An open step waiting on a Direction answer that step asks, finished on its required
+  // ones (an optional question: which group holds your admin accounts): the Direction
+  // step is listed once, with the questions still open (live check, 2026-10-05: the
+  // briefing named only 7.4 while 4.5 and 8.1 waited on answers).
+  const asked = new Set(needs.map((n) => n.id))
+  const rowsById = new Map(printSectionsOf(board).flatMap((sec) => sec.rows.map((r) => [r.id, { r, number: numberOf(sec, r) }] as const)))
+  for (const { r } of rowsById.values()) {
+    if (!OPEN.has(r.lane.lane) || !r.step) continue
+    for (const b of r.step.blockers) {
+      if (b.kind !== 'decision' || !b.label.startsWith(DIRECTION_BLOCKER)) continue
+      const id = b.label.slice(DIRECTION_BLOCKER.length)
+      const d = rowsById.get(id)
+      const asks = decisionAsksOf(d?.r.step)
+      if (asked.has(id) || !d || d.r.lane.lane !== 'Completed' || asks.length === 0) continue
+      asked.add(id)
+      needs.push({ id, number: d.number, title: d.r.title, why: BRIEF.needAnswers, asks })
+    }
+  }
   const ahead = chapters.reduce((n, c) => n + c.entries.length, 0)
   return { chapters, needs, done, aside, counts: { done: done.length, ahead, needs: needs.length } }
 }

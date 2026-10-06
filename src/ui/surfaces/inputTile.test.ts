@@ -32,3 +32,17 @@ test('every conditional input is asked on a Direction step, so no step waiting o
   // A new conditional input asked on its own step must fail here, and inputStepIds must then count it.
   for (const stepId of conditionalInputSteps()) assert.ok((ANSWERED_IN[stepId] ?? []).length > 0, `${stepId}: a conditional input no Direction step asks`)
 })
+
+test('a Direction step finished on its required answers is counted once more while a live step waits on its optional one (live check, 2026-10-05)', async () => {
+  const { curatedFixture } = await import('../../roadmap/fixtures/index.ts')
+  const { withFoundationSettled } = await import('../../roadmap/fixtures/run.ts')
+  // The settled demo is the live tenant's case: every Direction step done, the admin
+  // accounts group (2.2) and the emergency account's key (2.3) left unanswered.
+  const steps = runFixture(withFoundationSettled(curatedFixture('demo'))).steps
+  const held = steps.find((s) => s.id === stepIdForGoal('admin-accounts-group-strength'))!
+  assert.ok(held.blockers.some((b) => b.label === 'direction:s-direction-accounts'), 'the premise: 4.5 waits on 2.2')
+  assert.equal(steps.find((s) => s.id === 's-direction-accounts')?.status, 'done', 'the premise: 2.2 is done')
+  const ids = inputStepIds(steps)
+  assert.ok(ids.has('s-direction-accounts') && ids.has('s-direction-devices'), [...ids].join(', '))
+  assert.ok(!ids.has(held.id), 'the step that waits is not counted too: the question is asked in one place')
+})

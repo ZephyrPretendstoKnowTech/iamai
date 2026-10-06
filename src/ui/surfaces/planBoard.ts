@@ -28,6 +28,7 @@ import { schedulingWords } from '../../content/content.ts'
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
 import type { ExportOrder, Step } from '../../roadmap/types.ts'
+import { DIRECTION_BLOCKER } from '../../roadmap/directionAnswers.ts'
 import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { StatusTone } from '../components/index.ts'
 import { content, directionWords, pages } from '../../content/content.ts'
@@ -1355,5 +1356,12 @@ export function groupKeyOf(g: BoardGroup, groups: readonly StepGroup[] = STEP_GR
  * four places ask.
  */
 export function inputStepIds(steps: readonly Step[]): Set<string> {
-  return new Set(steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
+  const live = (s: Step): boolean => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped'
+  const ids = new Set(steps.filter((s) => live(s) && (s.state.condition === 'needs-decision' || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
+  // A Direction step finished on its required answers still asks the optional one a
+  // live step waits on (roadmap/direction.ts gateOnDirection): that is where it is
+  // asked, so it is counted there, once (live check, 2026-10-05: 4.5 waited on 2.2's
+  // admin group while the tile read 0).
+  for (const s of steps) if (live(s) && !s.state.setAside) for (const b of s.blockers) if (b.kind === 'decision' && b.label.startsWith(DIRECTION_BLOCKER)) ids.add(b.label.slice(DIRECTION_BLOCKER.length))
+  return ids
 }
