@@ -269,8 +269,12 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
   protection.items.push(...restrictionProblems.filter(said).map(f => ({ label: f.label, factLabel: f.label, value: f.value, subjectId: f.key, outcome: f.outcome, issueKeys: [`passkey:${f.key}`] })))
   if (reading.resolution?.kind === 'target') {
     const profiles = Array.isArray(reading.resolution.target.passkeyProfiles) ? reading.resolution.target.passkeyProfiles as Record<string, unknown>[] : []
-    const profileAttestationKnown = profiles.length > 0 && profiles.every(profile => profile?.attestationEnforcement === 'registrationOnly')
-    const planned = typeof reading.resolution.target.isAttestationEnforced === 'boolean' ? reading.resolution.target.isAttestationEnforced : profileAttestationKnown ? true : null
+    // On passkey profiles the profiles say what is planned; the top-level flag is
+    // Microsoft's deprecated legacy setting and reads Off beside an enforced
+    // profile (it said "Planned attestation: Off" as a passed check; audit, 2026-10-07).
+    const planned = profiles.length > 0
+      ? (profiles.every(profile => profile?.attestationEnforcement === 'registrationOnly') ? true : null)
+      : typeof reading.resolution.target.isAttestationEnforced === 'boolean' ? reading.resolution.target.isAttestationEnforced : null
     if (typeof planned === 'boolean') protection.items.push({ label: 'Planned attestation', factLabel: 'Planned attestation', value: planned ? 'Required' : 'Off', subjectId: 'planned-attestation', outcome: 'pass' })
     // Device-bound for every user (owner, 2026-10-03): with attestation enforced only a device-bound passkey registers.
     if (planned === true) protection.items.push({ label: 'Planned storage', factLabel: 'Planned storage', value: 'Device-bound only', subjectId: 'planned-storage', outcome: 'pass' })

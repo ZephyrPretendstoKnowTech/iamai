@@ -102,9 +102,15 @@ export function assignedPasskeyProfiles(current: Fido2Configuration): { profiles
   return { profiles: [...ids].flatMap(id => byId.has(id) ? [byId.get(id)!] : []), targets, unknown: [...new Set(unknown)] }
 }
 
-/** The target's passkey types: kept where they already include device-bound (the proposed profile enforces attestation), device-bound otherwise. */
-const targetPasskeyTypes = (current: unknown): unknown =>
-  typeof current === 'string' && current.split(',').some(type => type.trim().toLowerCase() === 'devicebound') ? current : 'deviceBound'
+/**
+ * The target's passkey types: device-bound only, whatever the profile allows
+ * today. Attestation governs registration alone (Microsoft Learn, passkey
+ * profiles: a passkey registered without attestation keeps signing in once
+ * attestation is enforced), so a profile that keeps Synced ticked keeps every
+ * registered synced passkey working. Only unticking Synced stops them, which is
+ * what 1.3's lockout list and its Entra steps say happens (owner, 2026-10-03).
+ */
+const targetPasskeyTypes = (_current: unknown): unknown => 'deviceBound'
 
 function findingsFor(current: Fido2Configuration | null): PasskeyFinding[] {
   const findings: PasskeyFinding[] = []
@@ -121,14 +127,13 @@ function findingsFor(current: Fido2Configuration | null): PasskeyFinding[] {
     if (profile) {
       const types = typeof profile.passkeyTypes === 'string' ? profile.passkeyTypes.split(',').map(x => x.trim().toLowerCase()) : []
       const known = types.length > 0 && types.every(t => t === 'devicebound' || t === 'synced')
-      // The outcome, not the stored flag: synced passkeys cannot be attested, so with
-      // attestation enforced only device-bound passkeys can register, whatever the
-      // stored types say. Graph can keep "deviceBound,synced" while the portal shows
-      // Device-bound, and no portal action changes it, so it is not required. The
-      // allow list is its own check; registered passkeys are checked per account
-      // (passkeyCompatibility.ts).
-      const lockedDown = known && types.includes('devicebound') && attestation === true
-      add(`${key}.types`, 'Passkey Storage', !known ? 'unknown' : types.length === 1 && types[0] === 'devicebound' || lockedDown ? 'pass' : 'fail', !known ? 'Not read' : types.length === 1 && types[0] === 'devicebound' ? 'Device-bound only' : lockedDown ? 'Device-bound registration only' : types.includes('devicebound') ? 'Synced passkeys allowed' : 'Synced passkeys only', `${name}: device-bound passkeys stay in the authenticator that created them. Synced passkeys cannot be attested, so enforced attestation limits registration to device-bound passkeys; each account's registered passkeys are checked separately.`)
+      // The stored types decide sign-in, not attestation: a profile that keeps
+      // Synced ticked keeps every registered synced passkey signing in, even with
+      // attestation enforced (Microsoft Learn, passkey profiles). So the profile
+      // passes only when Device-bound is the one type. Registered passkeys are
+      // checked per account (passkeyCompatibility.ts).
+      const deviceBoundOnly = known && types.length === 1 && types[0] === 'devicebound'
+      add(`${key}.types`, 'Passkey Storage', !known ? 'unknown' : deviceBoundOnly ? 'pass' : 'fail', !known ? 'Not read' : deviceBoundOnly ? 'Device-bound only' : types.includes('devicebound') ? 'Synced passkeys allowed' : 'Synced passkeys only', `${name}: device-bound passkeys stay in the authenticator that created them. A synced passkey keeps signing in until Synced is unticked here; attestation only limits what registers from then on. Each account's registered passkeys are checked separately.`)
     }
     // Key restrictions are the tenant's own (owner, 2026-10-03): IAMAI neither
     // requires an allow list nor removes one, so a readable setting passes.

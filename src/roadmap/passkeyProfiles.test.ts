@@ -70,19 +70,24 @@ test('single unrestricted device-bound profile is collected accurately and alrea
   const tiles = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups)
   assert.equal(tiles.some(row => row.outcome === 'unknown'), false)
   assert.deepEqual(current, original, 'proposal must not mutate observed tenant settings')
-  // The live API can retain both type flags while the portal shows Device-bound,
-  // and no portal action changes the stored value. Synced passkeys cannot be
-  // attested, so with attestation enforced the outcome is device-bound
-  // registration: storage passes and no change to the flag is proposed.
+  // A profile that keeps Synced ticked keeps every registered synced passkey
+  // signing in, attestation or not (Microsoft Learn, passkey profiles: only
+  // unticking Synced stops them). So the storage check fails and the target
+  // proposes Device-bound alone, as 1.3's Entra steps and lockout list say
+  // (audit, 2026-10-07: the target used to keep "deviceBound,synced").
   const observed = structuredClone(current)
   observed.passkeyProfiles[0].passkeyTypes = 'deviceBound,synced'
   const observedSnapshot = scan(observed)
   const storage = passkeyFindingsOf(observedSnapshot).find(row => row.key.endsWith('.types'))!
-  assert.equal(storage.value, 'Device-bound registration only')
-  assert.equal(storage.outcome, 'pass')
+  assert.equal(storage.value, 'Synced passkeys allowed')
+  assert.equal(storage.outcome, 'fail')
   const resolution = passkeyReadingOf(observedSnapshot).resolution
   assert.equal(resolution?.kind, 'target')
-  if (resolution?.kind === 'target') assert.equal((resolution.target.passkeyProfiles as any[])[0].passkeyTypes, 'deviceBound,synced')
+  if (resolution?.kind === 'target') assert.equal((resolution.target.passkeyProfiles as any[])[0].passkeyTypes, 'deviceBound')
+  // The card's planned line reads the profile, never Microsoft's deprecated top-level flag.
+  const plannedTiles = journeyPasskeyFindings(observedSnapshot, f.mapping, f.groups)
+  const plannedLine = plannedTiles.flatMap(row => row.items ?? []).find(item => item.factLabel === 'Planned attestation')
+  assert.equal(plannedLine?.value, 'Required')
   // An existing synced key is still judged per account: it is not an approved emergency passkey.
   const syncedId = observedSnapshot.users[0].id
   observedSnapshot.authMethods = Object.fromEntries(observedSnapshot.users.map(user => [user.id, []]))
@@ -214,8 +219,8 @@ test('an unambiguous assigned profile mismatch produces an executable per-profil
   assert.equal(reading.resolution?.kind, 'target')
   if (reading.resolution?.kind === 'target') {
     const proposed = (reading.resolution.target.passkeyProfiles as any[])[0]
-    // Enforcing attestation already limits registration to device-bound passkeys; the stored flag is kept.
-    assert.equal(proposed.passkeyTypes, 'deviceBound,synced')
+    // Device-bound alone: a profile that keeps Synced keeps registered synced passkeys working.
+    assert.equal(proposed.passkeyTypes, 'deviceBound')
     assert.equal(proposed.attestationEnforcement, 'registrationOnly')
     assert.deepEqual(proposed.keyRestrictions, current.passkeyProfiles[0].keyRestrictions, 'the tenant\'s key restrictions are kept as they are')
     assert.ok(reading.differs.includes('passkeyProfiles'))
