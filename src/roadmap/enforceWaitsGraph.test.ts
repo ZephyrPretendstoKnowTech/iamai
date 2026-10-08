@@ -45,6 +45,9 @@ test('on every fixture, each open policy waits on exactly the open step prerequi
       const byId = new Map(run.steps.map((s) => [s.id, s]))
       const conditions = graphConditions(byId, f.mapping)
       for (const s of run.steps.filter(open)) {
+        // Jon's BreakGlass policy's turn-on waits come from its own gates (emergencyStrongGates.ts:
+        // the other account excluded everywhere, through Configure Emergency Exclusions), not the playbook.
+        if (s.goalId === 'emergency-account-strong-signin') continue
         const want = new Set<string>()
         for (const e of EDGES) {
           if (e.step !== s.id || e.action !== 'enforce' || e.prerequisiteKind !== 'step' || e.milestone !== 'complete') continue

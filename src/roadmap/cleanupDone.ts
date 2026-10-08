@@ -462,7 +462,12 @@ export function recoveryAccountBasis(snapshot: TenantSnapshot, accountIds: reado
     const methods = snapshot.authMethods[id]
     if (!u || !methods || methods === 'unknown' || snapshot.config.authMethodsPolicy.fido2Read?.status === 'error') continue
     let unresolvedTarget = false
+    // The plan's own BreakGlass policy reaches this account on purpose and is turned on only
+    // after a recorded recovery sign-in (emergencyStrongGates.ts): it is not a change to the
+    // account's way back in, so it never resets the drill (audit, 2026-10-07).
+    const accepted = mapping ? acceptedEmergencyStrongPolicy(snapshot.tenantId, mapping) : () => false
     const policies = (snapshot.config.caPolicies?.rows ?? []).filter(raw => {
+      if (accepted(raw)) return false
       const p = raw as Record<string, any>
       const targets = p.conditions?.users ?? {}
       const direct = (targets.includeUsers ?? []).some((value: string) => value === 'All' || value.toLowerCase() === id.toLowerCase())

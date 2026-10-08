@@ -2679,7 +2679,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // policy before the plan's foundation, the exclusions group, is chosen and
     // usable (owner: every policy waits for it). They wait on the step that makes
     // it as every other policy does; nothing of theirs names it.
-    if (AGENT_GOALS.has(goal.id) && policyUsableExclusionsGroupId === null && (action.resolution?.policies ?? []).length > 0) {
+    // Jon's BreakGlass policy excludes no group either (emergencyStrongAccount.ts: the
+    // account it includes is in the group), and waits the same way (audit, 2026-10-07).
+    if ((AGENT_GOALS.has(goal.id) || goal.id === EMERGENCY_STRONG_GOAL) && policyUsableExclusionsGroupId === null && (action.resolution?.policies ?? []).length > 0) {
       action = { ...action, json: null, missing: [...(action.missing ?? []).filter((m) => m.token !== '{exclusionsGroup}'), { token: '{exclusionsGroup}', stepId: PLACEHOLDER_STEP['{exclusionsGroup}'] }] }
       blockPlaceholder('{exclusionsGroup}')
     }

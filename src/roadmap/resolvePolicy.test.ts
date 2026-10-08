@@ -528,6 +528,7 @@ test('portal, JSON, PowerShell and download carry the one resolved body, with th
   const groupName = 'Core - Exclusions'
   let checked = 0
   for (const { step, portal } of rows) {
+    if (step.goalId === 'emergency-account-strong-signin') continue // excludes no group on purpose (emergencyStrongAccount.test.ts)
     if (!jsonOffered(step)) continue
     // One body, or a pair's two (Require MFA for Guests creates both of the baseline's), each checked on its own.
     const json = policyJson(step) as Record<string, unknown> | Record<string, unknown>[]
@@ -595,7 +596,7 @@ test('emergency access and the exclusions group are unchanged outside policy res
     for (const id of f.mapping.breakGlassUserIds) assert.doesNotMatch(text, new RegExp(id, 'i'), `${p.displayName}: resolution names no emergency account`)
   }
   const names = new Set(f.mapping.breakGlassUserIds.map((id) => r.input.names!.label(id)))
-  for (const { step, portal } of rows) for (const line of portal ?? []) for (const n of names) assert.ok(!line.includes(n), `${step.id}: no emergency account named on a portal line`)
+  for (const { step, portal } of rows) for (const line of portal ?? []) for (const n of names) assert.ok(step.goalId === 'emergency-account-strong-signin' || !line.includes(n), `${step.id}: no emergency account named on a portal line`)
 })
 
 

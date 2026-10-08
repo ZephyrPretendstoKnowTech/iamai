@@ -38,11 +38,15 @@ test('a Direction step finished on its required answers is counted once more whi
   const { withFoundationSettled } = await import('../../roadmap/fixtures/run.ts')
   // The settled demo is the live tenant's case: every Direction step done, the admin
   // accounts group (2.2) and the emergency account's key (2.3) left unanswered.
-  const steps = runFixture(withFoundationSettled(curatedFixture('demo'))).steps
+  // The admin accounts group is asked only where the scan read a PIM-eligible admin (owner, 2026-10-07).
+  const eligible = curatedFixture('demo')
+  eligible.snapshot.roles = { ...eligible.snapshot.roles, eligible: { [eligible.snapshot.users[3].id]: ['62e90394-69f5-4237-9190-012177145e10'] } }
+  const steps = runFixture(withFoundationSettled(eligible)).steps
   const held = steps.find((s) => s.id === stepIdForGoal('admin-accounts-group-strength'))!
   assert.ok(held.blockers.some((b) => b.label === 'direction:s-direction-accounts'), 'the premise: 4.5 waits on 2.2')
   assert.equal(steps.find((s) => s.id === 's-direction-accounts')?.status, 'done', 'the premise: 2.2 is done')
   const ids = inputStepIds(steps)
-  assert.ok(ids.has('s-direction-accounts') && ids.has('s-direction-devices'), [...ids].join(', '))
+  // Decide How and Where People Sign In asks no optional question any more (owner, 2026-10-07), so only 2.2 is counted again.
+  assert.ok(ids.has('s-direction-accounts') && !ids.has('s-direction-devices'), [...ids].join(', '))
   assert.ok(!ids.has(held.id), 'the step that waits is not counted too: the question is asked in one place')
 })

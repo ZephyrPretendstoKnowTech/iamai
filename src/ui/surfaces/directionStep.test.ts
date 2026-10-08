@@ -132,10 +132,10 @@ test('the text fixes the owner approved on the frozen steps, 2026-09-20: the six
     for (const line of lines) {
       const plain = line.replace(/\*\*/g, '').trim()
       assert.ok(/\s/.test(plain.replace(/[:.]$/, '').trim().split(/(?<=[a-z]) /)[0] ?? '') || plain.split(/\s+/).length > 6, `a numbered line that instructs nothing: ${plain}`)
-      assert.doesNotMatch(plain, /^(Compatible alternative|Replacement registration[^:]*)$/, `a section title is numbered as an instruction: ${plain}`)
+      assert.doesNotMatch(plain, /^(Someone who keeps another way in|Someone with no other way in)$/, `a section title is numbered as an instruction: ${plain}`)
     }
-    assert.match(lines.join('\n'), /Compatible alternative:\*\* sign in with the registered compatible alternative/)
-    assert.match(lines.join('\n'), /Replacement registration, only if needed:\*\* where no compatible alternative is registered/)
+    assert.match(lines.join('\n'), /Someone who keeps another way in:\*\* have them sign in with it once/)
+    assert.match(lines.join('\n'), /Someone with no other way in:\*\* register a replacement device-bound passkey/)
     // The copied text numbers every line, as it always did.
     const numbers = [...emergencyTaskText(task, task.defaultVariantId).matchAll(/^(\d+)\. /gm)].map((m) => Number(m[1]))
     assert.deepEqual(numbers, numbers.map((_, i) => i + 1))

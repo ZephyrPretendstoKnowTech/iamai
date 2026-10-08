@@ -649,6 +649,7 @@ test('L4. the upgraded tenant, end to end: nothing the legacy record touches rea
   assert.ok(offered.length > 0, 'and policy generation receives the group')
   const evidence = { groupMembers: Object.fromEntries([...f.groups].map(([id, g]) => [id.toLowerCase(), g.memberIds])) }
   for (const s of offered) {
+    if (s.goalId === 'emergency-account-strong-signin') continue // Jon's BreakGlass policy excludes no group and reaches one emergency account on purpose
     // A policy that reaches no person (an agent block, owner 2026-10-04) takes no
     // exclusions group: Microsoft's agent policies cannot exclude a user group.
     // Every emergency account is structurally out of it all the same (below).

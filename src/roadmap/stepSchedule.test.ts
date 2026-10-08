@@ -144,7 +144,8 @@ test('a real prerequisite still holds creation: a missing object, an unverified 
   // Sign In now, a Direction answer (roadmap/direction.ts gateOnDirection), covered below.
   const open = runFixture(noExclusionsAnswer(omitted(fixture('demo'))))
   assert.equal(open.steps.find((s) => s.id === EXCLUSIONS)!.state.condition, 'needs-decision', 'the premise: the decision is open')
-  const waiting = open.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.blockers.some((b) => b.kind === 'step' && b.stepId === EXCLUSIONS))
+  // A step set aside (4.5 without a PIM-eligible admin, owner 2026-10-07) is scheduled as set aside, not as waiting.
+  const waiting = open.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && !s.state.setAside && s.blockers.some((b) => b.kind === 'step' && b.stepId === EXCLUSIONS))
   assert.ok(waiting.length > 0, 'the premise: policies wait on the open decision')
   for (const s of waiting) {
     assert.equal(s.scheduled!.class, 'waiting', `${s.id}: a decision that may redefine the policy comes before it is created`)

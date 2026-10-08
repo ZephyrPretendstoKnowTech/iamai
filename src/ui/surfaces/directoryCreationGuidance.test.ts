@@ -21,12 +21,12 @@ test('directory creation explains missing tabs and the actual wait in both sampl
     const body = stepBodyOf(step, ctx)
     assert.ok(!body.artifacts.some((a) => a.id === 'ps' || a.id === 'json'), `${name}: the safety gate still withholds the tabs`)
     const task = body.emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!.steps.join('\n')
-    assert.match(task, /tabs are not available yet/)
+    assert.match(task, /created from the \*\*PowerShell\*\* or \*\*JSON\*\* tab/)
     assert.match(task, name === 'demo' ? /Create or Correct Service Accounts Group/ : /Confirm What You Use/)
     assert.match(task, /Tasks Remaining.*Scan to update the plan/)
-    assert.match(task, /once its tab appears/)
+    assert.match(task, /Those tabs appear once/)
     assert.doesNotMatch(task, /so create this policy from/)
-    const instruction = body.emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!.steps.find((line) => line.includes('tabs are not available yet'))!
+    const instruction = body.emergencyAccountTasks!.tasks.find((t) => t.id === 'create')!.steps.find((line) => line.includes('Those tabs appear once'))!
     assert.ok(body.artifacts.find((a) => a.id === 'portal')!.text().includes(instruction), 'the displayed and copied Entra instruction agree')
   }
 })

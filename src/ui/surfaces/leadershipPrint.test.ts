@@ -276,8 +276,8 @@ test('a decision under What we need from you lists the questions it still waits 
   const use = brief.needs.find((n) => n.id === 's-direction-use')!
   assert.equal(use.why, 'Answers needed on:')
   assert.deepEqual(use.asks, ['Azure Virtual Desktop', 'Limit SharePoint and OneDrive to the office network', 'Inforcer', 'Devices or apps that send email by signing in (printers, scanners, line-of-business apps)', 'Partner or MSP technicians who sign in to your tenant'])
-  // The optional emergency-account question (owner, 2026-10-05) is still there to answer, as the admin accounts groups are.
-  assert.deepEqual(brief.needs.find((n) => n.id === 's-direction-devices')!.asks, ['Company computers', 'Phones', 'Office network', 'Which emergency account must use its security key?'])
+  // The emergency-account question is gone (owner, 2026-10-07): the policy includes the first saved account.
+  assert.deepEqual(brief.needs.find((n) => n.id === 's-direction-devices')!.asks, ['Company computers', 'Phones', 'Office network'])
   assert.equal(decisionAsksOf({ directionQuestions: undefined }).length, 0, 'a decision with no questions of its own asks nothing')
   assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /<span className="brief-why">\{n\.why\}<\/span>\n\s+\{n\.asks && \(\n\s+<ul className="brief-asks">/)
 })
@@ -360,7 +360,10 @@ test('the plan by day turns on no policy the plan leaves in Report-only for you,
 })
 
 test('What we need from you lists a finished Direction step whose optional question a live step waits on, once, with the question (live check, 2026-10-05)', () => {
-  const { brief } = briefFor(withFoundationSettled(curatedFixture('demo')))
+  // The admin accounts group is asked only where the scan read a PIM-eligible admin (owner, 2026-10-07).
+  const eligible = curatedFixture('demo')
+  eligible.snapshot.roles = { ...eligible.snapshot.roles, eligible: { [eligible.snapshot.users[3].id]: ['62e90394-69f5-4237-9190-012177145e10'] } }
+  const { brief } = briefFor(withFoundationSettled(eligible))
   const accounts = brief.needs.filter((n) => n.id === 's-direction-accounts')
   assert.equal(accounts.length, 1, brief.needs.map((n) => n.id).join(', '))
   assert.equal(accounts[0]!.why, BRIEF.needAnswers)

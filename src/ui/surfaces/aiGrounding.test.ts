@@ -107,7 +107,7 @@ test('a policy briefing names the tenant policy, its state and resolved exclusio
     const o = opened('demo-week2', 's-goal-intune-enrollment-reauth')
     const { facts } = split(o.ai)
     assert.match(facts, /On Hold|Up Next|Ready/, 'briefing retains the current plan state')
-    assert.match(facts, /Report-only, watched since/, 'the briefing names the current observation start')
+    assert.match(facts, /Report-only since/, 'the briefing names the current observation start')
     const scanDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(o.f.snapshot.asOf))
     assert.ok(facts.includes(scanDate), 'the briefing dates its evidence from the actual scan')
     assert.match(facts, new RegExp(`^${F.currentState}: ${CONTRACT.lifecycle['report-only']}$`, 'm'))

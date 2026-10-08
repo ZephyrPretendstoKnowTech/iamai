@@ -82,7 +82,8 @@ const RECOGNISED_BUT_IGNORED = /^a field IAMAI recognised but did not read: /
 const fixtures = allFixtures()
 /** Every fixture's plan, derived once: the runs are memoised, the open policies are not. */
 const runs = fixtures.map((f) => ({ f, r: runFixture(f) }))
-const openPolicies = (steps: Step[]): Step[] => steps.filter((s) => isOpenPolicy(s))
+// Jon's BreakGlass policy reaches one emergency account on purpose (emergencyStrongAccount.test.ts): every reading below is about the rest.
+const openPolicies = (steps: Step[]): Step[] => steps.filter((s) => isOpenPolicy(s) && s.goalId !== 'emergency-account-strong-signin')
 
 // ---- 1a: the rollout cohort, at the generator ----
 //
@@ -1008,6 +1009,7 @@ test('no policy IAMAI writes names an emergency account, in any clause, on any f
     const bg = new Set(f.mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
     if (bg.size === 0) continue
     for (const s of r.steps) {
+      if (s.goalId === 'emergency-account-strong-signin') continue // reaches one emergency account on purpose
       if ((s.action.resolution?.policies ?? []).length === 0) continue
       const named = usersNamedByOperations(s)
       // A create submits a whole body: nothing IAMAI wrote may name them.
@@ -1122,6 +1124,7 @@ function assertNoFallback(steps: Step[], f: Fixture, why: string): void {
   const bg = new Set(f.mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
   let held = 0
   for (const s of steps) {
+    if (s.goalId === 'emergency-account-strong-signin') continue // reaches one emergency account on purpose
     for (const o of s.action.resolution?.policies ?? []) {
       const users = ((o.body as { conditions?: { users?: Record<string, unknown> } }).conditions?.users ?? {}) as Record<string, unknown>
       for (const clause of ['includeUsers', 'excludeUsers'] as const) {

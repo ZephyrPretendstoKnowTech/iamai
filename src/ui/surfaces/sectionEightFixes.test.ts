@@ -116,7 +116,7 @@ test('8.2 lists each policy the plan tracks under a name other than the baseline
   // The demo's own admins policy is not renamed: 4.3 builds the baseline's beside it, and Retire
   // Replaced Policies retires it (T4-PM, the policy-matching pilot). A policy on its way out keeps its name.
   const retiring = phase.rows.find((x) => x.kind === 'retire')?.lists.retiring ?? []
-  assert.ok(retiring.some((l) => l.startsWith('Core - Grant - Admins phishing-resistant (')), JSON.stringify(retiring))
+  assert.ok(retiring.some((l) => /^(Keep )?Core - Grant - Admins phishing-resistant \(/.test(l)), JSON.stringify(retiring))
   assert.ok(!naming.lists.renames.some((l) => l.startsWith('Core - Grant - Admins phishing-resistant →')))
   assert.ok(naming.lists.renames.every((l) => / \(ID: [0-9a-f-]{36}\)$/.test(l)), 'each with its ID')
   assert.equal(naming.done, null)

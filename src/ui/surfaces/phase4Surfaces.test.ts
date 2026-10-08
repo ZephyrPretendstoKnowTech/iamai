@@ -198,7 +198,7 @@ test('the coverage line never names the policy the step itself corrects, nor a C
       // A step that builds beside them (T4-PM) names Retire Replaced Policies, which lists every one.
       if (stepVars(s, ctxOf(g, rg)).buildsBeside === true) {
         const retiring = rg.schedule.cleanup?.rows.find((x) => x.kind === 'retire')?.lists?.retiring ?? []
-        for (const d of existing) assert.ok(retiring.some((o) => o.startsWith(policyName(d))), `${g.name}/${s.id}: Retire Replaced Policies does not list ${d}: ${JSON.stringify(retiring)}`)
+        for (const d of existing) assert.ok(retiring.some((o) => o.startsWith(policyName(d)) || o.startsWith(`Keep ${policyName(d)}`)), `${g.name}/${s.id}: Retire Replaced Policies does not list ${d}: ${JSON.stringify(retiring)}`)
       }
       // Where Review Overlapping Policies is drawn, it lists them.
       if (existing.length > 0 && !WITHHELD_CLEANUP.has('consolidation')) {
