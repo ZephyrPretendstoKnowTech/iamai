@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "Application not in your tenant",
+      "state": "Inforcer"
+    },
+    {
       "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
     },
