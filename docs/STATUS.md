@@ -73,6 +73,22 @@ Everything else is either a working document it links to, or history in
     picker marks created policies, Retire keeps a stricter policy on its own line, the optional
     Direction notes, 1.3's affected-passkey task, 6.3 names countries;
   - the follow-up sample approves its device answers so it shows the plan moving.
+- **The 2026-10-07 live check on the owner's work dev tenant** (E5, 30 policies, two passkey
+  profiles layered on purpose; walked through the planner and the Entra portal read-only,
+  then built overnight on the owner's "do everything you can tonight"):
+  - Connect's scan tile and the Inventory policies table name the policies Microsoft Graph's
+    v1.0 API does not return (two "Require risk remediation" policies there), so the count
+    an MSP checks first is explained;
+  - a policy card keeps the Emergency Access card anatomy on every own policy task step; a
+    prerequisite tile never repeats the card's reason; an unmeasured readiness names the
+    Authentication Strength step it waits on;
+  - the countries lockout warning runs only on a saved list; a Retire line names the step it
+    keeps the policy for; a blocked policy's next milestone is the row's wait, never the
+    step's own title; Connect says in plain words when a sign-in came back to a page that
+    had not started it (MSAL state_mismatch).
+  - Left for the owner as product calls (review list in the session): declining a baseline
+    setting with a reason, Retire and Housekeeping on a tenant with its own complete design,
+    1.3 on layered passkey profiles.
 - **Next:** the owner merges `v1.1` to `main` (planned 2026-10-08 06:00); the live tests in
   plan section 8 remain the owner's.
 - **Owner decisions of 2026-10-03, binding for v1.1:**
