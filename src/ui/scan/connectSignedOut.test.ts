@@ -41,8 +41,8 @@ test('tile 1 signed out: no tenant connected, the Global Reader line with the co
   assert.equal(t.state, 'no tenant connected')
   assert.equal(t.tone, null)
   assert.equal(t.lead, null)
-  assert.ok(t.note?.startsWith('Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing. '))
-  assert.ok(t.note?.endsWith(CONSENT), 'the consent sentence ends the line')
+  // The Global Reader paragraph under Sign in is gone (owner, 2026-10-08: a wall of text on Connect); the consent disclosure below it stays.
+  assert.equal(t.note, null)
   assert.deepEqual(t.actions, [
     { label: 'Sign in with Microsoft', weight: 'primary' },
     { label: 'Try it with sample data', weight: 'secondary' },
@@ -111,7 +111,7 @@ test('a sign-in error is one of three states from the MSAL error code, and a fai
     assert.equal(x.lead, null)
     // F-057: a sign-in usually stops on Microsoft's consent screen, so the Global Reader and consent paragraph stays.
     assert.equal(x.note, signInTile({ error: null }).note)
-    assert.match(x.note ?? '', /Consent on behalf of your organization/)
+    assert.equal(x.note, null, 'no paragraph under a failed sign-in either')
     assert.equal(signInTile({ error: { kind: 'failed', message: 'AADSTS65004: User declined to consent' } }).note, x.note, 'and on a failed sign-in')
     assert.deepEqual(
       x.actions.map((a) => a.weight),

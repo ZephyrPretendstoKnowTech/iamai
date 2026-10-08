@@ -593,7 +593,7 @@ function SignedIn({
           }
         >
           <p>{lead(upn, t1.line)}</p>
-          <p className="quiet">{t1.note}</p>
+          {t1.note && <p className="quiet">{t1.note}</p>}
           {tile1.error && <p className="quiet" role="status">{tile1.error}</p>}
         </Step>
         <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} busy={baselineBusy} setBusy={setBaselineBusy} />

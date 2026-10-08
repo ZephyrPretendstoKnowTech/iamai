@@ -349,7 +349,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (signed out): the heading, the sign-in tile with the consent sentence, Sign in with Microsoft and Try it with sample data', t.includes(CONTENT_PAGES.connect.h1) && /Sign in\s+no tenant connected/.test(t) && /Consent on behalf of your organization. on Microsoft.s screen; after that, Global Reader is enough/.test(t) && /Sign in with Microsoft/.test(t) && /Try it with sample data/.test(t) && !/Built for|What it catches|Connect a tenant/.test(t))
+  check('Connect (signed out): the heading, the sign-in tile without the Global Reader paragraph (owner, 2026-10-08), Sign in with Microsoft and Try it with sample data', t.includes(CONTENT_PAGES.connect.h1) && /Sign in\s+no tenant connected/.test(t) && !/Global Reader is the least privilege/.test(t) && /What IAMAI asks for, and how to remove it/.test(t) && /Sign in with Microsoft/.test(t) && /Try it with sample data/.test(t) && !/Built for|What it catches|Connect a tenant/.test(t))
 
   // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })

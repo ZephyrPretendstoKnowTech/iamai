@@ -52,7 +52,7 @@ type Words = {
       failed: { state: string; lead: string; webRedirect: string; stale: string; details: string }
     }
   }
-  account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
+  account: { title: string; line: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
   baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; sourceVersion: string; sourceUploaded: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; load: string; howToMakeOne: string; updateUnknown: string }
   scan: {
     title: string
@@ -160,7 +160,7 @@ export function signInTile({ error }: { error: SignInError | null }): SignInTile
   // the disclosure and the consent screen cannot say different things.
   const rows = consentRows()
   const base = { n: 1 as const, title: S.title, permissions: { summary: S.permissionsSummary, lead: fillText(S.consentLead, { n: rows.length }), rows, removal: S.removal } }
-  if (!error) return { ...base, state: S.state, tone: null, lead: null, note: W.account.note, actions: [signIn, demo] }
+  if (!error) return { ...base, state: S.state, tone: null, lead: null, note: null, actions: [signIn, demo] }
   switch (error.kind) {
     case 'consent':
       return { ...base, state: S.errors.consent.state, tone: 'wait', lead: fillText(S.errors.consent.lead, { domain: error.domain ?? S.errors.consent.thisTenant }), note: null, actions: [signIn, demo] }
@@ -169,21 +169,21 @@ export function signInTile({ error }: { error: SignInError | null }): SignInTile
     // Cancelled and failed keep the Global Reader and consent paragraph: a sign-in
     // usually stops on Microsoft's consent screen, which is what it explains (F-057).
     case 'cancelled':
-      return { ...base, state: S.errors.cancelled.state, tone: null, lead: null, note: W.account.note, actions: [signIn, demo] }
+      return { ...base, state: S.errors.cancelled.state, tone: null, lead: null, note: null, actions: [signIn, demo] }
     case 'failed':
       // "Microsoft answered:" only over something Microsoft said.
       // A redirect registered under Web, not Single-page application (AADSTS9002326): said
       // plainly with its fix, Microsoft's text under the toggle (live check, 2026-10-05).
-      if (error.message && /\bAADSTS9002326\b/.test(error.message)) return { ...base, state: S.errors.failed.state, tone: 'stop', lead: S.errors.failed.webRedirect, detail: { summary: S.errors.failed.details, text: error.message }, note: W.account.note, actions: [signIn, demo] }
+      if (error.message && /\bAADSTS9002326\b/.test(error.message)) return { ...base, state: S.errors.failed.state, tone: 'stop', lead: S.errors.failed.webRedirect, detail: { summary: S.errors.failed.details, text: error.message }, note: null, actions: [signIn, demo] }
       // A sign-in that came back to a page that had not started it (MSAL state_mismatch;
       // live check, 2026-10-07): what happened and what to do, the library's text under the toggle.
-      if (error.stale) return { ...base, state: S.errors.failed.state, tone: 'stop', lead: S.errors.failed.stale, detail: { summary: S.errors.failed.details, text: error.message }, note: W.account.note, actions: [signIn, demo] }
-      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: error.message ? fillText(S.errors.failed.lead, { message: error.message }) : null, note: W.account.note, actions: [signIn, demo] }
+      if (error.stale) return { ...base, state: S.errors.failed.state, tone: 'stop', lead: S.errors.failed.stale, detail: { summary: S.errors.failed.details, text: error.message }, note: null, actions: [signIn, demo] }
+      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: error.message ? fillText(S.errors.failed.lead, { message: error.message }) : null, note: null, actions: [signIn, demo] }
   }
 }
 
 // ---- 1 Signed in ----
-export type AccountTile = { n: 1; title: string; state: string; tone: Tone; line: string; note: string; actions: Action[] }
+export type AccountTile = { n: 1; title: string; state: string; tone: Tone; line: string; note: string | null; actions: Action[] }
 export function accountTile({ tenant, upn, role }: { tenant: string; upn: string; role: string | null }): AccountTile {
   return {
     n: 1,
@@ -191,7 +191,7 @@ export function accountTile({ tenant, upn, role }: { tenant: string; upn: string
     state: tenant,
     tone: 'done',
     line: role ? fillText(W.account.line, { upn, role }) : upn,
-    note: W.account.note,
+    note: null,
     actions: [
       { label: W.account.signInAnother, weight: 'secondary' },
       { label: W.account.signOut, weight: 'tertiary' },
