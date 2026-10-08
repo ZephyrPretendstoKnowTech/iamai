@@ -75,8 +75,14 @@ export function operatorConfirmedEmergency(state: Pick<MappingState, 'assumed'>)
 export function emergencyStrongAccountOf(state: Pick<MappingState, 'emergencyStrongAccountId' | 'breakGlassUserIds'>): string | null {
   const id = state.emergencyStrongAccountId
   const confirmed = state.breakGlassUserIds ?? []
-  if (typeof id !== 'string' || id === '' || confirmed.length < 2) return null
-  return confirmed.find((x) => x.toLowerCase() === id.toLowerCase()) ?? null
+  if (confirmed.length < 2) return null
+  // A saved choice is kept; otherwise the first emergency account saved in
+  // Prepare Emergency Access Accounts (owner, 2026-10-07: the question that asked
+  // which account was taken off Decide How and Where People Sign In; which of the
+  // two the policy includes makes no difference, as long as the other stays
+  // excluded from everything).
+  const saved = typeof id === 'string' && id !== '' ? confirmed.find((x) => x.toLowerCase() === id.toLowerCase()) ?? null : null
+  return saved ?? confirmed[0]
 }
 
 /** The ids a record kept without proof anybody chose them: offered again, never used. */

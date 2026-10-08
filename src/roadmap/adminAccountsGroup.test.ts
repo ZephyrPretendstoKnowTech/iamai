@@ -48,10 +48,22 @@ const GROUP_A = '0000a0d0-0000-4000-8000-0000000000c1'
 const GROUP_B = '0000a0d0-0000-4000-8000-0000000000c2'
 const ACCOUNTS = 's-direction-accounts'
 const WAIT = 'direction:s-direction-accounts'
+const GLOBAL_ADMIN = '62e90394-69f5-4237-9190-012177145e10'
+
+/**
+ * The sample with one person eligible for Global Administrator in PIM: the one
+ * case the group policy adds something (owner, 2026-10-07), so the question is
+ * asked and the step is on the plan. The demo itself has nobody eligible.
+ */
+function withEligible(f: Fixture): Fixture {
+  const snapshot = structuredClone(f.snapshot)
+  snapshot.roles = { ...snapshot.roles, eligible: { [snapshot.users[3].id]: [GLOBAL_ADMIN] } }
+  return { ...f, snapshot }
+}
 
 /** The sample, settled, with Identify Service and Shared Accounts approved: the admin accounts groups `groups`, none for left empty. */
 function answered(groups: string[] = []): Fixture {
-  const f = withFoundationSettled(fixture('demo'))
+  const f = withEligible(withFoundationSettled(fixture('demo')))
   const d2 = runFixture(f).steps.find((s) => s.id === ACCOUNTS)!
   const answers: Record<string, DirectionAnswer> = {}
   for (const q of d2.directionQuestions ?? []) answers[q.key] = q.saved ?? q.suggested
@@ -110,8 +122,18 @@ test('ADM-Users: the interpretation reads Jon’s admin-accounts group as the op
   assert.equal(Object.entries(PINNED_GOAL_MAP).filter(([, keys]) => keys.includes(POLICY_ID)).length, 1, 'its own goal’s and no other’s')
 })
 
-test('ADM-Users: Identify Service and Shared Accounts asks which group holds the admin accounts, optional, suggesting nothing; left empty, only this step waits', () => {
+test('ADM-Users: without a PIM-eligible admin the question is not asked and the step does not apply, with the footer saying why (owner, 2026-10-07)', () => {
   const r = runFixture(fixture('demo'))
+  assert.equal(stepOf(r.steps, ACCOUNTS).directionQuestions!.some((x) => x.key === 'adminAccounts'), false, 'the demo has nobody eligible in PIM')
+  const s = stepOf(r.steps, ADM_STEP)
+  assert.equal(s.state.setAside, true)
+  assert.match(s.doesntApply ?? '', /no admin who is only eligible in PIM/)
+  assert.equal(s.blockers.some((b) => b.kind === 'decision' && b.label === WAIT), false, 'nothing waits on an answer nobody is asked')
+  assert.equal(stepOf(r.steps, 's-create-report-only').reportOnlyBatch?.create.includes(ADM_STEP), false)
+})
+
+test('ADM-Users: Identify Service and Shared Accounts asks which group holds the admin accounts, optional, suggesting nothing; left empty, only this step waits', () => {
+  const r = runFixture(withEligible(fixture('demo')))
   const d2 = stepOf(r.steps, ACCOUNTS)
   const q = d2.directionQuestions!.find((x) => x.key === 'adminAccounts')
   assert.ok(q, 'the question is on Identify Service and Shared Accounts')
@@ -121,7 +143,7 @@ test('ADM-Users: Identify Service and Shared Accounts asks which group holds the
   assert.equal(q.askedWhen, undefined, 'asked always')
   assert.deepEqual(q.suggested, { value: 'groups', picked: [] }, 'nothing is suggested: the scan cannot tell which group holds them')
   assert.equal(q.evidence, '')
-  assert.equal(q.note, 'Leave it empty and only Require a Strong Sign-in for Your Admin Accounts Group waits for it.')
+  assert.match(q.note ?? '', /^Only Require a Strong Sign-in for Your Admin Accounts Group waits for this answer/)
   // Approved with it empty: the step is settled and the foundation goes ahead.
   const run = runFixture(answered())
   const accounts = stepOf(run.steps, ACCOUNTS)

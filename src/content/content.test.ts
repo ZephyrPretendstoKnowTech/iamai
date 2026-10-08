@@ -357,6 +357,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.connect.signIn.errors.failed.webRedirect',
   // The status strip over a scan that stopped (scan/connectView.ts connectStatus; 2026-10-06).
   '.pages.connect.status.failed',
+  // Require a Strong Sign-in for Your Admin Accounts Group's Doesn't-apply reason where the
+  // scan read no PIM-eligible admin (generate.ts; owner, 2026-10-07): the example tenant's
+  // step is set aside, and the review page renders no footer reason.
+  '.steps[15].noEligibleAdmins',
   '.steps[63].oneAccount',
   '.steps[63].turnOnWaits.drilled',
   '.steps[63].turnOnWaits.method',

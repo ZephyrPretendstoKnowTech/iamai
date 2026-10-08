@@ -4,7 +4,7 @@ import { REGISTER_DEVICE, createdOn } from './evidenceStrategy.ts'
 import { blockedCountriesCompanion, externalAuthTargetsOf, goalMapInUse, unusedCompanionKeys } from '../coverage/companions.ts'
 import { followUpIdsOf, settleFollowUp } from './followUp.ts'
 import { addWorkflowSteps } from './workflows.ts'
-import { countDirectionImpact, directionSteps, directionTitleOf } from './direction.ts'
+import { countDirectionImpact, directionSteps, directionTitleOf, pimEligibleAdmins } from './direction.ts'
 import type { DirectionStepId } from './directionAnswers.ts'
 import dependencyData from '../actionability/dependency-data.json' with { type: 'json' }
 import { SERVICE_KEYS, answeredReasonOf, everyoneRemote, isDirectionStep, officeLocationsCreated, savedAnswerOf, trustedIpLocations } from './directionAnswers.ts'
@@ -3892,6 +3892,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         strong.guidance = words
         strong.title = words.title ?? strong.title
       }
+    }
+  }
+  // Jon's ADM-Users (owner, 2026-10-07): a policy on the admin accounts group
+  // adds something only where an admin is eligible in PIM and not active, whom a
+  // policy on the roles reaches once they activate. Where the scan read no such
+  // admin, the step does not apply, and the footer says why; the group question
+  // is not asked either (direction.ts pimEligibleAdmins).
+  {
+    const adm = steps.find((s) => s.goalId === 'admin-accounts-group-strength')
+    if (adm !== undefined && adm.status !== 'skipped' && adm.status !== 'done' && !pimEligibleAdmins(snapshot)) {
+      const reason = (contentStepById['admin-accounts-group-strength'] as { noEligibleAdmins?: string } | undefined)?.noEligibleAdmins ?? ''
+      adm.doesntApply = reason
+      adm.doesntApplyByAnswer = true
+      adm.skipReason = reason
+      setState(adm, { setAside: true })
     }
   }
   // A step set aside above is rolled out in no rings: they were proposed before

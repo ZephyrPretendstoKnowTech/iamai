@@ -98,7 +98,7 @@ test('T2-AVD: Confirm What You Use asks for the groups right under the Azure Vir
   // step is settled and the foundation goes ahead; only the AVD allow-list step waits
   // (the next test), and the question is still there to answer.
   assert.equal(q.optional, true)
-  assert.equal(q.note, 'Leave it empty and only Limit Azure Virtual Desktop to Its Allowed Groups waits for it.')
+  assert.equal(q.note, 'Only Limit Azure Virtual Desktop to Its Allowed Groups waits for this answer; the rest of the plan goes ahead.')
   const run = runFixture(answered('yes'))
   const yes = stepOf(run.steps, 's-direction-use')
   assert.equal(directionComplete(yes.directionQuestions ?? []), true)

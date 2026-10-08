@@ -45,8 +45,8 @@ export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}
   '{serviceAccountsGroup}': PREREQ_STEP_ID.serviceAccountsGroup,
   // The groups that hold the admin accounts: Identify Service and Shared Accounts asks for them (`ADMIN_ACCOUNTS_SLOT`).
   '{adminAccountGroups}': DIRECTION_STEP_IDS[1],
-  // The emergency account that must use its security key: Decide How and Where People Sign In asks for it (emergencyStrongAccount.ts).
-  '{emergencyStrongAccount}': DIRECTION_STEP_IDS[2],
+  // The emergency account the policy includes: the first saved in Prepare Emergency Access Accounts (mapping/emergencyChoice.ts emergencyStrongAccountOf).
+  '{emergencyStrongAccount}': PREREQ_STEP_ID.breakGlass,
 }
 
 /**

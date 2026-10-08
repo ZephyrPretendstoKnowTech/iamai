@@ -248,7 +248,7 @@
       "answerNames": {
         "{adminAccountGroups}": "that holds your admin accounts",
         "{avdUserGroups}": "the groups allowed to use Azure Virtual Desktop",
-        "{emergencyStrongAccount}": "that must use its security key"
+        "{emergencyStrongAccount}": "the first emergency account saved in Prepare Emergency Access Accounts"
       },
       "$commentRiskClear": "Remediate High-Risk Users and Reset Passwords for Medium-Risk Users while report-only names someone it would have stopped (owner, 2026-09-28; pre-launch list item 2c): that person's user risk holds the turn-on, and nothing said how to clear it, so the step could never finish. Microsoft Learn (howto-identity-protection-remediate-unblock, concept-risky-user-report): Reset password remediates the risk; Confirm user safe is for a false positive, a verdict on the risk detections. Not on whose sign-ins they were: a user-risk policy applies to every sign-in while the account is at risk, so the sign-ins report-only would have stopped are nearly always the person's own (review, 2026-09-28: \"if the sign-ins were theirs\" could clear a real compromise). On the turn-on task, after the wait, and on its card. How long the wait lasts after it is riskClearWait.",
       "riskClear": "To clear a person's risk, open ID Protection → Risky users in the Microsoft Entra admin center, select them and review their risk detections. Choose Reset password; choose Confirm user safe only if the detections are false positives.",
@@ -3588,7 +3588,7 @@
               "label": "Which groups may use Azure Virtual Desktop?",
               "chosen": "Everyone outside these groups and the exclusions group is blocked from Azure Virtual Desktop.",
               "$commentOptional": "Owner, 2026-10-04: the answer is optional. Left empty, only the AVD allow-list step waits, and the rest of the plan goes ahead; answered now, that policy is created with the others.",
-              "optional": "Leave it empty and only Limit Azure Virtual Desktop to Its Allowed Groups waits for it."
+              "optional": "Only Limit Azure Virtual Desktop to Its Allowed Groups waits for this answer; the rest of the plan goes ahead."
             },
             "accountOptions": {
               "none": "None",
@@ -3616,7 +3616,7 @@
               "$comment": "Owner, 2026-10-04: Jon's MFA-Passkeys policy for admin accounts asks every account in his admin-accounts group for the baseline's strength, so it reaches admins only eligible in PIM, whom Require a Strong Sign-in for Admins (directory roles) misses until they activate. A group picker, one or more groups; the answer is MappingState.adminAccountGroupIds. Optional: left empty, only Require a Strong Sign-in for Your Admin Accounts Group waits. No suggestion and no evidence line: the scan cannot tell which group holds the admin accounts.",
               "label": "Which group holds your admin accounts?",
               "chosen": "Every account in these groups signs in with a passkey, a security key or Windows Hello, including admins only eligible in PIM.",
-              "optional": "Leave it empty and only Require a Strong Sign-in for Your Admin Accounts Group waits for it."
+              "optional": "Only Require a Strong Sign-in for Your Admin Accounts Group waits for this answer; the rest of the plan goes ahead. It is asked because the scan read an admin who is eligible in PIM, whom a policy on the roles reaches only once they activate."
             },
             "$commentChosen": "Each card says what the chosen answer does, in one line (roadmap/direction.ts chosen; owner, 2026-09-24). 2.3 draws no scan counts: it asks how people should sign in, not what the tenant has today.",
             "computers": {
@@ -3660,13 +3660,6 @@
               "remoteAccounts": "Your service and shared-device accounts then get MFA like anyone.",
               "$commentUnused": "A saved answer of \"Everyone works remotely\" beside a location Entra marks trusted says what the answer does with it.",
               "savedRemoteUnused": "{names} is marked trusted in Entra; this answer doesn't use it as your office."
-            },
-            "emergencyStrong": {
-              "$comment": "Owner, 2026-10-05: Jon's BreakGlass - TrustedLocations policy includes one emergency account and nobody else. The picker offers only the emergency accounts Establish Emergency Access saved, exactly one is picked, and nothing is suggested: the scan cannot tell which one carries the security key. Asked while two or more are saved. Optional: left empty, only that step waits. Saved as MappingState.emergencyStrongAccountId (roadmap/direction.ts emergencyStrongQuestion). {step} is the step's title.",
-              "label": "Which emergency account must use its security key?",
-              "chosen": "This account signs in with its security key away from the office. The other emergency account stays out of every policy.",
-              "chosenRemote": "This account signs in with its security key everywhere. The other emergency account stays out of every policy.",
-              "optional": "Leave it empty and only {step} waits for it."
             },
             "$commentWorkCountries": "The work countries question, asked since Stage 3 on Block Sign-ins From Countries Not Allowed rather than in Direction. Its words are kept here as Direction wrote them: the label heads that step's countries picker, and the seen line sits under it where the scan saw sign-in countries (ui/surfaces/stepBody.ts withObjectTask).",
             "workCountries": {
@@ -4576,7 +4569,7 @@
         "blockedOutright": {
           "$comment": "v1.1 D4 (owner, 2026-10-03): Jon's NoExclusions block as an optional second half of Block Sign-ins From Countries Not Allowed. Empty by default, and then nothing changes. Listed, the step also makes a countries location holding them and Jon's policy that blocks them for everyone but the exclusions group, travellers included (MappingState.countriesBlockedOutright). A country on both lists is refused (conflictOne / conflictMany).",
           "label": "Countries to block outright, even for travellers",
-          "text": "Optional. A second policy blocks sign-ins from these countries for everyone except the exclusions group, travellers included. Leave it empty and the plan blocks only what the work countries leave out.",
+          "text": "Optional. A second policy blocks sign-ins from these countries for everyone except the exclusions group, travellers included. Left empty, only the countries outside your work countries are blocked.",
           "conflictOne": "{countries} is on the work countries above, so it cannot be blocked outright. Take it off one of the two lists.",
           "conflictMany": "{countries} are on the work countries above, so they cannot be blocked outright. Take each off one of the two lists."
         },
@@ -5792,6 +5785,8 @@
         "signature": "{signature}"
       },
       "doesntApply": false,
+      "$commentNoEligibleAdmins": "Owner, 2026-10-07: this policy only adds something where an admin is eligible in PIM and not active, whom Require a Strong Sign-in for Admins reaches only on activation. Where the scan read no such admin, the step does not apply (generate.ts), and this is its reason in the footer.",
+      "noEligibleAdmins": "The scan read no admin who is only eligible in PIM. Require a Strong Sign-in for Admins reaches every admin, so a policy on the admin accounts group adds nothing here.",
       "skip": true,
       "scanControl": true,
       "more": {
@@ -9068,18 +9063,18 @@
       "id": "emergency-account-strong-signin",
       "brief": {
         "matters": "Your emergency accounts are the way back in when every other sign-in fails, so a stolen password alone must never be enough to use one.",
-        "notice": "Nobody but the emergency account you named notices it: that account signs in with its security key away from the office."
+        "notice": "Nobody but the first emergency account notices it: that account signs in with a passkey, security key, Windows Hello or certificate away from the office."
       },
       "kind": "policy",
-      "$comment": "Owner, 2026-10-05: Jon's IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations, until now listed under In the baseline, not in this plan. Microsoft's two-account pattern: it includes the one emergency account the operator names in Decide How and Where People Sign In (interpretation emergencyStrongAccount) and nobody else, so the other emergency account is out of its scope; it excludes no account by name and does not exclude the exclusions group, which holds the account it is for (roadmap/emergencyStrongAccount.ts). Created in Report-only by Create the Policies in Report-only; turned on only once the scan reads that the account holds a method the strength accepts, Verify Emergency Access has a recorded sign-in for it, and the other account is still excluded from every other policy through the exclusions group. With Everyone works remotely there is no office to carve out, and the words of `everywhere` replace these.",
-      "title": "Require a Security Key for One Emergency Account Outside the Office",
+      "$comment": "Owner, 2026-10-05: Jon's IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations, until now listed under In the baseline, not in this plan. Microsoft's two-account pattern: it includes the first emergency account saved in Prepare Emergency Access Accounts (mapping/emergencyChoice.ts emergencyStrongAccountOf; owner, 2026-10-07: the Direction question that asked which one was removed as disjointed) and nobody else, so the other emergency account is out of its scope; it excludes no account by name and does not exclude the exclusions group, which holds the account it is for (roadmap/emergencyStrongAccount.ts). Created in Report-only by Create the Policies in Report-only; turned on only once the scan reads that the account holds a method the strength accepts, Verify Emergency Access has a recorded sign-in for it, and the other account is still excluded from every other policy through the exclusions group. With Everyone works remotely there is no office to carve out, and the words of `everywhere` replace these.",
+      "title": "Require a Strong Sign-in for One Emergency Account Outside the Office",
       "changeLine": null,
       "why": "This is Microsoft's pattern for emergency accounts. One signs in with a phishing-resistant method away from the office, so a stolen password alone can't use it. The other stays out of every policy, so no policy can lock out both.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
       "who": {
-        "lead": "One emergency account, the one you named in Decide How and Where People Sign In",
+        "lead": "One emergency account: the first you saved in Prepare Emergency Access Accounts. The other stays out of every policy.",
         "evidence": [
           "{existingCoverage}"
         ]
@@ -9088,7 +9083,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "The emergency account has signed in with its security key in Verify Emergency Access, and the other emergency account is still excluded from every other policy."
+        "That emergency account has signed in with a method the strength accepts in Verify Emergency Access, and the other emergency account is still excluded from every other policy."
       ],
       "ifWrong": "Set the policy back to Report-only. The other emergency account is excluded from every policy, so it still signs in while you fix it.",
       "comms": null,
@@ -9097,14 +9092,14 @@
       "scanControl": true,
       "everywhere": {
         "$comment": "Decide How and Where People Sign In answered Everyone works remotely: no office network, so the policy has no location condition and asks for the security key everywhere (generate.ts; owner, 2026-10-05).",
-        "title": "Require a Security Key for One Emergency Account Everywhere",
+        "title": "Require a Strong Sign-in for One Emergency Account Everywhere",
         "why": "Microsoft's pattern for emergency accounts: one signs in with a phishing-resistant method wherever it signs in, so a stolen password alone can't use it, and the other stays out of every policy, so no policy can lock out both.",
-        "notice": "Nobody but the emergency account you named notices it: that account signs in with its security key everywhere."
+        "notice": "Nobody but the first emergency account notices it: that account signs in with a passkey, security key, Windows Hello or certificate everywhere."
       },
       "$commentTurnOnWaits": "What the turn-on waits on, each said after \"Wait for\" (roadmap/enforceWaits.ts from roadmap/emergencyStrongGates.ts): a method the strength accepts on the chosen account, its recorded Verify Emergency Access sign-in, and the other emergency account excluded from every other policy. Unread counts as not yet.",
       "turnOnWaits": {
-        "method": "a security key, passkey, Windows Hello or certificate on the emergency account you named",
-        "drilled": "a recorded Verify Emergency Access sign-in by the emergency account you named",
+        "method": "a passkey, security key, Windows Hello or certificate on the emergency account this policy includes",
+        "drilled": "a recorded Verify Emergency Access sign-in by the emergency account this policy includes",
         "otherExcluded": "the other emergency account in the exclusions group, and that group excluded from every other policy"
       },
       "$commentOneAccount": "Doesn't apply while Establish Emergency Access has saved fewer than two emergency accounts (generate.ts): the other account has to stay excluded from everything, so the pattern needs two.",

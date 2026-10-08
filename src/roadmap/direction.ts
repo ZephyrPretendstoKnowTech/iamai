@@ -233,14 +233,20 @@ function accountQuestions(ctx: Context, nameOf: (id: string) => string): Directi
     // ADM-Users policy asks for the baseline's strength, admins only eligible in
     // PIM included. The scan cannot tell which group that is, so the card
     // suggests nothing and says nothing it did not see. Optional: left empty,
-    // only that policy's step waits (GOAL_DEPENDS).
-    question('adminAccounts', ctx, {
+    // only that policy's step waits (GOAL_DEPENDS). Asked only where the scan read
+    // an admin eligible in PIM (owner, 2026-10-07): a policy on the roles reaches
+    // every other admin, so without one the group policy adds nothing and its
+    // step does not apply (generate.ts).
+    ...(pimEligibleAdmins(ctx.snapshot) ? [question('adminAccounts', ctx, {
       label: Q.adminAccounts.label, control: 'groups', options: [], pickedWith: 'groups',
       suggested: answer('groups'), evidence: '', chosen: { groups: Q.adminAccounts.chosen },
       optional: true, note: Q.adminAccounts.optional,
-    }),
+    })] : []),
   ]
 }
+
+/** Whether the scan read at least one account eligible for a role in PIM (graph/collect/collectors.ts). */
+export const pimEligibleAdmins = (snapshot: Pick<TenantSnapshot, 'roles'>): boolean => Object.values(snapshot.roles?.eligible ?? {}).some((roles) => Array.isArray(roles) && roles.length > 0)
 
 // ---- D3 Decide How and Where People Sign In ----
 
@@ -269,30 +275,13 @@ function deviceQuestions(ctx: Context): DirectionQuestion[] {
       chosen: intune ? Q.phones.chosen : { blocked: Q.phones.chosen.blocked },
     }),
     officeNetworkQuestion(ctx),
-    ...emergencyStrongQuestion(ctx),
   ]
 }
-
-/**
- * Which emergency account must use its security key (owner, 2026-10-05): the one
- * account Jon's BreakGlass - TrustedLocations policy includes, asked beside the
- * office network that policy carves out. Only the emergency accounts Establish
- * Emergency Access saved are offered, exactly one is picked, and nothing is
- * suggested: the scan cannot tell which one carries the security key. Asked only
- * while two or more are saved — with one, the step does not apply (the other
- * account has to stay excluded from everything). Optional: left empty, only that
- * policy's step waits (GOAL_DEPENDS).
- */
-function emergencyStrongQuestion(ctx: Context): DirectionQuestion[] {
-  if (ctx.mapping.breakGlassUserIds.length < 2) return []
-  const words = Q.emergencyStrong
-  const remote = everyoneRemote(ctx.mapping)
-  return [question('emergencyStrong', ctx, {
-    label: words.label, control: 'accounts', options: [], pickedWith: 'some', pickOne: true,
-    suggested: answer('some'), evidence: '', chosen: { some: remote ? words.chosenRemote : words.chosen },
-    optional: true, note: fillText(words.optional, { step: emergencyStrongTitle(remote) }),
-  })]
-}
+// The emergency account Jon's BreakGlass - TrustedLocations policy includes is no
+// longer asked here (owner, 2026-10-07: the question read as disjointed beside the
+// device questions): it is the first emergency account saved in Prepare Emergency
+// Access Accounts (mapping/emergencyChoice.ts emergencyStrongAccountOf), and a
+// choice saved before then is kept.
 
 /**
  * The office network, asked beside the device questions that use it (Stage 3,
@@ -450,8 +439,6 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   'avd-allowed-users': ['avdUsers'],
   // Jon's ADM-Users policy (owner, 2026-10-04): the groups that hold the admin accounts.
   'admin-accounts-group-strength': ['adminAccounts'],
-  // Jon's BreakGlass - TrustedLocations policy (owner, 2026-10-05): the one emergency account it includes.
-  'emergency-account-strong-signin': ['emergencyStrong'],
   // Phones Blocked from company data widens Jon's block to iOS and Android (deviations.ts BLOCK_PLATFORMS_GOAL).
   'block-unsupported-platforms': ['phones'],
   // Define the Trusted Network holds until the office question is answered, as

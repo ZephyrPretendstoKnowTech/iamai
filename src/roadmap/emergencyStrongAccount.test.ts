@@ -117,41 +117,23 @@ test('BreakGlass: the interpretation reads Jon’s two emergency accounts, the p
   assert.equal(Object.entries(PINNED_GOAL_MAP).filter(([, keys]) => keys.includes(POLICY_ID)).length, 1, 'its own goal’s and no other’s')
 })
 
-test('BreakGlass: Decide How and Where People Sign In asks which emergency account must use its security key — optional, one account, only the saved emergency accounts, nothing suggested; left empty, only this step waits', () => {
+test('BreakGlass: no Direction step asks which emergency account; with two saved, the first is the one the policy includes, a saved choice is kept, and nothing waits on an answer (owner, 2026-10-07)', () => {
   const f = settled()
   const run = runFixture(f)
   const d3 = stepOf(run.steps, DIRECTION_STEP.devices)
-  const q = d3.directionQuestions!.find((x) => x.key === 'emergencyStrong')
-  assert.ok(q, 'the question is on Decide How and Where People Sign In')
-  assert.equal(q.label, 'Which emergency account must use its security key?')
-  assert.equal(q.control, 'accounts')
-  assert.equal(q.optional, true)
-  assert.equal(q.pickOne, true)
-  assert.deepEqual(q.suggested, { value: 'some', picked: [] }, 'nothing is suggested')
-  assert.equal(q.evidence, '')
-  assert.equal(q.saved, null)
-  assert.equal(directionComplete(d3.directionQuestions ?? []), true, 'left empty, the Direction step is still settled')
-  // Exactly one: two picked is not an answer to approve.
+  assert.equal(d3.directionQuestions!.some((x) => x.key === 'emergencyStrong'), false, 'the question is gone from Decide How and Where People Sign In')
+  assert.equal(directionComplete(d3.directionQuestions ?? []), true)
   const [a, b] = f.mapping.breakGlassUserIds
-  assert.equal(directionAnswerComplete(q, { value: 'some', picked: [a] }), true)
-  assert.equal(directionAnswerComplete(q, { value: 'some', picked: [a, b] }), false)
-  // Unanswered, only this step waits on the answer; nothing else does.
-  const s = stepOf(run.steps, EMERGENCY_STRONG_STEP)
-  assert.ok(s.blockers.some((x) => x.kind === 'decision' && x.label === WAIT), JSON.stringify(s.blockers))
-  for (const other of run.steps.filter((x) => x.id !== EMERGENCY_STRONG_STEP)) {
-    assert.equal(other.blockers.some((x) => x.kind === 'decision' && x.label === WAIT), false, `${other.id} never waits on the emergency account answer`)
-  }
-})
-
-test('BreakGlass: unanswered, the step hands over nothing and 3.8 does not create it', () => {
-  const run = runFixture(settled())
+  assert.equal(emergencyStrongAccountOf(f.mapping), a, 'the first saved emergency account')
+  assert.equal(emergencyStrongAccountOf({ ...f.mapping, emergencyStrongAccountId: b }), b, 'a saved choice is kept')
+  assert.equal(emergencyStrongAccountOf({ ...f.mapping, emergencyStrongAccountId: '00000000-0000-4000-8000-00000000dead' }), a, 'a choice that is not an emergency account falls back to the first')
+  for (const step of run.steps) assert.equal(step.blockers.some((x) => x.kind === 'decision' && x.label === WAIT), false, `${step.id} never waits on an emergency account answer`)
+  // With nothing saved, the step hands over its body and 3.8 creates it, as it does once named.
   const s = stepOf(run.steps, EMERGENCY_STRONG_STEP)
   assert.equal(s.kind, 'create')
-  assert.deepEqual(s.action.missing, [{ token: EMERGENCY_STRONG_SLOT, stepId: DIRECTION_STEP.devices }])
-  assert.equal(s.action.json, null, 'no body while the account is not named')
-  assert.equal(JSON.stringify(s.action).toLowerCase().includes(JON_STRONG), false)
-  assert.equal(JSON.stringify(s.action).toLowerCase().includes(JON_OTHER), false)
-  assert.equal(stepOf(run.steps, 's-create-report-only').reportOnlyBatch?.create.includes(EMERGENCY_STRONG_STEP), false)
+  assert.deepEqual(s.action.missing ?? [], [])
+  assert.deepEqual((bodyOf(s).conditions.users as Users).includeUsers, [a])
+  assert.equal(stepOf(run.steps, 's-create-report-only').reportOnlyBatch?.create.includes(EMERGENCY_STRONG_STEP), true)
 })
 
 test('BreakGlass: named, it is created in Report-only through 3.8, including that one account and nobody else, excluding no account and not the exclusions group, outside the office, with the strength 3.5 made', () => {
@@ -185,22 +167,19 @@ test('BreakGlass: named, it is created in Report-only through 3.8, including tha
   // Its own exposure is accepted: it reaches the chosen account on purpose, and no other.
   assert.equal(s.action.emergencyExposure, undefined, JSON.stringify(s.action.emergencyExposure))
   assert.ok(stepOf(run.steps, 's-create-report-only').reportOnlyBatch?.create.includes(EMERGENCY_STRONG_STEP), '3.8 creates it in Report-only')
-  assert.equal(stepById[EMERGENCY_STRONG_GOAL].title, 'Require a Security Key for One Emergency Account Outside the Office')
-  assert.equal(s.plainTitle, 'Require a Security Key for One Emergency Account Outside the Office')
+  assert.equal(stepById[EMERGENCY_STRONG_GOAL].title, 'Require a Strong Sign-in for One Emergency Account Outside the Office')
+  assert.equal(s.plainTitle, 'Require a Strong Sign-in for One Emergency Account Outside the Office')
 })
 
 test('BreakGlass: with everyone remote the words say everywhere and the body has no location condition (include All, exclude none)', () => {
   const g = named(settled('remote'), [settled('remote').mapping.breakGlassUserIds[0]])
   const s = strongOf(g)
-  assert.equal(s.plainTitle, 'Require a Security Key for One Emergency Account Everywhere')
+  assert.equal(s.plainTitle, 'Require a Strong Sign-in for One Emergency Account Everywhere')
   assert.match(String((s.guidance as { why?: string } | undefined)?.why), /wherever it signs in/)
   const body = bodyOf(s)
   assert.deepEqual(body.conditions.locations?.includeLocations ?? ['All'], ['All'])
   assert.deepEqual(body.conditions.locations?.excludeLocations ?? [], [], 'no office to carve out')
   assert.deepEqual(s.action.missing ?? [], [], 'nothing waits on a trusted location that does not exist')
-  // The question's own line says so too.
-  const q = stepOf(runFixture(g).steps, DIRECTION_STEP.devices).directionQuestions!.find((x) => x.key === 'emergencyStrong')!
-  assert.match(q.chosen?.some ?? '', /everywhere/)
 })
 
 test('BreakGlass: with fewer than two emergency accounts it does not apply, says why, and the question is not asked', () => {
@@ -342,9 +321,13 @@ test('BreakGlass: every emergency reading accepts exactly this policy reaching e
   const stranger = deployed(f, 'enabled', (p) => { p.displayName = 'Somebody else’s policy'; p.description = '' })
   assert.equal(outcomeOf(stranger, chosen, 'bg.excludedFromAllPolicies'), 'fail')
   assert.equal(groupOutcome(stranger, group), 'fail')
-  // Flagged: the operator's answer taken back — nothing is accepted any more.
+  // A saved choice taken back changes nothing: the first saved account is the one
+  // the policy includes (owner, 2026-10-07; mapping/emergencyChoice.ts).
   const unnamed = { ...deployed(f, 'enabled'), mapping: { ...f.mapping, emergencyStrongAccountId: undefined } }
-  assert.equal(outcomeOf(unnamed, chosen, 'bg.excludedFromAllPolicies'), 'fail')
+  assert.equal(outcomeOf(unnamed, chosen, 'bg.excludedFromAllPolicies'), 'pass')
+  // Flagged: with one emergency account saved there is no other to keep out, so nothing is accepted.
+  const lone = { ...deployed(f, 'enabled'), mapping: { ...f.mapping, emergencyStrongAccountId: undefined, breakGlassUserIds: [chosen] } }
+  assert.equal(outcomeOf(lone, chosen, 'bg.excludedFromAllPolicies'), 'fail')
 
   // The step's own exposure: the chosen account through its own shape only.
   assert.equal(acceptedOwnExposure({ reached: [chosen], unproven: [] }, [{ conditions: { users: { includeUsers: [chosen] } }, grantControls: { builtInControls: [], authenticationStrength: { id: 's' } } }], chosen), null)

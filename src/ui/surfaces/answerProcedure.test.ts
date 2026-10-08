@@ -16,7 +16,9 @@ const NAMES = (PROCEDURE as unknown as { answerNames: Record<string, string> }).
 const CASES: { step: string; slot: string }[] = [
   { step: 's-goal-admin-accounts-group-strength', slot: '{adminAccountGroups}' },
   { step: 's-goal-avd-allowed-users', slot: '{avdUserGroups}' },
-  { step: 's-goal-emergency-account-strong-signin', slot: '{emergencyStrongAccount}' },
+  // The emergency account Jon's BreakGlass policy includes is no longer an answer: it is the
+  // first emergency account saved (owner, 2026-10-07). The admin group is asked only where
+  // the scan read a PIM-eligible admin, which the demo has not, so the AVD groups are the case here.
 ]
 
 test('a policy waiting on a Direction answer shows its whole procedure, naming the answer for what it will be', () => {
@@ -38,5 +40,5 @@ test('a policy waiting on a Direction answer shows its whole procedure, naming t
     assert.ok(!text.includes(slot), `${id}: the raw slot reached the reader`)
     checked++
   }
-  assert.ok(checked >= 2, `only ${checked} unanswered steps checked`)
+  assert.ok(checked >= 1, `only ${checked} unanswered steps checked`)
 })
