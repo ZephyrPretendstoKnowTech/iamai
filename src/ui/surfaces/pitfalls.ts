@@ -19,7 +19,8 @@
 import type { Step } from '../../roadmap/types.ts'
 import { CAMPAIGN_STEP_ID } from '../../roadmap/followUp.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { app, stepById } from '../../content/content.ts'
+import { app, shared, stepById } from '../../content/content.ts'
+import { missingApplicationIds } from '../../roadmap/servicePrincipals.ts'
 import { fillText } from '../../content/render.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { tenantSetupChecks } from '../../derive/readinessSetup.ts'
@@ -47,11 +48,31 @@ export type StepLinkOf = (id: string, title: string) => ReadinessTile['link']
 /** The step's pitfall cards, open steps only; none on a step that names none. */
 export function pitfallTilesOf(step: Step, ctx: StepVarContext, satisfied: boolean, stepLink: StepLinkOf): ReadinessTile[] {
   if (satisfied || step.status === 'done' || step.status === 'skipped' || step.state.setAside) return []
-  if (step.id === CAMPAIGN_STEP_ID) return campaignPitfalls(step, ctx)
-  if (step.id === MFA_EVERYONE_STEP_ID) return mfaEveryonePitfalls(step, ctx, stepLink)
-  if (step.id === PLATFORMS_STEP_ID) return platformPitfalls(step, ctx)
-  if ((step.methodShort ?? []).length > 0) return methodShortPitfalls(step, ctx)
-  return []
+  const own = step.id === CAMPAIGN_STEP_ID ? campaignPitfalls(step, ctx)
+    : step.id === MFA_EVERYONE_STEP_ID ? mfaEveryonePitfalls(step, ctx, stepLink)
+      : step.id === PLATFORMS_STEP_ID ? platformPitfalls(step, ctx)
+        : (step.methodShort ?? []).length > 0 ? methodShortPitfalls(step, ctx)
+          : []
+  return [...own, ...missingApplicationPitfalls(step, ctx)]
+}
+
+/**
+ * A policy step whose policy names an application this tenant has no service
+ * principal for (owner, 2026-10-07: "how do I hydrate a missing service
+ * principal?"): Conditional Access matches nothing for an application that is
+ * not in the tenant, so the card names it and gives the one line that creates
+ * it, then a scan. Drawn only where the scan read the service principals.
+ */
+function missingApplicationPitfalls(step: Step, ctx: StepVarContext): ReadinessTile[] {
+  if (step.kind !== 'create' && step.kind !== 'adjust') return []
+  const bodies = (step.action.resolution?.policies ?? []).map((op) => op.pending ?? op.intent ?? op.body)
+  const W = (shared as { servicePrincipalMissing?: { label: string; value: string; note: string } }).servicePrincipalMissing
+  if (!W) return []
+  return missingApplicationIds(ctx.snapshot, bodies).map((id) => ({
+    key: `pitfall:app:${id}`, label: W.label, tone: 'warn' as const,
+    value: fillText(W.value, { app: ctx.nameOf(id) }),
+    note: fillText(W.note, { app: ctx.nameOf(id), id }),
+  }))
 }
 
 /** The platforms Conditional Access names, by the family the sign-in records give. */

@@ -119,6 +119,7 @@ export function fixtureSnapshot(): TenantSnapshot {
         rows: [{ displayName: 'Contoso Pty Ltd', verifiedDomains: [{ name: 'example.com', isInitial: false }, { name: 'contoso.onmicrosoft.com', isInitial: true }] }],
       },
       me: { status: 'ok', reason: null, rows: [{ id: 'u-1', displayName: 'Alex Morgan', userPrincipalName: 'alex@example.com' }] },
+      servicePrincipals: { status: 'ok', reason: null, rows: [{ id: 'sp-1', appId: '00000002-0000-0ff1-ce00-000000000000', displayName: 'Office 365 Exchange Online', accountEnabled: true }] },
     },
     registrationDetails: users.map(([id, , upn, type]) => ({
       id,

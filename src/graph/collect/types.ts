@@ -40,6 +40,7 @@ export type ConfigSectionKey =
   | 'subscribedSkus'
   | 'organization'
   | 'me'
+  | 'servicePrincipals'
 
 export type ConfigSection = {
   status: 'ok' | 'partial' | 'disabled' | 'error'

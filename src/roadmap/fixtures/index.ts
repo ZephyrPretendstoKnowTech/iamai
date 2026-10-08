@@ -21,6 +21,7 @@ import { serviceReading } from '../workflows.ts'
 import { sharedDeviceUsers } from '../../derive/sharedDevices.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
+import firstPartyApps from '../../../data/first-party-apps.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
 import { recoveryAccountBasis, recoveryCredentialBasis } from '../cleanupDone.ts'
 import { APPROVED_KEY, observedRecoveryRecords, withPreparedPasskeys } from './recoveryRecords.ts'
@@ -750,6 +751,9 @@ export function buildFixture(spec: Spec): Fixture {
       authStrengths: section(strengths),
       authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users', authenticationMode: 'any' }], excludeTargets: [] }, fido2, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
+      // Every Microsoft first-party application has its service principal, as a real tenant does; a
+      // vendor application the baseline names (Inforcer) has none until someone creates it.
+      servicePrincipals: section(firstPartyApps.apps.map((a, i) => ({ id: guid(seed, 7_000_000 + i), appId: a.appId, displayName: a.displayName, accountEnabled: true }))),
       crossTenantAccess: section([]),
       // Microsoft's default for a tenant that never changed it (Graph v1.0 deviceRegistrationPolicy).
       deviceRegistrationPolicy: section([{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }]),

@@ -63,6 +63,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.sharedDeviceSignals.licence',
   '.shared.doesntApplyPrompt',
   '.shared.licenceRule',
+  // A policy naming an application with no service principal here (pitfalls.ts
+  // missingApplicationPitfalls; owner, 2026-10-07): the example tenant's policies name none.
+  '.shared.servicePrincipalMissing.label',
+  '.shared.servicePrincipalMissing.note',
   // Turning Temporary Access Pass on ({tapEnable}): read by 3.2's procedure and 3.4's card, neither of which the review page draws.
   '.shared.methodGuides.common.tapEnable',
   // Shared references the portal translator can emit but this example's mapped

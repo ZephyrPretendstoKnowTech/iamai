@@ -53,6 +53,48 @@ export function appIdsWithActivity(snapshot: TenantSnapshot): Set<string> {
   return out
 }
 
+/**
+ * The service principals the scan read (registry 'Service principals', owner
+ * 2026-10-07), as the application ids they stand for, lower-cased. `null` where
+ * the read did not succeed, or a snapshot from before the read existed: then
+ * nothing claims an application is absent.
+ */
+export function servicePrincipalAppIds(snapshot: Pick<TenantSnapshot, 'config'>): Set<string> | null {
+  const section = (snapshot.config as Partial<Record<'servicePrincipals', { status?: string; rows?: unknown[] }>> | undefined)?.servicePrincipals
+  if (!section || section.status !== 'ok' || !Array.isArray(section.rows)) return null
+  const out = new Set<string>()
+  for (const r of section.rows) {
+    const appId = (r as { appId?: unknown } | null)?.appId
+    if (typeof appId === 'string' && appId.length > 0) out.add(appId.toLowerCase())
+  }
+  return out
+}
+
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * The applications a step's policies name, by id, that this tenant has no
+ * service principal for: a policy naming one matches nothing for it, so the
+ * step says so and gives the one line that creates it (pitfalls.ts). Empty where
+ * the read did not succeed.
+ */
+export function missingApplicationIds(snapshot: Pick<TenantSnapshot, 'config'>, bodies: readonly unknown[]): string[] {
+  const present = servicePrincipalAppIds(snapshot)
+  if (present === null) return []
+  const out: string[] = []
+  for (const body of bodies) {
+    const apps = ((body as { conditions?: { applications?: { includeApplications?: unknown; excludeApplications?: unknown } } } | null)?.conditions?.applications)
+    for (const list of [apps?.includeApplications, apps?.excludeApplications]) {
+      for (const id of Array.isArray(list) ? list : []) {
+        if (typeof id !== 'string' || !GUID.test(id)) continue
+        const key = id.toLowerCase()
+        if (!present.has(key) && !out.includes(key)) out.push(key)
+      }
+    }
+  }
+  return out
+}
+
 export function checkServicePrincipals(apps: AppReference[], snapshot: TenantSnapshot, usedFor: (app: AppReference) => string): ServicePrincipalCheck[] {
   const active = appIdsWithActivity(snapshot)
   return apps.map((app) => ({

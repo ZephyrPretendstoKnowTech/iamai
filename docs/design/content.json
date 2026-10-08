@@ -2,6 +2,12 @@
   "$comment": "docs/design/content.json: every sentence the product shows, written here and nowhere else. The app imports this file; the review page renders it. Text in {braces} is a variable the engine fills; the engine never chooses between phrasings. {list:...} renders as a numbered list. A field set to null is not rendered. Dates in the product are '{dow} {mon} {d}' (Tue Sep 8); in emails they are spelled out ('Tuesday, September 8'). The engine pluralises counts: '{n} people' renders as '1 person' or '3 people'; the review page shows the raw pattern. On policy steps the product's What to do is generated from the pinned baseline's policy by the portal-line translator; 'whatToDoReference' is the reviewer's rendering for the review page only and is never shown in the product. The review page prefers docs/design/translator-output.json (npm run translator-dump) when it exists.",
   "version": 1.3,
   "shared": {
+    "$commentServicePrincipalMissing": "A policy step whose policy names an application this tenant has no service principal for (ui/surfaces/pitfalls.ts missingApplicationPitfalls; registry Service principals; owner, 2026-10-07): Conditional Access matches nothing for an application that is not in the tenant. The card names it and gives the one line that creates it. {app} is its name, {id} its application id.",
+    "servicePrincipalMissing": {
+      "label": "Application not in your tenant",
+      "value": "{app}",
+      "note": "A policy can only reach an application that has a service principal in this tenant; without one, this policy matches nothing for {app}. Create it as a Global Administrator with the Microsoft Graph PowerShell module, then scan again: New-MgServicePrincipal -AppId {id}"
+    },
     "signatureDefault": "IT",
     "adaptLine": "Paste this into your own assistant to match your voice.",
     "deviation": {
