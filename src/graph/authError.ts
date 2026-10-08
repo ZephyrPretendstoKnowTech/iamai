@@ -3,11 +3,16 @@
 // admin approval needed, a personal Microsoft account, or cancelled. Anything
 // else is a plain failure with Microsoft's words. Pure; no MSAL, no DOM.
 
-export type SignInError = { kind: 'consent'; domain: string | null } | { kind: 'personal'; account: string | null } | { kind: 'cancelled' } | { kind: 'failed'; message: string }
+export type SignInError = { kind: 'consent'; domain: string | null } | { kind: 'personal'; account: string | null } | { kind: 'cancelled' } | { kind: 'failed'; message: string; stale?: true }
 
 const CONSENT_RE = /consent_required|interaction_required|AADSTS65001|AADSTS90094|AADSTS650052/i
 const PERSONAL_RE = /AADSTS50020|AADSTS500200|AADSTS9002332|identity provider 'live\.com'|personal Microsoft account/i
 const CANCELLED_RE = /user_cancelled|AADSTS65004|access_denied/i
+// MSAL's own codes for a sign-in that came back to a page that had not started it:
+// the tab was reloaded, closed, or opened at another address while Microsoft was
+// answering (a dead dev server ate the code, live check 2026-10-07). Nothing
+// Microsoft's servers said; the library's text is under the toggle.
+const STALE_RE = /\bstate_mismatch\b|no_token_request_cache_error|no_cached_authority_error/i
 
 export function classifyAuthError(e: { code: string; message: string }): SignInError {
   const text = `${e.code} ${e.message}`
@@ -20,6 +25,7 @@ export function classifyAuthError(e: { code: string; message: string }): SignInE
     return { kind: 'personal', account: m ? m[1] : null }
   }
   if (CANCELLED_RE.test(text)) return { kind: 'cancelled' }
+  if (STALE_RE.test(text)) return { kind: 'failed', message: e.message.trim() || e.code, stale: true }
   // Microsoft's words, else its error code: an empty message is not an answer
   // to quote, and the code is the one fact left that helps.
   return { kind: 'failed', message: e.message.trim() || e.code }

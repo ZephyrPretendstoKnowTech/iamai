@@ -363,6 +363,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // scan/connectView.ts signInTile): app-only, the review page shows no failed sign-in.
   '.pages.connect.signIn.errors.failed.details',
   '.pages.connect.signIn.errors.failed.webRedirect',
+  '.pages.connect.signIn.errors.failed.stale',
   // The status strip over a scan that stopped (scan/connectView.ts connectStatus; 2026-10-06).
   '.pages.connect.status.failed',
   // Require a Strong Sign-in for Your Admin Accounts Group's Doesn't-apply reason where the

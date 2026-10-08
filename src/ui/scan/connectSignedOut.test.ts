@@ -174,3 +174,15 @@ test('a redirect registered under Web says so plainly with its fix, Microsoft\'s
   assert.match(String(other.lead), /^Microsoft answered: AADSTS50011/)
   assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /\{t1\.detail && <details><summary>\{t1\.detail\.summary\}<\/summary>/)
 })
+
+test('a sign-in that came back to a page that had not started it says what happened and what to do, MSAL’s text under the toggle (state_mismatch; live check, 2026-10-07)', () => {
+  const message = 'State mismatch error. Please check your network. Continued requests may cause cache overflow.'
+  const error = classifyAuthError({ code: 'state_mismatch', message })
+  assert.deepEqual(error, { kind: 'failed', message, stale: true })
+  const tile = signInTile({ error })
+  assert.match(String(tile.lead), /^Microsoft sent the sign-in back to a page that had not started it/)
+  assert.match(String(tile.lead), /Sign in again from here\.$/)
+  assert.doesNotMatch(String(tile.lead), /cache overflow|check your network/, 'the library’s text stays under the toggle')
+  assert.equal(tile.detail?.text, message)
+  assert.deepEqual(classifyAuthError({ code: 'invalid_grant', message: 'AADSTS50011: mismatch' }), { kind: 'failed', message: 'AADSTS50011: mismatch' })
+})

@@ -49,7 +49,7 @@ type Words = {
       consent: { state: string; lead: string; thisTenant: string }
       personal: { state: string; lead: string; thatAccount: string }
       cancelled: { state: string }
-      failed: { state: string; lead: string; webRedirect: string; details: string }
+      failed: { state: string; lead: string; webRedirect: string; stale: string; details: string }
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
@@ -175,6 +175,9 @@ export function signInTile({ error }: { error: SignInError | null }): SignInTile
       // A redirect registered under Web, not Single-page application (AADSTS9002326): said
       // plainly with its fix, Microsoft's text under the toggle (live check, 2026-10-05).
       if (error.message && /\bAADSTS9002326\b/.test(error.message)) return { ...base, state: S.errors.failed.state, tone: 'stop', lead: S.errors.failed.webRedirect, detail: { summary: S.errors.failed.details, text: error.message }, note: W.account.note, actions: [signIn, demo] }
+      // A sign-in that came back to a page that had not started it (MSAL state_mismatch;
+      // live check, 2026-10-07): what happened and what to do, the library's text under the toggle.
+      if (error.stale) return { ...base, state: S.errors.failed.state, tone: 'stop', lead: S.errors.failed.stale, detail: { summary: S.errors.failed.details, text: error.message }, note: W.account.note, actions: [signIn, demo] }
       return { ...base, state: S.errors.failed.state, tone: 'stop', lead: error.message ? fillText(S.errors.failed.lead, { message: error.message }) : null, note: W.account.note, actions: [signIn, demo] }
   }
 }
