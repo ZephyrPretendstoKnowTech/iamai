@@ -95,8 +95,13 @@ Everything else is either a working document it links to, or history in
   waits for MFA readiness to reach 100%") read as futile on a 400-person tenant. Find every line that
   holds a step on an all-or-nothing readiness number and cut or soften it; the Threshold tile's
   "not measured" sentence is the example the owner sent.
-- **Next:** the owner merges `v1.1` to `main` (2026-10-08 06:30 for the John Harden meeting); the live
-  tests in plan section 8 remain the owner's.
+- **Live:** `main` fast-forwarded to `8fcb697a` on 2026-10-08 (owner: "You push/commit, so it's live");
+  deploy-pages run 37785560258 green; the served bundle carries the v1.1 strings and not the removed
+  paragraph. Live audit the same morning: the sample's Plan, a step, MFA Readiness, Export, Inventory
+  and How render; a fresh GetIAMAI scan completes (33 steps, 21 completed), 8.1 names the saved
+  emergency account, Retire keeps the stricter policy on its own line, no console errors.
+- **Next:** v1.2 opens with the readiness-threshold sweep above; the live tests in plan section 8
+  remain the owner's.
 - **Owner decisions of 2026-10-03, binding for v1.1:**
   - **Passkeys:** device-bound and attested for all users, with no AAGUID key restrictions.
     A tenant's own allow list is left as it is.
