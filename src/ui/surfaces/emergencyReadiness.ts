@@ -99,7 +99,9 @@ export function emergencySubjectTileOf(tile: ReadinessTile, projected: Emergency
     title: prerequisite ? next.value : name(next),
     detail: prerequisite ? '' : next.value,
     // A finding that already says what to do ("Follow … Then wait …") is not told again.
-    instruction: prerequisite || next.link || (direction && next.value.includes(direction.replace(/\.$/, ''))) ? '' : direction ?? '',
+    // With no task to point at, the finding's own note is the card's sentence (a two-profile
+    // tenant's passkey hold, 2026-10-07: the card said "2 checks remaining" and nothing else).
+    instruction: prerequisite || next.link || (direction && next.value.includes(direction.replace(/\.$/, ''))) ? '' : direction ?? tile.note ?? '',
     ...(next.link ? { link: next.link } : {}),
   }
 }

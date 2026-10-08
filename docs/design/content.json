@@ -3,6 +3,8 @@
   "version": 1.3,
   "shared": {
     "$commentServicePrincipalMissing": "A policy step whose policy names an application this tenant has no service principal for (ui/surfaces/pitfalls.ts missingApplicationPitfalls; registry Service principals; owner, 2026-10-07): Conditional Access matches nothing for an application that is not in the tenant. The card names it and gives the one line that creates it. {app} is its name, {id} its application id.",
+    "$commentPasskeyProfilesOverlap": "Configure Passkey Authentication where more than one passkey profile applies to the same people (roadmap/emergencyJourney.ts; live check on a two-profile tenant, 2026-10-07): the card listed each profile's attestation under the same label, Required beside Disabled, and the milestone said only to finish the steps it waits on. {n} profiles, {names} their names.",
+    "passkeyProfilesOverlap": "{n} passkey profiles apply to the same people ({names}). Make each device-bound with attestation enforced, or stop assigning the ones that allow synced passkeys, then scan again.",
     "servicePrincipalMissing": {
       "label": "Application not in your tenant",
       "value": "{app}",

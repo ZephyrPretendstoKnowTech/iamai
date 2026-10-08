@@ -264,7 +264,20 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
     ],
   }
   const protection = grouped('protection', 'Storage and attestation', f => f.key.endsWith('.types') || f.key.endsWith('.attestation'))
-  protection.items = (protection.items ?? []).map(item => ({ ...item, factLabel: item.factLabel === 'Passkey Attestation' ? 'Current attestation' : item.factLabel === 'Passkey Storage' ? 'Current storage' : item.factLabel }))
+  // More than one profile applies to the same people (live check on a two-profile
+  // tenant, 2026-10-07): each profile's line carries the profile's name, or
+  // "Required" sat beside "Disabled" under one label.
+  const profileOf = (key: string): string | null => {
+    if (!/^profile\..+\.(attestation|types)$/.test(key)) return null
+    const detail = raw.find(f => f.key === key)?.detail ?? ''
+    return detail.split(': ')[0] || null
+  }
+  const profileNames = [...new Set(raw.map(f => profileOf(f.key)).filter((n): n is string => n !== null))]
+  protection.items = (protection.items ?? []).map(item => {
+    const label = item.factLabel === 'Passkey Attestation' ? 'Current attestation' : item.factLabel === 'Passkey Storage' ? 'Current storage' : item.factLabel
+    const name = profileNames.length > 1 && item.subjectId ? profileOf(item.subjectId) : null
+    return { ...item, factLabel: name ? `${name} · ${label}` : label }
+  })
   const restrictionProblems = raw.filter(f => f.key.endsWith('.restrictions') && f.outcome !== 'pass')
   protection.items.push(...restrictionProblems.filter(said).map(f => ({ label: f.label, factLabel: f.label, value: f.value, subjectId: f.key, outcome: f.outcome, issueKeys: [`passkey:${f.key}`] })))
   if (reading.resolution?.kind === 'target') {
@@ -280,15 +293,20 @@ export function journeyPasskeyFindings(snapshot: TenantSnapshot, mapping: Mappin
     if (planned === true) protection.items.push({ label: 'Planned storage', factLabel: 'Planned storage', value: 'Device-bound only', subjectId: 'planned-storage', outcome: 'pass' })
   }
   const protectionProblems = (protection.items ?? []).filter(item => item.outcome !== 'pass')
-  protection.value = protectionProblems.length === 0 ? 'Configured'
-    : protectionProblems.every(item => item.factLabel === 'Current attestation' && item.value === 'Disabled') ? 'Attestation off'
-      : protectionProblems.every(item => item.outcome === 'unknown') ? EMERGENCY_TASK.passkeyProtections
-        : NEEDS_CORRECTION
+  // The hold's reason, where the engine holds the step for a profile decision: said on the card, not only in the rail's binding.
+  const profilesOverlap = reading.resolution?.kind === 'review' && reading.resolution.review === 'profiles' && profileNames.length > 1
+    ? fillText((content.shared as { passkeyProfilesOverlap: string }).passkeyProfilesOverlap, { n: profileNames.length, names: list(profileNames) })
+    : null
+  protection.value = profilesOverlap !== null ? profilesOverlap
+    : protectionProblems.length === 0 ? 'Configured'
+      : protectionProblems.every(item => (item.factLabel ?? '').endsWith('Current attestation') && item.value === 'Disabled') ? 'Attestation off'
+        : protectionProblems.every(item => item.outcome === 'unknown') ? EMERGENCY_TASK.passkeyProtections
+          : NEEDS_CORRECTION
   protection.label = 'Passkey protections'
   const protectionOutcomes = [protection.outcome, models.outcome, ...restrictionProblems.map(row => row.outcome)]
   protection.outcome = protectionOutcomes.includes('fail') ? 'fail' : protectionOutcomes.includes('unknown') ? 'unknown' : 'pass'
-  protection.value = protection.outcome === 'pass' ? 'Configured' : protection.outcome === 'fail' ? NEEDS_CORRECTION : EMERGENCY_TASK.passkeyProtections
-  protection.detail = reasonOf([...raw.filter(f => f.key.endsWith('.types') || f.key.endsWith('.attestation')), ...restrictionProblems])
+  protection.value = profilesOverlap !== null ? profilesOverlap : protection.outcome === 'pass' ? 'Configured' : protection.outcome === 'fail' ? NEEDS_CORRECTION : EMERGENCY_TASK.passkeyProtections
+  protection.detail = profilesOverlap ?? reasonOf([...raw.filter(f => f.key.endsWith('.types') || f.key.endsWith('.attestation')), ...restrictionProblems])
   const affected = affectedPasskeysByProposedChange(snapshot, mapping, groups)
   // Where the projection did not settle the impact and names nobody, the card
   // said only that (owner, 2026-09-23): it is left out, unless some account

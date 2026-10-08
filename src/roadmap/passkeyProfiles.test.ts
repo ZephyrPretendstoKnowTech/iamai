@@ -115,6 +115,17 @@ test('assigned attested device-bound profiles jointly support Authenticator and 
     assert.equal(passkeyReadingOf(snapshot).state, 'review')
     assert.ok(passkeyFindingsOf(snapshot).some(f => f.value === 'Synced passkeys allowed' && f.outcome === 'fail'))
     assert.ok(passkeyFindingsOf(snapshot).some(f => f.key === 'profile.permissive.attestation' && f.outcome === 'fail'))
+    // On the card each profile's line carries its name, and the card says why the step holds
+    // (live check on a two-profile tenant, 2026-10-07: Required sat beside Disabled under one label).
+    const f = structuredClone(fixture('demo'))
+    f.snapshot = snapshot
+    const card = journeyPasskeyFindings(f.snapshot, f.mapping, f.groups).find(row => row.key === 'protection')!
+    const labels = (card.items ?? []).map(item => item.factLabel)
+    assert.ok(labels.includes('authenticator · Current attestation'), labels.join(' | '))
+    assert.ok(labels.includes('permissive · Current attestation'), labels.join(' | '))
+    assert.ok(labels.includes('permissive · Current storage'), labels.join(' | '))
+    assert.match(card.value, /^3 passkey profiles apply to the same people \(authenticator, hardware and permissive\)\./)
+    assert.equal(card.detail, card.value, 'the card note says it too')
   }
 })
 
