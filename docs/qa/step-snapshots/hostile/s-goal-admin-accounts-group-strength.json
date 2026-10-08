@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
+  "lane": "Deferred",
   "substatus": null,
-  "reason": "after: Identify Service and Shared Accounts",
+  "reason": null,
   "fact": null,
-  "badge": "On Hold",
-  "bar": "Waiting on your answers",
+  "badge": "Doesn't apply",
+  "bar": "Doesn't apply",
   "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
@@ -16,15 +16,11 @@
     {
       "label": "Prepare Emergency Access Accounts",
       "state": "Prerequisite · To do"
-    },
-    {
-      "label": "Identify Service and Shared Accounts",
-      "state": "Waiting on your answers"
     }
   ],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Sep 7, 2026"
+  "when": "Not scheduled"
 }

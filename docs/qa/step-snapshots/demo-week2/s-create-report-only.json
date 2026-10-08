@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold",
   "bar": "Waiting on your answers",
-  "rail": "8 policies to create in Report-only",
+  "rail": "9 policies to create in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -43,6 +43,10 @@
     },
     {
       "label": "Limit How Long Sessions Last",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Require a Strong Sign-in for One Emergency Account Everywhere",
       "state": "Create in Report-only"
     },
     {

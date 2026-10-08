@@ -1,10 +1,10 @@
 {
-  "lane": "On Hold",
+  "lane": "Deferred",
   "substatus": null,
-  "reason": "after: Identify Service and Shared Accounts",
+  "reason": null,
   "fact": null,
-  "badge": "On Hold",
-  "bar": "Waiting on your answers",
+  "badge": "Doesn't apply",
+  "bar": "Doesn't apply",
   "rail": "Create the policy in Report-only",
   "headings": [
     "About this Step",
@@ -12,19 +12,10 @@
     "Implementation Tasks",
     "Completion Criteria"
   ],
-  "tiles": [
-    {
-      "label": "Identify Service and Shared Accounts",
-      "state": "Waiting on your answers"
-    },
-    {
-      "label": "Configure Passkey Authentication",
-      "state": "Prerequisite · To do"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "AI Info"
   ],
-  "when": "Sep 7, 2026"
+  "when": "Not scheduled"
 }
