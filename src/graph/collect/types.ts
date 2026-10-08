@@ -59,7 +59,15 @@ export type ConfigSection = {
    * (collectors.ts, registry 'CA policies agent targeting'). `error` leaves them
    * unread; absent on a scan from before the read existed, which reads the same.
    */
-  agentFields?: { status: 'ok' | 'error'; reason: string | null; httpStatus: number | null }
+  agentFields?: {
+    status: 'ok' | 'error'; reason: string | null; httpStatus: number | null
+    /**
+     * Policies the beta read returned that the v1.0 read did not (2026-10-08: a
+     * tenant's two "Require risk remediation" policies, a grant v1.0 does not
+     * carry). Their settings are not read; Connect and Inventory name them.
+     */
+    omitted?: { id: string; displayName: string; state: string }[]
+  }
 }
 
 /**

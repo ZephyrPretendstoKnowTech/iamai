@@ -482,7 +482,10 @@ export function ContentStep({
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           {decisionHead ? <DirectionQuestions draft={directionDraft} ctx={ctx} heading={decisionHead.questions} printing={printing} />
           : isEmergencyAccounts && emergencyAccountTasks ? <EmergencySubjectReadiness subjects={emergencyAccountTasks.accounts ?? []} printing={printing} barMain={(emergencyAccountTasks.accounts ?? []).some(account => !account.satisfied) ? '' : 'Account preparation is verified.'} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null} />
-          : isTaskStep && emergencyAccountTasks && (!printing || (isOwnTaskStep && POLICY_KINDS.has(step.kind))) ? <EmergencySubjectReadiness
+          // A policy step draws the task anatomy even while it has no task to hand over (its
+          // policy names an object the tenant lacks): on a two-profile E5 tenant 5.2 fell back
+          // to the tile strip, uppercase labels and all, beside 42 steps that did not (2026-10-08).
+          : isTaskStep && (emergencyAccountTasks || (isOwnTaskStep && POLICY_KINDS.has(step.kind))) && (!printing || (isOwnTaskStep && POLICY_KINDS.has(step.kind))) ? <EmergencySubjectReadiness
             subjects={taskSubjects}
             printing={printing}
             barMain={isOwnTaskStep ? policyBarOf(taskSubjects) : displayedReadiness.bar.main}

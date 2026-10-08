@@ -61,7 +61,7 @@ type Words = {
     limitsMore: string
     limitsLink: string
     meta: { people: string; policies: string; steps: string }
-    complete: { state: string; again: string; degraded: string; unread: string }
+    complete: { state: string; again: string; degraded: string; unread: string; omitted: string }
     gaps: { state: string; lead: string; leadFirst: string; notRead: string; partlyRead: string; refused: string; refusedThatAccount: string; shortWindow: string; others: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string; note: string }
     ready: { state: string; note: string; start: string }
@@ -387,7 +387,7 @@ export type ScanInput =
    * signed in now. A stored scan may be another account's, so only then is a
    * refusal said to be this account's; absent, it is the scan's.
    */
-  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[]; readsEverything?: boolean | null; byThisAccount?: boolean }
+  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean; unread?: UnreadSection[]; readsEverything?: boolean | null; byThisAccount?: boolean; /** Policies Graph's v1.0 read did not return (coreSections.ts omittedPolicies). */ omitted?: readonly { displayName: string }[] }
   /**
    * `gaps`: the core sections a plan cannot be built without (coreSections.ts
    * coreGaps), the one reason no plan was built; `unread` is every section the
@@ -483,7 +483,9 @@ export function scanTile(input: ScanInput): ScanTile {
       // every other page does (F-186): Connect read Ready to plan over a scan 40
       // days old.
       const stale = scanAgeDays(input.at, input.now) >= STALE_SCAN_DAYS ? app.shell.staleEvidence : null
-      const note = [degraded, stale].filter((x): x is string => x !== null).join(' ') || null
+      // Policies Graph's v1.0 read did not return are named, never left unsaid (2026-10-08: a tenant's two risk-remediation policies read as absent).
+      const omittedNote = input.omitted && input.omitted.length > 0 ? fillText(S.complete.omitted, { n: input.omitted.length, names: input.omitted.map((p) => p.displayName).join(', ') }) : null
+      const note = [degraded, omittedNote, stale].filter((x): x is string => x !== null).join(' ') || null
       const caveat = [stale, lead, degraded].filter((x): x is string => x !== null).join(' ')
       return {
         ...base,

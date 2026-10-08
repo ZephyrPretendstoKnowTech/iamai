@@ -64,7 +64,7 @@ import { useSession } from '../session.ts'
 import { W, accountTile, baselineTile, connectStatus, planInputOf, planTile, sampleTile, scanFailedLine, scanTile, signInTile, stages } from '../scan/connectView.ts'
 import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanDoes, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
-import { unreadSources } from '../../graph/collect/coreSections.ts'
+import { omittedPolicies, unreadSources } from '../../graph/collect/coreSections.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { conditionalAccessLicenceLine } from '../../derive/notLicensed.ts'
@@ -513,7 +513,7 @@ function SignedIn({
             // visit says the same thing it said the day it ran (S4-7, S4-8).
             // A refused section asks for no role the token already holds, and is
             // this account's only when the scan's own /me row is this account.
-            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot), readsEverything, byThisAccount: operatorUserId(lastScan.snapshot) === account.localAccountId }
+            { kind: 'complete', at: lastScan.at, degraded: !signInProofRead(lastScan.snapshot), unread: unreadSources(lastScan.snapshot), omitted: omittedPolicies(lastScan.snapshot), readsEverything, byThisAccount: operatorUserId(lastScan.snapshot) === account.localAccountId }
           : { kind: 'ready' }
   // The plan follows a complete scan (its step counts the way the Plan header
   // counts them, once the plan has computed; read-only, so opening Connect never

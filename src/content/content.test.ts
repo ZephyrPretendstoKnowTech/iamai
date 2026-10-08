@@ -106,6 +106,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // Readiness's unmeasured headline renders now: the review page draws every
   // pages.readiness leaf, prompt 62.)
   '.pages.connect.scan.complete.degraded',
+  // Policies Graph's v1.0 read did not return (connectView.ts scanTile; 2026-10-08): the example scan omits none.
+  '.pages.connect.scan.complete.omitted',
   // And the lead a complete scan adds when some section was refused, errored or
   // read only in part (coreSections.ts unreadSources): the same reason again —
   // the review page's example scan read every section it asked for.

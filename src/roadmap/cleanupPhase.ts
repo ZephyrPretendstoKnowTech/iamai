@@ -23,7 +23,8 @@ import type { OrganisationReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { proposeName, usable } from './convention.ts'
 import { nameKey } from '../baseline/discover.ts'
-import { cleanup as cleanupWords, stepById } from '../content/content.ts'
+import { cleanup as cleanupWords } from '../content/content.ts'
+import { contentTitle } from '../content/stepTitle.ts'
 import { fillText } from '../content/render.ts'
 import { list } from '../copy/statements.ts'
 
@@ -121,7 +122,10 @@ export type RetiringPolicy = { policyId: string; line: string; stepId: string; /
 export function retiringOf(steps: readonly Step[], stateWord: (state: string) => string): RetiringPolicy[] {
   const active = (s: Step): boolean => !(s.status === 'skipped' || s.doesntApply || s.state.setAside)
   const on = (s: Step): boolean => s.state.lifecycle === 'enforced' || s.state.satisfied || s.status === 'done'
-  const titleOf = (s: Step): string => (s.goalId ? stepById[s.goalId]?.title : undefined) ?? stepById[s.id]?.title ?? s.title
+  // The step's shown title (stepTitle.ts): a content id that is not the goal id fell
+  // through to the goal's name ("keep it until Browser sessions never persist for
+  // anyone is On", live check 2026-10-08).
+  const titleOf = (s: Step): string => contentTitle(s)
   const lower = (id: unknown): string => String(id ?? '').toLowerCase()
   // The policy each step tracks, compares or edits is that step's own, and never
   // retired for another (audit F1, 2026-10-05).

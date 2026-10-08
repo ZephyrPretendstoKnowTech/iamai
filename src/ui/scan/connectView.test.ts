@@ -392,7 +392,7 @@ test('the ask and another account follow the roles read: no ask for a role held 
     assert.equal(holdsReadEverything(null), false, 'a token without the claim says nothing about roles')
     const CONNECT = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
     assert.match(CONNECT, /const readsEverything = roleIds === null \? null : holdsReadEverything\(roleIds\)/, 'Connect reads the token once, and says unknown until it is read')
-    assert.equal(CONNECT.match(/unread: (runner\.unread, lastScan|unreadSources\(lastScan\.snapshot\)), readsEverything\b/g)?.length, 2, 'Connect tells the gaps and the complete scan what the token holds')
+    assert.equal(CONNECT.match(/unread: (runner\.unread, lastScan|unreadSources\(lastScan\.snapshot\), omitted: omittedPolicies\(lastScan\.snapshot\)), readsEverything\b/g)?.length, 2, 'Connect tells the gaps and the complete scan what the token holds')
   }
   // Phase 2 review, round 2: the token's roles are read after the first render
   // (a silent token call), and until they arrived Connect said the account did

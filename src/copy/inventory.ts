@@ -43,6 +43,8 @@ export const INVENTORY = {
     columns: { name: 'Policy', state: 'State', users: 'Users', exclusions: 'Exclusions', apps: 'Apps', conditions: 'Conditions', grant: 'Grant', session: 'Session' },
     state: { enabled: 'On', enabledForReportingButNotEnforced: 'Report-only', disabled: 'Off', unknown: 'Unknown' },
     microsoftManaged: 'Microsoft-managed',
+    /** Policies Microsoft Graph's v1.0 read does not return (collectors.ts agentFieldsOf omitted; 2026-10-08): named here, never read. */
+    omitted: (n: number, names: string): string => `${n} ${n === 1 ? 'policy' : 'policies'} Microsoft Graph's v1.0 API does not return, so IAMAI could not read ${n === 1 ? 'its' : 'their'} settings: ${names}.`,
     allUsers: 'All users',
     none: 'None',
     groups: (n: number) => count(n, 'group'),

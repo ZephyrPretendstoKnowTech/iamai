@@ -191,6 +191,10 @@ async function agentFieldsOf(ctx: Ctx, rows: unknown[]): Promise<NonNullable<Con
   try {
     const beta = await graphPaged(ctx.tokens, `${BETA}${AGENT_TARGETING.endpoint}`, { signal: ctx.signal, onResponse: (r) => { status = r.status } })
     const byId = new Map(beta.map((b) => [String((b as { id?: unknown }).id ?? '').toLowerCase(), b as Record<string, unknown>]))
+    // A policy beta returns and v1.0 does not uses a shape v1.0 cannot carry (a
+    // "Require risk remediation" grant, 2026-10-08): it is named, never read.
+    const v1Ids = new Set(rows.map((r) => String((r as { id?: unknown }).id ?? '').toLowerCase()))
+    const omitted = [...byId.entries()].filter(([id]) => id !== '' && !v1Ids.has(id)).map(([id, b]) => ({ id, displayName: String(b.displayName ?? ''), state: String(b.state ?? '') }))
     for (const raw of rows) {
       const row = raw as Record<string, unknown>
       const b = byId.get(String(row.id ?? '').toLowerCase())
@@ -209,7 +213,7 @@ async function agentFieldsOf(ctx: Ctx, rows: unknown[]): Promise<NonNullable<Con
       if (risk) conditions.agentIdRiskLevels = bc.agentIdRiskLevels
       row.conditions = conditions
     }
-    return { status: 'ok', reason: null, httpStatus: status }
+    return { status: 'ok', reason: null, httpStatus: status, ...(omitted.length > 0 ? { omitted } : {}) }
   } catch (error) {
     if (ctx.signal.aborted) throw error
     return { status: 'error', reason: error instanceof Error ? error.message : String(error), httpStatus: status ?? (error instanceof GraphRequestError || error instanceof SectionDisabledError ? error.status : null) }

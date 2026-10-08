@@ -30,6 +30,7 @@ import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { CAPABILITIES, deriveTenantCapabilities, deriveUserCapabilities } from '../../licensing/capabilities.ts'
 import { ROLE_TEMPLATES, coversAdminSet, heldOnlyByServices, roleLabel, roleName, roleTemplate } from '../../roles.ts'
 import productNames from '../../../data/product-names.json' with { type: 'json' }
+import { omittedPolicies } from '../../graph/collect/coreSections.ts'
 import { INVENTORY as C, combinationName, methodName, protocolName, trustTypeName } from '../../copy/inventory.ts'
 import { ACTIVITY_STATE, MFA_STATE } from '../../copy/definitions.ts'
 import { app, directionWords, pages, workflowWords } from '../../content/content.ts'
@@ -307,7 +308,8 @@ const yesNo = (v: boolean): string => (v ? C.devices.yes : C.devices.no)
 export function policiesModel(snapshot: TenantSnapshot, facts: PolicyFacts[], names: NameDirectory, groupsPending = false): InventoryModel<PolicyFacts> {
   const P = C.policies
   const o = objectLabels(snapshot, names, groupsPending)
-  return readOf(snapshot, 'caPolicies', {
+  const omitted = omittedPolicies(snapshot)
+  const model: InventoryModel<PolicyFacts> = readOf(snapshot, 'caPolicies', {
     id: 'policies',
     label: C.tabs.policies,
     csvName: 'iamai-policies.csv',
@@ -326,6 +328,7 @@ export function policiesModel(snapshot: TenantSnapshot, facts: PolicyFacts[], na
       { key: 'session', header: P.columns.session, cell: (r) => sessionSummary(r) },
     ],
   })
+  return omitted.length > 0 ? { ...model, note: [model.note, P.omitted(omitted.length, omitted.map((p) => p.displayName).join(', '))].filter((x): x is string => !!x).join(' ') } : model
 }
 
 // ---------- Named locations ----------

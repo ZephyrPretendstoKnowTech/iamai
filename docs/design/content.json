@@ -982,6 +982,8 @@
           "state": "complete · {age}",
           "again": "Scan again",
           "degraded": "Sign-in proof not read · MFA readiness not measured",
+          "$commentOmitted": "Policies Microsoft Graph's v1.0 read does not return and its beta read does (collectors.ts agentFieldsOf; 2026-10-08: a tenant's two policies with the Require risk remediation grant read as absent, and 30 policies read as 28). Named here and on Inventory; their settings are not read.",
+          "omitted": "{n} Conditional Access policies Microsoft Graph's v1.0 API does not return, so IAMAI could not read their settings: {names}.",
           "$commentUnread": "Phase 2 review, round 2: the status strip carries this lead when every stage is done (connectView.ts connectStatus), and it ended \"so check these before you act on it\": in the strip, \"these\" pointed at rows drawn only in the Scan step, and with one section it counted one as many. The demo scan reads one section in part, so every beta visitor read it. It now names where the list is and reads the same with any count.",
           "unread": "{n} sections were not read in full. The plan is built from what IAMAI did read, so check what is listed under Scan before you act on it."
         },
@@ -2381,6 +2383,8 @@
           "foundReadinessFloor": "Enforcement waits for {measure} to reach {threshold}. At least {value} are ready: {line}",
           "$commentFoundReadinessUnmeasured": "A threshold against a non-number is a dead end: \"waits for MFA readiness to reach 90%; it is not measured today\" told three times on one step, with nothing saying WHAT could not be measured or what would move it. The count is computed (roadmap/methodReadiness.ts) and was rendered nowhere.",
           "foundReadinessUnmeasured": "Enforcement waits for {measure} to reach {threshold}. It is not measured yet: {line}",
+          "$commentFoundReadinessUnmeasuredStrength": "The same where the number cannot be measured because the strength it is measured against does not exist in the tenant yet (the step's policy names the object Create the Baseline's Authentication Strength makes; live check 2026-10-08: four steps read \"it is not measured today\" and none said why). {step} is that step's title.",
+          "foundReadinessUnmeasuredStrength": "Enforcement waits for {measure} to reach {threshold}. It is measured once {step} is done: the strength it is measured against does not exist here yet.",
           "foundReadinessEnforced": "{value} of {scope} have a qualifying method.",
           "foundEnforcedShort": "This policy is enforced, and {line} Anyone it does not accept is refused where it applies until they register a method it does.",
           "$commentFoundEnforcedUnmeasured": "The readiness gate is computed only for an unfinished step, so a policy enforced in the portal while IAMAI was holding it back lost every trace of the hold. A reader enforced the admin policy with neither admin's method readable (the registration source was 403); the step read Completed, its Done-when satisfied, and nothing said the threshold had never been met - a gate that congratulates you for walking around it. The finished step now states the threshold and that nothing showed it met. It holds nothing: the work is done, and this is a fact about the tenant. It claims nothing about WHEN the policy went on, which IAMAI cannot know for a policy it found already enforced.",

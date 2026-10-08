@@ -137,8 +137,9 @@ test('net-new 12: no app is an agent identity by its name, and Inventory has no 
 
 test('a printed policy step draws the task cards its screen draws, with no Scan line', () => {
   const src = readFileSync(new URL('./ContentStep.tsx', import.meta.url), 'utf8')
-  const branch = src.slice(src.indexOf('isTaskStep && emergencyAccountTasks'), src.indexOf('<ReadinessSection', src.indexOf('isTaskStep && emergencyAccountTasks')))
-  assert.match(branch, /^isTaskStep && emergencyAccountTasks && \(!printing \|\| \(isOwnTaskStep && POLICY_KINDS\.has\(step\.kind\)\)\) \? <EmergencySubjectReadiness/, 'printing a policy step takes the screen’s cards; Prepare and Ongoing print as before')
+  const branch = src.slice(src.indexOf('isTaskStep && (emergencyAccountTasks'), src.indexOf('<ReadinessSection', src.indexOf('isTaskStep && (emergencyAccountTasks')))
+  // A policy step draws the cards even with no task to hand over (2026-10-08); printing a policy step takes the screen’s cards; Prepare and Ongoing print as before.
+  assert.match(branch, /^isTaskStep && \(emergencyAccountTasks \|\| \(isOwnTaskStep && POLICY_KINDS\.has\(step\.kind\)\)\) && \(!printing \|\| \(isOwnTaskStep && POLICY_KINDS\.has\(step\.kind\)\)\) \? <EmergencySubjectReadiness/, 'printing a policy step takes the screen’s cards; Prepare and Ongoing print as before')
   assert.match(src, /const POLICY_KINDS: ReadonlySet<Step\['kind'\]> = new Set\(\['create', 'adjust', 'enforce'\]\)/)
   assert.match(branch, /scanNote=\{!printing\}/)
   assert.match(branch, /onWhy=\{hasEvidence && !printing \?/)

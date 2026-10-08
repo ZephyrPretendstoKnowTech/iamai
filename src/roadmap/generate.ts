@@ -3687,7 +3687,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // already On has nothing left to turn on. One reading with the two checks
   // (roadmap/countriesLockout.ts).
   if (geoStep) {
-    const lockout = countriesLockout(snapshot, mapping)
+    // Only a saved list can leave a country out (live check, 2026-10-08: with nothing
+    // saved yet the warning named the very country the picker was suggesting).
+    const lockout = mapping.allowedCountries.length > 0 ? countriesLockout(snapshot, mapping) : []
     const open = geoStep.status !== 'done' && geoStep.status !== 'skipped' && !geoStep.state.satisfied && !geoStep.state.setAside && geoStep.state.lifecycle !== 'enforced'
     if (open && lockout.length > 0 && !geoStep.blockers.some((b) => b.kind === 'readiness' && b.label === COUNTRIES_LOCKOUT_WAIT)) {
       geoStep.blockers.push({ kind: 'readiness', label: COUNTRIES_LOCKOUT_WAIT, binding: BLOCKED_REASON.countriesLeftOut(lockout.map((c) => countryLabel(c.code))), detail: countriesLockoutWait(lockout, nameOf) })

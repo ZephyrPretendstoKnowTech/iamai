@@ -182,6 +182,11 @@ const unreadOf = (source: string, s: { status: string; reason: string | null; co
  * the scan half saw is the one thing the plan cannot warn about by itself: the
  * policy it did not see reads exactly like a policy the tenant does not have.
  */
+/** Policies the beta read returned and the v1.0 read did not (collectors.ts agentFieldsOf; 2026-10-08): named on Connect and Inventory, never read. */
+export function omittedPolicies(snapshot: Pick<TenantSnapshot, 'config'>): { id: string; displayName: string; state: string }[] {
+  return snapshot.config?.caPolicies?.agentFields?.omitted ?? []
+}
+
 export function unreadSources(snapshot: TenantSnapshot): UnreadSection[] {
   const out: UnreadSection[] = []
   for (const key of CONFIG_KEYS) {

@@ -38,6 +38,7 @@ import { MAIL_ACCOUNTS_WAIT, SIGN_INS_FINDING } from '../../roadmap/blockSignIns
 import { impactReachOf } from '../../derive/population.ts'
 import { partialSeatsLine } from '../../derive/notLicensed.ts'
 import { affectedIds, populationLine } from '../../derive/whoLine.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { app, cleanup, directionWords, engine, shared, stepById } from '../../content/content.ts'
 import { isDirectionStep } from '../../roadmap/directionAnswers.ts'
 import { directionBlockerStep, directionTitleOf, directionWaitRelayed } from '../../roadmap/direction.ts'
@@ -157,6 +158,7 @@ type ContractWords = {
   stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string>
   foundReadiness: string
   foundReadinessUnmeasured: string
+  foundReadinessUnmeasuredStrength: string
   /** What a finished rollout left behind, where it finished short of its own readiness. */
   foundEnforcedShort: string
   /** A finished rollout whose readiness the plan's threshold waits for and IAMAI cannot measure (Action.enforcedBelowReadiness). */
@@ -2114,6 +2116,8 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
     // "It is not measured yet: 0 of 2 people have a registered method" was the
     // whole sentence on sixteen held steps of one tenant, and named nothing to
     // go and do. This is the branch that needed the route most.
+    // Not measured because the strength it is measured against is not in the tenant yet (2026-10-08).
+    if ((step.action.missing ?? []).some((m) => m.stepId === PREREQ_STEP_ID.authStrength)) return fillText(CONTRACT.foundReadinessUnmeasuredStrength, { measure: gate.measure, threshold: gate.threshold, step: stepById[PREREQ_STEP_ID.authStrength]?.title ?? PREREQ_STEP_ID.authStrength })
     return withRoute(fillText(CONTRACT.foundReadinessUnmeasured, { measure: gate.measure, threshold: gate.threshold, line }))
   }
   if (step.state.lifecycle !== 'enforced' || !gate.value.endsWith('%')) {
@@ -2122,7 +2126,9 @@ export function readinessSentence(step: Step, gate: NonNullable<Step['action']['
     // with nothing on the plan that enrols a device, so the gate stated a
     // percentage and no way to change it — the Temporary Access Pass dead end
     // again, one family along.
-    const waits = held ?? fillText(CONTRACT.foundReadiness, { ...gate })
+    // Not measured because the strength it is measured against is not in the tenant yet (2026-10-08): say what makes it measurable.
+    const strengthMissing = gate.value === engine.readiness.notMeasured && (step.action.missing ?? []).some((m) => m.stepId === PREREQ_STEP_ID.authStrength)
+    const waits = held ?? (strengthMissing ? fillText(CONTRACT.foundReadinessUnmeasuredStrength, { measure: gate.measure, threshold: gate.threshold, step: stepById[PREREQ_STEP_ID.authStrength]?.title ?? PREREQ_STEP_ID.authStrength }) : fillText(CONTRACT.foundReadiness, { ...gate }))
     // The percentage's own numerator. "67% MFA-ready" says how far off the gate
     // is and nothing about who: the reading behind it — how many people have a
     // method the target policies accept, out of how many — is computed by
@@ -2915,7 +2921,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     // rendered here only when no fix displaced the implementation tile, so the
     // one blocker that leaves a step with no work to do explained itself on
     // some steps and not on others.
-    out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: b.label, note: c.implementation.offered ? null : c.implementation.because })
+    out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: b.label, note: null })
   }
   return out
 }
