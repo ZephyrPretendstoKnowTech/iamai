@@ -89,8 +89,14 @@ Everything else is either a working document it links to, or history in
   - Left for the owner as product calls (review list in the session): declining a baseline
     setting with a reason, Retire and Housekeeping on a tenant with its own complete design,
     1.3 on layered passkey profiles.
-- **Next:** the owner merges `v1.1` to `main` (planned 2026-10-08 06:00); the live tests in
-  plan section 8 remain the owner's.
+- **Connect, 2026-10-08 (owner):** the Global Reader paragraph under Sign in is gone; the front page
+  should be easier and simpler to walk through.
+- **v1.2, first item (owner, 2026-10-08 06:00):** readiness thresholds that wait for 100% ("Enforcement
+  waits for MFA readiness to reach 100%") read as futile on a 400-person tenant. Find every line that
+  holds a step on an all-or-nothing readiness number and cut or soften it; the Threshold tile's
+  "not measured" sentence is the example the owner sent.
+- **Next:** the owner merges `v1.1` to `main` (2026-10-08 06:30 for the John Harden meeting); the live
+  tests in plan section 8 remain the owner's.
 - **Owner decisions of 2026-10-03, binding for v1.1:**
   - **Passkeys:** device-bound and attested for all users, with no AAGUID key restrictions.
     A tenant's own allow list is left as it is.
