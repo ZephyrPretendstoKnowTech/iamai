@@ -17,6 +17,7 @@ import type { StepDecision } from '../roadmap/decisions.ts'
 import { planIdFor } from '../roadmap/generate.ts'
 import { displayZone } from '../copy/dates.ts'
 import { isCleanupCheckpoint, recoveryAccountBasis } from '../roadmap/cleanupDone.ts'
+import { DIRECTION_STEP, directionDecisionOf } from '../roadmap/directionAnswers.ts'
 // The demo's switches and its tenant id live in demoMode.ts, which is light;
 // this module carries the fixture and the engine, and loads only on demand.
 // The tenant id is not a GUID, and not the fixture's own generated one,
@@ -89,6 +90,12 @@ export function demoTenant(week2 = false): DemoTenant {
   // lets coverage resolve each policy's exclusions (prompt 50.1 item 5).
   // Week two's decisions (the technician's answers from week one) are dated with the snapshot.
   const decisions = f.decisions ? shiftDates(f.decisions, offset) : null
+  // The follow-up sample's device answers, approved as the scan suggests them
+  // (owner, 2026-10-07): every policy waits on the Direction steps, so a sample
+  // whose one open decision holds nearly every row read as stuck. The fixture
+  // keeps the device decision open for the tests that watch that wait; only the
+  // sample a visitor sees settles it.
+  if (week2 && decisions) decisions[DIRECTION_STEP.devices] = { ...directionDecisionOf({ computers: { value: 'managed', picked: [] }, phones: { value: 'apps', picked: [] } }), at: snapshot.asOf }
   // Completion dates represent calendar days, stored at noon, not event times.
   // Shifting that noon by fractional days can move the recorded drill to the
   // next day while its sign-in remains on the intended day (after 21:00 UTC).
