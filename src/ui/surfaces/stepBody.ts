@@ -816,7 +816,14 @@ function ownBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions = {}) {
   // task is next, and the rail names the readiness it waits for, never the create.
   const heldCreate = procedure !== null ? heldCreateMilestoneOf(step) : null
   const railTasks = heldCreate !== null ? [] : (taskProjection?.tasks ?? [])
-  const firstTask = (railTasks.find((t) => t.id === taskProjection?.recommendedTaskId) ?? railTasks.find((t) => t.required))?.title ?? null
+  // A policy task the step cannot submit yet is called what the step is called
+  // (policyTasks.ts taskTitle: no operation to read), so the rail read
+  // "NEXT MILESTONE: Require a Strong Sign-in for Admins" over the step of that
+  // name while it waited on the baseline's Authentication Strength (live check,
+  // 2026-10-07). A step's own name is never its next milestone: the row's wait is.
+  const recommendedTask = railTasks.find((t) => t.id === taskProjection?.recommendedTaskId)?.title ?? null
+  const requiredTask = railTasks.find((t) => t.required)?.title ?? null
+  const firstTask = recommendedTask ?? (requiredTask === title && laneView.waitingFor ? laneView.waitingFor : requiredTask)
   // A report-only week that would have blocked someone is the work before the
   // turn-on, and its card says so (walk list 4.x item 35): the rail names it.
   const blockedWork = procedure !== null && contract.milestone.kind === 'observe' && BLOCKED_MILESTONES.has(contract.milestone.label) ? contract.milestone.label.replace(/\.$/, '') : null

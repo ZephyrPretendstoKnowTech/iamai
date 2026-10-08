@@ -2,7 +2,7 @@
 // policies, each with the one acceptance the owner can see on screen.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, strengthMissing } from '../../roadmap/fixtures/index.ts'
 import { runFixture, withFoundationSettled } from '../../roadmap/fixtures/run.ts'
 import { COUNTRIES_LOCKOUT_WAIT } from '../../roadmap/countriesLockout.ts'
 import { omittedPolicies } from '../../graph/collect/coreSections.ts'
@@ -12,7 +12,8 @@ import { buildNameDirectory } from '../../names.ts'
 import { readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
-import { readinessBlockersOf } from './planBoard.ts'
+import { laneViewOf, readinessBlockersOf } from './planBoard.ts'
+import { stepBodyOf } from './stepBody.ts'
 
 const OMITTED = [
   { id: 'o-1', displayName: 'Require - Risk Remediation - Low User Risk Administrators', state: 'enabled' },
@@ -60,4 +61,26 @@ test('a prerequisite card on a held policy carries no second copy of the policy 
     }
   }
   assert.ok(checked > 0, 'the premise: a held create with engine prerequisite tiles')
+})
+
+test('a policy step waiting on the baseline’s Authentication Strength names that wait as its next milestone, never its own title (item 5)', () => {
+  const f = fixture('small')
+  f.snapshot = strengthMissing(f.snapshot)
+  const r = runFixture(f)
+  const readings = laneReadings(r.steps)
+  const titleOf = (id: string): string | null => r.steps.find((x) => x.id === id)?.title ?? null
+  let waiting = 0
+  for (const step of r.steps) {
+    const reading = readings.get(step.id)
+    const lane = reading ? laneViewOf(reading, titleOf) : null
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
+    const body = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf) })
+    assert.notEqual(body.rail.headline, step.title, `${step.id}: its own title as its next milestone`)
+    if (step.id === 's-goal-emergency-account-strong-signin') {
+      assert.ok(lane?.waitingFor, 'the premise: the step waits on a prerequisite')
+      assert.equal(body.rail.headline, lane.waitingFor)
+      waiting++
+    }
+  }
+  assert.equal(waiting, 1)
 })
