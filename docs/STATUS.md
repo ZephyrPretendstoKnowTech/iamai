@@ -58,8 +58,23 @@ Everything else is either a working document it links to, or history in
   - **CI:** the unit job's timeout raised to 35 minutes.
   - **Where it is recorded:** plan section 9 holds the list, the calls made and what is
     still the owner's.
-- **Next:** the owner's review of plan section 9, the live tests in plan section 8, then a
-  decision on merging `v1.1` to `main`.
+- **The 2026-10-07 audit (owner: "execute all"),** a top-to-bottom walk of the sample before
+  the John Harden call, landed on `v1.1`:
+  - 1.3 targets device-bound passkeys only (a profile that keeps Synced ticked keeps registered
+    synced passkeys signing in; Microsoft Learn) and reads planned attestation from the profile;
+  - the emergency account Jon's BreakGlass policy includes is the first saved in 1.1, not a
+    Direction question (owner: the question read as disjointed); 8.1 is Require a Strong
+    Sign-in for One Emergency Account;
+  - the admin accounts group is asked only where the scan read a PIM-eligible admin; otherwise
+    4.5 does not apply and the footer says why (the sample has none, so it is 40 steps);
+  - the scan reads the tenant's service principals (Directory.Read.All) and a policy step
+    naming an application with none gives the `New-MgServicePrincipal` line;
+  - wording: no passkey allow list anywhere, 5.1's shortfall line, 5.3's Entra tab, 3.8's
+    picker marks created policies, Retire keeps a stricter policy on its own line, the optional
+    Direction notes, 1.3's affected-passkey task, 6.3 names countries;
+  - the follow-up sample approves its device answers so it shows the plan moving.
+- **Next:** the owner merges `v1.1` to `main` (planned 2026-10-08 06:00); the live tests in
+  plan section 8 remain the owner's.
 - **Owner decisions of 2026-10-03, binding for v1.1:**
   - **Passkeys:** device-bound and attested for all users, with no AAGUID key restrictions.
     A tenant's own allow list is left as it is.
