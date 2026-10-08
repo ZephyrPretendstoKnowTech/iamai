@@ -21,7 +21,7 @@ import type { EmergencyAccountTask, EmergencyTaskProjection } from './emergencyA
 import type { ReadinessTile } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 
-type BatchWords = { createValue: string; milestone: string; taskTitle: string; leftOutBoth: string; leftOutUserAction: string; leftOutDeviceCheck: string; leftOutOwnStep: string }
+type BatchWords = { createValue: string; milestone: string; taskTitle: string; taskCreated: string; leftOutBoth: string; leftOutUserAction: string; leftOutDeviceCheck: string; leftOutOwnStep: string }
 
 /** One policy's create lines, as its own step's create task holds them (policyTasks.ts `creates`). */
 export type CreateTaskLines = { name: string; steps: string[] }
@@ -112,14 +112,17 @@ export function reportOnlyMilestoneOf(step: Step): string | null {
 export function reportOnlyTasksOf(step: Step, ctx: StepVarContext, createOf: (member: Step) => CreateTaskLines[] | null): EmergencyTaskProjection | null {
   if (step.id !== REPORT_ONLY_STEP_ID) return null
   const members = membersOf(step, ctx)
-  const tasks: EmergencyAccountTask[] = members.flatMap((m) => {
+  const taskOf = (m: Member): EmergencyAccountTask[] => {
     const each = (createOf(m.step) ?? []).filter((c) => c.steps.length > 0)
     const own = contentTitle(m.step)
     return each.map((c, i) => {
-      const title = each.length > 1 && c.name !== '' ? fillText(W().taskTitle, { title: own, name: c.name }) : own
+      const named = each.length > 1 && c.name !== '' ? fillText(W().taskTitle, { title: own, name: c.name }) : own
+      // A created policy keeps its task but says so, and comes after the ones still to create (audit, 2026-10-07).
+      const title = m.toCreate ? named : fillText(W().taskCreated, { title: named })
       return { id: `create:${nth(m.id, i)}`, accountId: null, title, targetUpn: null, required: m.toCreate, readinessKey: `batch:${nth(m.id, i)}`, evidence: null, actionLabel: title, steps: c.steps }
     })
-  })
+  }
+  const tasks: EmergencyAccountTask[] = [...members.filter((m) => m.toCreate), ...members.filter((m) => !m.toCreate)].flatMap(taskOf)
   if (tasks.length === 0) return null
   const next = members.find((m) => m.toCreate && tasks.some((t) => t.id === `create:${m.id}`))
   return { tasks, recommendedTaskId: next ? `create:${next.id}` : tasks[0].id, printAll: true }

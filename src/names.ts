@@ -104,7 +104,7 @@ export function buildNameDirectory(
   for (const r of ROLE_TEMPLATES) put(r.templateId, r.name)
   for (const a of firstPartyApps.apps) put(a.appId, a.displayName)
   // Name from pinned policy 1d3a7677, not a Microsoft first-party or vendor-ownership claim.
-  put('708861da-226e-4d65-a57a-24128df64524', 'Inforcer (baseline name)')
+  put('708861da-226e-4d65-a57a-24128df64524', 'Inforcer')
   for (const s of builtinStrengths.strengths) put(s.id, s.displayName)
 
   if (snapshot) {

@@ -106,7 +106,10 @@ test('one card per policy still to create, headed by its step and naming the pol
   }
   // A created policy is a Satisfied card and keeps its task: the procedure is never hidden (owner, 2026-09-25).
   assert.ok(created.length > 0, 'the premise: the demo has created some')
-  assert.deepEqual(body.emergencyAccountTasks!.tasks.map((t) => t.id), taskIdsOf(r, ctx, [...create, ...created]), 'one task per listed policy, created or not')
+  // The ones still to create first, in plan order, then the created ones, each saying so (audit, 2026-10-07).
+  const tasks = body.emergencyAccountTasks!.tasks
+  assert.deepEqual(tasks.map((t) => t.id), [...taskIdsOf(r, ctx, create), ...taskIdsOf(r, ctx, created)], 'one task per listed policy, created or not')
+  for (const t of tasks) assert.equal(t.title.endsWith(' · created'), !t.required, t.title)
   assert.equal(body.emergencyAccountTasks!.recommendedTaskId, `create:${r.steps.filter((s) => create.includes(s.id)).sort((a, b) => byPlanPlace(a, b))[0].id}`, 'the first policy to create leads')
 })
 

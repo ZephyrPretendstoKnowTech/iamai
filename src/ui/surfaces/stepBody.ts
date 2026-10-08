@@ -32,7 +32,7 @@ import { fillText, fillTextVerbatim, whatToDoFor, whole } from '../../content/re
 import { app, directionWords, stepById } from '../../content/content.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { deferralOf } from './deferral.ts'
-import { suggestCountries } from '../../mapping/countries.ts'
+import { countryName, suggestCountries } from '../../mapping/countries.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { toReportOnly, unavailableReason } from '../../roadmap/operations.ts'
@@ -301,7 +301,8 @@ function withObjectTask(step: Step, own: StepBody, task: StepBody, ctx: StepVarC
 function pickerWordsOf(taskStep: Step, d: StepBody['d'], ctx: StepVarContext): StepBody['d'] {
   if (taskStep.id !== PREREQ_STEP_ID.allowedCountries || !d) return d
   const Q = directionWords.questions.workCountries
-  const seen = suggestCountries(ctx.snapshot).countries.filter((c) => c.users > 0).map((c) => c.code)
+  // Names, as the picker shows them: "AU" above "Australia" read as two things (audit, 2026-10-07).
+  const seen = suggestCountries(ctx.snapshot).countries.filter((c) => c.users > 0).map((c) => countryName(c.code))
   return { ...d, heading: Q.label, ...(seen.length > 0 ? { text: fillText(Q.seen, { countries: seen.join(', ') }) } : {}) }
 }
 

@@ -28,7 +28,7 @@ import { fillText } from '../content/render.ts'
 import { list } from '../copy/statements.ts'
 
 /** Retire Replaced Policies' own words beyond its row (content.cleanup.retire). */
-const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string; replacementPending: string; replacementPendingMany: string; replacementOn: string; replacementOnMany: string; stricter: string } }).retire
+const RETIRE_WORDS = (cleanupWords as unknown as { retire: { recordStale: string; replacementPending: string; replacementPendingMany: string; replacementOn: string; replacementOnMany: string; stricter: string; stricterLine: string } }).retire
 
 export type CleanupPhase = {
   /** The first Cleanup day: the working day after the last enforcement window. */
@@ -108,7 +108,7 @@ export type CleanupPhaseInput = {
 }
 
 /** One policy Retire Replaced Policies lists: the tenant's, the row's line for it, and the step that built the baseline's beside it. */
-export type RetiringPolicy = { policyId: string; line: string; stepId: string; /** Every step whose policy has to be On before it goes (audit F2, F3). */ stepIds?: string[] }
+export type RetiringPolicy = { policyId: string; line: string; stepId: string; /** Every step whose policy has to be On before it goes (audit F2, F3). */ stepIds?: string[]; /** Asks more than the baseline's: a line to keep, listed last (audit, 2026-10-07). */ stricter?: boolean }
 
 /**
  * The tenant's own policies a step built the baseline's beside and still On or
@@ -160,9 +160,13 @@ export function retiringOf(steps: readonly Step[], stateWord: (state: string) =>
     // What to do with it first, then, for a stricter one, what it would loosen, as its own
     // sentence, then its ID last (audit and live check, 2026-10-05: "keep it with a reason"
     // and "keep it until" ran together in one clause).
-    out.push({ policyId, line: `${p.name} (${stateWord(p.state)}): ${replacement}.${p.stricter ? ` ${RETIRE_WORDS.stricter}` : ''} ID: ${policyId}`, stepId: waits[0], stepIds: waits })
+    // A stricter policy is a line to keep, after the ones to turn off (audit, 2026-10-07).
+    const line = p.stricter
+      ? fillText(RETIRE_WORDS.stricterLine, { name: p.name, state: stateWord(p.state), id: policyId })
+      : `${p.name} (${stateWord(p.state)}): ${replacement}. ID: ${policyId}`
+    out.push({ policyId, line, stepId: waits[0], stepIds: waits, stricter: p.stricter })
   }
-  return out
+  return [...out.filter((r) => !r.stricter), ...out.filter((r) => r.stricter)]
 }
 
 /**

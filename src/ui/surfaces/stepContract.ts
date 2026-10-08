@@ -1012,7 +1012,8 @@ function membersOf(step: Step): ContractMember[] {
     const since = o?.change.latest.firstSeenAt ?? null
     const line = t?.reviewRequired
       ? fillText(CONTRACT.memberReview, { name, lifecycle: stage })
-      : since
+      // A date only once the policy exists: "Not deployed since" dates nothing (audit, 2026-10-07).
+      : since && lifecycle !== null && lifecycle !== 'not-deployed'
         ? fillText(CONTRACT.memberWatched, { name, lifecycle: stage, date: absoluteDate(since) })
         : fillText(CONTRACT.memberLine, { name, lifecycle: stage })
     return { key: m.key, label: multi ? fillText(CONTRACT.member, { label: MEMBER_LABELS[i] ?? String(i + 1) }) : null, name, lifecycle, reviewRequired: t?.reviewRequired === true, since, line }

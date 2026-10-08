@@ -23,7 +23,7 @@ test('first-party apps resolve by name, and a tenant\'s own app name beats the b
   // Inforcer baseline label is not a first-party claim and tenant app names take precedence
   {
     const id = '708861da-226e-4d65-a57a-24128df64524'
-    assert.equal(buildNameDirectory(null).nameOf(id), 'Inforcer (baseline name)')
+    assert.equal(buildNameDirectory(null).nameOf(id), 'Inforcer')
     const catalog = JSON.parse(readFileSync('data/first-party-apps.json', 'utf8'))
     assert.equal(catalog.apps.some((a: { appId: string }) => a.appId === id), false)
     const { snapshot } = fixture('demo')
@@ -31,7 +31,7 @@ test('first-party apps resolve by name, and a tenant\'s own app name beats the b
     snapshot.appSignInSummary.push({ appId: id, appDisplayName: 'Tenant Inforcer Application', signInCount: 1 })
     assert.equal(buildNameDirectory(snapshot).nameOf(id), 'Tenant Inforcer Application')
     snapshot.sources.appSignInSummary.status = 'error'
-    assert.equal(buildNameDirectory(snapshot).nameOf(id), 'Inforcer (baseline name)', 'an unread source is not current naming evidence')
+    assert.equal(buildNameDirectory(snapshot).nameOf(id), 'Inforcer', 'an unread source is not current naming evidence')
   }
 })
 

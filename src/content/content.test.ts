@@ -225,6 +225,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.cleanup.retire.replacementPending',
   '.cleanup.retire.replacementPendingMany',
   '.cleanup.retire.stricter',
+  '.cleanup.retire.stricterLine',
   '.pages.connect.account.sampleNote',
   // The exclusions group's not-in-use states (Foundation C): the review's
   // example has a group in use, so none of their lines render. The suggestion

@@ -156,7 +156,8 @@ test('Retire Replaced Policies: listed with each policy’s state and ID, held u
   // Require MFA for Everyone retires its own beside the admin templates (owner, 2026-10-04: identity is the name on every step).
   // Each line names its replacement; the phishing-resistant template asks more than the baseline's grant and says so (audit, 2026-10-05).
   assert.ok(lines.some((l) => l === `Require multifactor authentication for admins (On): keep it until Require a Strong Sign-in for Admins is On. ID: ${MFA_ADMINS}`), lines.join(' | '))
-  assert.ok(lines.some((l) => l === `Require phishing-resistant multifactor authentication for administrators (Report-only): keep it until Require a Strong Sign-in for Admins is On. It asks more than the baseline's: keep it for good, with a reason, unless you mean to loosen sign-in. ID: ${PR_ADMINS}`), lines.join(' | '))
+  // A stricter policy is a line to keep, listed after the ones to turn off (audit, 2026-10-07).
+  assert.equal(lines[lines.length - 1], `Keep Require phishing-resistant multifactor authentication for administrators (Report-only): it asks more than the baseline's, so turning it off would loosen sign-in. Record the reason below unless you mean to. ID: ${PR_ADMINS}`, lines.join(' | '))
   assert.ok((retire.waitsOn ?? []).includes(ADMINS))
   // What Keep With This Reason saves (ui/surfaces/CleanupStep.tsx): every policy listed, by id, with the reason.
   for (const id of [MFA_ADMINS, PR_ADMINS]) assert.ok((plan(f).r.schedule.cleanup!.retiringPolicyIds ?? []).includes(id), id)
@@ -262,7 +263,7 @@ test('the owner-like fixtures: demo-week2’s own enforced admin policy is built
     assert.deepEqual((step.action.besidePolicies ?? []).map((p) => [p.name, p.state]), [['Core - Grant - Admins phishing-resistant', 'enabled']])
     assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'update'), 'its stricter admin policy is never weakened in place (OWN-W4)')
     assert.ok(r.steps.find((s) => s.id === REPORT_ONLY_STEP_ID)!.reportOnlyBatch!.create.includes(ADMINS))
-    assert.ok(retire?.lists.retiring?.[0]?.startsWith('Core - Grant - Admins phishing-resistant (On): '), JSON.stringify(retire?.lists))
+    assert.ok(retire?.lists.retiring?.some((l) => l.startsWith('Keep Core - Grant - Admins phishing-resistant (On): ')), JSON.stringify(retire?.lists))
   }
   {
     // Its own stricter policy On delivers the goal today: the baseline's policy,

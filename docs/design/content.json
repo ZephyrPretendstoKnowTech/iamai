@@ -90,7 +90,7 @@
       "resources": "Under **Target resources**, include {include}.",
       "$commentResourcesDirectory": "Windows Azure Active Directory can't be picked from Select resources (Microsoft Learn, concept-conditional-access-cloud-apps); the portal reaches it only through a custom security attribute filter, which writes a different policy. The PowerShell and JSON tabs name it by its application ID, as the baseline does.",
       "resourcesDirectory": "Under **Target resources**, **Windows Azure Active Directory** can't be picked from Select resources, so create this policy from the **PowerShell** or **JSON** tab, which targets it by its application ID.",
-      "resourcesDirectoryWaiting": "Under **Target resources**, **Windows Azure Active Directory** can't be picked from Select resources. The **PowerShell** and **JSON** tabs are not available yet. {wait} Resolve the outstanding items in **Tasks Remaining**, then select **Scan to update the plan**. Use **PowerShell** or **JSON** to create this policy once its tab appears.",
+      "resourcesDirectoryWaiting": "Under **Target resources**, **Windows Azure Active Directory** can't be picked from Select resources, so this policy is created from the **PowerShell** or **JSON** tab, which targets it by its application ID. Those tabs appear once the outstanding items in **Tasks Remaining** are done ({wait}) and you select **Scan to update the plan**; the lines below are the settings they create.",
       "$commentResourcesDirectoryElsewhere": "The same line where Create the Policies in Report-only copies the create: that step has no PowerShell or JSON tab, so the line names the policy's own step, which has them (T1-6e). {step} is that step's title.",
       "resourcesDirectoryElsewhere": "Under **Target resources**, **Windows Azure Active Directory** can't be picked from Select resources, so open {step} and use its **PowerShell** or **JSON** tab, which targets it by its application ID.",
       "resourcesExclude": "Under **Target resources**, include {include} and exclude {exclude}.",
@@ -621,7 +621,7 @@
         "blindFixLicensed": "It needs {capability} and the {scope} permission. With {capability} in place, sign in with a Global Reader or Global Administrator account, with every permission IAMAI asks for approved, then scan again.",
         "$commentRouteShortfall": "Naming the campaign beside every MFA gate was keyed on the MEASURE, not on whether that campaign's cohort actually contains the people the gate is short. The campaign prepares people the scan has seen sign in. On a tenant where most people never have, the gate counts them and the campaign cannot: eleven people measured, a cohort of two, a 90% threshold. The reader finished the named step, read \"Nothing left to do\", and the number had not moved a point — with no other action anywhere on the board. Said only where finishing the named step provably cannot reach the threshold.",
         "routeShortfallNone": "“{step}” will not move this number: none of the {short} people it is waiting on are in that step's list, because IAMAI has not seen them sign in. Until they sign in and register a method, or you decide those accounts are not in use, this number cannot reach {threshold}.",
-        "routeShortfallSome": "“{step}” covers {covered} of the {short} people this number is waiting on, which is not enough to reach {threshold}. IAMAI has not seen the other {rest} sign in, so that step's list leaves them out.",
+        "routeShortfallSome": "“{step}” covers {covered} of the {short} people this number is waiting on, which is not enough to reach {threshold}. The other {rest} are not on that step's list: they already have a method it accepts, or IAMAI has not seen them sign in.",
         "$commentNoneJudged": "\"0 of 39 people have a registered method allowed by the target policies\" is the same construction as a MEASURED zero — the post-grant line on the same tenant reads \"0 of 2 people have a registered method\". Where nobody could be judged at all, leading with a bare zero puts an unread count in the shape of a measurement, and a reader had to reach the third clause to learn which kind of zero it was. Said only where the ready count is zero AND every person in scope is unestablished.",
         "noneJudged": "None of the {n} people in scope could be judged: method compatibility is not established for any of them.",
         "noneJudgedOne": "The one person in scope could not be judged: method compatibility is not established for them.",
@@ -1750,8 +1750,8 @@
           "unknown": "Authentication methods weren’t read. Scan again."
         },
         "step3": {
-          "pass": "Passkey models checked against your tenant's allow list",
-          "note": "Set your passkey settings in Configure Passkey Authentication so IAMAI can check keys against the models you intend to allow."
+          "pass": "Passkey models checked against your tenant's own allow list",
+          "note": "Configure Passkey Authentication adds no model list. A list your tenant already has stays as it is, and each person's keys are checked against it here once that step is done."
         },
         "attestation": {
           "pass": "Attestation is off: synced and Windows Hello passkeys can register",
@@ -2360,7 +2360,7 @@
           "fixHeading": "Fix before continuing",
           "member": "Policy {label}",
           "memberLine": "{name}: {lifecycle}",
-          "memberWatched": "{name}: {lifecycle}, watched since {date}",
+          "memberWatched": "{name}: {lifecycle} since {date}",
           "memberReview": "{name}: {lifecycle}, and not what the plan asks",
           "stateWords": {
             "$comment": "The Plan state words the one projection adds (src/ui/surfaces/planState.ts): a policy the tenant already enforces that the plan must change and cannot yet, and emergency access whose minimum is in place while its hardening is deferred to Cleanup.",
@@ -4111,7 +4111,9 @@
       "replacementPendingMany": "keep it until {steps} are On",
       "replacementOnMany": "{steps} replace it and are On",
       "$commentStricter": "A listed policy whose grant asks more than the baseline's (a stricter method, read as the Accept panel reads it: roadmap/differences.ts grantDirectionOf). Turning it off loosens sign-in, which 'running old and new side by side weakens nothing' does not cover (audit, 2026-10-05: the tenant's phishing-resistant admin policy beside the baseline's Modern MFA + TAP).",
-      "stricter": "It asks more than the baseline's: keep it for good, with a reason, unless you mean to loosen sign-in."
+      "stricter": "It asks more than the baseline's: keep it for good, with a reason, unless you mean to loosen sign-in.",
+      "$commentStricterLine": "A stricter policy's whole line, listed after the ones to turn off (audit, 2026-10-07: it sat in the same list as the policies to retire, and a reader skimming for switches could turn it off). {state} is On or Report-only.",
+      "stricterLine": "Keep {name} ({state}): it asks more than the baseline's, so turning it off would loosen sign-in. Record the reason below unless you mean to. ID: {id}"
     },
     "naming": {
       "brief": {
@@ -5211,7 +5213,7 @@
           "{passkeyCreate}",
           "{passkeyPrompts}",
           "{passkeyProvider}",
-          "Using a security key from 1.3's approved list instead: open [Security info](https://mysignins.microsoft.com/security-info) as {operatorAccount}, then **Add sign-in method → Passkey → Security key**.",
+          "Using a security key instead: open [Security info](https://mysignins.microsoft.com/security-info) as {operatorAccount}, then **Add sign-in method → Passkey → Security key**.",
           "Sign out, then sign in with the passkey on each device you use: {operatorDevices}. {passkeySignIn}",
           "Return to IAMAI and select **Scan to update the plan**."
         ]
@@ -5502,8 +5504,8 @@
         "managed": "Microsoft managed",
         "off": "off",
         "$commentOn": "F-107: a campaign that is on says what the Set line below it changes. \"on\" alone, over a line that sets State to Enabled, read as already on and then turned on again. on: the scan read no method and nobody it nudges; noMethod: people and no method; differ: the line's method to its people, with the other settings that differ named from differs.",
-        "on": "on, with no method or people set",
-        "noMethod": "on for {scope}, with no method set",
+        "on": "on, but no method or people are set",
+        "noMethod": "on for {scope}, but no method is set",
         "nudging": "on, nudging {method} to {scope}",
         "differ": "{today}, with different {settings}",
         "differs": {
@@ -8126,7 +8128,7 @@
         "tap": "Open **Entra ID → Users → {upn} → Authentication methods → Add authentication method → Temporary Access Pass**, select **Add**, and copy the pass.",
         "$commentRegister": "The passkey goes on the new admin account through the one Authenticator procedure (content/passkeySetup.ts, owner 2026-09-24), on {name}'s phone; registerPass takes the place of its sign-in prompts line, because this account's only way in is the pass. registerKey is the security-key alternative.",
         "registerPass": "Sign in as **{upn}** with the pass when Authenticator asks.",
-        "registerKey": "Using a security key from 1.3's approved list instead: open [Security info](https://mysignins.microsoft.com/security-info) as **{upn}** with the pass, then **Add sign-in method → Passkey → Security key**.",
+        "registerKey": "Using a security key instead: open [Security info](https://mysignins.microsoft.com/security-info) as **{upn}** with the pass, then **Add sign-in method → Passkey → Security key**.",
         "assign": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, and complete the assignment. If it asks for an assignment type, choose **Active** and **Permanently assigned**.",
         "assignActive": "Open **ID Governance → Privileged Identity Management → Microsoft Entra roles → Roles → {role} → Add assignments**, select **{upn}**. Choose **Assignment type: Active** and **Permanently assigned**.",
         "assignEligible": "Open **Entra ID → Roles & admins → {role} → Add assignments**, select **{upn}**, choose **Assignment type: Eligible**, and select **Assign**.",
@@ -8612,6 +8614,8 @@
         "milestone": "{n} policies to create in Report-only",
         "$commentTaskTitle": "The Implementation Task of one policy a step creates beside another (T1-6d: Jon's guest pair is two policies, two cards and two tasks): the step's title and the policy's own name. A step that creates one policy keeps its title alone.",
         "taskTitle": "{title} ({name})",
+        "$commentTaskCreated": "A created policy keeps its task (the procedure is never hidden) but says so in the picker, after the ones still to create (audit, 2026-10-07: fourteen tasks with eight already On read as fourteen jobs).",
+        "taskCreated": "{title} · created",
         "$commentLeftOut": "Under the cards, only where a policy still to create was left out for this tenant (owner, 2026-09-26): the type of policy and why, never its name. A user-action policy (Protect Sign-in Method Registration, Require MFA to Register a Device) and a device check beyond Windows (Microsoft Learn, concept-conditional-access-report-only). Whole sentences, chosen by reportOnlyStep.ts reportOnlyNoteOf.",
         "leftOutBoth": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device, and on a compliant-device policy it can prompt people on Mac, iOS and Android for a certificate. Their own steps create those policies.",
         "leftOutUserAction": "Some policies aren't listed. Report-only doesn't evaluate user actions, like registering a device. Their own steps create those policies.",

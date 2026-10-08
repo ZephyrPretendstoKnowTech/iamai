@@ -92,8 +92,8 @@ test('affected-passkey task keeps users as facts and one method selector', () =>
   assert.doesNotMatch(task.steps.join('\n'), /Global Administrator|custody|Temporary Access Pass/i)
   const rendered = emergencyTaskText({ ...task, facts: [{ label: 'user@example.com', value: 'Security key · Replacement needed' }] }, task.defaultVariantId)
   assert.match(rendered, /Compatible alternative registered|Replacement needed/)
-  assert.match(rendered, /Compatible alternative/)
-  assert.match(rendered, /Replacement registration, only if needed:/)
+  assert.match(rendered, /Someone who keeps another way in:/)
+  assert.match(rendered, /Someone with no other way in:/)
   assert.match(rendered, /Return to IAMAI.*Scan to update the plan/s)
 })
 
@@ -142,9 +142,10 @@ test('extra tenant models outside the required set do not by themselves produce 
 
 const protectionSteps = (profile: Record<string, unknown>) => projectProfile(profile).projected.tasks.find(row => row.id === 'apply-passkey-settings')!.steps
 
-test('storage: stored "deviceBound,synced" with attestation enforced is no change; synced only is', () => {
-  assert.deepEqual(protectionFacts({ passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) }), [])
-  assert.equal(projectProfile({ passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) }).reading.state, 'inPlace')
+test('storage: stored "deviceBound,synced" is a change even with attestation enforced, as synced only is (a registered synced passkey keeps signing in until Synced is unticked; audit, 2026-10-07)', () => {
+  assert.ok(protectionFacts({ passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) }).length > 0)
+  assert.notEqual(projectProfile({ passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) }).reading.state, 'inPlace')
+  assert.ok(protectionSteps({ passkeyTypes: 'deviceBound,synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) }).includes('Set **Passkey types** to **Device-bound**.'))
   const steps = protectionSteps({ passkeyTypes: 'synced', attestationEnforcement: 'registrationOnly', ...allow(GRAPH_ORDER) })
   assert.ok(steps.includes('Set **Passkey types** to **Device-bound**.'))
 })

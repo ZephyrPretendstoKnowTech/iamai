@@ -36,13 +36,12 @@ export function emergencyAccountAiInfo(step: Step, ctx: StepVarContext, projecte
         ...outstanding.map(f => `- ${f.label}: ${f.value}${f.detail.trim() ? `. ${f.detail.trim()}` : ''}`),
       ].join('\n')
     : '- No account preparation action is currently projected. Rescan after any tenant change.'
-  const models = projected.approvedModels.map(model => `- ${model.name} — ${model.aaguid}`).join('\n')
+  // No model list (owner, 2026-10-03): the plan adds no key restrictions, so none is briefed.
   return [
     'Help me understand and carry out Prepare Emergency Access Accounts. Use only the observed account identity, role and registered-method evidence below. Distinguish observations from proposed changes, do not invent tenant values or completed work, and explain the next account-specific action first.',
     `Selected emergency accounts: ${accounts.length ? accounts.join(', ') : 'none saved'}.`,
     'Current preparation work:',
     work,
-    projected.approvedModels.length ? `Approved passkey models:\n${models}` : 'No approved passkey model is currently saved.',
     `Current step state: ${step.state.satisfied ? 'account preparation is satisfied by the latest scan' : 'one or more account preparation requirements remain'}.`,
     'Use the Entra channel for the complete procedure and return to IAMAI to scan after the change.',
   ].join('\n\n')
