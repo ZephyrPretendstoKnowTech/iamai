@@ -8,6 +8,24 @@ your browser.
 - **Demo:** https://getiamai.com/planner/?demo=1#/plan (a built-in sample tenant, no
   sign-in, nothing from a real tenant)
 
+## What's new in v1.1 (2026-10-08)
+
+- **Several tenants in one browser.** The Account menu lists every tenant you have opened on
+  this device; open, sign out of or forget any of them, each with its own scan and plan.
+- **The whole Defense in Depth baseline.** The admin-accounts group policy, the emergency
+  account's own policy, both AI-agent blocks, the lockdown kit, and the countries policies with
+  a lockout warning that names who signs in from where.
+- **Your own policies, matched by what they do.** A policy that already does a job is renamed
+  or built beside, and Retire Replaced Policies pairs each old policy with its replacement and
+  keeps a stricter one with a reason you record.
+- **Passkeys told straight.** Device-bound and attested for everyone, the synced passkeys that
+  would stop signing in listed before you save, and each passkey's type in MFA Readiness.
+- **The scan reads service principals and names the policies Graph's v1.0 API does not
+  return.** Sign-in failures are explained in plain words.
+- **The plan reads in doing order**, and the printed briefing opens with a one-page cover.
+
+The full list, with what is known for v1.2: [`docs/releases/v1.1.md`](docs/releases/v1.1.md).
+
 ## The problem
 
 A Conditional Access baseline tells you which policies a tenant should have. It does not
@@ -27,9 +45,10 @@ before a policy is enforced. IAMAI does not guarantee that nobody is locked out.
 
 1. **Connect.** Sign in with a Microsoft Entra work account and grant the read-only
    permissions. The scan reads the tenant's Conditional Access configuration, users,
-   groups, devices, licences, role assignments, registered authentication methods and up
-   to 30 days of interactive sign-ins, as far as the tenant's licence and your role
-   allow.
+   groups, devices, licences, role assignments, service principals, registered
+   authentication methods and up to 30 days of interactive sign-ins, as far as the
+   tenant's licence and your role allow, and names what it could not read. The Account
+   menu switches between the tenants you have opened in this browser.
 2. **Plan.** The main working view: the baseline's goals as dated steps, each with its
    status, who it touches, what it waits on, and implementation content (Entra admin
    center steps, PowerShell, policy JSON, context for your own AI assistant, and an email
@@ -132,9 +151,10 @@ redirect URIs registered there.
 
 ## Project status
 
-Active development by a single maintainer. There are no tagged releases; `main` is what
-is deployed. A push to `main` publishes the site once its production build passes. The
-`ci` workflow (typecheck, the full unit suite, site build, browser smoke) runs on pull
+Active development by a single maintainer. `main` is what is deployed; v1.1 went live on
+2026-10-08 and each release is described in `docs/releases/`. A push to `main` publishes
+the site once its production build passes. The `ci` workflow (typecheck, the full unit
+suite, site build, browser smoke) runs on every push to the release branch, on pull
 requests and on demand, and a local pre-push check runs the tenant-data guard and the
 typecheck. Wording, plan logic and layout still change often.
 
