@@ -310,7 +310,11 @@ async function main(): Promise<void> {
   // The same for a reading of a whole policy (interpretation.json `policies`:
   // Jon's AGENT blocks, whose agent targeting the export lost): a policy that
   // changed since the reading was settled is read again, never carried forward.
-  const policyReads = interpretPolicies(interpretation, next.discovered)
+  // Checked against the pinned policies, the form the reading's context was
+  // settled on and agentBlocks.test.ts checks: the fetched form leaves out an
+  // absent sessionControls where the pin writes null, so its word never matched
+  // and this refused the pin the repository was already on.
+  const policyReads = interpretPolicies(interpretation, next.policies as unknown as CaPolicy[])
   if (policyReads.reviewRequired.length > 0) {
     throw new Error(
       `refusing to pin: ${policyReads.reviewRequired.length} policy reading(s) need review before this commit can be adopted:\n` +
