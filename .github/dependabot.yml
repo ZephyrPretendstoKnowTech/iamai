@@ -9,3 +9,15 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # One pull request a week for the whole tree: separate ones filled the
+    # open-PR limit in October 2026 and updates stopped arriving.
+    groups:
+      npm:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
