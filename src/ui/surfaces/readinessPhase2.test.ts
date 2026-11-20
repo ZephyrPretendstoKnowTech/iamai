@@ -206,7 +206,7 @@ test('the headline and the footer count only the people IAMAI could judge, and n
     assert.ok(m, line)
     assert.equal(Number(m[2]) + Number(m[3] ?? 0), counted.length)
     const smoke = readFileSync('scripts/smoke.mjs', 'utf8')
-    const lit = (smoke.match(/const SUMMARY_LINE = (\/.*\/)\n/) ?? [])[1]
+    const lit = (smoke.match(/const SUMMARY_LINE = (\/.*\/)\r?\n/) ?? [])[1]
     assert.ok(lit)
     const sm = line.match(new RegExp(lit.slice(1, -1)))
     assert.ok(sm, 'the smoke reads it')
