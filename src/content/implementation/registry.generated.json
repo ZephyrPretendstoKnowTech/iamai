@@ -982,7 +982,7 @@
             "04b969aa-3e98-4e0f-8b32-2319b199b56a": "db834f8f"
           },
           "memberStableId": "04b969aa-3e98-4e0f-8b32-2319b199b56a",
-          "sourceDisplayName": "IAC - GLOBAL – SESSION – Admin Persistence (4 Hours)",
+          "sourceDisplayName": "IAC - GLOBAL - SESSION - Admin Persistence (4 Hours)",
           "sourceState": "enabled",
           "canonicalSemantics": {
             "users": "exact tenant-resolved role population corresponding to the pinned admin-session target; source currently covers the full built-in directory-role set",
@@ -3958,7 +3958,7 @@
             "9eab445f-7f21-479a-85c9-29769512067e": "7398df1e"
           },
           "memberStableId": "9eab445f-7f21-479a-85c9-29769512067e",
-          "sourceDisplayName": "IAC - GLOBAL – BLOCK - Legacy Authentication",
+          "sourceDisplayName": "IAC - GLOBAL - BLOCK - Legacy Authentication",
           "sourceState": "enabled",
           "canonicalSemantics": {
             "users": "All users with tenant-resolved canonical exclusions and owner-confirmed service/device overlays",
@@ -5422,7 +5422,7 @@
           }
         ],
         "baselineAuthority": {
-          "pinCommit": "8af3b118ad063121705beacf9c4b70709a38016b",
+          "pinCommit": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
           "reviewedMembers": {
             "aeb49474-5250-4b65-8b0a-56c47127ee0f": "75f2c295"
           },
@@ -6066,7 +6066,7 @@
             "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5": "e205689f"
           },
           "memberStableId": "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5",
-          "sourceDisplayName": "IAC - GLOBAL – BLOCK – Countries not Allowed",
+          "sourceDisplayName": "IAC - GLOBAL - BLOCK - Countries not Allowed",
           "sourceState": "enabled",
           "canonicalSemantics": {
             "users": "All users with IAMAI-resolved canonical exclusions, including service-account/partner overlays only when already resolved",
@@ -8640,7 +8640,7 @@
           }
         ],
         "baselineAuthority": {
-          "pinCommit": "8af3b118ad063121705beacf9c4b70709a38016b",
+          "pinCommit": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
           "reviewedMembers": {
             "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4": "79ce4680"
           },
@@ -22780,7 +22780,7 @@
     "s-check-dormant-accounts": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -22792,7 +22792,7 @@
     "s-check-separate-admin-accounts": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -22804,7 +22804,7 @@
     "s-goal-admin-portals-protected": {
       "status": "reviewNeeded",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [
         "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e"
@@ -22818,7 +22818,7 @@
     "s-goal-admin-session": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "04b969aa-3e98-4e0f-8b32-2319b199b56a"
       ],
@@ -22832,7 +22832,7 @@
     "s-goal-admins-phishing-resistant": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce"
       ],
@@ -22846,7 +22846,7 @@
     "s-goal-azure-management-mfa": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -22858,7 +22858,7 @@
     "s-goal-block-auth-transfer": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "fa005ec2-4940-49c8-b4e7-b58e66ef481c"
       ],
@@ -22872,7 +22872,7 @@
     "s-goal-block-device-code": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "8b42eda3-6917-4ab4-afb2-e32c37520f9b"
       ],
@@ -22886,7 +22886,7 @@
     "s-goal-block-legacy-auth": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "9eab445f-7f21-479a-85c9-29769512067e"
       ],
@@ -22900,7 +22900,7 @@
     "s-goal-block-unsupported-platforms": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "9e21fa64-8d9a-4e62-81da-9abce8859a0c"
       ],
@@ -22913,8 +22913,8 @@
     },
     "s-goal-device-registration-mfa": {
       "status": "current",
-      "reviewedPin": "8af3b118ad063121705beacf9c4b70709a38016b",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "reviewedPin": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "aeb49474-5250-4b65-8b0a-56c47127ee0f"
       ],
@@ -22928,7 +22928,7 @@
     "s-goal-geo-restriction": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5"
       ],
@@ -22942,7 +22942,7 @@
     "s-goal-guests-mfa": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "e0fabad3-bd0f-42e4-a901-51ef7ab8889c",
         "f25f94e0-98b6-41be-b9d6-68cb781004a4"
@@ -22957,7 +22957,7 @@
     "s-goal-inforcer-mfa": {
       "status": "current",
       "reviewedPin": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "1d3a7677-a723-4c56-924c-2e1dc63df105"
       ],
@@ -22971,7 +22971,7 @@
     "s-goal-intune-enrollment-reauth": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime"
       ],
@@ -22986,8 +22986,8 @@
     },
     "s-goal-mfa-all-users": {
       "status": "current",
-      "reviewedPin": "8af3b118ad063121705beacf9c4b70709a38016b",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "reviewedPin": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4"
       ],
@@ -22999,13 +22999,15 @@
       "matchedByTarget": []
     },
     "s-goal-mobile-app-protection": {
-      "status": "current",
+      "status": "reviewNeeded",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": [],
+      "added": [
+        "a380813c-e529-4ff2-abe6-ad39871347ab"
+      ],
       "identityFallback": [],
       "renamed": [],
       "matchedByTarget": []
@@ -23013,7 +23015,7 @@
     "s-goal-pim-activation-reauth": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "a6b3b754-9079-48f0-abb2-9e79b2f41095"
       ],
@@ -23027,7 +23029,7 @@
     "s-goal-register-info-protected": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23039,7 +23041,7 @@
     "s-goal-require-managed-device": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "660ab461-0de5-4b00-baea-ec7325280f60"
       ],
@@ -23053,7 +23055,7 @@
     "s-goal-service-accounts-trusted-network": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "99eabebd-877c-4800-aa15-d389b8767760"
       ],
@@ -23067,7 +23069,7 @@
     "s-goal-session-lifetime": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "ea9459a9-91b6-4d2b-b929-03781ac81d54"
       ],
@@ -23081,7 +23083,7 @@
     "s-goal-sign-in-risk": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "53a8df0b-4658-4835-ace2-100b5d287aac"
       ],
@@ -23095,7 +23097,7 @@
     "s-goal-sign-in-risk-medium": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc"
       ],
@@ -23109,7 +23111,7 @@
     "s-goal-token-protection": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "8bb25c6a-ed35-4556-bed4-b3aaa14e192b"
       ],
@@ -23123,7 +23125,7 @@
     "s-goal-unmanaged-browser": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23135,7 +23137,7 @@
     "s-goal-user-risk": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "544cd9ef-5e37-4568-9ad8-b8e151be1814"
       ],
@@ -23151,7 +23153,7 @@
     "s-goal-user-risk-medium": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "7475b373-0544-4ee8-8827-cff35009136d"
       ],
@@ -23165,7 +23167,7 @@
     "s-goal-workload-identity-block": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [
         "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP"
       ],
@@ -23181,7 +23183,7 @@
     "s-ladder-operator-passkey": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23193,7 +23195,7 @@
     "s-prereq-allowed-countries": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23205,7 +23207,7 @@
     "s-prereq-auth-strength": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23217,7 +23219,7 @@
     "s-prereq-break-glass": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23229,7 +23231,7 @@
     "s-prereq-device-plan": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23241,7 +23243,7 @@
     "s-prereq-exclusion-group": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23253,7 +23255,7 @@
     "s-prereq-passkey-settings": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23265,7 +23267,7 @@
     "s-prereq-per-user-mfa": {
       "status": "current",
       "reviewedPin": null,
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23277,7 +23279,7 @@
     "s-prereq-security-defaults": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23289,7 +23291,7 @@
     "s-prereq-service-accounts-group": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23301,7 +23303,7 @@
     "s-prereq-trusted-location": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23313,7 +23315,7 @@
     "s-verify-mfa": {
       "status": "current",
       "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-      "pinned": "8af3b118ad063121705beacf9c4b70709a38016b",
+      "pinned": "15afe3b289dbf535068fffbf5e9bf6e14141f0c0",
       "unchanged": [],
       "changed": [],
       "removed": [],
@@ -23340,7 +23342,7 @@
     "s-goal-inforcer-mfa": "baseline-member",
     "s-goal-intune-enrollment-reauth": "baseline-member",
     "s-goal-mfa-all-users": "baseline-member",
-    "s-goal-mobile-app-protection": "microsoft-template-floor",
+    "s-goal-mobile-app-protection": "baseline-member",
     "s-goal-pim-activation-reauth": "baseline-member",
     "s-goal-register-info-protected": "microsoft-template-floor",
     "s-goal-require-managed-device": "baseline-member",

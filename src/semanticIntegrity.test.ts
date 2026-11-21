@@ -37,7 +37,7 @@ import { jsonOffered, policyJson, stepOperations } from './ui/surfaces/stepJson.
 import { betaRequestOf, powershellFor } from './ui/surfaces/stepPowerShell.ts'
 import { portalNamesFor, stepPortalLines } from './ui/surfaces/stepPortal.ts'
 import { rowWhen } from './ui/surfaces/rowWhen.ts'
-import { boardReadingsOf, laneViewFor } from './ui/surfaces/planBoard.ts'
+import { boardHolds, boardReadingsOf, laneViewFor } from './ui/surfaces/planBoard.ts'
 import { stepVars } from './ui/surfaces/stepVars.ts'
 import { contentStepFor } from './content/stepTitle.ts'
 import { shows } from './derive/mfaReadiness.ts'
@@ -300,7 +300,8 @@ test('042.8: the four channels serialise the same operations, or none of them do
     // The export view's one action is the Step Contract's, both read with the row's lane, and it is present.
     const lane = laneViewFor(step, boardReadingsOf(c.steps, c.run.schedule.cleanup, c.fixture.mapping.breakGlassAnswers ?? null))
     const view = stepExportView(step, ctx, lane)
-    assert.ok(view.whatToDo.includes(stepContract(step, ctx, undefined, lane).whatToDo.text), `${c.label}/${step.id}: the artifacts do not carry the step's next action`)
+    // Read as the export reads it: a step the board holds is undated in every artifact (stepExport.ts; owner decision 2, 2026-09-22).
+    assert.ok(view.whatToDo.includes(stepContract(step, ctx, undefined, lane, undefined, boardHolds(step, lane)).whatToDo.text), `${c.label}/${step.id}: the artifacts do not carry the step's next action`)
   }
   // And the same for the steps nothing may write: no channel offers anything.
   for (const { c, step } of stepsIn('unavailable')) {

@@ -20,7 +20,9 @@ test('every package is classified by what it stands on, and only a package the p
   }
   const of = (id: string): string | null => provenanceOf(id, LIBRARY.packages.find((p) => p.stepId === id)?.relationship)
   // A goal the pin holds no policy for stands on its template or the floor, whatever its author called it.
-  for (const id of ['s-goal-unmanaged-browser', 's-goal-azure-management-mfa', 's-goal-mobile-app-protection', 's-goal-register-info-protected']) assert.equal(of(id), 'microsoft-template-floor', id)
+  for (const id of ['s-goal-unmanaged-browser', 's-goal-azure-management-mfa', 's-goal-register-info-protected']) assert.equal(of(id), 'microsoft-template-floor', id)
+  // Jon's MAM - Protection policy since the pin 15afe3b2: the goal is baseline-backed now.
+  assert.equal(of('s-goal-mobile-app-protection'), 'baseline-member')
   assert.equal(of('s-goal-device-registration-mfa'), 'baseline-member')
   assert.equal(of('s-goal-session-lifetime'), 'baseline-member', 'a merged goal is backed by the member one of its goals maps to')
   assert.equal(of('s-prereq-exclusion-group'), 'tenant-prerequisite')

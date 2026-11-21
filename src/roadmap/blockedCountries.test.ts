@@ -30,7 +30,7 @@ import type { Step } from './types.ts'
 
 const GEO = stepIdForGoal('geo-restriction')
 const LOCATION = PREREQ_STEP_ID.allowedCountries
-const NO_EXCLUSIONS = 'IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'
+const NO_EXCLUSIONS = 'IAC - GLOBAL - BLOCK - Countries not Allowed - NoExclusions'
 const NO_EXCLUSIONS_ID = '1eaf943a-abad-4c77-b101-0c5342fc1044'
 const ALLOWED_LOCATION = 'aaaaaaaa-0000-4000-8000-000000000001'
 const BLOCKED_LOCATION = 'bbbbbbbb-0000-4000-8000-000000000002'
@@ -61,7 +61,7 @@ test('T2-NE: with no country to block outright nothing changes, and Jon\'s NoExc
   assert.equal(f.mapping.countriesBlockedOutright, undefined, 'the premise: none listed')
   const r = runFixture(f)
   const geo = geoOf(r.steps)
-  assert.deepEqual(opsOf(geo).map((o) => o.sourceName), ['IAC - GLOBAL – BLOCK – Countries not Allowed'])
+  assert.deepEqual(opsOf(geo).map((o) => o.sourceName), ['IAC - GLOBAL - BLOCK - Countries not Allowed'])
   assert.equal(blockedCountriesCompanion(f.baseline.policies as never, f.mapping.countriesBlockedOutright), null)
   const map = goalMapInUse(PINNED_GOAL_MAP, f.snapshot, null)
   const row = notInPlanRows(f.baseline.policies, r.steps, r.coverage, map).find((x) => x.policy === NO_EXCLUSIONS)
@@ -76,7 +76,7 @@ test('T2-NE: countries listed to block outright add Jon\'s NoExclusions block to
   const r = runFixture(f)
   const geo = geoOf(r.steps)
   const ops = opsOf(geo)
-  assert.deepEqual(ops.map((o) => [o.mode, o.sourceName]), [['create', 'IAC - GLOBAL – BLOCK – Countries not Allowed'], ['create', NO_EXCLUSIONS]])
+  assert.deepEqual(ops.map((o) => [o.mode, o.sourceName]), [['create', 'IAC - GLOBAL - BLOCK - Countries not Allowed'], ['create', NO_EXCLUSIONS]])
   const [allow, block] = ops
   assert.equal(block.body.displayName, NO_EXCLUSIONS, 'not the baseline\'s name')
   assert.equal(block.body.state, 'enabledForReportingButNotEnforced', 'not created in Report-only')
@@ -114,7 +114,7 @@ test('T2-NE: the Implementation Tasks make the blocked countries location, then 
     assert.ok(location.steps.some((l) => l.includes('**RU, KP**')), location.steps.join(' | '))
     assert.ok(location.steps.some((l) => l.includes('Named locations → + Countries location')))
     const create = tasks[1].steps.join(' | ')
-    assert.match(create, /Name: \*\*IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions\*\*/)
+    assert.match(create, /Name: \*\*IAC - GLOBAL - BLOCK - Countries not Allowed - NoExclusions\*\*/)
     assert.match(create, /include \*\*[^*]*Blocked[^*]*Countries\*\*/, 'the create does not name the blocked location')
     assert.ok(tasks[2].steps.join(' ').includes(NO_EXCLUSIONS), 'the turn-on leaves Jon\'s policy off')
     const c = stepContract(geo, ctx)

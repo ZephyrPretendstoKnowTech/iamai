@@ -258,6 +258,46 @@
       "context": {
         "1588fdc7-f34a-468e-8023-4d788ef5d226": "96ff1183ebea5f74"
       }
+    },
+    {
+      "id": "906da598-7690-4edd-87de-690f250eabe1",
+      "kind": "group",
+      "meaning": "copilotUsersGroup",
+      "basis": "documented",
+      "classification": "knownSemantic",
+      "evidence": "Jon Hope's README for IAC - APP - BLOCK - Copilot - Exclude - AgentAdmins (Updated/Documentation, at the pin 15afe3b2) states its intent: it blocks the Enterprise Copilot Platform and Security Copilot Portal for all users, and only members of the AgentAdmins group are permitted to use them. The policy excludes two groups: 5628ad67, already settled as his break-glass group, and this one, so this is AgentAdmins, the people allowed to use Copilot. Its tenant counterpart is the groups the operator names under Confirm What You Use's Microsoft Copilot answer (owner, 2026-11-20): no scan reads who should use Copilot.",
+      "includedIn": [],
+      "context": {
+        "3e2ff4cb-9ed1-42bc-9714-c3d4abac55e2": "4453ddd03ec5a946"
+      },
+      "excludedFromAtLeast": 1,
+      "excludedFrom": [
+        "3e2ff4cb-9ed1-42bc-9714-c3d4abac55e2"
+      ]
+    },
+    {
+      "id": "50cee835-4c94-4494-909c-ae2986a6b4ce",
+      "kind": "group",
+      "meaning": "authorEnvironment",
+      "basis": "documented",
+      "classification": "sourceOnly",
+      "evidence": "Excluded only from IAC - INTUNE - GRANT - MAM - Protection. Jon Hope's README for the policy at the pin 15afe3b2 lists it as one of 2 additional exclusion groups by id alone, with no name and no purpose, and his own audit finding asks him to confirm the scoping is intentional. Nothing names it and no tenant object answers it, so it is a standing exclusion of the author's own tenant and the body goes without it, as the README refresh (readme-refresh-2026-09-19.md section 5, call c) settled his other unnamed exclusions.",
+      "includedIn": [],
+      "context": {},
+      "excludedFromAtLeast": 1,
+      "excludedFrom": []
+    },
+    {
+      "id": "64ec2804-55bb-4a3d-9f5d-b1d2da0537b4",
+      "kind": "group",
+      "meaning": "authorEnvironment",
+      "basis": "documented",
+      "classification": "sourceOnly",
+      "evidence": "Excluded only from IAC - INTUNE - GRANT - MAM - Protection. Jon Hope's README for the policy at the pin 15afe3b2 lists it as one of 2 additional exclusion groups by id alone, with no name and no purpose, and his own audit finding asks him to confirm the scoping is intentional. Nothing names it and no tenant object answers it, so it is a standing exclusion of the author's own tenant and the body goes without it, as the README refresh (readme-refresh-2026-09-19.md section 5, call c) settled his other unnamed exclusions.",
+      "includedIn": [],
+      "context": {},
+      "excludedFromAtLeast": 1,
+      "excludedFrom": []
     }
   ],
   "policies": [

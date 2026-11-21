@@ -102,6 +102,21 @@ Everything else is either a working document it links to, or history in
   emergency account, Retire keeps the stricter policy on its own line, no console errors.
 - **Next:** v1.2 opens with the readiness-threshold sweep above; the live tests in plan section 8
   remain the owner's.
+- **Baseline 15afe3b2 (2026-11-20; owner approved the build and an independent wording review):**
+  Jon's baseline moved from 8af3b118 (38 policies) to 15afe3b2 (40).
+  - Ten names moved from en-dashes to hyphens; name matching already reads them alike.
+  - His Copilot block is a step, Limit Microsoft Copilot to Its Allowed Groups: Confirm What You
+    Use asks Microsoft Copilot and, on Yes, the groups allowed. **Answered No, the step stays and
+    the block spares only the exclusions group** (owner: "we don't block stuff because it's easy").
+  - His MAM - Protection policy is the Require App Protection on Phones step, which was parked
+    while the baseline had no app-protection policy: created in Report-only, turn-on held for
+    readiness (owner). Phones answered Not enrolled puts it on the plan.
+  - Open: the app-protection step's guidance package was written with no baseline member and is
+    set aside for review. Its turn-on no longer waits on compliant-device readiness (it is for
+    phones that are not enrolled; the card told a Not enrolled tenant to enrol devices): its
+    report-only period shows who it would stop, and a risk line says to assign app protection
+    first. The AVD allow-list, agent and baseline-scopes steps are
+    not in the dependency playbook, so their turn-on does not wait on the recovery test.
 - **Owner decisions of 2026-10-03, binding for v1.1:**
   - **Passkeys:** device-bound and attested for all users, with no AAGUID key restrictions.
     A tenant's own allow list is left as it is.

@@ -2905,6 +2905,12 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     }
     if (b.kind === 'decision' && (present.has('decision') || c.state.condition === 'needs-decision')) continue
     if (b.kind === 'missingObject' && [...present].some((k) => k.startsWith('missing:'))) continue
+    // An answer a Direction step asks, which the policy names (the groups allowed to
+    // use Azure Virtual Desktop or Microsoft Copilot), is not an object the tenant
+    // lacks: the Direction step's own tile above already says what the step waits
+    // on, and this one read "Missing object · Missing object" beside it.
+    // (The blocker's id is the step that supplies it: planLanes.ts observe.)
+    if (b.kind === 'missingObject' && isDirectionStep(b.id.slice('missingObject:'.length))) continue
     // A tenant fact the step's own blocker already heads a tile with — its
     // subject and its sentence (fixTiles, `evidence:<label>` or `readiness:<label>`;
     // planLanes.ts observe names the fact `fact:<label>`) — is that tile. It was

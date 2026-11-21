@@ -30,7 +30,7 @@
       "9eab445f-7f21-479a-85c9-29769512067e": "7398df1e"
     },
     "memberStableId": "9eab445f-7f21-479a-85c9-29769512067e",
-    "sourceDisplayName": "IAC - GLOBAL – BLOCK - Legacy Authentication",
+    "sourceDisplayName": "IAC - GLOBAL - BLOCK - Legacy Authentication",
     "sourceState": "enabled",
     "canonicalSemantics": {
       "users": "All users with tenant-resolved canonical exclusions and owner-confirmed service/device overlays",

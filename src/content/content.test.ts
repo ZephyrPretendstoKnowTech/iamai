@@ -338,10 +338,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.agentTargetingUnread',
   // Block AI Agents You Have Not Approved's Before you turn it on (ui/surfaces/policyTasks.ts
   // beforeTurnOnTask): the Implementation Tasks draw it, the review page draws no policy tasks.
-  '.steps[62].beforeTurnOn.lines[0]',
-  '.steps[62].beforeTurnOn.lines[1]',
-  '.steps[62].beforeTurnOn.lines[2]',
-  '.steps[62].beforeTurnOn.lines[3]',
+  '.steps[63].beforeTurnOn.lines[0]',
+  '.steps[63].beforeTurnOn.lines[1]',
+  '.steps[63].beforeTurnOn.lines[2]',
+  '.steps[63].beforeTurnOn.lines[3]',
   // Require a Security Key for One Emergency Account (owner, 2026-10-05): the
   // engine's words, not the renderer's. `everywhere` replaces title, why and the
   // notice when everyone works remotely (emergencyStrongAccount.ts
@@ -349,9 +349,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // than two emergency accounts, and `turnOnWaits` is what its turn-on waits on
   // (enforceWaits.ts); the example is an office tenant with two accounts and none
   // of those states.
-  '.steps[63].everywhere.notice',
-  '.steps[63].everywhere.title',
-  '.steps[63].everywhere.why',
+  '.steps[64].everywhere.notice',
+  '.steps[64].everywhere.title',
+  '.steps[64].everywhere.why',
   // Require a Managed Device and Prepare the Lockdown Kit say the same without an
   // office (stepTitle.ts everywhereContent; owner, 2026-10-05 live check).
   '.steps[25].everywhere.notice',
@@ -370,10 +370,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // scan read no PIM-eligible admin (generate.ts; owner, 2026-10-07): the example tenant's
   // step is set aside, and the review page renders no footer reason.
   '.steps[15].noEligibleAdmins',
-  '.steps[63].oneAccount',
-  '.steps[63].turnOnWaits.drilled',
-  '.steps[63].turnOnWaits.method',
-  '.steps[63].turnOnWaits.otherExcluded',
+  '.steps[64].oneAccount',
+  '.steps[64].turnOnWaits.drilled',
+  '.steps[64].turnOnWaits.method',
+  '.steps[64].turnOnWaits.otherExcluded',
   // The line an update draws when it takes a tenant exclusion off the policy (review 3
   // queue 3, stepPortal.ts): the example corrects no policy that has one.
   '.shared.changeRemoves',

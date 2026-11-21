@@ -86,6 +86,15 @@ export type TenantObjects = {
    */
   avdUserGroupIds?: readonly string[]
   /**
+   * The groups the operator allowed to use Microsoft Copilot
+   * (MappingState.copilotUserGroupIds). Absent or empty while Copilot is in use:
+   * not answered, and a policy naming the author's Copilot users names the slot
+   * `COPILOT_USERS_SLOT`, which waits on Confirm What You Use.
+   */
+  copilotUserGroupIds?: readonly string[]
+  /** Confirm What You Use answered that Microsoft Copilot is not used: the Copilot block carves nobody out but the exclusions group (owner, 2026-11-20). */
+  copilotNotUsed?: boolean
+  /**
    * The groups the operator named as holding the admin accounts
    * (MappingState.adminAccountGroupIds). Absent or empty: not answered, and a
    * policy naming the author's admin-accounts group names the slot
@@ -562,6 +571,16 @@ export const ALL_USERS_TARGET = 'all_users'
  */
 export const AVD_USERS_SLOT = '{avdUserGroups}'
 const AVD_USERS = 'avdUsersGroup'
+/**
+ * The people allowed to use Microsoft Copilot (src/baseline/interpretation.ts
+ * `copilotUsersGroup`): the groups the operator names in Confirm What You Use.
+ * While Copilot is in use and no group is named the policy names this slot, so
+ * no channel hands over a block that spares nobody by accident; answered that
+ * Copilot is not used, the carve-out is left out and the block spares only the
+ * exclusions group (owner, 2026-11-20).
+ */
+export const COPILOT_USERS_SLOT = '{copilotUserGroups}'
+const COPILOT_USERS = 'copilotUsersGroup'
 /** Confirm What You Use: the Direction step that asks which groups may use Azure Virtual Desktop. */
 const DIRECTION_USE_STEP = DIRECTION_STEP_IDS[0]
 
@@ -765,6 +784,13 @@ function substitutionsFor(
     if (token === AVD_USERS && r.kind === 'group') {
       const groups = [...new Set(tenant.avdUserGroupIds ?? [])]
       ids.set(r.id, groups.length > 0 ? groups : [AVD_USERS_SLOT])
+      continue
+    }
+    // The groups allowed to use Microsoft Copilot: the operator's; nobody where
+    // Copilot is answered not used; else the slot Confirm What You Use fills.
+    if (token === COPILOT_USERS && r.kind === 'group') {
+      const groups = [...new Set(tenant.copilotUserGroupIds ?? [])]
+      ids.set(r.id, groups.length > 0 ? groups : tenant.copilotNotUsed === true ? [] : [COPILOT_USERS_SLOT])
       continue
     }
     // The groups that hold the admin accounts: the operator's, all of them where
@@ -1074,7 +1100,7 @@ export function implementable(
       missing.push({ token, stepId: null, unreadable: true })
       return
     }
-    const stepId = unresolved.get(key) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? (token === BLOCKED_COUNTRIES_SLOT ? stepIdForGoal('geo-restriction') : token === AVD_USERS_SLOT ? DIRECTION_USE_STEP : null)
+    const stepId = unresolved.get(key) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? (token === BLOCKED_COUNTRIES_SLOT ? stepIdForGoal('geo-restriction') : token === AVD_USERS_SLOT || token === COPILOT_USERS_SLOT ? DIRECTION_USE_STEP : null)
     // A reference only a person can answer waits on their Baseline mapping (Plan settings), which no step ends.
     missing.push(refs.decisions?.get(key)?.answer === 'pending' ? { token, stepId, decision: true } : { token, stepId })
   }

@@ -170,7 +170,7 @@ test('every step is in exactly one group, no group lists a step the board can ne
     }
     // Three of them only an uploaded baseline builds: the pinned one maps none of
     // them and the floor supplies none, so on the pinned baseline they draw nothing.
-    for (const goalId of ['azure-management-mfa', 'mobile-app-protection', 'byod-session-controls']) {
+    for (const goalId of ['azure-management-mfa', 'byod-session-controls']) {
       assert.equal(listed.includes(stepIdForGoal(goalId)), true, `${goalId}: not listed`)
       assert.equal(goalInMap(PINNED_GOAL_MAP, goalId) || isFloorGoal(goalId), false, `${goalId}: the pinned baseline builds it now`)
     }
@@ -212,7 +212,7 @@ const OUTLINE: readonly [key: string, title: string, members: readonly string[]]
   // Jon's ADM-Users policy (owner, 2026-10-04) under the security-defaults switch its turn-on waits on: it is no part of the hand-off.
   ['core', 'Turn On MFA for Everyone', ['s-goal-block-legacy-auth', 's-goal-block-device-code', 's-goal-admins-phishing-resistant', 's-goal-mfa-all-users', 's-prereq-security-defaults', 's-goal-admin-accounts-group-strength', 's-prereq-per-user-mfa']],
   ['extend-mfa', 'Extend MFA Coverage', ['s-goal-register-info-protected', 's-goal-device-registration-mfa', 's-goal-directory-baseline-scopes-mfa', 's-goal-guests-mfa', 's-goal-pim-activation-reauth', 's-goal-inforcer-mfa', 's-goal-sign-in-risk', 's-goal-sign-in-risk-medium', 's-goal-user-risk', 's-goal-risky-users-register-block', 's-goal-user-risk-medium', 's-goal-azure-management-mfa']],
-  ['remaining-doors', 'Close the Doors Nobody Should Use', ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-avd-allowed-users', 's-goal-workload-identity-block', 's-goal-agents-block-high-risk', 's-goal-agents-block-untrusted', 's-goal-admin-portals-protected']],
+  ['remaining-doors', 'Close the Doors Nobody Should Use', ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-avd-allowed-users', 's-goal-copilot-allowed-users', 's-goal-workload-identity-block', 's-goal-agents-block-high-risk', 's-goal-agents-block-untrusted', 's-goal-admin-portals-protected']],
   ['devices-sessions', 'Limit Sessions and Require Healthy Devices', ['s-goal-admin-session', 's-goal-all-users-no-persistence', 's-goal-intune-enrollment-reauth', 's-goal-require-managed-device', 's-goal-token-protection', 's-goal-mobile-app-protection', 's-goal-byod-session-controls']],
   // Require a Security Key for One Emergency Account after Harden Emergency Access (owner, 2026-10-05; placement the owner's to confirm).
   ['ongoing', 'Ongoing Checks and Cleanup', ['cleanup-alerting', 'cleanup-hardening', 's-goal-emergency-account-strong-signin', 's-lockdown-kit', 'cleanup-namedExclusions', 'cleanup-retire', 'cleanup-consolidation', 'cleanup-naming']],

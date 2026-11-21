@@ -29,7 +29,12 @@ const RISK_GOALS = new Set(['sign-in-risk', 'user-risk', 'sign-in-risk-medium', 
 // so it waits as the admins' policy does: every account it covers holding a
 // method the strength accepts (generate.ts methodPreparation over its own policy).
 const ADMIN_GOALS = new Set(['admins-phishing-resistant', 'admin-accounts-group-strength'])
-const DEVICE_GOALS = new Set(['require-managed-device', 'mobile-app-protection'])
+// Require App Protection on Phones is not one of them (baseline 15afe3b2): it is
+// for phones that are not enrolled, so the share of people on a compliant
+// computer says nothing about who it would stop, and its card told an operator
+// who chose Not enrolled to enrol devices. Its report-only period shows who it
+// would stop, as it does for every other policy.
+const DEVICE_GOALS = new Set(['require-managed-device'])
 const GUEST_GOALS = new Set(['guests-mfa'])
 // The unsupported-platforms block is a block like the others (E9): its evidence
 // is the sign-ins that carried no platform, not device readiness.

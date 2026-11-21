@@ -39,7 +39,7 @@ test('every mapped policy key resolves to a pinned policy, and the spot checks, 
     assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'block-device-code')[0]?.displayName, 'IAC - GLOBAL - BLOCK - Device Code Auth Flow')
     // Owner fixes: the admin portals block is a lockdown switch (T2-LK), token protection scoped to the app set.
     assert.deepEqual(policiesForGoal(PINNED_GOAL_MAP, policies, 'admin-portals-protected'), [])
-    assert.deepEqual(policiesForGoal(PINNED_GOAL_MAP, policies, 'lockdown-kit').map((p) => p.displayName), ['IAC - ZTCA - GLOBAL – BLOCK – Admin Portal', 'IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation', 'IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global'])
+    assert.deepEqual(policiesForGoal(PINNED_GOAL_MAP, policies, 'lockdown-kit').map((p) => p.displayName), ['IAC - ZTCA - GLOBAL - BLOCK - Admin Portal', 'IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation', 'IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global'])
     assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'token-protection')[0]?.displayName, 'IAC - GLOBAL - SESSION - Windows - TokenProtection')
   }
 
@@ -74,8 +74,9 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   // goal's implementation), azure-management-mfa (the policy targets the Windows
   // Azure AD app, not the Service Management API), byod-session-controls and its
   // merge partner block-downloads-unmanaged (no app-enforced / cloud-app-security
-  // policy — O365-Timeout was removed), mobile-app-protection (no app-protection).
-  assert.deepEqual(built.unmappedGoals.slice().sort(), ['azure-management-mfa', 'block-downloads-unmanaged', 'byod-session-controls', 'mobile-app-protection', 'register-info-protected'])
+  // policy — O365-Timeout was removed). mobile-app-protection is mapped since the
+  // pin 15afe3b2: Jon's MAM - Protection policy.
+  assert.deepEqual(built.unmappedGoals.slice().sort(), ['azure-management-mfa', 'block-downloads-unmanaged', 'byod-session-controls', 'register-info-protected'])
   // Includes the approved Inforcer app-scoped MFA goal, since Phase 2b Jon's AVD and
   // SharePoint blocks outside the trusted network, and since Phase 2c his risky-users
   // registration block; source policies are unchanged.
@@ -85,7 +86,9 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   // And, since 2026-10-04 (owner), Jon's two AGENT blocks, read with the agent targeting his export lost
   // (interpretation.json policies), as Block High-Risk AI Agents and Block AI Agents You Have Not Approved.
   // And, since 2026-10-05 (owner), Jon's BreakGlass - TrustedLocations as Require a Security Key for One Emergency Account Outside the Office.
-  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 33, 'the mapped-goal count changed — reconcile the baseline report')
+  // And, since the pin 15afe3b2 (owner, 2026-11-20), Jon's Copilot block as Limit Microsoft Copilot to Its Allowed Groups,
+  // and his MAM - Protection policy as Require App Protection on Phones.
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 35, 'the mapped-goal count changed — reconcile the baseline report')
   assert.deepEqual(PINNED_GOAL_MAP['emergency-account-strong-signin'], ['1588fdc7-f34a-468e-8023-4d788ef5d226'])
   assert.deepEqual(PINNED_GOAL_MAP['agents-block-high-risk'], ['0ab1380f-3863-40a5-ab97-24250e1cf44e'])
   assert.deepEqual(PINNED_GOAL_MAP['agents-block-untrusted'], ['1d8beea4-2ea1-4758-8e22-d6310a60220a'])
@@ -93,7 +96,7 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   assert.deepEqual(PINNED_GOAL_MAP['admin-accounts-group-strength'], ['a53c4c2b-b577-4d88-b64d-36b92f8f3ca0'])
   // Remediate High-Risk Users carries its EAM companion, paired by structure (goalIdentity.ts companionOf).
   assert.deepEqual(PINNED_GOAL_MAP['user-risk'], ['544cd9ef-5e37-4568-9ad8-b8e151be1814', 'bb6a814e-808a-467c-9475-06f89140ce99'])
-  assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])
+  assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL - BLOCK - Countries not Allowed - NoExclusions'])
 })
 
 test('T1-6f: where the goal map does not describe the package, each goal takes its own policy, whatever the package order; the pinned path is the map', async () => {

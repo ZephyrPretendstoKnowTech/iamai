@@ -10,13 +10,14 @@ test('the steps absent from this baseline are the unmapped goals\' steps, and a 
   // the steps present in content but absent from this baseline are the five unmapped goals’ steps
   {
     // azure-management-mfa (targets the Windows Azure AD app, not the Service
-    // Management API), mobile-app-protection (no app-protection policy), and
+    // Management API), and
+    // (mobile-app-protection is Jon's MAM - Protection policy since the pin 15afe3b2)
     // unmanaged-browser (merges byod-session-controls and block-downloads-unmanaged,
     // neither of which the baseline carries). register-info-protected is Jon's
     // UserRegistration policy as he confirmed it (baseline/authorCorrections.ts).
     // admin-portals-protected: Jon's Admin Portal block is the lockdown kit's third switch (owner,
     // 2026-10-03), created Off by Prepare the Lockdown Kit, so no goal step holds it.
-    assert.deepEqual(absentStepIds(), ['admin-portals-protected', 'azure-management-mfa', 'mobile-app-protection', 'unmanaged-browser'])
+    assert.deepEqual(absentStepIds(), ['admin-portals-protected', 'azure-management-mfa', 'unmanaged-browser'])
   }
 
   // a step whose goal is mapped is not absent (mergesGoals needs every goal absent)

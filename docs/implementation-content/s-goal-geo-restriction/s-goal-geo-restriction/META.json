@@ -292,7 +292,7 @@
       "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5": "e205689f"
     },
     "memberStableId": "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5",
-    "sourceDisplayName": "IAC - GLOBAL – BLOCK – Countries not Allowed",
+    "sourceDisplayName": "IAC - GLOBAL - BLOCK - Countries not Allowed",
     "sourceState": "enabled",
     "canonicalSemantics": {
       "users": "All users with IAMAI-resolved canonical exclusions, including service-account/partner overlays only when already resolved",

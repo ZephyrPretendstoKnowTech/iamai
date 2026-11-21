@@ -133,6 +133,15 @@ export type MappingState = {
    */
   avdUserGroupIds?: string[]
   /**
+   * The groups allowed to use Microsoft Copilot (owner, 2026-11-20): Confirm What
+   * You Use's "Which groups may use Microsoft Copilot?", asked only while
+   * Microsoft Copilot is in use. No scan reads who should use Copilot, so only an
+   * operator's Save writes them. Jon's Copilot block excludes them, beside the
+   * exclusions group, and blocks everyone else (roadmap/resolvePolicy.ts
+   * `copilotUsersGroup`). Absent or empty: not answered.
+   */
+  copilotUserGroupIds?: string[]
+  /**
    * The groups that hold the admin accounts (owner, 2026-10-04): Identify Service
    * and Shared Accounts' "Which group holds your admin accounts?", optional. IAMAI
    * cannot tell which of the tenant's groups holds its admin accounts, so only an

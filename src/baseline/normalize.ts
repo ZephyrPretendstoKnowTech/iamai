@@ -46,6 +46,11 @@ export function normalizeValue(v: unknown): unknown {
       const val = normalizeValue(rawVal);
       if (val === undefined || val === null) continue;
       if (isPlainObject(val) && Object.keys(val).length === 0) continue;
+      // A beta read lists `includeAgentActions` on every policy, empty where the
+      // policy names no agent action. v1.0 does not define the property, so an
+      // empty one says nothing and is not carried into a body v1.0 would refuse;
+      // a policy that does name agent actions keeps them and is read as such.
+      if (key === "includeAgentActions" && Array.isArray(val) && val.length === 0) continue;
       out[key] = val;
     }
     return out;

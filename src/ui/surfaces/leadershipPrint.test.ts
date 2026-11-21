@@ -275,7 +275,7 @@ test('a decision under What we need from you lists the questions it still waits 
   const { brief } = briefFor(f)
   const use = brief.needs.find((n) => n.id === 's-direction-use')!
   assert.equal(use.why, 'Answers needed on:')
-  assert.deepEqual(use.asks, ['Azure Virtual Desktop', 'Limit SharePoint and OneDrive to the office network', 'Inforcer', 'Devices or apps that send email by signing in (printers, scanners, line-of-business apps)', 'Partner or MSP technicians who sign in to your tenant'])
+  assert.deepEqual(use.asks, ['Azure Virtual Desktop', 'Microsoft Copilot', 'Limit SharePoint and OneDrive to the office network', 'Inforcer', 'Devices or apps that send email by signing in (printers, scanners, line-of-business apps)', 'Partner or MSP technicians who sign in to your tenant'])
   // The emergency-account question is gone (owner, 2026-10-07): the policy includes the first saved account.
   assert.deepEqual(brief.needs.find((n) => n.id === 's-direction-devices')!.asks, ['Company computers', 'Phones', 'Office network'])
   assert.equal(decisionAsksOf({ directionQuestions: undefined }).length, 0, 'a decision with no questions of its own asks nothing')

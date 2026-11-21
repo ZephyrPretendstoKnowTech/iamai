@@ -1,0 +1,26 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "after: Confirm What You Use",
+  "fact": null,
+  "badge": "On Hold",
+  "bar": "Waiting on your answers",
+  "rail": "Create the policy in Report-only",
+  "headings": [
+    "About this Step",
+    "Tasks Remaining",
+    "Implementation Tasks",
+    "Completion Criteria"
+  ],
+  "tiles": [
+    {
+      "label": "Confirm What You Use",
+      "state": "Waiting on your answers"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "Sep 7, 2026"
+}

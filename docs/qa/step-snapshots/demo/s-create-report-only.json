@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next",
   "bar": "After Prepare Emergency Access Accounts",
-  "rail": "12 policies to create in Report-only",
+  "rail": "13 policies to create in Report-only",
   "headings": [
     "About this Step",
     "Tasks Remaining",
@@ -59,6 +59,10 @@
     },
     {
       "label": "Require Token Protection on Windows",
+      "state": "Create in Report-only"
+    },
+    {
+      "label": "Require App Protection on Phones",
       "state": "Create in Report-only"
     },
     {

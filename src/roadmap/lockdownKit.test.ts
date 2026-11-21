@@ -25,7 +25,7 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import type { Step } from './types.ts'
 
 type Json = Record<string, unknown>
-const SWITCH_NAMES = ['IAC - ZTCA - GLOBAL – BLOCK – Admin Portal', 'IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation', 'IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global']
+const SWITCH_NAMES = ['IAC - ZTCA - GLOBAL - BLOCK - Admin Portal', 'IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation', 'IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global']
 /** Jon's own excluded groups, his environment's, which no switch carries. */
 const AUTHOR_GROUPS = ['62d67e66-2bc9-43cd-b00c-6326dae53d18', 'e663a7ce-daec-4062-88b8-5970bfec8019']
 

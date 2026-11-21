@@ -109,7 +109,7 @@ test('8.2 lists each policy the plan tracks under a name other than the baseline
   const naming = phase.rows.find((x) => x.kind === 'naming')!
   assert.ok(naming, 'the plan tracks policies under the tenant’s own names')
   assert.deepEqual(naming.lists.renames.map((l) => l.replace(/ \(ID: [^)]+\)$/, '')), [
-    'Core - Block - Legacy authentication → IAC - GLOBAL – BLOCK - Legacy Authentication',
+    'Core - Block - Legacy authentication → IAC - GLOBAL - BLOCK - Legacy Authentication',
     'Core - Block - Device code flow → IAC - GLOBAL - BLOCK - Device Code Auth Flow',
     'Core - Grant - MFA for all users → IAC - GLOBAL - GRANT - MFA - AllUsers',
   ])

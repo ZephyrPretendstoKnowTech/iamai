@@ -15,7 +15,7 @@ import { isFloorGoal } from './floor.ts'
 // The goals the pinned map does not hold. Registration protection is one of them
 // and renders anyway, flagged as the floor (target-state §13, prompt 53 queue
 // item 3); the rest never produce a step.
-const ABSENT = ['byod-session-controls', 'mobile-app-protection', 'block-downloads-unmanaged', 'azure-management-mfa']
+const ABSENT = ['byod-session-controls', 'block-downloads-unmanaged', 'azure-management-mfa']
 
 test('the plan holds exactly the goals the goal map holds, plus the floor flagged, on every fixture and under a narrower map', () => {
   // no fixture renders a goal the pinned goal map does not hold, except the floor, flagged
@@ -64,10 +64,10 @@ test('the demo derives through the pinned baseline, and the map\'s policy stands
     // goal and the risky-users block for registration; the map decides instead.
     const persistence = steps.find((s) => s.goalId === 'all-users-no-persistence')
     assert.ok(persistence, 'the demo holds the all-users persistence goal')
-    assert.equal(persistence.naming?.fromBaseline, 'IAC - GLOBAL – SESSION – All Users Persistence (9-12 Hours)')
+    assert.equal(persistence.naming?.fromBaseline, 'IAC - GLOBAL - SESSION - All Users Persistence (9-12 Hours)')
     const geo = steps.find((s) => s.goalId === 'geo-restriction')
     assert.ok(geo)
-    assert.equal(geo.naming?.fromBaseline, 'IAC - GLOBAL – BLOCK – Countries not Allowed')
+    assert.equal(geo.naming?.fromBaseline, 'IAC - GLOBAL - BLOCK - Countries not Allowed')
     for (const s of steps) {
       if (!s.id.startsWith('s-goal-') || !s.naming?.fromBaseline) continue
       const mapped = PINNED_GOAL_MAP[s.goalId].map((k) => PINNED.policies.find((p) => (p.id ?? p.displayName) === k)?.displayName)

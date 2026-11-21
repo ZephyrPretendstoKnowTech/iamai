@@ -66,7 +66,7 @@ test('the pinned baseline’s own trusted-network blocks match their own goals, 
   assert.equal(matchesSignature(facts(/SharePoint-OneDrive-NonTrustedLocations/), sig('sharepoint-trusted-network')), true)
   assert.equal(matchesSignature(facts(/AVD - NonTrustedLocations/), sig('avd-trusted-network')), true)
   // The author's own trusted IP location, read through the pin's placeholders.
-  assert.equal(matchesSignature(facts(/BLOCK – Service Accounts/), sig('service-accounts-trusted-network')), true)
+  assert.equal(matchesSignature(facts(/BLOCK - Service Accounts/), sig('service-accounts-trusted-network')), true)
   // Of the four goals a location condition decides, the Countries policy is the countries goal's alone.
   const matched = goalsMatching(facts(/Countries not Allowed$/), CATALOGUE).map((g) => g.id)
   assert.deepEqual(matched.filter((g) => g === 'geo-restriction' || TRUSTED_GOALS.includes(g)), ['geo-restriction'])

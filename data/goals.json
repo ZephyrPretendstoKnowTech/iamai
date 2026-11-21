@@ -1170,7 +1170,7 @@
             "grantAppProtection": true
           },
           "expectedWho": {
-            "kind": "members"
+            "kind": "all"
           },
           "expectedApps": "all",
           "floor": {
@@ -1194,6 +1194,10 @@
               "applications": {
                 "includeApplications": [
                   "All"
+                ],
+                "excludeApplications": [
+                  "fc780465-2017-40d4-a0c5-307022471b92",
+                  "6aa00308-ea33-4caa-90d6-ae905d8cb51b"
                 ]
               },
               "platforms": {
@@ -1204,7 +1208,7 @@
                 "excludePlatforms": []
               },
               "clientAppTypes": [
-                "all"
+                "mobileAppsAndDesktopClients"
               ]
             },
             "grantControls": {
@@ -2617,6 +2621,80 @@
       "free": [],
       "learnUrl": "https://learn.microsoft.com/azure/virtual-desktop/set-up-mfa",
       "tldr": "Only the groups you allow can open a virtual desktop, so a stolen password for anyone else cannot open one.",
+      "cis": []
+    },
+    {
+      "id": "copilot-allowed-users",
+      "name": "Microsoft Copilot limited to the groups allowed to use it",
+      "shortName": "Microsoft Copilot for everyone else",
+      "description": "Only the groups allowed to use Microsoft Copilot can open it; everyone else is blocked.",
+      "phase": 2,
+      "domain": "Specialist services",
+      "securityValue": 2,
+      "baseEffort": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "appsIdsInclude": [
+              "fb8d773d-7ef8-4ec0-a117-179f88add510",
+              "bb5ffd56-39eb-458c-a53a-775ba21277da"
+            ],
+            "grantBlock": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true,
+            "noLocations": true,
+            "noPlatforms": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "copilot",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "copilotUsers"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Microsoft Copilot for everyone not allowed",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "fb8d773d-7ef8-4ec0-a117-179f88add510",
+                  "bb5ffd56-39eb-458c-a53a-775ba21277da"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/troubleshoot-security-copilot-policies",
+      "tldr": "Only the groups you allow can open Microsoft Copilot, so a stolen password for anyone else cannot use it to search company data.",
       "cis": []
     },
     {

@@ -156,7 +156,7 @@ export const STEP_GROUPS: readonly StepGroup[] = [
     key: 'remaining-doors',
     titleKey: 'pages.app.plan.groups.closeDoors.title',
     completedTitleKey: 'pages.app.plan.groups.closeDoors.completedTitle',
-    members: ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-avd-allowed-users', 's-goal-workload-identity-block', 's-goal-agents-block-high-risk', 's-goal-agents-block-untrusted', 's-goal-admin-portals-protected'],
+    members: ['s-goal-block-auth-transfer', 's-goal-block-unsupported-platforms', 's-goal-geo-restriction', 's-goal-service-accounts-trusted-network', 's-goal-sharepoint-trusted-network', 's-goal-avd-trusted-network', 's-goal-avd-allowed-users', 's-goal-copilot-allowed-users', 's-goal-workload-identity-block', 's-goal-agents-block-high-risk', 's-goal-agents-block-untrusted', 's-goal-admin-portals-protected'],
     anatomy: 'task',
   },
   // The changes to every person's day come last. The two session steps name

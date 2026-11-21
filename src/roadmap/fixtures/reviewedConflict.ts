@@ -43,7 +43,7 @@ const ADOPTS_EVERYONE_SCOPE = /\b(all users|all accounts|every account|every use
 /** The Admin Portal review as the product carried it until 2026-10-03. */
 export const ADMIN_PORTAL_REVIEW: ReviewedSource = {
   key: CONFLICT_SOURCE,
-  reviewedName: 'IAC - ZTCA - GLOBAL – BLOCK – Admin Portal',
+  reviewedName: 'IAC - ZTCA - GLOBAL - BLOCK - Admin Portal',
   words: 'adminPortalNonAdminScope',
   unresolved: (policy, doc) => {
     // Side one: a version whose export no longer claims the whole directory says only one thing.

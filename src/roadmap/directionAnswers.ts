@@ -79,6 +79,8 @@ export function directionAsked(q: Pick<DirectionQuestion, 'askedWhen'>, question
 
 /** Where the Azure Virtual Desktop groups answer is stored (MappingState.avdUserGroupIds; decisions.ts applyStepDecisions): a storage id, not a step. */
 export const AVD_USERS_STORAGE = 's-direction-use-avd-users'
+/** Where the Microsoft Copilot groups answer is stored (MappingState.copilotUserGroupIds; decisions.ts applyStepDecisions): a storage id, not a step. */
+export const COPILOT_USERS_STORAGE = 's-direction-use-copilot-users'
 /** Where the admin accounts groups answer is stored (MappingState.adminAccountGroupIds; decisions.ts applyStepDecisions): a storage id, not a step. */
 export const ADMIN_ACCOUNTS_STORAGE = 's-direction-accounts-admin-groups'
 /** Where the emergency account for the security key is stored (MappingState.emergencyStrongAccountId; decisions.ts applyStepDecisions): a storage id, not a step. */
@@ -94,7 +96,7 @@ export function directionBlockerStep(b: { kind: string; label: string }): Direct
 /** The retired step whose decision the services have always saved under (workflowAnswers, facetOverrides). */
 export const WORKFLOW_DECISION_STEP = 's-confirm-workloads'
 /** The services D1 asks about, in the order the spec lists them. Intune is not one: it follows D3. */
-export const SERVICE_KEYS = ['avd', 'sharepoint', 'azureManagement', 'inforcer'] as const
+export const SERVICE_KEYS = ['avd', 'copilot', 'sharepoint', 'azureManagement', 'inforcer'] as const
 
 /** One answer: the option's value, and the ids picked where the option takes a list. */
 export type DirectionAnswer = { value: string; picked: string[] }
@@ -107,7 +109,7 @@ export type DirectionAnswer = { value: string; picked: string[] }
  */
 export type DirectionQuestionKey =
   | `service:${string}`
-  | 'mailDevices' | 'partner' | 'avdUsers'
+  | 'mailDevices' | 'partner' | 'avdUsers' | 'copilotUsers'
   | 'serviceAccounts' | 'sharedDevices' | 'adminAccounts'
   | 'computers' | 'phones' | 'officeNetwork' | 'emergencyStrong'
 
@@ -121,6 +123,7 @@ export const DIRECTION_QUESTIONS: Readonly<Record<Exclude<DirectionQuestionKey, 
   mailDevices: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.mailDevices}:<decision label>'], its basis questionAnswers['${DIRECTION_STEP.use}:mailDevices:basis']` },
   partner: { step: DIRECTION_STEP.use, storedAs: `questionAnswers['${QUESTION_STEP.partner}:<question label>'], its basis questionAnswers['${DIRECTION_STEP.use}:partner:basis']` },
   avdUsers: { step: DIRECTION_STEP.use, storedAs: `stepDecisions['${AVD_USERS_STORAGE}'] → avdUserGroupIds` },
+  copilotUsers: { step: DIRECTION_STEP.use, storedAs: `stepDecisions['${COPILOT_USERS_STORAGE}'] → copilotUserGroupIds` },
   serviceAccounts: { step: DIRECTION_STEP.accounts, storedAs: 'serviceAccountUserIds, wizardAnswered.serviceAccounts' },
   sharedDevices: { step: DIRECTION_STEP.accounts, storedAs: 'sharedDeviceUserIds' },
   adminAccounts: { step: DIRECTION_STEP.accounts, storedAs: `stepDecisions['${ADMIN_ACCOUNTS_STORAGE}'] → adminAccountGroupIds` },
@@ -175,7 +178,7 @@ export function answeredReasonOf(key: DirectionQuestionKey, value: string): stri
  */
 const OFFICE_NETWORK = ['office', 'remote'] as const
 
-type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'avdUserGroupIds' | 'adminAccountGroupIds'> & Partial<Pick<MappingState, 'emergencyStrongAccountId' | 'breakGlassUserIds'>>
+type Mapping = Pick<MappingState, 'questionAnswers' | 'workflowAnswers' | 'facetOverrides' | 'serviceAccountUserIds' | 'sharedDeviceUserIds' | 'wizardAnswered' | 'assumed' | 'trustedLocationIds' | 'avdUserGroupIds' | 'copilotUserGroupIds' | 'adminAccountGroupIds'> & Partial<Pick<MappingState, 'emergencyStrongAccountId' | 'breakGlassUserIds'>>
 
 const answer = (value: string, picked: readonly string[] = []): DirectionAnswer => ({ value, picked: [...picked] })
 /** A picker's own answer was saved by a person, never by the detected pass (pickerRows.ts defaultDecisions). */
@@ -225,6 +228,9 @@ export function savedAnswerOf(key: DirectionQuestionKey, m: Mapping): DirectionA
     case 'avdUsers':
       // Only a list is an answer: "nobody may use it" is Azure Virtual Desktop answered No.
       return (m.avdUserGroupIds ?? []).length > 0 ? answer('groups', m.avdUserGroupIds) : null
+    case 'copilotUsers':
+      // Only a list is an answer: "nobody may use it" is Microsoft Copilot answered No.
+      return (m.copilotUserGroupIds ?? []).length > 0 ? answer('groups', m.copilotUserGroupIds) : null
     case 'adminAccounts':
       // Only a list is an answer: left empty, it is not answered and only Jon's ADM-Users policy waits.
       return (m.adminAccountGroupIds ?? []).length > 0 ? answer('groups', m.adminAccountGroupIds) : null
@@ -407,6 +413,10 @@ export function legacyDecisionsOf(_stepId: DirectionStepId | typeof DIRECTION_LO
   // (decisions.ts applyStepDecisions writes avdUserGroupIds; T2-AVD).
   const avd = answers.avdUsers
   if (avd) out.push([AVD_USERS_STORAGE, { picked: avd.value === 'groups' ? avd.picked : [], at }])
+  // The groups allowed to use Microsoft Copilot, under their own storage id
+  // (decisions.ts applyStepDecisions writes copilotUserGroupIds).
+  const copilot = answers.copilotUsers
+  if (copilot) out.push([COPILOT_USERS_STORAGE, { picked: copilot.value === 'groups' ? copilot.picked : [], at }])
   // The evidence the mail and partner answers were approved against, under the
   // key it is read from (savedBasisOf), as a service's basis is kept beside it.
   const basis: Record<string, string> = {}

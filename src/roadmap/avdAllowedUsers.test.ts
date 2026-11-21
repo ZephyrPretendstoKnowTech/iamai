@@ -33,7 +33,7 @@ import type { DirectionQuestion, Step } from './types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 
 const AVD_STEP = stepIdForGoal('avd-allowed-users')
-const POLICY = 'IAC - APP – BLOCK – AVD - Exclude - AllowedAVDUsers'
+const POLICY = 'IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers'
 const POLICY_ID = '9bc2ad69-4aed-4242-807d-788446196b8b'
 const PROD_USERS = '902993ed-96f7-4af6-825c-510dfc97b258'
 const PROD_EXTERNAL = '9ee031a3-3551-4bc3-a81d-d6f0149ae329'

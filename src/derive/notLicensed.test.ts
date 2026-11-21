@@ -64,13 +64,14 @@ test('the count is of goals, not lines: a shared device line counts each goal it
   const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
   const goals = r.coverage.results.filter((x) => goalInMap(PINNED_GOAL_MAP, x.goal.id) && (x.status === 'licence-limited' || (x.status === 'not-applicable' && / licence$/.test(x.applicability?.reason ?? '')))).map((x) => x.goal.id)
   // Seven lines and eight goals since Block Risky Users From Registering Sign-in Methods (Phase 2c);
-  // eight lines and nine goals since Block High-Risk AI Agents (owner, 2026-10-04).
+  // eight lines and nine goals since Block High-Risk AI Agents (owner, 2026-10-04);
+  // ten goals since Require App Protection on Phones joined the shared device line (pin 15afe3b2).
   assert.equal(rows.length, 8, 'the premise: eight lines')
-  assert.equal(goals.length, 9, 'the premise: nine goals, two of them on the shared device line')
+  assert.equal(goals.length, 10, 'the premise: ten goals, three of them on the shared device line')
   assert.deepEqual(rows.flatMap((x) => x.goalIds).sort(), [...goals].sort(), 'every goal is on exactly one line')
-  assert.equal(notLicensedCount(rows), 9)
-  assert.equal(notLicensedSummary(rows), 'Not licensed (9)')
-  assert.match(notLicensedPrintLine(rows), /^9 baseline controls need a licence/)
+  assert.equal(notLicensedCount(rows), 10)
+  assert.equal(notLicensedSummary(rows), 'Not licensed (10)')
+  assert.match(notLicensedPrintLine(rows), /^10 baseline controls need a licence/)
 })
 
 test('the workload goal exists only where someone holds the Directory Synchronization Accounts role: never planned or listed without a sync account (B7)', () => {

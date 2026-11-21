@@ -259,6 +259,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-admin-session` | Shorten Admin Sessions | CA policy | admins | portal | | yes |
 | `s-goal-admin-portals-protected` | Block the Admin Portals for Non-Admins | CA policy | all-users | portal | | yes |
 | `s-goal-block-auth-transfer` | Block Authentication Transfer | CA policy | all-users | portal | | yes |
+| `s-goal-copilot-allowed-users` | Limit Microsoft Copilot to Its Allowed Groups | CA policy | all-users | portal | | yes |
 | `s-goal-block-device-code` | Block Device Code Sign-in | CA policy | all-users | portal | | yes |
 | `s-goal-block-legacy-auth` | Block Legacy Authentication | CA policy | all-users | portal | | yes |
 | `s-goal-block-unsupported-platforms` | Block Unsupported Device Platforms | CA policy | devices | portal | | yes |
@@ -326,6 +327,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-admin-portals-protected:create` | `sourceConflict:admin-portals-target` | sourceConflict | `resolved` | — | hard | audit | ok |
 | `s-goal-admin-portals-protected:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-block-auth-transfer:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
+| `s-goal-copilot-allowed-users:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-block-device-code:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-block-legacy-auth:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-block-legacy-auth:enforce` | `s-question-mail-devices` | step | `complete` | `mail-devices-incompatible-path` | conditional | v2 | ok |
@@ -551,6 +553,11 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Work type: CA policy · scope_class: all-users · effort_kind: portal · actions: create → observe → enforce
 - Non-step blockers: `evidence:` legitimate authentication-transfer workflows identified.
 - Observation predicate: Report-only shows only expected sign-ins affected.
+
+#### `s-goal-copilot-allowed-users` — Limit Microsoft Copilot to Its Allowed Groups
+- Work type: CA policy · scope_class: all-users · effort_kind: portal · actions: create → observe → enforce
+- Non-step blockers: `decision:` Confirm What You Use answers Microsoft Copilot and, where it is used, names the groups allowed to use it (baseline 15afe3b2; owner, 2026-11-20).
+- Observation predicate: Report-only shows only people outside the allowed groups affected.
 
 #### `s-goal-block-device-code` — Block Device Code Sign-in
 - Work type: CA policy · scope_class: all-users · effort_kind: portal · actions: create → observe → enforce

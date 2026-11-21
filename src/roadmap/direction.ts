@@ -142,6 +142,21 @@ function useQuestions(ctx: Context, services: { keys: string[]; signal: (key: st
       optional: true, note: Q.avdUsers.optional,
     }))
   }
+  // Which groups may use Microsoft Copilot (owner, 2026-11-20), right under the
+  // Microsoft Copilot card and asked only while it reads Yes: the people Jon's
+  // Copilot block leaves able to open it. Answered No, the block spares only the
+  // exclusions group (resolvePolicy.ts). No scan reads who should use Copilot,
+  // so the card suggests nothing.
+  const copilotAt = out.findIndex((q) => q.key === 'service:copilot')
+  if (copilotAt >= 0) {
+    out.splice(copilotAt + 1, 0, question('copilotUsers', ctx, {
+      label: Q.copilotUsers.label, control: 'groups', options: [], pickedWith: 'groups',
+      suggested: answer('groups'), evidence: '', chosen: { groups: Q.copilotUsers.chosen },
+      askedWhen: { key: 'service:copilot', value: 'yes' },
+      // Optional, as the Azure Virtual Desktop groups are: left empty, only the Copilot step waits on it.
+      optional: true, note: Q.copilotUsers.optional,
+    }))
+  }
   // The evidence counts every sender the records show; the suggestion picks only
   // the ones the picker offers (mailPickable).
   const senders = mailSenderIds(snapshot)
@@ -437,6 +452,8 @@ const GOAL_DEPENDS: Readonly<Record<string, readonly DirectionQuestionKey[]>> = 
   'sharepoint-trusted-network': ['officeNetwork'],
   // Jon's AVD allow-list block (T2-AVD): the groups allowed to use Azure Virtual Desktop; the service question comes from the goal's applicability.
   'avd-allowed-users': ['avdUsers'],
+  // Jon's Copilot block (owner, 2026-11-20): whether Microsoft Copilot is used, and the groups allowed to use it. The goal applies either way (No blocks everyone but the exclusions group), so it names the service question itself.
+  'copilot-allowed-users': ['service:copilot', 'copilotUsers'],
   // Jon's ADM-Users policy (owner, 2026-10-04): the groups that hold the admin accounts.
   'admin-accounts-group-strength': ['adminAccounts'],
   // Phones Blocked from company data widens Jon's block to iOS and Android (deviations.ts BLOCK_PLATFORMS_GOAL).
@@ -518,7 +535,8 @@ export function noteServiceConsequences(steps: Step[]): void {
     const keptOff = (s: Step): boolean => remote && directionDependenciesOf(s).includes('officeNetwork')
     const notices = [...new Set(dependents.filter((s) => (s.doesntApply == null || s.doesntApply === byThisNo) && !keptOff(s)).map((s) => ((contentStepFor(s) as { brief?: { notice?: unknown } } | undefined)?.brief?.notice)).filter((n): n is string => typeof n === 'string' && n.trim() !== ''))]
     const chosen: Record<string, string> = {
-      ...(titles.length > 0 ? { no: fillText(Q.serviceConsequence, { steps: list(titles) }) } : {}),
+      // Microsoft Copilot answered No keeps its step: the block then spares only the exclusions group (owner, 2026-11-20).
+      ...(titles.length > 0 ? { no: fillText(key === 'service:copilot' ? Q.copilotNotUsed : Q.serviceConsequence, { steps: list(titles) }) } : {}),
       ...(notices.length > 0 ? { yes: notices.join(' ') } : {}),
     }
     q.chosen = Object.keys(chosen).length > 0 ? chosen : null
@@ -552,7 +570,7 @@ export function gateOnDirection(steps: Step[], snapshot?: TenantSnapshot): void 
     const inputs = (step.unsavedInputs ?? []).length > 0 ? ANSWERED_IN[step.id] ?? [] : []
     if (on && inputs.length === 0) continue
     const keys = on ? inputs : directionDependenciesOf(step)
-    const waiting = [...new Set(keys.filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null && !moot(k) }).map(directionStepOf))]
+    const waiting = [...new Set(keys.filter((k) => { const q = questions.get(k); return q !== undefined && q.saved === null && !moot(k) && (q.askedWhen === undefined || questions.get(q.askedWhen.key)?.saved?.value === q.askedWhen.value) }).map(directionStepOf))]
     if (waiting.length === 0) continue
     // The wait holds the step (holds.ts; owner, 2026-09-19): it is undated until
     // the answer is approved, like every other hold. The schedule withdraws it once

@@ -28,7 +28,10 @@ test('each package is reviewed against the pin the build carries, member by memb
     assert.equal(portal.status, 'reviewNeeded')
     assert.deepEqual(portal.changed, ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'])
     const aside = Object.entries(statuses).filter(([, s]) => s !== 'current').map(([id]) => id)
-    assert.deepEqual(aside, ['s-goal-admin-portals-protected'], 'more than the changed member’s package was set aside')
+    // Require App Protection on Phones was written with no baseline member; the pin 15afe3b2 gives it one
+    // (Jon's MAM - Protection), so its package waits for review against that policy and its step draws the
+    // pinned policy without it.
+    assert.deepEqual(aside, ['s-goal-admin-portals-protected', 's-goal-mobile-app-protection'], 'more than the changed member’s package was set aside')
     // A placeholder re-baked at the new pin, or a rename, changes no fingerprint.
     const medium = PINNED.policies.find((p) => p.id === '7475b373-0544-4ee8-8827-cff35009136d')!
     assert.equal(memberFingerprint({ ...medium, displayName: 'renamed', placeholders: {} } as never), memberFingerprint(medium as never))
@@ -39,7 +42,7 @@ test('each package is reviewed against the pin the build carries, member by memb
     assert.equal(packageForEntry(portalStep), null, 'guidance for a policy the baseline no longer asks for was applied')
     assert.equal(packageReviewFor(portalStep)?.status, 'reviewNeeded')
     const applied = Object.keys(PACKAGES).filter((id) => packageForEntry({ id, goalId: id.replace(/^s-goal-/, '') }) !== null)
-    assert.ok(applied.length >= Object.keys(PACKAGES).length - 1, `only ${applied.length} packages still apply`)
+    assert.ok(applied.length >= Object.keys(PACKAGES).length - 2, `only ${applied.length} packages still apply`)
     assert.equal(packageReviewFor({ id: 's-goal-device-registration-mfa', goalId: 'device-registration-mfa' }), null)
   }
 })

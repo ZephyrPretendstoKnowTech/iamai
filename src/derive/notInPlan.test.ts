@@ -33,7 +33,7 @@ const titleOf = (goalId: string): string => stepById[goalId]?.title ?? goalId
 test('every pinned baseline policy is shown somewhere in the plan: a step, Not licensed, a review row, or In the baseline, not in this plan', () => {
   for (const name of TENANTS) {
     const { run, steps, policies, rows } = planOf(name)
-    assert.equal(policies.length, 38, `${name}: the premise, the pinned 38-policy baseline`)
+    assert.equal(policies.length, 40, `${name}: the premise, the pinned 40-policy baseline`)
     // Where each surface names a baseline policy, read from what it draws.
     const goalsOf = (p: { id?: string | null; displayName: string }): string[] => Object.entries(PINNED_GOAL_MAP).filter(([, keys]) => keys.includes(p.id ?? p.displayName)).map(([g]) => g)
     const licenceTexts = notLicensedRows(run.coverage, PINNED_GOAL_MAP).map((r) => r.title)
@@ -147,7 +147,7 @@ test('T2-FTR: Service Accounts and EntraConnectIDSync say which tenant fact keep
   for (const name of [...TENANTS, 'large', 'messy', 'hostile', 'midflight', 'demo-week2'] as FixtureName[]) {
     const { rows } = planOf(name)
     for (const r of rows) assert.notEqual(r.reason, generic, `${name}: ${r.policy} reads the generic reason`)
-    const sa = rows.find((r) => /BLOCK – Service Accounts$/.test(r.policy))
+    const sa = rows.find((r) => /BLOCK - Service Accounts$/.test(r.policy))
     if (sa) {
       sawServiceAccounts = true
       assert.equal(sa.reason, 'Keeps service accounts to the office network. No service account is named in Identify Service and Shared Accounts.')

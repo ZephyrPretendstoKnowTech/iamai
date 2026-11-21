@@ -18,7 +18,7 @@ Hide implementation while the role population/exclusions or licensing are unreso
 - Corrections use the stable tenant policy ID.
 
 ## Target state
-Pinned member `04b969aa-3e98-4e0f-8b32-2319b199b56a` (`IAC - GLOBAL – SESSION – Admin Persistence (4 Hours)`) defines: exact resolved admin directory-role scope; All resources; Browser client; no grant controls; sign-in frequency every 4 hours using primary-and-secondary authentication; persistent browser = Never; no risk/location/platform/device/user-action condition. New deployments start Report-only.
+Pinned member `04b969aa-3e98-4e0f-8b32-2319b199b56a` (`IAC - GLOBAL - SESSION - Admin Persistence (4 Hours)`) defines: exact resolved admin directory-role scope; All resources; Browser client; no grant controls; sign-in frequency every 4 hours using primary-and-secondary authentication; persistent browser = Never; no risk/location/platform/device/user-action condition. New deployments start Report-only.
 
 ## Security-significant fields
 Role scope, exclusions, Browser client, All resources, four-hour sign-in frequency, primary-and-secondary authentication type, Never persistent, null grant, and lifecycle.

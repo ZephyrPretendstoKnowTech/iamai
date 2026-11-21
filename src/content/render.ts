@@ -1087,7 +1087,7 @@ export function renderCleanup(c: Record<string, any>): string {
       // Align Policy Names's procedure is its three lines, the middle one per policy (ui/surfaces/namingTasks.ts).
       ol(c.whatToDo ?? [c.openStep, c.renameStep, c.afterStep], {
         from: 'Core - Block - Legacy authentication',
-        to: 'IAC - GLOBAL – BLOCK - Legacy Authentication',
+        to: 'IAC - GLOBAL - BLOCK - Legacy Authentication',
         id: '00000000-0000-0000-0000-000000000000',
         emergencyAccountUpns: ['breakglass@contoso.onmicrosoft.com', 'emergency2@contoso.onmicrosoft.com'],
         renames: ['ACME - APP - BLOCK - Copilot → Core - Block - Copilot'],

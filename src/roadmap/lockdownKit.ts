@@ -40,7 +40,7 @@ export type LockdownSwitch = 'adminPortals' | 'unmanagedDevices' | 'everything'
  * `key` is the pinned policy's stable id; `reviewedName` is provenance only.
  */
 export const LOCKDOWN_SWITCHES: readonly { key: string; reviewedName: string; switch: LockdownSwitch }[] = [
-  { key: 'fafaa50c-0b61-4ac6-a589-f9a1120b2f9e', reviewedName: 'IAC - ZTCA - GLOBAL – BLOCK – Admin Portal', switch: 'adminPortals' },
+  { key: 'fafaa50c-0b61-4ac6-a589-f9a1120b2f9e', reviewedName: 'IAC - ZTCA - GLOBAL - BLOCK - Admin Portal', switch: 'adminPortals' },
   { key: '2dd84b12-7900-40f0-b192-027c20aaa83f', reviewedName: 'IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation', switch: 'unmanagedDevices' },
   { key: '8417ec17-17f5-44c1-b937-85b1917f5d9e', reviewedName: 'IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global', switch: 'everything' },
 ]

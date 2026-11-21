@@ -46,8 +46,11 @@ const guid = (rnd: () => number): string => {
 type App = { appId: string; displayName: string; role?: string }
 // The list as it stood when the digests were captured: Microsoft Rights Management
 // Services joined it on 2026-09-29 (the re-pin keeps Jon's exclusion of it), which is not
-// a change to the derivations these digests pin.
-const APPS = (firstParty as { apps: App[] }).apps.filter((a) => a.appId !== '00000012-0000-0000-c000-000000000000')
+// a change to the derivations these digests pin. Four more joined it on 2026-11-20
+// (the pin 15afe3b2: the two applications Jon's MAM policy excludes and the two
+// his Copilot block names), and are left out for the same reason.
+const JOINED_SINCE = new Set(['00000012-0000-0000-c000-000000000000', 'fc780465-2017-40d4-a0c5-307022471b92', '6aa00308-ea33-4caa-90d6-ae905d8cb51b', 'fb8d773d-7ef8-4ec0-a117-179f88add510', 'bb5ffd56-39eb-458c-a53a-775ba21277da'])
+const APPS = (firstParty as { apps: App[] }).apps.filter((a) => !JOINED_SINCE.has(a.appId))
 const byRole = (role: string) => APPS.filter((a) => a.role === role)
 const TECHNICIAN = byRole('technician tool')
 const SERVER = byRole('server sign-in')

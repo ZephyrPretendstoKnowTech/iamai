@@ -19,7 +19,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { DirectionQuestion } from '../../roadmap/types.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
-import { ADMIN_ACCOUNTS_STORAGE, AVD_USERS_STORAGE, directionAnswerComplete, directionAsked, directionDecisionOf, directionDraftOf, savedAnswerOf, trustedIpLocations } from '../../roadmap/directionAnswers.ts'
+import { ADMIN_ACCOUNTS_STORAGE, AVD_USERS_STORAGE, COPILOT_USERS_STORAGE, directionAnswerComplete, directionAsked, directionDecisionOf, directionDraftOf, savedAnswerOf, trustedIpLocations } from '../../roadmap/directionAnswers.ts'
 import { searchGroups } from '../../graph/collect/onDemand.ts'
 import type { DirectionAnswer } from '../../roadmap/directionAnswers.ts'
 import { answerTextOf } from '../../roadmap/direction.ts'
@@ -52,7 +52,7 @@ function universeOf(q: DirectionQuestion, ctx: StepVarContext): PickerObject[] {
   }
   if (q.control === 'locations') return pickerUniverse(PREREQ_STEP_ID.trustedLocation, 'locations', pickerCtx)
   // The groups the plan knows (pickerRows.ts), for the Azure Virtual Desktop groups (T2-AVD) and the admin accounts groups.
-  if (q.control === 'groups') return pickerUniverse(q.key === 'adminAccounts' ? ADMIN_ACCOUNTS_STORAGE : AVD_USERS_STORAGE, 'groups', pickerCtx)
+  if (q.control === 'groups') return pickerUniverse(q.key === 'adminAccounts' ? ADMIN_ACCOUNTS_STORAGE : q.key === 'copilotUsers' ? COPILOT_USERS_STORAGE : AVD_USERS_STORAGE, 'groups', pickerCtx)
   return []
 }
 

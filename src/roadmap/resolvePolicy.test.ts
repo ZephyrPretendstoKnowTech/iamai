@@ -282,7 +282,7 @@ test('2 + 8: distinct resolved ids stay distinct, an unrelated policy’s includ
     // body: no policy in the pinned baseline resolves two different tenant objects
     // into one list, because only the references this baseline's interpretation
     // settles carry a mapped token at all (src/baseline/interpretation.ts).
-    const source = authorPolicy('IAC - GLOBAL – BLOCK – Service Accounts')
+    const source = authorPolicy('IAC - GLOBAL - BLOCK - Service Accounts')
     const authorServiceAccounts = authorIdFor(source, 'serviceAccountsGroup')
     assert.equal(excludeGroupsOf(source as unknown as Record<string, unknown>).length, 3, 'the author excludes three groups')
     const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ serviceAccountsGroupId: SA }), 'service-accounts-trusted-network', POLICIES)
@@ -296,7 +296,7 @@ test('2 + 8: distinct resolved ids stay distinct, an unrelated policy’s includ
 // ---- 4 + 5: an explicit token means that object, or nothing ----
 
 test('4 + 5: an explicit serviceAccountsGroup means that object or nothing: missing it stays unresolved and withholds every channel, present it is the target, and it never becomes the exclusions group', () => {
-  const source = authorPolicy('IAC - GLOBAL – BLOCK – Service Accounts')
+  const source = authorPolicy('IAC - GLOBAL - BLOCK - Service Accounts')
   const authorServiceAccounts = authorIdFor(source, 'serviceAccountsGroup')
   // The tenant has its trusted network, so the group is the one thing left.
   const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ trustedLocationIds: ['loc-1'] }), 'service-accounts-trusted-network', POLICIES)
@@ -387,7 +387,7 @@ test('4 + 5: an explicit serviceAccountsGroup means that object or nothing: miss
 // ---- 3: a confirmed per-reference mapping wins, and every channel agrees ----
 
 test('3: a confirmed mapping for one author reference wins over the token and the fallback, on an exclude or an include, on every channel', () => {
-  const source = authorPolicy('IAC - GLOBAL – SESSION – Admin Persistence (4 Hours)')
+  const source = authorPolicy('IAC - GLOBAL - SESSION - Admin Persistence (4 Hours)')
   const authorExclusions = authorIdFor(source, 'exclusionsGroup')
   const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ confirmed: new Map([[authorExclusions, CONFIRMED]]) }), 'admin-session', POLICIES)
   assert.deepEqual(resolved.substitutions.get(authorExclusions), [CONFIRMED], 'the confirmed object wins over the token')
@@ -429,7 +429,7 @@ test('3: a confirmed mapping for one author reference wins over the token and th
     // by a person to a tenant group of their own. Portal could not name it from
     // the mapping's own service-accounts group, so this fails if the lines are
     // rebuilt rather than read off the step.
-    const source = authorPolicy('IAC - GLOBAL – BLOCK – Service Accounts')
+    const source = authorPolicy('IAC - GLOBAL - BLOCK - Service Accounts')
     const authorGroup = authorIdFor(source, 'serviceAccountsGroup')
     const base = fixture('demo-week2')
     const record = { placeholder: authorGroup, kind: 'group', group: 'placeholders' as const, resolvedId: CONFIRMED, resolvedName: 'Confirmed service accounts', provenance: 'confirmed' as const, doesNotExist: false, validation: null }

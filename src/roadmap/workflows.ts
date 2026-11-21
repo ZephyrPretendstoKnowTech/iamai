@@ -77,7 +77,11 @@ export function serviceEvidence(key: string, signal: ServiceSignal): string | nu
 export function serviceReading(snapshot: TenantSnapshot, policies: readonly NotAssessed[], availableGoalIds: readonly string[], people?: ReadonlySet<string>): { keys: string[]; signal: (key: string) => ServiceSignal } {
   const existing = new Set(availableGoalIds)
   const goalFacets = goals.goals.filter((g) => existing.has(g.id) && g.applicability).map((g) => String(g.applicability))
-  const keys = [...new Set([...goalFacets, ...policies.map(serviceOf).filter((s): s is string => s !== null)])].sort()
+  // Jon's Copilot block applies whether or not Copilot is used (No blocks everyone but
+  // the exclusions group; owner, 2026-11-20), so its goal carries no applicability
+  // and the service is asked because the goal is on the plan.
+  const asked = existing.has('copilot-allowed-users') ? ['copilot'] : []
+  const keys = [...new Set([...goalFacets, ...asked, ...policies.map(serviceOf).filter((s): s is string => s !== null)])].sort()
   const detected = detectFacets(snapshot, {})
   const reliable = detectFacets({ ...snapshot, appSignInSummary: ['ok', 'partial'].includes(snapshot.sources.appSignInSummary?.status) ? snapshot.appSignInSummary : [], spActivity: ['ok', 'partial'].includes(snapshot.sources.spActivity?.status) ? snapshot.spActivity : [] }, {})
   // The people who signed in to each service Confirm What You Use asks about,

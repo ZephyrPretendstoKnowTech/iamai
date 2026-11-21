@@ -720,8 +720,8 @@
       "family": "policy",
       "strictValidationErrors": 3,
       "registered": true,
-      "provenance": "microsoft-template-floor",
-      "review": "current"
+      "provenance": "baseline-member",
+      "review": "reviewNeeded"
     },
     {
       "stepId": "s-goal-pim-activation-reauth",
@@ -6098,15 +6098,15 @@
     "packagesPassingStrictValidation": 2,
     "packagesWithWithheldParts": 40,
     "provenance": {
-      "baseline-member": 23,
-      "microsoft-template-floor": 4,
+      "baseline-member": 24,
+      "microsoft-template-floor": 3,
       "rollout-proof": 1,
       "tenant-prerequisite": 9,
       "workflow-check": 5
     },
     "review": {
-      "current": 41,
-      "reviewNeeded": 1
+      "current": 40,
+      "reviewNeeded": 2
     }
   },
   "validationLimitations": [

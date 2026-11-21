@@ -74,7 +74,7 @@ test('every pinned source policy is accounted for, and the loaded package holds 
   assert.deepEqual(pkg.report.errors, [], 'a pinned policy failed to parse')
   assert.deepEqual(pkg.report.duplicates, [], 'two pinned policies deduped into one')
   // The count the Connect tile shows is this one, so the count and the pin agree.
-  assert.equal(pkg.policies.length, 38, 'the pinned baseline holds 38 policies; reconcile the product copy before changing this')
+  assert.equal(pkg.policies.length, 40, 'the pinned baseline holds 40 policies; reconcile the product copy before changing this')
 })
 
 test('the pin the product reports is the commit the plan was derived from', async () => {
@@ -145,7 +145,12 @@ test('every application exclusion in the pinned source is inventoried and kept',
     [
       `IAC - GLOBAL - GRANT - MFA - AllUsers: ${RIGHTS_MANAGEMENT}`,
       `IAC - GLOBAL - GRANT - MFA - AllUsers: ${INTUNE_ENROLMENT}`,
-      ...ADMIN_PORTAL_APPS.map((a) => `IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: ${a}`),
+      // Jon's MAM policy (pin 15afe3b2): Defender's mobile check-in, and the resource
+      // Microsoft documents excluding so a passkey can be registered in Authenticator
+      // (Learn, how-to-enable-authenticator-passkey). Both are Microsoft's own apps.
+      'IAC - INTUNE - GRANT - MAM - Protection: fc780465-2017-40d4-a0c5-307022471b92',
+      'IAC - INTUNE - GRANT - MAM - Protection: 6aa00308-ea33-4caa-90d6-ae905d8cb51b',
+      ...ADMIN_PORTAL_APPS.map((a) => `IAC - ZTCA - GLOBAL - BLOCK - Admin Portal: ${a}`),
     ],
     'the pinned application exclusions changed; account for each one before changing this list',
   )

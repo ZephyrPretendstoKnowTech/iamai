@@ -35,7 +35,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 const STEP = 's-goal-device-registration-mfa'
 const MEMBER = 'aeb49474-5250-4b65-8b0a-56c47127ee0f'
 const OLD_NAME = 'IAC - INTUNE – GRANT – Device Registration from trusted location'
-const NEW_NAME = 'IAC - INTUNE – GRANT – Device Registration - MFA Strength'
+const NEW_NAME = 'IAC - INTUNE - GRANT - Device Registration - MFA Strength'
 /** The built-in "Multifactor authentication" strength the baseline used to ask for. */
 const BUILTIN = '00000000-0000-0000-0000-000000000002'
 /** The author's custom "Modern MFA + TAP", which the re-pinned baseline asks for. */

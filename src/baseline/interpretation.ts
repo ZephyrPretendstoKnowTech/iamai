@@ -79,6 +79,17 @@ export type SourceMeaning =
    */
   | 'avdUsersGroup'
   /**
+   * The people allowed to use Microsoft Copilot, whom the author's Copilot block
+   * carves out of its block of the Copilot applications (Jon's AgentAdmins
+   * group). No scan reads who should use Copilot, so the tenant's counterpart is
+   * the groups the operator names in Confirm What You Use
+   * (MappingState.copilotUserGroupIds; roadmap/resolvePolicy.ts). Answered that
+   * Copilot is not used, the policy goes without the carve-out and blocks
+   * everyone but the exclusions group (owner, 2026-11-20); used and unanswered,
+   * the policy waits on that answer.
+   */
+  | 'copilotUsersGroup'
+  /**
    * The author's admin accounts, by group (Jon's SG-Entra-DUG-Admins-AllAdminUsers,
    * the only include of IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users; owner
    * 2026-10-04). A group reaches admins only eligible in PIM, whom a
@@ -319,7 +330,7 @@ export type ReferenceUsage = {
   context: Record<string, string>
 }
 
-const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'avdUsersGroup', 'adminAccountsGroup', 'emergencyStrongAccount', 'emergencyOtherAccount', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
+const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'blockedCountries', 'externalAuthGroup', 'avdUsersGroup', 'copilotUsersGroup', 'adminAccountsGroup', 'emergencyStrongAccount', 'emergencyOtherAccount', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
 const CLASSIFICATIONS: ReferenceClassification[] = ['knownSemantic', 'sourceOnly', 'decisionRequired', 'invalidSource']
 
 /** The one classification each meaning allows: a record whose two fields disagree cannot be checked by a reviewer. */

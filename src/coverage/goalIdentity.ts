@@ -37,6 +37,8 @@ export const APP_SCOPED_GOALS: Readonly<Record<string, readonly string[]>> = {
   'avd-trusted-network': ['9cdead84-a844-4324-93f2-b2e6bb768d07', '0af06dc6-e4b5-4f28-818e-e78e62d137a5'],
   // Jon's AVD allow-list block (T2-AVD): the same two applications.
   'avd-allowed-users': ['9cdead84-a844-4324-93f2-b2e6bb768d07', '0af06dc6-e4b5-4f28-818e-e78e62d137a5'],
+  // Jon's Copilot block: the Enterprise Copilot Platform and the Security Copilot Portal.
+  'copilot-allowed-users': ['fb8d773d-7ef8-4ec0-a117-179f88add510', 'bb5ffd56-39eb-458c-a53a-775ba21277da'],
   'sharepoint-trusted-network': ['00000003-0000-0ff1-ce00-000000000000'],
   // Windows Azure Active Directory: the resource Microsoft maps baseline-scope
   // sign-ins to (Learn, concept-enforcement-resource-exclusions; owner 2026-09-29).
@@ -116,6 +118,7 @@ function appsClass(f: PolicyFacts): string {
   const a = f.apps
   if (sameIds(a.ids, APP_SCOPED_GOALS['inforcer-mfa'])) return 'inforcer'
   if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['avd-trusted-network'])) return 'avd'
+  if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['copilot-allowed-users'])) return 'copilot'
   if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['sharepoint-trusted-network'])) return 'sharepoint'
   if (!a.all && sameIds(a.ids, APP_SCOPED_GOALS['directory-baseline-scopes-mfa'])) return 'directoryBaselineScopes'
   if (a.adminPortals) return 'adminPortals'

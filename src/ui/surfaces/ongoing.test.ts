@@ -142,7 +142,7 @@ test('C5 (T2-LK): the Admin Portal block is a lockdown switch: no admin-portals 
   assert.equal(bodies.get(PORTALS), undefined, 'the demo plan draws an admin-portals step')
   const kit = bodies.get('s-lockdown-kit')
   assert.ok(kit, 'the demo plan has no lockdown kit')
-  const create = kit.emergencyAccountTasks?.tasks.find((t) => t.title === 'Create IAC - ZTCA - GLOBAL – BLOCK – Admin Portal, turned off')
+  const create = kit.emergencyAccountTasks?.tasks.find((t) => t.title === 'Create IAC - ZTCA - GLOBAL - BLOCK - Admin Portal, turned off')
   assert.ok(create, (kit.emergencyAccountTasks?.tasks ?? []).map((t) => t.title).join('\n'))
   assert.ok(create.steps.includes('Set **Enable policy** to **Off** and select **Create**.'), create.steps.join('\n'))
 })

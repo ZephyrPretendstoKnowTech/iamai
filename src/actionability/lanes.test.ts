@@ -352,9 +352,10 @@ test('§12.1 unlock counts: direct and transitive, Security Defaults cutover edg
   const counts = unlockCounts(graph, { excludeConditions: ['sd-enabled'] })
   const expect = (id: string, direct: number, transitive: number): void => assert.deepEqual(counts.get(id), { direct, transitive }, id)
   // d4821b75 (owner edges): passkey settings waits on both emergency steps, and the campaign waits on the operator passkey instead.
-  expect('s-prereq-break-glass', 29, 32)
-  expect('s-prereq-exclusion-group', 24, 31)
-  expect('s-prereq-passkey-settings', 4, 30)
+  // One more each since Limit Microsoft Copilot to Its Allowed Groups joined the graph (baseline 15afe3b2).
+  expect('s-prereq-break-glass', 30, 33)
+  expect('s-prereq-exclusion-group', 25, 32)
+  expect('s-prereq-passkey-settings', 4, 31)
   expect('s-prereq-auth-strength', 8, 8)
   expect('s-verify-mfa', 7, 8)
   // One fewer since Protect Sign-in Method Registration is Jon's policy, which names no location (2026-09-25).

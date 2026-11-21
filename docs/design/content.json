@@ -256,6 +256,7 @@
       "answerNames": {
         "{adminAccountGroups}": "that holds your admin accounts",
         "{avdUserGroups}": "the groups allowed to use Azure Virtual Desktop",
+        "{copilotUserGroups}": "the groups allowed to use Microsoft Copilot",
         "{emergencyStrongAccount}": "the first emergency account saved in Prepare Emergency Access Accounts"
       },
       "$commentRiskClear": "Remediate High-Risk Users and Reset Passwords for Medium-Risk Users while report-only names someone it would have stopped (owner, 2026-09-28; pre-launch list item 2c): that person's user risk holds the turn-on, and nothing said how to clear it, so the step could never finish. Microsoft Learn (howto-identity-protection-remediate-unblock, concept-risky-user-report): Reset password remediates the risk; Confirm user safe is for a false positive, a verdict on the risk detections. Not on whose sign-ins they were: a user-risk policy applies to every sign-in while the account is at risk, so the sign-ins report-only would have stopped are nearly always the person's own (review, 2026-09-28: \"if the sign-ins were theirs\" could clear a real compromise). On the turn-on task, after the wait, and on its card. How long the wait lasts after it is riskClearWait.",
@@ -3296,6 +3297,7 @@
           "names": {
             "sharepoint": "SharePoint and OneDrive",
             "avd": "Azure Virtual Desktop",
+            "copilot": "Microsoft Copilot",
             "inforcer": "Inforcer",
             "agents": "Agent identities",
             "azureManagement": "Azure management",
@@ -3522,7 +3524,7 @@
                 "notice": "No one notices a change: this is a decision."
               },
               "title": "Confirm What You Use",
-              "why": "Approve these answers or correct any that are wrong: a service you don't use takes its policies off your plan, and the accounts and partners you name are kept out of the policies that would stop them.",
+              "why": "Approve these answers or correct any that are wrong: a service you don't use takes its policies off your plan (Microsoft Copilot is blocked for everyone instead), and the accounts and partners you name are kept out of the policies that would stop them.",
               "milestoneAction": "Approving these answers decides which policies your plan contains."
             },
             "accounts": {
@@ -3553,6 +3555,7 @@
           "questions": {
             "services": {
               "avd": "Azure Virtual Desktop",
+              "copilot": "Microsoft Copilot",
               "$commentSharepoint": "F-068 (owner, 2026-09-27): the card asked \"SharePoint and OneDrive from outside the office\", and Yes kept a policy that blocks them outside the office. It names the choice Yes makes; the Yes line is the kept step's own notice (direction.ts noteServiceConsequences).",
               "sharepoint": "Limit SharePoint and OneDrive to the office network",
               "azureManagement": "Azure portal, CLI or PowerShell for managing Azure",
@@ -3563,6 +3566,8 @@
               "no": "No"
             },
             "serviceConsequence": "Takes {steps} off your plan.",
+            "$commentCopilotNotUsed": "Microsoft Copilot answered No (owner, 2026-11-20): the step stays and the block spares only the exclusions group, so the card says that and never Takes it off your plan (direction.ts noteServiceConsequences).",
+            "copilotNotUsed": "{steps} blocks Microsoft Copilot for everyone except the exclusions group.",
             "serviceEvidence": {
               "seen": "{n} people signed in to {service} in the last 30 days.",
               "notSeen": "No {service} sign-ins in the last 30 days.",
@@ -3603,6 +3608,13 @@
               "chosen": "Everyone outside these groups and the exclusions group is blocked from Azure Virtual Desktop.",
               "$commentOptional": "Owner, 2026-10-04: the answer is optional. Left empty, only the AVD allow-list step waits, and the rest of the plan goes ahead; answered now, that policy is created with the others.",
               "optional": "Only Limit Azure Virtual Desktop to Its Allowed Groups waits for this answer; the rest of the plan goes ahead."
+            },
+            "copilotUsers": {
+              "$comment": "Owner, 2026-11-20 (baseline 15afe3b2): asked only while the Microsoft Copilot card reads Yes (direction.ts askedWhen). A group picker, one or more groups; the answer is MappingState.copilotUserGroupIds. The baseline's Copilot block excludes them and the exclusions group, and blocks everyone else from the two Copilot applications (Limit Microsoft Copilot to Its Allowed Groups). Answered No on the card above, the block spares only the exclusions group. No evidence line: no scan reads who should use Copilot.",
+              "label": "Which groups may use Microsoft Copilot?",
+              "chosen": "Everyone outside these groups and the exclusions group is blocked from Microsoft Copilot.",
+              "$commentOptional": "As the Azure Virtual Desktop groups (owner, 2026-10-04): the answer is optional. Left empty, only the Copilot step waits, and the rest of the plan goes ahead.",
+              "optional": "Only Limit Microsoft Copilot to Its Allowed Groups waits for this answer; the rest of the plan goes ahead."
             },
             "accountOptions": {
               "none": "None",
@@ -3655,8 +3667,8 @@
               },
               "chosen": {
                 "enrolled": "Phones must be enrolled in Intune to reach company data outside the office.",
-                "$commentPhones": "Owner, Phase 2a (Jon's policies only): the baseline has no app-protection policy, so Not enrolled promises none, and Blocked widens Jon's Block Unsupported Device Platforms instead of adding a policy of IAMAI's own.",
-                "apps": "Phones can reach company data without being enrolled.",
+                "$commentPhones": "Owner, Phase 2a (Jon's policies only): Blocked widens Jon's Block Unsupported Device Platforms instead of adding a policy of IAMAI's own. Since the pin 15afe3b2 the baseline has an app-protection policy (IAC - INTUNE - GRANT - MAM - Protection), so Not enrolled puts Require App Protection on Phones on the plan and says so (2026-11-20; the sentence before promised no requirement).",
+                "apps": "Phones can reach company data without being enrolled, but only in apps Intune protects. Require App Protection on Phones enforces that.",
                 "blocked": "Phones can't sign in: Block Unsupported Device Platforms also blocks iPhone and Android. Set up everyone's passkey first, since a blocked phone can't register one in Authenticator."
               }
             },
@@ -4012,7 +4024,7 @@
         "workloadSeen": "seen in use",
         "workloadNotSeen": "not seen",
         "licensed": "licensed",
-        "$commentNotAsked": "The Detected workloads answer column (Answered in Confirm What You Use) for a service that step never asks about. It asks only about roadmap/directionAnswers.ts SERVICE_KEYS: Azure Virtual Desktop, SharePoint and OneDrive, Azure management, Inforcer and directory synchronization. Copilot, Azure DevOps, Agent identities and Intune read \"—\" there, the mark for a question with no answer saved, although the step has no question for them.",
+        "$commentNotAsked": "The Detected workloads answer column (Answered in Confirm What You Use) for a service that step never asks about. It asks only about roadmap/directionAnswers.ts SERVICE_KEYS: Azure Virtual Desktop, Microsoft Copilot (since the pin 15afe3b2), SharePoint and OneDrive, Azure management, Inforcer and directory synchronization. Azure DevOps, Agent identities and Intune read \"—\" there, the mark for a question with no answer saved, although the step has no question for them.",
         "notAsked": "not asked",
         "$commentEmpty": "What an Inventory table says where its section was read and returned nothing (a section not read says notRead). \"No Conditional Access policies were read.\" and \"No subscribed licences were read.\" sounded like failed reads on a tenant that has none, and the blocked-today table fell to the shared \"Nothing to show yet.\", which gave the reader nothing on a tenant where the records show no one blocked.",
         "policiesNone": "This tenant has no Conditional Access policies.",
@@ -4948,7 +4960,7 @@
         "tenant": "Contoso Pty Ltd",
         "from": "Aug 1",
         "securityDefaultsOn": true,
-        "turnOn1": "IAC - GLOBAL – BLOCK - Legacy Authentication",
+        "turnOn1": "IAC - GLOBAL - BLOCK - Legacy Authentication",
         "turnOn2": "IAC - GLOBAL - BLOCK - Device Code Auth Flow",
         "turnOn3": "IAC - GLOBAL - GRANT - MFA - AllAdmins",
         "turnOn4": "IAC - GLOBAL - GRANT - MFA - AllUsers"
@@ -7000,6 +7012,10 @@
       "more": {
         "risks": [
           {
+            "text": "Assign an Intune app protection policy to everyone who uses a phone before you turn this on: without one, every app on their phone is blocked from company data.",
+            "applies": "always"
+          },
+          {
             "text": "Someone reading company mail in the phone's built-in mail app is cut off until they install Outlook.",
             "applies": "nativeMailInScope"
           },
@@ -8799,7 +8815,7 @@
         "notice": "People outside the allowed groups can't open a virtual desktop."
       },
       "kind": "policy",
-      "$comment": "T2-AVD (v1.1 D4/D6, owner 2026-10-03): Jon's IAC - APP – BLOCK – AVD - Exclude - AllowedAVDUsers, hidden in v1.0 because its allowed users were unidentified. The operator names the groups in Confirm What You Use (asked only while Azure Virtual Desktop is Yes); the policy excludes them and the exclusions group and blocks everyone else. Answered No, it does not apply; unanswered, it waits on the answer. Created in Report-only by Create the Policies in Report-only, then turned on.",
+      "$comment": "T2-AVD (v1.1 D4/D6, owner 2026-10-03): Jon's IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers, hidden in v1.0 because its allowed users were unidentified. The operator names the groups in Confirm What You Use (asked only while Azure Virtual Desktop is Yes); the policy excludes them and the exclusions group and blocks everyone else. Answered No, it does not apply; unanswered, it waits on the answer. Created in Report-only by Create the Policies in Report-only, then turned on.",
       "title": "Limit Azure Virtual Desktop to Its Allowed Groups",
       "changeLine": null,
       "why": "Only the groups you allow can open Azure Virtual Desktop, so a stolen password for anyone else cannot start a desktop session.",
@@ -8843,12 +8859,74 @@
       "example": {
         "tenant": "Contoso",
         "active": 12,
-        "policyName": "IAC - APP – BLOCK – AVD - Exclude - AllowedAVDUsers",
+        "policyName": "IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers",
         "signature": "IT",
         "existingPolicies": [],
         "from": "Aug 1"
       },
       "aiFocus": "Explain that the policy blocks the two desktop applications for everyone outside the allowed groups and the exclusions group. Do not add a person to an allowed group to let a blocked sign-in through."
+    },
+    {
+      "id": "copilot-allowed-users",
+      "brief": {
+        "matters": "Microsoft Copilot can search everything a person can reach, so only the groups you allow should be able to open it.",
+        "notice": "People outside the allowed groups can't open Microsoft Copilot."
+      },
+      "kind": "policy",
+      "$comment": "Owner, 2026-11-20 (baseline 15afe3b2): Jon's IAC - APP - BLOCK - Copilot - Exclude - AgentAdmins. The operator answers Microsoft Copilot in Confirm What You Use and, on Yes, names the groups allowed to use it; the policy excludes them and the exclusions group and blocks everyone else from the Enterprise Copilot Platform and the Security Copilot Portal. Answered No, it still applies and spares only the exclusions group (owner: a block is never dropped because that is easier); used with no group named, it waits on the answer. Created in Report-only by Create the Policies in Report-only, then turned on.",
+      "title": "Limit Microsoft Copilot to Its Allowed Groups",
+      "changeLine": null,
+      "why": "Only the groups you allow can open Microsoft Copilot, so a stolen password for anyone else cannot use it to search your company's data.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/troubleshoot-security-copilot-policies",
+        "checkedOn": "2026-11-20"
+      },
+      "who": {
+        "lead": "{active} active people",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}"
+      ],
+      "ifWrong": "{policyIfWrong}",
+      "comms": null,
+      "doesntApply": true,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "Anyone outside the allowed groups who opens Microsoft Copilot is blocked once this is on, so check the groups hold everyone who uses it.",
+            "applies": "always"
+          },
+          {
+            "text": "With Microsoft Copilot answered No in Confirm What You Use, this policy blocks Microsoft Copilot for everyone except the exclusions group.",
+            "applies": "always"
+          },
+          {
+            "text": "It blocks the two applications the baseline names, Enterprise Copilot Platform and Security Copilot Portal. A Copilot that signs in through another application is not covered.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "A person who cannot open Microsoft Copilot: check whether they are in one of the allowed groups before changing anything."
+        ],
+        "manager": "Only the people allowed Microsoft Copilot can open it.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso",
+        "active": 12,
+        "policyName": "IAC - APP - BLOCK - Copilot - Exclude - AgentAdmins",
+        "signature": "IT",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "aiFocus": "Explain that the policy blocks the Enterprise Copilot Platform and the Security Copilot Portal for everyone outside the allowed groups and the exclusions group. Do not add a person to an allowed group to let a blocked sign-in through."
     },
     {
       "id": "sharepoint-trusted-network",
